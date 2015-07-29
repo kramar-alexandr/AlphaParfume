@@ -1,0 +1,331 @@
+global 
+function boolean VBudgetDClassOnOpenWindow(Integer wn)
+begin
+	Integer wnn,mwn,wn2;
+  record RcVc Rcr;
+  record VBudgetVc BTr;
+  record VUserBudVc UBTr;
+  record UserVc USr;
+  boolean CantOpen;
+  
+  GetWindowRecord(wn,BTr);
+  UBtr.Code = CurrentUser;
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+  CantOpen = ((Usr.AccessGroup != "ADMIN") and (Usr.AccessGroup != "FINOA"));
+  if CantOpen then
+  begin
+	if ReadFirstMain(UBTr, 1, True) then
+		begin
+		if SetInSet(BTr.Function1, UBTr.Function1) then 
+			begin 
+			CantOpen = False;
+			end;
+		end; 
+  end;
+  if CantOpen then 
+  begin
+  wnn = CurWindow;
+  mwn = MotherWindow(wnn);
+  CloseWindow(wnn);      
+  wn2 = OpenWindow("VErrLClass",0,mwn,"","", Rcr);
+  end;
+  VBudgetDClassOnOpenWindow = False;
+  RETURN;
+end;
+
+procedure SumIt(record VBudgetVc Btr)
+begin
+row VBudgetVc Btrw;
+Integer i, rwcnt;
+val Summa;
+
+Summa = 0;
+rwcnt = MatRowCnt(Btr);
+for (i=0;i<rwcnt;i=i+1)
+	begin
+	MatRowGet(Btr, i, Btrw);
+	Summa = Summa + Btrw.Plan;
+	end;
+Btr.BSum = Summa;
+
+RETURN;
+end;
+
+
+function boolean BTSerial(Integer wn)
+begin
+record VBudgetVc BTr;
+record VBudgetVc BTr1;
+LongInt Code;
+Boolean TrHs;
+
+GetPrevWindowRecord(wn,BTr);
+
+if (BTr.OKFlag==0) then
+begin
+GetWindowRecord(wn,BTr);
+DeselectWindow(wn,false);
+BTr1.Code = Btr.Code;
+
+if (WindowState(wn)<>0) and
+  (blank(BTr.Code) or (BTr.Code < 1)) then
+  begin
+  Code = ((GetYear(CurrentDate) - 2000) * 100000);
+  BTr1.Code = Code;
+  TrHs = ReadFirstMain(BTr1, 1, True);
+  while TrHs
+    begin
+    Code = Code + 1;
+    BTr1.Code = Code;
+    TrHs = ReadFirstMain(BTr1, 1, True);
+    end;
+  BTr.Code = Code;
+  end;
+
+BTr.User = CurrentUser;
+SumIt(BTr);
+PutWindowRecord(wn, BTr);
+BTSerial = True;
+end else
+	begin
+	GetWindowRecord(wn,BTr);
+	DeselectWindow(wn,false);
+	GetPrevWindowRecord(wn,BTr1);
+	if (BTr.OKFlag <> BTr1.OKFlag) and UserCanAction("UnOKBud",false) then 
+		begin
+		BTSerial = True;
+		BTr1.OKFlag = BTr.OKFlag;
+		BTr1.User = CurrentUser;
+		end else
+		begin
+		BTSerial = False;
+		end;
+	PutWindowRecord(wn, BTr1);	
+	end;
+return;
+end;
+
+
+global
+procedure VBudgetDClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin 
+  saveOK = true;
+  duplOK = True;
+  newOK = True;
+  return;
+end;
+
+
+global
+procedure VErrLClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin 
+  saveOK = False;
+  duplOK = False;
+  newOK = False;
+  return;
+end;
+
+
+global
+function Boolean VBudgetDClassOnOKWindow(Integer wn)
+begin
+  record UserVc Usr;
+  
+  VBudgetDClassOnOKWindow = BTSerial(wn);
+  return;
+end;
+
+
+global
+function Boolean VBudgetDClassOKFlagButtonAction(Integer wn,Integer value)
+BEGIN
+  Boolean res;
+  record VBudgetVc BTr;
+  Integer normalmode,updatemode;
+  
+  res = true;
+  normalmode = 0;//Rs_normal
+  updatemode = 2;//Rs_update
+  if (WindowState(wn)==normalmode) then begin
+    GetWindowRecord(wn,BTr);
+    if (BTr.OKFlag!=0) then begin
+      res = false;
+      if (UserCanAction("UnOKBud",false)) then begin
+        res = true;
+      end;
+    end;
+  end;  
+  if (WindowState(wn)==updatemode) then begin
+    GetPrevWindowRecord(wn,BTr);
+    if (BTr.OKFlag!=0) then begin
+      res = false;
+    end;
+  end;
+  
+  VBudgetDClassOKFlagButtonAction = res;
+  RETURN;
+END;
+
+
+global
+function Boolean VBudgetDClassUpdateTest(Integer wn)
+BEGIN
+  record VBudgetVc BTr;
+  record VBudgetVc BTr1;
+  
+  GetPrevWindowRecord(wn, BTr1);
+  GetWindowRecord(wn,BTr);
+  VBudgetDClassUpdateTest = (BTr.OKFlag==0) or (UserCanAction("UnOKBud",false));
+  
+  RETURN;
+END;
+
+
+global
+function LongInt VBudgetVcRecordDuplicate(var record VBudgetVc BTr,record VBudgetVc BTr2, LongInt stat, LongInt long4)
+BEGIN
+  LongInt Res, Code;
+  Boolean TrHs;
+  record VBudgetVc BTr1;	
+  
+  
+  Code = 900000;
+  TrHs = True;
+	while TrHs  
+		begin
+		Code = Code + 1;
+		BTr1.Code = Code;
+		TrHs = ReadFirstMain(BTr1, 1, True);
+		end;
+	BTr.Code = Code;
+	BTr.OKFlag = 0;
+	BTr.DMonth = CurrentDate;
+	PutWindowRecord(CurWindow, BTr); 
+  VBudgetVcRecordDuplicate = Code; 
+  RETURN;
+END;
+
+
+global
+updating function LongInt VBudgetVcRecordCheck(var record VBudgetVc BTr, record VBudgetVc Btr1, LongInt stat, LongInt long4)
+BEGIN
+  row Bud1Vc Bud1rw;
+  LongInt res;
+  Integer i,rwcnt;
+  Integer errcode;
+  string 255 errstr;
+  record AccVc Accr;
+  
+  if (Btr.OKFlag == 0) and (BTr1.OKFlag == 1) and (not UserCanAction("UnOKBud",false)) then 
+	begin
+    VBudgetVcRecordCheck = -1;
+	end;
+	
+  if blank(Btr.Function1) then 
+	begin
+	VBudgetVcRecordCheck = -1;
+	end;
+	
+  RETURN;
+END;
+
+
+event DefineWindows
+begin
+  real i,h,h1,h2,h3,h4,h5,v,vs,vm,hl,l;
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Бюджеты по функциям",VBudgetLClass,CGMlist,RcType)
+  SetWRect (20,80,450,210);
+  Sizeable (-1,-1,0,0);
+  v = 6; vs = 20; h = 100;
+  //if (CurrentUser == "SYAN") then begin SpawnClass(VBudgetDClass);end;
+  SpawnClass(VBudgetDClass);
+  UseView(VBudgetVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,"Код",Code,false,Code);
+  RlColKey(81,81,"Дата",DMonth,false,"");
+  RlColKey(161,161,"Функция I уровня",Function1,false,"");
+  RlColKey(241,241,"Подпись",User,false,"");
+  RlColKey(281,281,"Примечание",Comment1,false,"");
+  SearchField("Найти");
+  EndWindow;
+
+
+  WindowBegin("Бюджеты по функциям",VBudgetDClass,CGview,-)
+  SetWRect (60,80,609,372);
+  Sizeable (-1,-1,0,0);
+  UseView(VBudgetVc);
+  //CloseOnCancel;
+  vs=20;
+  EditFieldTL(h=105,v=6,60,"Код",M4Long,ViewOnly,5,Code,false,0);
+  EditField(h + 160,v,80,"Дата",Normal,DMonth,false,PasteCurDate);
+  EditField(h,v+=vs,60,"Функция I уровня",Normal,Function1,false,ObjSClass);
+  EditField(h,v+=vs,255,"Примечание",Normal,Comment1,false,0);
+  CheckBox(20,-20,0,"OK",OKFlag);
+  EditField(230,-20,75,"Итого",ViewOnly,BSum,True,0);
+  ActiveFieldOnNew("DMonth");
+  ActiveFieldOnOK("DMonth");
+  MatrixBegin(4,v=vs+90,-32,-20,VBudgetRowType,199);
+  MatCol(1,24,"Счет",0,Account,false,AccSClass);
+  MatCol(1,80,"Объекты",0,ObjectStr,false,ObjSClass);
+  MatCol(1,220,"План",0,Plan,True,0);
+  MatCol(1,300,"Комментарий",0,Comment0,false,0);
+  EndMatrix;
+  EndWindow;
+
+
+  WindowBegin("Закрепление функций",VUserBudLClass,CGMlist,RcType)
+  SetWRect (20,80,450,210);
+  Sizeable (-1,-1,0,0);
+  v = 6; vs = 20; h = 100;
+  SpawnClass(VUserBudDClass);
+  UseView(VUserBudVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,"Код",Code,false,Code);
+  RlColKey(81,81,"Функция I уровня",Function1,false,Function1);
+  SearchField("Найти");
+  EndWindow;
+
+
+  WindowBegin("Закрепление функций",VUserBudDClass,CGview,-)
+  SetWRect (60,80,609,182);
+  Sizeable (-1,-1,0,0);
+  UseView(VUserBudVc);
+  vs=20;
+  EditFieldTL(h=105,v=6,60,"Код пользователя",M4Code,Normal,20,Code,false,UserSClass);
+  EditField(h,v+=vs,260,"Функции I уровня",Normal,Function1,false,ObjSClass);
+  EndWindow;
+
+
+  WindowBegin("Закрепление функций",VErrLClass,CGview,-)
+  SetWRect (20,80,50,30);
+  Sizeable (-1,-1,0,0);
+  v = 6; vs = 20; h = 100;
+  //SpawnClass(VUserBudDClass);
+  UseView(RcVc);
+  StaticText(h, v+=vs, "Нельзя редактировать чужие бюджеты!", false)
+  //RecordList(4,17,-21,-39);
+  //RlColKey(4,4,"Код",Code,false,Code);
+  //RlColKey(81,81,"Функция I уровня",Function1,false,Function1);
+  EndWindow;
+
+  //-------------------------------------------------------------------------------------------------------------------
+  WindowBegin("Oпределите параметры отчета",BudRasRClass,CGRcW,RcType);
+  SetWRect(20,80,460,300);
+  v = 6; vs = 20; h = 130;
+  PeriodField(h,v,"Период");//sStartDate, sEndDate
+  EditFieldTL(h,v+=20, 150,"Период для сравнения 1",M4UStr,Normal,21,f5,false,PerSClass);
+  EditFieldTL(h,v+=20, 150,"Период для сравнения 2",M4UStr,Normal,21,Stext,false,PerSClass);
+  EditFieldTL(h,v+=vs,100,"F-Объект",M4UStr,Normal,21,f1,false,ObjSClass);
+  EditFieldTL(h,v+=vs,100,"Объект",M4UStr,Normal,21,f2,false,ObjSClass);
+  EditFieldTL(h,v+=vs,100,"Тип объекта",M4UStr,Normal,21,f3,false,OTSClass);
+  //EditFieldTL(h,v+=vs,100,"Номер счета",M4UStr,Normal,21,f4,false,AccSClass);
+  RadioButton(h,v+=vs,0,0,"сводный",ArtMode);
+  RadioButton(h,v+=16,1,0,"подробный",ArtMode);
+  EndWindow;
+//========================================================================================================================
+
+return;
+END;

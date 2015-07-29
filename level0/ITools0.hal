@@ -1,0 +1,547 @@
+//Вспомогательные функции
+external procedure ExtractObj(string,var Integer,var string);
+external procedure NormalizeObjstr(string);
+
+//===============================================
+//Объект по типу
+global
+function string 60 IGetObjByType(string ObjStr, string Type)
+begin
+  record ObjVc Objr;
+  integer pos;
+  string 60 obj, res;
+  
+  res = blankval;
+  pos = 0;
+  ExtractObj(ObjStr,pos,obj);
+  while nonblank(obj) and blank(res)
+    begin
+      Objr.Code = obj;
+      if ReadFirstMain(Objr, 1, True) and (Objr.OTCode==Type) then
+        begin
+          res = obj;
+        end;
+      ExtractObj(ObjStr,pos,obj);
+    end;
+  IGetObjByType = res;
+  Return;
+end;
+
+//===============================================
+//Тип объекта
+global
+function string 20 IGetObjType(string Obj)
+begin
+  record ObjVc Objr;
+
+  Objr.Code = Obj;
+  ReadFirstMain(Objr, 1, true);
+  IGetObjType = Objr.OTCode;
+  Return;
+end;
+
+//===============================================
+//Классификация товаров по типу
+global
+function string 60 IGetDispGroupByType(string DispGroups, string Type)
+begin
+  record DIVc DIr;
+  integer pos;
+  string 60 DispGroup, res;
+  
+  res = blankval;
+  pos = 0;
+  ExtractObj(DispGroups,pos,DispGroup);
+  while nonblank(DispGroup) and blank(res)
+    begin
+      DIr.Code = DispGroup;
+      if ReadFirstMain(DIr, 1, true) and (DIr.CType==Type) then
+        begin
+          res = DispGroup;
+        end;
+      ExtractObj(DispGroups,pos,DispGroup);
+    end;
+  IGetDispGroupByType = res;
+  Return;
+end;
+
+//===============================================
+//Классификация контактов по типу
+global
+function string 60 IGetCClassByType(string CClassStr, string Type)
+begin
+  record CClassVc CClassr;
+  integer pos;
+  string 60 CClassItem, res;
+  
+  res = blankval;
+  pos = 0;
+  ExtractObj(CClassStr, pos, CClassItem);
+  while nonblank(CClassItem) and blank(res)
+    begin
+      CClassr.Code = CClassItem;
+      if ReadFirstMain(CClassr, 1, true) and (CClassr.CType==Type) then
+        begin
+          res = CCLassItem;
+        end;
+      ExtractObj(CClassStr, pos, CClassItem);
+    end;
+  IGetCClassByType = res;
+  Return;
+end;
+
+//===============================================
+//Получаем объект клиента
+global
+function string 60 IGetCustObj(string CustCode)
+begin
+  record CUVc CUr;
+  
+  CUr.Code = CustCode;
+  ReadFirstMain(CUr,1,true);
+  IGetCustObj = IGetObjByType(CUr.Objects, "CONTR");
+  Return;
+end;
+
+//===============================================
+//Возвращаем позицию подстроки в строке
+global
+function integer IStrPos(string substr, string str)
+begin
+  integer  res, i;
+  
+  res = -1;
+  for (i=0; (i<len(str)) and (res<0); i=i+1)
+    begin
+      if mid(str,i,len(substr))==substr then
+        begin
+          res = i;
+        end;
+    end;
+  
+  IStrPos = res;
+  Return;
+end;
+
+//===============================================
+//Количество разделенных "," элементов
+global
+function integer IItemCountInStr(string str)
+begin
+  integer i, cnt, ln, fr, to;
+
+  cnt = 0;
+  fr = -1;
+  to = -1;
+  ln = len(str);
+  for (i=0; (i<=ln); i=i+1)
+    begin
+      if mid(str,i,1)=="," or (i==ln) then
+        begin
+          fr = to+1;
+          to = i;
+          cnt = cnt + 1;
+        end;
+    end;
+    
+  IItemCountInStr = cnt;
+  Return;
+end;
+
+//===============================================
+//Возвращаем один из разделенных "," элементов строки по индексу
+global
+function string 50 IGetItemFromStr(string str, integer pos)
+begin
+  integer i, fr, to, cnt, ln;
+  string 50 res;
+  
+  res = blankval;
+  cnt = -1;
+  fr = -1;
+  to = -1;
+  ln = len(str);
+  for (i=0; (i<=ln) and (cnt<pos); i=i+1)
+    begin
+      if mid(str,i,1)=="," or (i==ln) then
+        begin
+          fr = to+1;
+          to = i;
+          cnt = cnt + 1;
+        end;
+    end;
+  
+  if (cnt == pos) then
+    begin
+      res = mid(str, fr , to-fr);
+    end;
+    
+  IGetItemFromStr = res;
+  Return;
+end;
+
+//===============================================
+//Позиция элемента в множестве
+global
+function integer IItemPosInSet(string Item, string str)
+begin
+  integer i, cnt;
+  integer res;
+  string 200 CurItem;
+  boolean found;
+
+  res = -1;
+  cnt = IItemCountInStr(str);
+  for (i=0; (i < cnt) and not found; i=i+1)
+    begin
+      CurItem = IGetItemFromStr(str, i);
+      found = (CurItem == Item);
+      if found then
+        begin
+          res = i;
+        end;
+    end;
+  IItemPosInSet = res;
+  Return;
+end;
+    
+//===============================================
+//Проверка вхождения диапазона1 в диапазон2 (вспомогательная)
+function boolean IRangeInRange(string Range1, string Range2)
+begin
+  string 50 fr1, to1, fr2, to2;
+  
+  fr1 = FirstInRange(Range1,50);
+  to1 = LastInRange(Range1,50);
+  fr2 = FirstInRange(Range2,50);
+  to2 = LastInRange(Range2,50);
+
+  IRangeInRange = (fr1>=fr2) and (to1<=to2);
+  Return;
+end;
+
+//===============================================
+//Проверка вхождения множества1 в множество2. Оба множества могут содержать диапазоны
+global
+function boolean ISetInSet(string Set1, string Set2)
+begin
+  integer cnt1, cnt2, i, j;
+  boolean res, ItemInSet;
+  string 50 item1, item2;
+  
+  res = true;
+  cnt1 = IItemCountInStr(Set1);
+  cnt2 = IItemCountInStr(Set2);
+  
+  for (i=0; res and (i<cnt1); i=i+1)
+    begin
+      item1 = IGetItemFromStr(Set1, i);
+      ItemInSet = false;
+      for (j=0; (not ItemInSet) and (j<cnt2); j=j+1)
+        begin
+          item2 = IGetItemFromStr(Set2, j);
+          ItemInSet = IRangeInRange(item1, item2);
+        end;
+      res = res and ItemInSet;
+    end;
+  ISetInSet = res;
+  Return;
+end;
+
+//===============================================
+//Пересекаются ли множества
+global
+function boolean ICheckIntersect(string set1, string set2)
+begin
+  integer cnt1, cnt2, i, j;
+  boolean res;
+  string 50 item1, item2, head1, head2;
+
+  res = false;
+  cnt1 = IItemCountInStr(Set1);
+  cnt2 = IItemCountInStr(Set2);
+  
+  for (i=0; (not res) and (i<cnt1); i=i+1)
+    begin
+      item1 = IGetItemFromStr(Set1, i);
+      head1 = FirstInRange(item1,50);
+      for (j=0; (not res) and (j<cnt2); j=j+1)
+        begin
+          item2 = IGetItemFromStr(Set2, j);
+          head2 = FirstInRange(item2,50);
+          res = IRangeInRange(head1, item2) or IRangeInRange(head2, item1);
+        end;
+    end;
+  ICheckIntersect = res;
+  Return;
+end;
+
+//===============================================
+//Проверка на равенство множеств. Оба множества могут содержать диапазоны
+global
+function boolean ISetsEqual(string Set1, string Set2)
+begin
+  ISetsEqual = ISetInSet(Set1, Set2) and ISetInSet(Set2, Set1);
+  Return;
+end;
+
+//===============================================
+//Режем строку. "Голова" - результат, "Хвост" - аргумент
+global
+function string 255 IGetAndTruncStr (var string s, integer qnt)
+begin
+  IGetAndTruncStr = left(s,qnt);
+  s = right(s, len(s)-qnt);
+  Return;
+end;
+
+//===============================================
+//Режем строку по словам. "Голова" - результат, "Хвост" - аргумент
+global
+function string 255 IGetAndTruncStrWrap(var string s, integer qnt)
+begin
+  string 1 c;
+  string 255 res;
+  integer i, pos;
+  boolean found;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  pos = IStrPos(chr(13), s);
+  if (Pos >= 0) and (Pos <= qnt) then
+    begin
+      res = left(s, pos);
+      s = right(s, len(s)-pos-1); //Исключаем символ chr(13) из строки вывода
+    end
+  else
+    begin
+      Pos = qnt;
+      if (len(s) > qnt) then
+        begin
+          found = false;
+          for (i = qnt; (i > 0) and not found; i=i-1)
+            begin
+              c = right(left(s, i), 1); //Последний символ "головы"
+              found = (c == " ") or (c == ".") or (c == ",") or (c == "-");
+              if found then
+                begin
+                  pos = i;
+                end;
+            end;
+        end;
+
+      res = left(s, pos);
+      s = right(s, len(s)-pos);
+    end;
+
+  IGetAndTruncStrWrap = res;
+  Return;
+end;
+
+//===============================================
+//Вывод на форму с переносом строк
+global
+procedure IOutFormField(string FrmField, string tstr, integer FieldLen)
+begin
+  string 255 s;
+
+  s = IGetAndTruncStr(tstr, FieldLen);
+  while (nonblank(s))
+    begin
+      OUTFORMFIELD(FrmField, s);
+      s = IGetAndTruncStr(tstr, FieldLen);
+      if nonblank(s) then
+        begin
+          EndFormRow;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Проверяем обязательные типы объектов
+global
+function boolean ICheckObjs(string Objs, string Types)
+begin
+  record ObjVc Objr;
+  integer i, j, cnti, cntj;
+  string 60 obj, Type;
+  boolean res, ok;
+  
+  res = true;
+  cnti = IItemCountInStr(Types);
+  for (i=0; (i<cnti) and res; i=i+1)
+    begin
+      ok = false;
+      Type = IGetItemFromStr(Types, i);
+      cntj = IItemCountInStr(Objs);
+      for (j=0; (j<cntj) and not ok; j=j+1)
+        begin
+          Objr.Code = IGetItemFromStr(Objs, j);
+          ok = ReadFirstMain(Objr, 1, True) and (Objr.OTCode==Type);
+        end;
+      res = res and ok;
+    end;
+  ICheckObjs = res;
+  Return;
+end;
+
+//===============================================
+//Добаваить элемент в множество
+global
+function string 255 IAppendItemToSet(string Item, string Set)
+begin
+  if nonblank(Set) then
+    begin
+      IAppendItemToSet = Set & "," & Item;
+    end
+  else
+    begin
+      IAppendItemToSet = Item;
+    end;
+  Return;
+end;
+
+//===============================================
+//Добавляем элементы в множество без повторений
+global
+function string 255 IAddToSet(string Items, string Set)
+begin
+  string 255 res, Item;
+  integer i, cnt;
+  
+  res = Set;
+  cnt = IItemCountInStr(Items);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Item = IGetItemFromStr(Items, i);
+      if not SetInSet(Item, Set) then
+        begin
+          res = IAppendItemToSet(Item, res);
+        end;
+    end;
+  IAddToSet = res;
+  Return;
+end;
+
+//===============================================
+//Удаляем элементы из множества
+global
+function string 255 IDelFromSet(string Items, string Set)
+begin
+  string 255 res, Item;
+  integer i, cnt;
+
+  res = blankval;
+  cnt = IItemCountInStr(Set);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Item = IGetItemFromStr(Set, i);
+      if not SetInSet(Item, Items) then
+        begin
+          res = IAddToSet(Item, res);
+        end;
+    end;
+  IDelFromSet = res;
+  Return;
+end;
+
+//===============================================
+//Добавляем объекты или заменяем, если присутствуют того же типа
+global
+procedure IAddAndReplaceObjs(var string ObjStr, string NewObjStr)
+begin
+  string 20 OTCode;
+  string 200 OldObj, NewObj;
+  integer cnt, i;
+  
+  cnt = IItemCountInStr(NewObjStr);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      NewObj = IGetItemFromStr(NewObjStr, i);
+      OTCode = IGetObjType(NewObj);
+      OldObj = IGetObjByType(ObjStr, OTCode);
+      if nonblank(OldObj) then
+        begin
+          ObjStr = IDelFromSet(OldObj, ObjStr);
+        end;
+      ObjStr = IAddToSet(NewObj ,ObjStr);
+    end;
+  NormalizeObjstr(ObjStr);
+  Return;
+end;
+
+//===============================================
+//Возвращаем объект заданого типа из строк TRVc (требуется для округления осн. валюты)
+global
+function string 200 IGetObjByTypeFromTR(record TRVc TRr, string Type)
+begin
+  row TRVc TRrw;
+  integer i;
+  string 200 res;
+
+  for (i=0; (i < MatRowCnt(TRr)) and blank(res); i=i+1)
+    begin
+    MatRowGet(TRr, i, TRrw);
+    res = IGetObjByType(TRrw.Objects, Type);
+    end;
+
+  IGetObjByTypeFromTR = res;
+  Return;
+end;
+
+//===============================================
+//Возвращаем объекты заданных типов из строк TRVc (требуется для округления осн. валюты)
+global
+function string 200 IGetObjsByTypesFromTR(record TRVc TRr, string Types)
+begin
+  integer i, cnt;
+  string 20 Type;
+  string 200 Obj;
+  string 200 res;
+
+  cnt = IItemCountInStr(Types);
+  for (i=0; i<cnt; i=i+1)
+    begin
+    Type = IGetItemFromStr(Types, i);
+    Obj = IGetObjByTypeFromTR(TRr, Types);
+    res = IAddToSet(Obj, res);
+    end;
+
+  IGetObjsByTypesFromTR = res;
+  Return;
+end;
+
+//===============================================
+//Заглушка для старого кода
+global
+function Integer GetProgramMode()
+begin
+  GetProgramMode = typHansaWorld;
+  Return;
+end;
+
+
+//===============================================
+//Дата последней отгрузки для СЧ-Ф
+global
+function Date IGetShipDateIVVc(record IVVc IVp, Date DefaultDate)
+begin
+  record SHVc SHr;
+  Date res;
+  boolean cont;
+
+  res = DefaultDate;
+  cont = (IVp.InvType==1); //normal invoice
+  SHr.OrderNr = IVp.OrderNr;
+  while (LoopBackKey("OrderKey", SHr, 1, cont))
+    begin
+      cont = (SHr.OrderNr == IVp.OrderNr);
+      if cont and (SHr.OKFlag == 1) then
+        begin
+          res = SHr.ShipDate;
+          cont = false;
+        end;
+    end;
+  IGetShipDateIVVc = res;
+  Return;
+end;

@@ -1,0 +1,91 @@
+external inner function Integer CheckObjs(string,string,var string);
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+remote inner procedure StripEndingSpaces(var string);
+
+//===============================================
+function boolean CheckClass(string ClassStr)
+begin
+  record IClassServProvVc ICSPr;
+  integer i, cnt;
+  string 60 Class;
+  boolean res;
+  
+  res = true;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      Class = IGetItemFromStr(ClassStr, i);
+      StripEndingSpaces(Class);
+      ICSPr.Code = Class;
+      res = ReadFirstMain(ICSPr, 1, true);
+    end;
+  CheckClass = res;
+end;
+
+//===============================================
+global
+function Longint IServProvVcRecordDuplicate(var record IServProvVc ISPr, record IServProvVc ISP2r, LongInt stat, LongInt check)
+begin 
+  ISPr.Code = blankval;
+  ISPr.Rating = 0;
+  IServProvVcRecordDuplicate = 0;
+  Return;
+end;
+
+//===============================================
+global
+updating function Boolean IServProvVcRecordCheck(var record IServProvVc ISPr, record IServProvVc ISP2r, LongInt stat, LongInt check)
+begin
+  longint res;
+  integer errcode;
+  string 255 tstr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+  
+  if blank(ISPr.Code) then
+    begin
+      RecordCheckError(1499, "Код не может быть незаполненным", -1, "Code");
+      res = -1;
+    end;
+
+  if (res <> -1) and blank(ISPr.Name) then
+    begin
+      RecordCheckError(1499, "Наименование не может быть незаполненным", -1, "Name");
+      res = -1;
+    end;
+ 
+  if (res <> -1) then
+    begin
+      errcode = CheckObjs("", ISPr.Objects, tstr);
+      if (errcode <> 0) then
+        begin
+          RecordCheckError(errcode, tstr, -1, "Objects");      
+          res = -1; 
+        end;
+    end;
+  
+  if (res <> -1) and not CheckClass(ISPr.Classification) then
+    begin
+      RecordCheckError(1499, "Неверная классификация", -1, "Classification");
+      res = -1;      
+    end;
+
+  if (res <> -1) and (ISPr.RegularPayFlag == 1) and (ISPr.RegularPayVal <= 0) then
+    begin
+      RecordCheckError(1499, "Неверная сумма", -1, "RegularPayVal");
+      res = -1;            
+    end;
+
+  if (res <> -1) and (ISPr.RegularPayVal > 0) and blank(ISPr.CurncyCode) then
+    begin
+      RecordCheckError(1499, "Неверная валюта", -1, "CurncyCode");
+      res = -1;            
+    end;
+  
+  IServProvVcRecordCheck = res;
+  Return;
+end;
+
+

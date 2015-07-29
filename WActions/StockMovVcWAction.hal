@@ -1,0 +1,177 @@
+external function Boolean StockMovDClassBArcodeEFAfter(integer, integer);
+external function Boolean StockMovDClassBQuantEFAfter(integer, integer);
+external function boolean ISetInSet(string, string); //12.03.12 INAU
+external inner updating procedure RecordActionStockMov_Print(var record StockMovVc,string,string,Boolean); //12.03.12 INAU
+remote updating procedure StockMovVc_LogPrint(record StockMovVc); //24.12.09 INAU
+
+
+function Boolean StockMovDClassLocationEFAfter(Integer wn,Boolean changedf)
+begin
+  record StockMovVc StockMovr;
+  Boolean res;
+  record DurationVc Durationr;
+  record UserVc Usr;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr,1,true);
+
+  res = true;
+  if (changedf) then
+    begin
+      GetWindowRecord(wn,StockMovr);
+      if not ISetInSet(StockMovr.FrLocation, Usr.ValidLocList) then
+        begin
+          StockMovr.FrLocation = "";
+        end;
+      if not ISetInSet(StockMovr.ToLocation, Usr.ValidLocList) then
+        begin
+          StockMovr.ToLocation = "";
+        end;
+      PutWindowRecord(wn,StockMovr);
+    end;
+  StockMovDClassLocationEFAfter = res;
+  Return;
+end;
+
+
+global
+function Boolean StockMovDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+  boolean res;
+
+  res = true;
+  switch (fieldname)
+    begin
+      case "FrLocation": res = StockMovDClassLocationEFAfter(wn,changed!=0);
+      case "ThrouLocation": res = StockMovDClassLocationEFAfter(wn,changed!=0);
+      case "ToLocation": res = StockMovDClassLocationEFAfter(wn,changed!=0);
+      case "Barcode": res = StockMovDClassBArcodeEFAfter(wn,changed);
+      case "BQuant": res = StockMovDClassBQuantEFAfter(wn,changed);
+    end;
+
+  res = res and inner.StockMovDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+
+  StockMovDClassAfterEditField = res;
+  return;
+end;
+
+
+global
+function Boolean StockMovDClassOKFlagButtonAction(Integer wn,Integer value)
+begin
+  boolean res;
+  record StockMovVc StockMovr;
+
+  res = inner.StockMovDClassOKFlagButtonAction(wn, value);
+
+  GetWindowRecord(wn,StockMovr);
+  res = res and (StockMovr.OrdFlag <> 0);
+
+  StockMovDClassOKFlagButtonAction = res;
+  return;
+end;
+
+
+global
+function Boolean StockMovDClassSentOKFlagButtonAction(Integer wn,Integer value)
+begin
+  Boolean res;
+  record StockMovVc StockMovr;
+
+  res = inner.StockMovDClassSentOKFlagButtonAction(wn, value);
+  GetWindowRecord(wn,StockMovr);
+
+  res = res and (StockMovr.OrdFlag <> 0);
+
+  StockMovDClassSentOKFlagButtonAction = res;
+  return;
+end;
+
+
+global
+function Boolean StockMovDClassOrdFlagButtonAction(Integer wn,Integer value)
+begin
+  Boolean res;
+  record StockMovVc StockMovr;
+  record VSetSetBlock VSr;
+  record UserVc Usr;
+
+  res = inner.StockMovDClassOrdFlagButtonAction(wn, value);
+
+  GetWindowRecord(wn,StockMovr);
+  BlockLoad(VSr);
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+
+  if (Vsr.CheckStock != 0) then
+    begin
+      res = res and not ((SetInSet(StockMovr.FrLocation, VSr.CheckedStock) or
+                          SetInSet(StockMovr.ToLocation, VSr.CheckedStock)) and
+                          (Usr.AccessGroup != VSr.CheckStockGr));
+    end;
+
+  if (not res) then
+    begin
+    res = (CurrentUser == "DELPHI");
+    end;
+
+  StockMovDClassOrdFlagButtonAction = res;
+  return;
+end;
+
+
+global
+updating function Boolean StockMovDClassPrint(Integer wn,Boolean previewf)
+begin
+  record StockMovVc StockMovr;
+  Integer normalmode,tf;
+
+  normalmode = 0;//Rs_normal
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,StockMovr);
+  if ((WindowState(wn)==normalmode) and (previewf==false)) then
+    begin
+    StockMovVc_LogPrint(StockMovr); // 14.12.09 INAU (чтобы не ломать RecordActionStockMov_Print)
+    RecordActionStockMov_Print(StockMovr,"","StockMovForm",true);
+    end
+  else
+    begin
+    tf = StockMovr.OKFlag;
+    if (previewf==false) then
+      begin
+      StockMovr.OKFlag = 0;
+      end
+    else
+      begin
+      StockMovr.OKFlag = 1;
+      end;
+    PrintDocument(StockMovr,"StockMovForm",true);
+    StockMovr.OKFlag = tf;
+    end;
+  StockMovDClassPrint = true;
+  Return;
+end;
+
+
+global
+procedure NaklFromStockMove()
+begin
+record RcVc RepSpec;
+record StockMovVc SMr;
+
+SetLangMode(LangRussian, "RUS", 2);
+GetWindowRecord(CurWindow, SMr);
+if nonblank(SMr.SerNr) then
+	begin
+	RepSpec.f1 = SMr.SerNr;
+	//RepSpec.LastAcc = ORr.Location;
+  RepSpec.JobDf = 1; //Диалог выбора принтера
+	RepSpec.Media = mtScreen;
+	RepSpec.repname = "VNaklFromStockMoveRn";
+	RunReport(RepSpec,0);
+	end else
+	begin
+	MessageBox(0, "Сначала сохраните документ!");
+	end;
+RETURN;
+end;

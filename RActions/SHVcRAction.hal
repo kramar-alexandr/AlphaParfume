@@ -1,0 +1,166 @@
+external updating procedure ORHist_RecordRemove(integer, longint, LongInt);
+external updating procedure CreateORHistFromSH(record SHVc);
+external inner procedure FindStockValue(string,string,var record ItemStatusVc);
+external function val IGetCCDRest(string); //10.10.12 INAU - получить остаток по ГТД
+external updating procedure IDecCCDRestFromSH(record SHVc); //10.10.12 INAU - изменить остатки по ГТД
+external updating function boolean IMakeStockMovForNoncash(var record SHVc); //25.12.24 INAU - Ответное перемещение на Максан при б/н отгрузке
+
+procedure SHVc_LogAction(var record SHVc SHr, string ActionName) //Добвавлено 25.11.09 INAU
+begin
+  if blank(GetFieldValueByName(SHr,"Log"&ActionName&"User",-1)) then
+    begin
+      SetFieldValueByName(SHr,"Log"&ActionName&"User", CurrentUser, -1);
+      SetFieldValueByName(SHr,"Log"&ActionName&"Date", CurrentDate, -1);
+      SetFieldValueByName(SHr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+
+//14.12.09 INAU
+global
+updating procedure SHVC_LogPrint(record SHVc SHr)
+begin
+  record SHVc oldSHr;
+
+  ReadFirstMain(SHr,0,true);
+  RecordCopy(oldSHr,SHr);
+  SHVc_LogAction(SHr,"Print");
+  RecordUpdate(oldSHr,SHr,false);
+end;
+
+
+global
+function LongInt SHVcRecordDefaults(var record SHVc SHr,record SHVc SH2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.SHVcRecordDefaults(SHr, SH2r, stat, long4);
+  SHVc_LogAction(SHr,"New"); //25.11.09 INAU
+  SHVc_LogAction(SHr,"Save"); //24.12.09 INAU
+  SHVcRecordDefaults = res;
+  Return;
+end;
+
+
+global
+function LongInt SHVcRecordDuplicate(var record SHVc SHr,record SHVc SH2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.SHVcRecordDuplicate(SHr, SH2r, stat, long4);
+  //25.11.09 INAU
+  SHr.LogNewUser=blankval;
+  SHr.LogNewDate="";
+  SHr.LogNewTime="";
+  SHr.LogSaveUser=blankval;
+  SHr.LogSaveDate="";
+  SHr.LogSaveTime="";
+  SHr.LogOKUser=blankval;
+  SHr.LogOKDate="";
+  SHr.LogOKTime="";
+  SHVc_LogAction(SHr,"New"); //25.11.09 INAU
+  SHVcRecordDuplicate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt SHVcRecordCheck(var record SHVc SHp,record SHVc SH2p,LongInt stat,LongInt check)
+begin
+  longint res;
+  integer insertmode, updatemode;
+  integer i;
+  val CCDQnt; //10.10.12 INAU - Остаток по ГТД
+  record ORVc ORr;
+  record ItemStatusVc ISr;
+  row SHVc SHrw;
+
+  insertmode = 1; //Rs_insert
+  updatemode = 2; //Rs_update
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  res = 0;
+
+  ORr.SerNr = SHp.OrderNr;
+  ReadFirstMain(ORr, 1, true);
+
+  if ((res == 0) and (SH2p.OKFlag == 0) and (SHp.OKFlag <> 0) and blank(SHp.Gather)) then
+    begin
+    res = -1;
+    end;
+
+  for (i=0; (i < MatRowCnt(SHp)) and (res == 0); i=i+1)
+    begin
+      MatRowGet(SHp, i, SHrw);
+      if (ORr.CCDFlag == 1) then //ГТД
+        begin
+          CCDQnt = IGetCCDRest(SHrw.ArtCode);
+          if (SHrw.Ship > CCDQnt) then
+            begin
+            RecordCheckError(1499, "Превышено допустимое кол-во по ГТД (" & CCDQnt & ")", i, "Ship");
+            res = -1;
+            end;
+
+          FindStockValue(SHrw.ArtCode, ORr.OrigLocation, ISr);
+          if (SHrw.Ship > ISr.Instock) then
+            begin
+            RecordCheckError(1499, "Превышено допустимое кол-во на складе " & ORr.OrigLocation & "(" & ISr.Instock & ")", i, "Ship");
+            res = -1;
+            end;
+        end;
+    end;
+
+  if (res == 0) then
+    begin
+    res = inner.SHVcRecordCheck(SHp, SH2p, stat,  check);
+    end;
+
+  if (res == 0) then
+    begin
+      SHVc_LogAction(SHp,"Save"); //25.11.09 INAU
+      if (SHp.OKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (SH2p.OKFlag==0))) then //OKFlag
+        begin
+        SHVc_LogAction(SHp,"OK"); //25.11.09 INAU
+        end;
+    end;
+
+  SHVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+updating function LongInt SHVcRecordSave(var record SHVc SHr,record SHVc SH2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.SHVcRecordSave(SHr,SH2r,stat,long4);
+  CreateORHistFromSH(SHr);
+  SHVcRecordSave = res;
+  Return;
+end;
+
+
+global
+updating function LongInt SHVcRecordUpdate(var record SHVc SHr,record SHVc SH2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.SHVcRecordUpdate(SHr,SH2r,stat,long4);
+  CreateORHistFromSH(SHr);
+  SHVcRecordUpdate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt SHVcRecordRemove(var record SHVc SHr,record SHVc SH2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.SHVcRecordRemove(SHr,SH2r,stat,long4);
+  ORHist_RecordRemove(0,SHr.OrderNr,SHr.SerNr);
+  SHVcRecordRemove = res;
+end;

@@ -1,0 +1,244 @@
+external inner function Boolean DateLocked(Date,string);
+external inner function roundmode GetTotalRoundMode(record RoundBlock);
+external inner procedure OffHireSumUp(var record OffHireVc);
+external inner procedure DispatchSumup(var record DispatchVc);
+external inner procedure IPSumup(var record IPVc);
+external inner procedure IPVc_PasteRecCurncy(var record IPVc,Integer);
+external inner procedure IPVc_PasteRecVal(var record IPVc,Integer);
+external inner function Boolean PasteInvIn2IPr(var record IPVc,Integer,Date,var val,Boolean,var Boolean);
+external inner function LongInt DateDiff(Date,Date);
+external inner function Integer GetIntYc(Date);
+external inner function val MulRateToBase2(var string,val,val,val,val,val,val,roundmode);
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external inner function LongInt PasteIPInFEIV(var record FEIVVc,record IPVc,Integer);
+external inner function LongInt PastePUInRetPU(record PUVc,var record RetPUVc);
+external inner procedure PastePrepIPInInv(record IPVc,var record IVVc);
+external inner function string 255 FindNextLegalSerNr(record IVVc,string);
+external inner procedure PasteEDIOrdInOrd(var record EDIORVc,var record ORVc);
+external inner procedure ORSumup(var record ORVc);
+external inner updating function LongInt PastePUInVI(record PUVc,var record VIVc,var string,
+                                      Boolean,Boolean,Boolean,Boolean,Boolean,Boolean,Boolean);
+external inner function Boolean CalculateLoanInstallments(var record CuAccVc,Integer);
+external inner function Boolean GetSVOSerialItem(string,string,record SVOSerVc);
+external inner function LongInt GetCurUserLastNr(string);
+external inner updating procedure SaveTrans(record TRVc);
+external inner procedure TRSumup(var record TRVc,var val);
+external inner updating procedure AddSM(record SMVc,Boolean);
+external inner procedure CurValToOtherCur(Date,string,val,string,var val,roundmode);
+external inner procedure GetARAcc(string,var string);
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+
+global
+procedure ChangeSVIPRecCur(row IPVc iprp,Date tdp,val maxvalp)
+BEGIN
+  Boolean copytobank;
+  val v;
+
+  if (iprp.InvCurncy==iprp.RecCurncy) then begin
+    if (iprp.RecVal==iprp.BankVal) then begin copytobank = true; end;
+    iprp.RecVal = iprp.InvVal;
+  end else begin
+    if (iprp.RecVal==iprp.BankVal) then begin copytobank = true; end;
+    CurValToOtherCur(tdp,iprp.InvCurncy,iprp.InvVal,iprp.RecCurncy,v,DefaultCurRoundOff);
+    iprp.RecVal = v;
+    CurValToOtherCur(tdp,iprp.RecCurncy,iprp.RecVal,iprp.InvCurncy,v,DefaultCurRoundOff);
+    iprp.InvVal = v;
+    if (maxvalp!=0) then begin
+      if (iprp.RecVal>maxvalp) then begin
+        iprp.RecVal = maxvalp;
+      end;  
+    end;
+  end;
+  if (copytobank) then begin
+    iprp.BankVal = iprp.RecVal;
+    iprp.BankCurncy = iprp.RecCurncy;
+  end;
+  RETURN;
+END;
+
+
+procedure OpenInvoiceNumber(record IPTBlock IPTb,string custcode, var LongInt lastpos,var record ARVc resARr)
+begin
+  record ARVc ARr;
+  Boolean found;
+  string 255 ckey;
+//
+  record CUVc  CUr;
+  date ArDate;
+
+  RecordNew(resARr);  
+  ARr.CustCode = custcode;
+
+  //=== +++
+  CUr.Code = custcode;
+  ReadFirstMain(CUr,1,true);
+  //=== ---
+
+  found = true;
+  SetLoopPosition(ARr,lastpos);
+
+  switch (IPTb.DistributeIP) begin
+    case 0: ckey = "CustCode";
+    case 1: ckey = "CustDue";
+  end;
+  while (LoopKey(ckey,ARr,1,found)) begin
+    if (ARr.CustCode!=custcode) then begin found = false; end;
+
+    //=== +++
+    if (ARr.RVal>0) and (CUr.PayDeal<>"RL") and (nonblank(CUr.PayDeal)) then begin //
+       ARr.ARRebDate2=AddDay(ARr.ARRebDate2,1);
+       ArDate = AddDay(ARr.ARRebDate2,CUr.PayDeal);
+      // stopalert("ArDate =" & ArDate  & " ARr.ARRebDate2=" & ARr.ARRebDate2 & " CUr.PayDeal=" & CUr.PayDeal & " ARr.DueDate=" & ARr.DueDate);
+       if (ArDate<ARr.DueDate) then begin found = false; end;
+       ARr.ARRebDate2=AddDay(ARr.ARRebDate2,-1);
+    end;
+    //=== ---
+
+    if (found) then begin
+      lastpos = GetLoopPosition(ARr);
+      RecordCopy(resARr,ARr);     
+      goto LOpenInvoiceNumber;
+    end;    
+  end;
+
+/*
+  while (LoopKey("CustDue",ARr,1,found)) begin
+    if (ARr.CustCode!=custcode) then begin found = false; end;
+    if (found) then begin
+      RecordCopy(resARr,ARr);     
+      lastpos = GetLoopPosition(ARr);
+      goto LOpenInvoiceNumber;
+    end;    
+  end;
+*/  
+LOpenInvoiceNumber:;
+  return;
+end;
+
+procedure ChangeIPRows(record IPVc IPp,LongInt InvoiceNr,string reccurncy,Integer currow,var val curv,Boolean installmentf)
+begin
+  row IPVc IPrw;
+  row IPVc newIPrw;
+  Integer i,rwcnt;
+  val v;
+        
+  v = curv;
+  curv = blankval;
+  rwcnt = MatRowCnt(IPp);
+  for (i=currow+1;i<rwcnt;i=i+1) begin
+    MatRowGet(IPp,i,IPrw);
+    if (IPrw.InvoiceNr==InvoiceNr) then begin
+	    switch (IPrw.stp) begin
+	      case 1:
+	        if (installmentf) then begin
+	          
+	        end;
+	      case 5: 
+	        CopyRow(IPp,IPrw,newIPrw);
+				  newIPrw.RecCurncy = reccurncy;
+				  MatRowPut(IPp,i,newIPrw);
+				  IPVc_PasteRecCurncy(IPp,i);				  
+				  MatRowGet(IPp,i,newIPrw);
+	        v = v - newIPrw.RecVal;
+	        curv = curv + newIPrw.RecVal;
+	    end;
+	  end;
+  end;
+
+  MatRowGet(IPp,currow,newIPrw);    
+  newIPrw.RecCurncy = RecCurncy;
+  MatRowPut(IPp,currow,newIPrw);
+  IPVc_PasteRecCurncy(IPp,currow);
+    MatRowGet(IPp,currow,newIPrw);
+	curv = curv + newIPrw.RecVal;
+  
+	if (installmentf==false) then begin
+    MatRowGet(IPp,currow,newIPrw);
+    newIPrw.RecVal = v;
+    MatRowPut(IPp,currow,newIPrw);
+    IPVc_PasteRecVal(IPp,currow);
+    MatRowGet(IPp,currow,newIPrw);
+  end;
+  RETURN;
+END;
+
+global
+procedure RecordAction_raExpandPay(var record IPVc IPp,Integer rownr)
+begin
+  row IPVc IP0rw;
+  row IPVc newIPrw;
+  Integer i,rwcnt,currow;
+  record ARVc ARr;
+  record IVVc IVr;
+  Boolean loopf,testf,installmentf;
+  LongInt lastpos;
+  record BaseCurBlock BCb;
+  val v,remv,chk;  
+  record IPTBlock IPTb;
+
+stopalert("RecordAction_raExpandPay");
+
+  BlockLoad(BCb);
+  BlockLoad(IPTb);
+  rwcnt = MatRowCnt(IPp);
+  currow = rwcnt;
+  MatRowGet(IPp,rownr,IP0rw);
+  remv = IP0rw.RecVal;
+  if (IP0rw.InvoiceNr<0) and (IP0rw.RecVal>0) then begin
+    loopf = true;
+  end;
+  while (loopf) begin
+    OpenInvoiceNumber(IPTb,IP0rw.CustCode,lastpos,ARr);    
+    if (ARr.InvoiceNr<=0) then begin
+      loopf = false;
+    end;
+    if (remv<=0) then begin
+      loopf = false;
+    end;
+    if (loopf) then begin
+      testf = true;
+      IVr.SerNr = ARr.InvoiceNr;
+      if (ReadFirstMain(IVr,1,true)) then begin
+        testf = true;
+        if (IVr.Invalid!=0) then begin
+          testf = false;
+        end;
+      end;
+      if (testf) then begin
+        if (IVr.CurncyCode!=IP0rw.RecCurncy) then begin
+          CurValToOtherCur(IPp.TransDate,IVr.CurncyCode,ARr.RVal,IP0rw.RecCurncy,v,DefaultCurRoundOff);
+        end else begin
+          v = ARr.RVal;
+        end;
+        if (remv<v) then begin
+          v = remv;
+        end;
+
+        ClearRow(IPp,newIPrw,1)
+        newIPrw.InvoiceNr = ARr.InvoiceNr;
+        MatRowPut(IPp,currow,newIPrw);
+        if (PasteInvIn2IPr(IPp,currow,IPp.TransDate,chk,false,installmentf)) then begin
+        end;
+        
+        ChangeIPRows(IPp,newIPrw.InvoiceNr,IP0rw.RecCurncy,currow,v,installmentf);
+                
+//        currow = currow + 1;
+        currow = MatRowCnt(IPp);
+        remv = remv - v;        
+      end;
+    end;    
+  end;  
+  
+  MatRowDelete(IPp,rownr);
+  if (remv>0) then begin
+    currow = MatRowCnt(IPp);
+    CopyRow(IPp,IP0rw,newIPrw);
+    MatRowPut(IPp,currow,newIPrw);
+    MatRowGet(IPp,currow,newIPrw);
+    newIPrw.RecVal = remv;
+    MatRowPut(IPp,currow,newIPrw);
+    IPVc_PasteRecVal(IPp,currow);
+  end;
+  IPSumup(IPp);
+  return;
+end;

@@ -1,0 +1,507 @@
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external inner function val MulRateToBase2(var string,val,val,val,val,val,val,roundmode);
+external inner procedure Base1ToBase2(var val,Date,var val);
+external function Date IGetShipDateIVVc(record IVVc, Date); //27.12.11 INAU
+
+
+procedure ShipSumValue (Record SHVc SHr, Var val Sum1, Var val Sum2)
+begin
+  Record ORVc ORr;
+  Row ORVc ORrw;
+  Row SHVc SHrw;
+  Integer i,j,rwcnt1,rwcnt2;
+  
+  Sum1 = 0;
+  Sum2 = 0;
+  ORr.SerNr = SHr.OrderNr;
+  ReadFirstKey("SerNr",ORr,1,true);
+  rwcnt1 = MatRowCnt(SHr);
+  rwcnt2 = MatRowCnt(ORr);
+  for(i=0;i<rwcnt1;i=i+1)
+    begin
+      MatRowGet(SHr,i,SHrw);
+      for(j=0;j<rwcnt2;j=j+1)
+        begin
+          MatRowGet(ORr,j,ORrw);
+          if (SHrw.ArtCode == ORRw.ArtCode) then
+            begin
+              if (ORr.CurncyCode == "USD") then
+                begin
+                Sum1 = Sum1 + (ORrw.Price*SHrw.Ship);
+                end
+              else
+                begin
+                Sum2 = Sum2 + (ORrw.Price*SHrw.Ship);
+                end;
+              j = rwcnt2;
+            end;
+        end;
+    end;
+
+  if (ORr.CurncyCode == "USD") then 
+    begin
+    Sum2 = Sum1 * ORr.BaseRate2;
+    end
+  else
+    begin
+    Sum1 = Sum2 / ORr.BaseRate2;
+    end;
+  
+  return;
+end;
+
+
+Procedure TotValues(Record ORHistVc ORHistr,Var Val TotDoc,Var Val TotQty,Var Val TotBSum1,Var Val TotBSum2,Integer Type)
+begin
+  Row ORHistVc ORHistrw;
+  Integer i,rwcnt;
+  
+  TotDoc = 0;
+  TotQty = 0;
+  TotBSum1 = 0;
+  TotBSum2 = 0;
+  rwcnt = MatRowCnt(ORHistr);
+  for(i=0;i<rwcnt;i=i+1)
+    begin
+      MatRowGet(ORHistr,i,ORHistrw);
+      if ((ORHistrw.FType == Type) and (ORHistrw.Number > 0)) then
+        begin
+        TotDoc = TotDoc + 1;
+        TotQty = TotQty + ORHistrw.FQty;
+        TotBSum1 = TotBSum1 + ORHistrw.BSum1;
+        TotBSum2 = TotBSum2 + ORHistrw.BSum2;
+        end;
+    end;
+end;
+
+
+global
+updating procedure ORHist_ClearTTNr(longint TTNr) //Очищаем ссылки на TTNr
+begin
+  // record ORHistVc ORHistr, ORHistrOld;
+  // Row ORHistVc ORHistrw;
+  // Integer i;
+  // boolean found;
+  // date blankd;
+  // time blankt;
+  // record VSetSetBlock VSr;
+  
+  // BlockLoad(VSr);
+  // if (VSr.EnableORHistSave == 1) then
+    // begin
+      // found = true;
+      // ORHistr.OrdNr = 1;
+    // ORHistrw.DelNumber = TTNr;
+      // while LoopKey("OrdNr:DelNumber", ORHistr, 1, found)
+        // begin
+          // found = (ORHistrw.DelNumber == TTNr);
+          // if found then
+            // begin
+          // RecordCopy(ORHistrOld, ORHistr);
+          // RecordUpdate(ORHistrOld, ORHistr, true);
+            // end;
+        // end;
+    // end;
+  Return;
+end;
+
+
+Function Integer RowInt(Record ORHistVc ORHistr, LongInt Number,Integer rwFType,Integer n)
+begin
+  Row ORHistVc ORHistrw;
+  Integer i,rwcnt,j;
+  
+  MatRowGet(ORHistr,n,ORHistrw);
+  if ((ORHistrw.Number < 1) or ((ORHistrw.Number == Number) and (ORHistrw.FType == rwFType))) then
+    begin
+    j = n;
+    end
+  else
+    begin
+      rwcnt = MatRowCnt(ORHistr);
+      // if rwcnt < 4 then begin rwcnt = 4; end;
+      j = rwcnt;
+      for(i=0;i<=rwcnt;i=i+1)
+        begin
+          MatRowGet(ORHistr,i,ORHistrw);
+          if (ORHistrw.Number == Number and ORHistrw.FType == rwFType) then
+            begin
+            j = i;
+            i = rwcnt + 1;
+            end;
+        end;
+    end;
+  RowInt = j;
+  return;
+end;
+
+
+updating procedure ORHistSave(record ORHistVc ORHistr, boolean NewRec)
+begin
+  record ORHistVc ORHistrOld;
+
+  if NewRec then
+    begin
+    RecordStore(ORHistr,true);
+    end
+  else
+    begin
+    RecordCopy(ORHistrOld, ORHistr);
+    RecordUpdate(ORHistrOld, ORHistr, true);
+    end;
+  Return;
+end;
+
+
+global
+updating procedure ORHist_RecordRemove(integer Ftype,longint OrdNr, LongInt FileNr) //Удаляем указанную запись
+begin
+  Record ORHistVc ORHistr;
+  Row ORHistVc ORHistrw;
+  Record VSetSetBlock VSr;
+  Integer i,rwcnt;
+  Boolean Updatef;
+  
+  BlockLoad(VSr);
+  if FType == -1 then
+    begin
+      ORHistr.OrdNr = OrdNr;
+      if ReadFirstKey("OrdNr",ORHistr,1,true) then
+        begin
+          Updatef = false;
+          rwcnt = MatRowCnt(ORHistr);
+          for (i=0;i<rwcnt;i=i+1)
+            begin
+              MatRowGet(ORHistr,i,ORHistrw);
+              if ORHistrw.ovst == 0 then
+                begin
+                Updatef = true;
+                i = rwcnt;
+                end;
+            end;
+
+          if Updatef then
+            begin
+            //stopalert("Auch!");
+            ORHistr.ovst = 1;
+            ORHistSave(ORHistr,false);
+            end
+          else
+            begin
+            RecordRemove(ORHistr);
+            end;
+        end;
+    end
+  else
+    begin
+    ORHistr.OrdNr = OrdNr;
+    ORHistrw.FType = FType;
+    if ReadFirstKey("OrdNr",ORHistr,1,true) then
+      begin
+        rwcnt = MatRowCnt(ORHistr);
+        for (i=0;i<rwcnt;i=i+1)
+          begin
+            MatRowGet(ORHistr,i,ORHistrw);
+            if ORHistrw.Number == FileNr and ORHistrw.FType == Ftype then
+              begin
+              ORHistrw.ovst = 1;
+              MatRowPut(ORHistr,i,ORHistrw);
+              ORHistSave(ORHistr,false);
+              i = rwcnt;
+              end;
+          end;
+      end;
+    end;
+
+  return;
+end;
+
+
+global
+updating procedure CreateORHistFromOR(record ORVc ORr)
+begin
+  Record ORHistVc ORHistr;
+  Record VSetSetBlock VSr;
+  Record UserVc Usr;
+  
+  BlockLoad(VSr);
+  if (VSr.EnableORHistSave == 1) then
+    begin
+    ORHistr.OrdNr = ORr.SerNr;
+    if ReadFirstKey("OrdNr",ORHistr,1,true) then
+      begin
+      ORHistr.ShipDeal = ORr.ShipDeal;
+      ORHistr.OrdDate = ORr.OrdDate;
+      ORHistr.OrdTime = CurrentTime;
+      ORHistr.Location = ORr.Location;
+      ORHistr.CustCode = ORr.CustCode;
+      ORHistr.SalesMan = ORr.SalesMan;
+      ORHistr.SalesGroup = ORr.SalesGroup;
+      Usr.Code = CurrentUser;
+      ReadFirstKey("Code",Usr,1,true);
+      ORHistr.Department = Usr.Department;
+      ORHistr.Sign = Usr.Code;
+      ORHistr.OrdQty = ORr.TotQty;
+      ORHistr.OrdBSum1 = ORr.BaseSum4;
+      ORHistr.OrdBSum2 = (ORr.BaseSum4*ORr.BaseRate2);
+      ORHistr.OrdCrCode = ORr.CurncyCode;
+      ORHistr.OrdPlanShip = ORr.PlanShip;
+      ORHistr.PayDeal = ORr.PayDeal;
+      ORHistr.SendDate = ORr.DespatchDate;
+      ORHistr.SendTime = ORr.DespatchTime;
+      ORHistr.CustContact = ORr.CustContact;
+      ORHistr.CustOrdNr = ORr.CustOrdNr;
+      ORHistr.ContactPhone = ORr.Phone;
+      ORHistr.OKName = ORr.LogOKUser;
+      ORHistr.OKDate = ORr.LogOKDate;
+      ORHistr.OKTime = ORr.LogOKTime;
+      ORHistr.ovst = 0;
+      ORHistSave(ORHistr,false);
+      end
+    else
+      begin
+      ORHistr.SerNr = NextSerNr("ORHistVc",CurrentDate, -1, false, "");
+      ORHistr.OrdNr = ORr.SerNr;
+      ORHistr.ShipDeal = ORr.ShipDeal;
+      ORHistr.OrdDate = ORr.OrdDate;
+      ORHistr.OrdTime = CurrentTime;
+      ORHistr.Location = ORr.Location;
+      ORHistr.CustCode = ORr.CustCode;
+      ORHistr.SalesMan = ORr.SalesMan;
+      ORHistr.SalesGroup = ORr.SalesGroup;
+      Usr.Code = CurrentUser;
+      ReadFirstKey("Code",Usr,1,true);
+      ORHistr.Department = Usr.Department;
+      ORHistr.Sign = Usr.Code;
+      ORHistr.OrdQty = ORr.TotQty;
+      ORHistr.OrdBSum1 = ORr.BaseSum4;
+      ORHistr.OrdBSum2 = (ORr.BaseSum4*ORr.BaseRate2);
+      ORHistr.OrdCrCode = ORr.CurncyCode;
+      ORHistr.OrdPlanShip = ORr.PlanShip;
+      ORHistr.PayDeal = ORr.PayDeal;
+      ORHistr.SendDate = ORr.DespatchDate;
+      ORHistr.SendTime = ORr.DespatchTime;
+      ORHistr.CustContact = ORr.CustContact;
+      ORHistr.CustOrdNr = ORr.CustOrdNr;
+      ORHistr.ContactPhone = ORr.Phone;
+      ORHistr.TotShip = 0;
+      ORHistr.TotIv = 0;
+      ORHistr.TotRet = 0;
+      ORHistr.TotDelivery = 0;
+      ORHistr.OKName = ORr.LogOKUser;
+      ORHistr.OKDate = ORr.LogOKDate;
+      ORHistr.OKTime = ORr.LogOKTime;
+      ORHistSave(ORHistr,true);
+      end;
+    end;
+  Return;
+end;
+
+
+//-----------------------------------------------------------
+global
+updating procedure CreateORHistFromSH(record SHVc SHr)
+begin
+  Record ORHistVc ORHistr;
+  Record VSetSetBlock VSr;
+  Record BaseCurBlock bcur;
+  Record ORVc ORr;
+  Row ORHistVc ORHistrw,ORHistrw2;
+  Row SHVc SHrw;
+  integer i;
+  Val s;
+  boolean NewRec;
+  
+  BlockLoad(VSr);
+  if (VSr.EnableORHistSave == 1) then
+    begin
+    ORHistr.OrdNr = SHr.OrderNr;
+    if ReadFirstKey("OrdNr",ORHistr,1,true) then //Счет в истории, продолжаем
+      begin
+      ShipSumValue(SHr,ORHistr.TotShipSum1,ORHistr.TotShipSum2);
+      BlockLoad(bcur);
+      ORHistrw.Number = SHr.SerNr;
+      ORHistrw.FType = 0;
+      ORHistrw.FQty = SHr.TotQty;
+      ORHistrw.FDate = SHr.ShipDate;
+      ORHistrw.OKDate = SHr.LogOKDate;
+      ORHistrw.OKName = SHr.LogOKUser;
+      ORHistrw.FTime = CurrentTime;
+      ORHistrw.Location = SHr.Location;
+      ORHistrw.Gather = SHr.Gather;
+      ORHistrw.CustCode = SHr.CustCode;
+      ORHistrw.Sign = CurrentUser;
+      ORHistrw.ovst = 0;
+      ORHistrw.FOKFlag = SHr.OKFlag;
+      //StopAlert("SHr.SerNr  = " & SHr.SerNr & "   ORHistrw.FType = " & ORHistrw.FType);
+      i = RowInt(ORHistr,SHr.SerNr,ORHistrw.FType,0);
+      //stopalert(" i = " & i);
+      MatRowPut(ORHistr,i,ORHistrw);
+      TotValues(ORHistr,ORHistr.TotShip,ORHistr.TotShipQty,s,s,0);
+      ORHistSave(ORHistr,false);
+      end;
+    end;
+  Return;
+end;
+
+
+//-----------------------------------------------------------
+global
+updating procedure CreateORHistFromIV(record IVVc IVr)
+begin
+  record ORHistVc ORHistr;
+  Row ORHistVc ORHistrw;
+  record ORVc ORr;
+  record IVVc IV2r;
+  boolean NewRec;
+  integer Coeff,i;
+  record VSetSetBlock VSr;
+  
+  BlockLoad(VSr);
+  if (VSr.EnableORHistSave == 1) then
+    begin
+      if (IVr.InvType == 3) then
+        begin
+        Coeff = -1;
+        end
+      else
+        begin
+        Coeff = 1;
+        end;
+
+      if (IVr.InvType == 3) and (IVr.OrderNr == -1) then
+        begin
+        IV2r.SerNr = IVr.CredInv;
+        ReadFirstMain(IV2r,1,true);
+        IVr.OrderNr = IV2r.OrderNr;
+        end;
+
+      ORHistr.OrdNr = IVr.OrderNr;
+      if ReadFirstKey("OrdNr",ORHistr,1,true) and IVr.OrderNr <> -1 then
+        begin
+        ORHistrw.BSum1 = Coeff * IVr.BaseSum4;
+        ORHistrw.BSum2 = Coeff * MulRateToBase2(IVr.CurncyCode,IVr.Sum4,IVr.FrRate,IVr.ToRateB1,IVr.ToRateB2,IVr.BaseRate1,IVr.BaseRate2,DefaultCurRoundOff);
+        ORHistr.TotIvBSum1 = ORHistr.TotIvBSum1 + ORHistrw.BSum1;
+        ORHistr.TotIvBSum2 = ORHistr.TotIvBSum1 + ORHistrw.BSum2;
+        //ORHistr.ovst = 0;
+        ORHistrw.Number = IVr.SerNr;
+        ORHistrw.FType = 1;
+        ORHistrw.FDate = IVr.InvDate;
+        ORHistrw.FTime = CurrentTime;
+        ORHistrw.FQty = IVr.TotQty;
+        ORHistrw.Location = IVr.Location;
+        ORHistrw.SalesMan = IVr.SalesMan;
+        ORHistrw.CustCode = IVr.CustCode;
+        ORHistrw.Sign = CurrentUser;
+        ORHistrw.ovst = 0;
+        ORHistrw.FOKFlag = IVr.OKFlag;
+        ORHistrw.DelPostMan = IVr.PostMan;
+        ORHistrw.DelPostDay = IVr.PostDay;
+        ORHistrw.DelRetMan = IVr.RetMan;
+        ORHistrw.DelRetDay = IVr.RetDay;
+        ORHistrw.DateFromStock = IVr.DateFromStock;
+        i = RowInt(ORHistr,IVr.SerNr,ORHistrw.FType,1);
+        MatRowPut(ORHistr,i,ORHistrw);
+        TotValues(ORHistr,ORHistr.TotIv,ORHistr.TotIvQty,ORHistr.TotIvBSum1,ORHistr.TotIvBSum2,1);
+        ORHistSave(ORHistr, false);
+        end;
+    end;
+  Return;
+end;
+
+
+global
+updating procedure CreateORHistFromRet(record RetVc Retr)
+begin
+  record ORHistVc ORHistr;
+  Row ORHistVc ORHistrw;
+  record ORVc ORr;
+  record VSetSetBlock VSr;
+  Integer i;
+  boolean NewRec;
+  
+  BlockLoad(VSr);
+  if (VSr.EnableORHistSave == 1) then
+    begin
+    ORHistr.OrdNr = Retr.OrdNr;
+    if ReadFirstKey("OrdNr",ORHistr,1,true) then
+      begin
+      ORHistr.TotRet = ORHistr.TotRet + 1;
+      ORHistr.TotRetQty = ORHistr.TotRetQty + Retr.SumQuant;
+      ORHistrw.BSum1 = MulRateToBase1(Retr.CurncyCode,Retr.Sum4,Retr.FrRate,Retr.ToRateB1,Retr.ToRateB2,Retr.BaseRate1,Retr.BaseRate2,DefaultCurRoundOff);
+      ORHistrw.BSum2 = MulRateToBase2(Retr.CurncyCode,Retr.Sum4,Retr.FrRate,Retr.ToRateB1,Retr.ToRateB2,Retr.BaseRate1,Retr.BaseRate2,DefaultCurRoundOff);
+      ORHistr.TotRetBSum1 = ORHistr.TotRetBSum1 + ORHistrw.BSum1;
+      ORHistr.TotRetBSum2 = ORHistr.TotRetBSum2 + ORHistrw.BSum2;
+      ORHistrw.Number = Retr.SerNr;
+      ORHistrw.FType = 2;
+      ORHistrw.FDate = Retr.TransDate;
+      ORHistrw.FTime = CurrentTime;
+      ORHistrw.FQty = Retr.SumQuant;
+      ORHistrw.Location = Retr.Location;
+      //ORHistrw.SalesMan = Retr.SalesMan;
+      ORHistrw.CustCode = Retr.CustCode;
+      ORHistrw.Sign = CurrentUser;
+      ORHistrw.ovst = 0;
+      ORHistrw.FOKFlag = Retr.OKFlag;
+      i = RowInt(ORHistr,Retr.SerNr,ORHistrw.FType,2);
+      MatRowPut(ORHistr,i,ORHistrw);
+      TotValues(ORHistr,ORHistr.TotRet,ORHistr.TotRetQty,ORHistr.TotRetBSum1,ORHistr.TotRetBSum2,2);
+      ORHistSave(ORHistr, false);
+      end;
+    end;
+  Return;
+end;
+
+global
+updating procedure CreateORHistFromTT(record TTVc TTr)
+begin
+  row TTVc TTrw;
+  Record IVVc IVr;
+  record ORHistVc ORHistr, ORHistrOld;
+  Row ORHistVc ORHistrw;
+  integer i, cnt,rwcnt,j;
+  record VSetSetBlock VSr;
+  
+  BlockLoad(VSr);
+  if ((VSr.EnableORHistSave == 1) and (TTr.OKFlag == 1)) then
+    begin
+    // ORHist_ClearTTNr(TTr.SerNr);  
+    // Заполняем TTNr
+    cnt = MatRowCnt(TTr);
+    for (i=0;i<cnt;i=i+1)
+      begin
+      MatRowGet(TTr, i, TTrw);
+      IVr.SerNr = TTrw.IVCode;
+      ReadFirstKey("SerNr",IVr,1,true);
+      ORHistr.TotDelivery = ORHistr.TotDelivery + 1;
+      ORHistr.TotDelQty = ORHistr.TotDelQty + IVr.TotQty;
+      ORHistr.TotDelBSum1 = ORHistr.TotDelBSum1 + IVr.BaseSum4;
+      ORHistr.TotDelBSum2 = ORHistr.TotDelBSum2 + MulRateToBase2(IVr.CurncyCode,IVr.Sum4,IVr.FrRate,IVr.ToRateB1,IVr.ToRateB2,IVr.BaseRate1,IVr.BaseRate2,DefaultCurRoundOff);
+      ORHistr.OrdNr = IVr.OrderNr;
+      if ReadFirstKey("OrdNr",ORHistr,1,true) then
+        begin
+        rwcnt = MatRowCnt(ORHistr);
+        for(j=0;j<rwcnt;j=j+1)
+          begin
+          MatRowGet(ORHistr,j,ORHistrw);
+          if IVr.SerNr == ORHistrw.Number and ORHistrw.FType == 1 then
+            begin
+            ORHistrw.DelNumber = TTr.SerNr;
+            ORHistrw.DelDate = TTr.TransDate;
+            ORHistrw.DelTime = CurrentTime;
+            ORHistrw.DelDocDate = TTr.DocDate;
+            ORHistrw.DelSign = CurrentUser;
+            ORHistrw.TransCode = TTr.TransCode;
+            ORHistrw.FComment1 = TTrw.Comment;
+            MatRowPut(ORHistr,j,ORHistrw);
+            j = rwcnt + 1;
+            end;
+          TotValues(ORHistr,ORHistr.TotDelivery,ORHistr.TotDelQty,ORHistr.TotDelBSum1,ORHistr.TotDelBSum2,1);
+          ORHistSave(ORHistr,false);
+          end;
+        end;
+      end;
+    end;
+  Return;
+end;
+

@@ -1,0 +1,49 @@
+event DefineWindows
+begin
+integer v,vs,h;
+
+SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("Ограничения для клиентов", tLimForClSetTClass, CGHbl, 0);
+  SetBlid(tLimForClSetBlock);
+  SetWRect(20, 80, 300, 300);
+  Sizeable(-1, -1, 0, 0);
+  h = 20; v = 27;
+  MatrixBegin(h, v, -50, -20, -,200);
+  Flip(0);
+  MatCol(1, 25, "дни", 0, Days, false, 0);
+  MatCol(1, 50, "от суммы", 0, FromUSD, true, 0);
+  MatCol(1, 120, "до суммы", 0, ToUSD, true, 0);
+  EndMatrix;
+  vs = 20;
+  v = 28;
+  EndWindow;
+  
+ end;
+ 
+
+global
+function Integer tLimD(val Sum)
+begin
+record tLimForClSetBlock Limr;
+Row tLimForClSetBlock Limrw;
+Integer rwcnt,i, res;
+
+BlockLoad(Limr);
+res = 0;
+if nonblank(Sum) then
+	begin
+	rwcnt = MatRowCnt(Limr);
+	for (i = 0; i<rwcnt; i = i+1)
+		begin 
+		MatRowGet(Limr, i, Limrw);
+		if (Sum >= Limrw.FromUSD) and (Sum < Limrw.ToUSD)  then 
+			begin
+			res = Limrw.Days;
+			end;
+		end;
+	end;
+tLimD = res;	
+RETURN;
+end;
+ 

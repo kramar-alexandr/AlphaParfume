@@ -1,0 +1,79 @@
+remote updating function integer RecordAction_raPasteRetInInv(var record IVVc,LongInt);
+
+
+global
+updating procedure CreditIVFromRetsm()
+BEGIN
+  record RetVc Retr;
+  record IVVc IVr;
+  Integer wn,r,nwn;
+  Integer normalstate;
+
+  normalstate = 0;//Rs_normal
+  wn = CurWindow;
+  DeselectWindow(wn,false);
+  if (WindowState(wn)==normalstate) then begin
+    GetWindowRecord(wn,Retr);
+    if (Retr.Closed==0) then begin
+      if (Retr.OKFlag!=0) then begin
+        if (UserCanAction("RetToIV",true)) then begin
+          r = RecordAction_raPasteRetInInv(IVr,Retr.SerNr);
+          switch (r) begin
+            case 1:
+              if (MatRowCnt(IVr)!=0) then begin
+                nwn = OpenWindow("IVDClass",1,0,"","",IVr);
+              end;
+            case -1: Beep;
+            case -2: MessageBox(0,USetStr(1368));
+            otherwise
+              MessageBox(r,"");
+          end;
+        end else begin
+          MessageBox(1274,StringFromStringSet(3,"RetToIV"));
+        end;
+      end;
+    end else begin
+      Beep;
+    end;
+  end else begin
+    Beep;
+  end;
+  RETURN;
+END;
+
+
+function Boolean RetFIFOQue()
+begin 
+  record CostAccBlock CAb;
+  
+  BlockLoad(CAb);
+  RetFIFOQue = CAb.RetFIFOQue==0 and CAb.RetCostPriceFromSH==0;
+  return;
+end;
+
+
+global
+function Boolean RetDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+  Boolean res;
+  record RetVc Retr;
+  
+  res = true;
+  if (wnst==2) then
+    begin//Rs_update
+    GetPrevWindowRecord(wn,Retr);
+    res = (Retr.OKFlag == 0) or (fieldname == "Comment");
+    end;
+
+  switch (fieldname)
+    begin
+      case "UPrice": res = UserCanAction("UnOKAll", False);
+      case "Extra": res = RetFIFOQue;
+      case "CostPrice": res = RetFIFOQue;
+      case "BBCostPrice": res = False;
+      case "ArtCode": res = UserCanAction("UnOKAll", False);
+    end;
+  RetDClassActiveEditField = res;
+  RETURN;
+END;
+

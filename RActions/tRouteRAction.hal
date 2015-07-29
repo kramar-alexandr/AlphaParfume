@@ -1,0 +1,237 @@
+external inner function Time TimeDiff(Time,Time);
+external function Longint IGetMinutesBetween(date, time, date, time);
+external function val ABS(val);
+external function val tFindParking(record tRouteVc);
+
+
+// external inner function Time TimeDiff(Time,Time);
+
+// function val  tSumLength(record tRouteVc Rr)
+// begin
+// row tRouteVc Rrw;
+// integer RwCnt, nr, ii;
+// val Sum;
+
+// Sum = 0;
+// for (RwCnt = 0; RwCnt < MatRowCnt(Rr); RwCnt = RwCnt + 1)
+	// begin	  
+	// matRowGet(Rr, RwCnt , Rrw);
+	// Sum = Sum + Rrw.Distance;
+	// end;
+	
+// tSumLength = Sum;
+	
+// return;
+// end;
+
+// function Time tSumDuration(record tRouteVc Rr)
+// begin
+// row tRouteVc Rrw;
+// integer RwCnt, nr, ii;
+// Time Time1;
+// Time Time2;
+
+// matRowGet(Rr, 0 , Rrw);
+// Time2 = Rrw.PlanTime;
+// matRowGet(Rr, MatRowCnt(Rr) - 1 , Rrw);
+// Time1 = Rrw.PlanTime;
+
+// tSumDuration = TimeDiff(Time2,Time1);
+	
+// return;
+// end;
+
+//конвертим Longint в строку в формате "00".."99"
+function string 2 Num2Str2(Longint i) 
+begin
+  string 2 res;
+  res = "";
+  if i < 10 then 
+    begin
+      res = "0";
+    end;
+  Num2Str2 = res & i;
+  Return;
+end;
+
+//====================================================================
+function Longint MinutesBetween(date d1, time t1, date d2, time t2)
+begin
+  MinutesBetween = ABS(IGetMinutesBetween(d1, t1, d2, t2));
+  Return;
+end;
+
+//====================================================================
+function string 20 tMinutesAsTimeStr(Longint Minutes)
+begin
+  Longint hh, mm;
+  
+  hh = minutes / 60;
+  mm = minutes - (hh * 60);  
+  tMinutesAsTimeStr = hh & ":" & Num2Str2(mm);
+  Return;
+end;
+
+
+procedure EFPlanTimeR(var record tRouteVc Rr, integer changed)
+begin
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+matRowGet(Rr, 0 , Rrw);
+Time1 = Rrw.PlanTime;
+Date1 = Rrw.DateV;
+matRowGet(Rr, MatRowCnt(Rr) - 1 , Rrw);
+Time2 = Rrw.PlanTime;
+Date2 = Rrw.DateV;
+Minutes = MinutesBetween(date1, time1, date2, time2) - tFindParking(Rr);
+Rr.Duration = tMinutesAsTimeStr(Minutes);
+
+return;
+end;
+
+procedure EFDistanceR(var record tRouteVc Rr, integer changed)
+begin
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+Sum = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(Rr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(Rr, RwCnt , Rrw);
+	Sum = Sum + Rrw.Distance;
+	end;
+Rr.Length = Sum;	
+
+return;
+end;
+
+function string 20 tDay(date DateV)
+begin
+
+SetLangMode(LangRussian, "RUS", 2); 
+switch (GetDateId(DateV))
+	begin	
+	case 1: tDay = "Понедельник";
+	case 2: tDay = "Вторник";
+	case 3: tDay = "Среда";
+	case 4: tDay = "Четверг";
+	case 5: tDay = "Пятница";
+	case 6: tDay = "Суббота";
+	case 7: tDay = "Воскресенье";
+	end;
+return;
+end;
+
+procedure EFDateVR(var record tRouteVc Rr, integer changed)
+begin
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+SetLangMode(LangRussian, "RUS", 2); 
+
+MatRowGet(Rr, 0, Rrw);
+Rr.Start = tDay(Rrw.DateV);	
+MatRowGet(Rr, MatRowCnt(Rr) - 1, Rrw);
+Rr.Final = tDay(Rrw.DateV);	
+
+return;
+end;
+
+global
+function LongInt tRouteVcRecordCheck(var record  tRouteVc Rr, record  tRouteVc R2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode;
+record UserVc USr;
+
+SetLangMode(LangRussian, "RUS", 2); 
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+if (Rr.OKFlag == 1) then 
+	begin 
+	res = -1;
+	end
+else
+	begin  
+	EFDistanceR(Rr,1);
+	EFPlanTimeR(Rr,1);
+	EFDateVR(Rr,1);
+	if blank(Rr.Final)  then 
+		begin 
+		RecordCheckError(1499, "Не может быть незаполненным", -1, "Final");
+		res = -1;
+		end;
+	end;
+
+  tRouteVcRecordCheck = res;
+RETURN;
+end;
+
+global
+procedure tLisrRoute(var record TempVc Listr, record RcVc  RepSpec)
+begin
+String 255 tstr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii, i;
+record tRouteVc Rr;
+boolean bool;
+row TempVc Listrw;
+
+resetloop(Rr);
+while (LoopMain(Rr, 1, true))
+	begin
+	bool = false;
+	if ((RepSpec.flags[1] ==Rr.TypeTr) or (RepSpec.flags[1] == -1))
+		and ((RepSpec.flags[2] == Rr.GeoRou)  or (RepSpec.flags[2] == -1)) 
+		and ((RepSpec.flags[3] == Rr.Direct) or (RepSpec.flags[3] == -1)) 
+		and ((RepSpec.flags[4] == Rr.Rhythm) or (RepSpec.flags[4] == -1)) 
+		and (blank(RepSpec.f3) or ((RepSpec.f3 == Rr.AOverCountry) or (RepSpec.f3 == Rr.OverCountry) or (RepSpec.f3 == Rr.BordCountry) 
+			or (RepSpec.f3 == Rr.DesCountry) or (RepSpec.f3 == Rr.DepCountry)))
+		and (blank(RepSpec.f2) or ((RepSpec.f2 == Rr.AOverCity) or (RepSpec.f2 == Rr.OverCity) or (RepSpec.f2 == Rr.BordCity) 
+			or (RepSpec.f2 == Rr.DesCity) or (RepSpec.f2 == Rr.DepCity))) then  
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(Rr); RwCnt = RwCnt + 1)
+				begin	  
+				matRowGet(Rr, RwCnt , Rrw);
+				if (Rrw.DateV >= RepSpec.sStartDate) and (Rrw.DateV <= RepSpec.sEndDate) then
+					begin
+					bool = true;
+					RwCnt = MatRowCnt(Rr);
+					end;
+				end;
+			if bool then
+				begin
+				Listrw.f2 = Rr.Code;
+				MatRowInsert(Listr, MatRowCnt(Listr), Listrw);
+				end;
+			end;
+	end;
+return;
+end;		
+

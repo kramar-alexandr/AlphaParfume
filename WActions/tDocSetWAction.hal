@@ -1,0 +1,751 @@
+external procedure AddHelpButton(LongInt, LongInt);
+external inner procedure ExtractObj(string, var Integer, var string);
+external function Boolean CloseWindowByName(string);
+
+event DefineWindows
+begin
+   real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+   string 255 label;
+   SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("Основные навыки", tSkillsDClass, CGview, 0);
+UseView(tSkillsVc);
+SetWRect(64, 80, 600, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 200, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Основные навыки",tSkillsLClass, CGmlist, -);
+SpawnClass(tSkillsDClass);
+SetWRect(64, 80, 600, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tSkillsVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Основные навыки",tSkillsSClass, CGslist, -);
+SpawnClass(tSkillsDClass);
+SetWRect(64, 80, 600, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tSkillsVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Иностранные языки", tLanguagesDClass, CGview, 0);
+UseView(tLanguagesVc);
+SetWRect(64, 80, 600, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 200, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Иностранные языки",tLanguagesLClass, CGmlist, -);
+SpawnClass(tLanguagesDClass);
+SetWRect(64, 80, 600, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLanguagesVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Иностранные языки",tLanguagesSClass, CGslist, -);
+SpawnClass(tLanguagesDClass);
+SetWRect(64, 80, 600, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLanguagesVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Требования и соответствие должности ГК", tRequPosDClass, CGview, 0);
+UseView(tRequPosVc);
+SetWRect(64, 80, 800, 530);
+v = 10; vs = 20; h = 130; h2 = 280; h3 = 150; h4 = 530; h5 = 660;
+Tile(0, 120, false, "", CodeVPos);
+EditFieldTL(h, v, 80, "Должность", M4Code, Normal, 20, CodeVPos, False, VPositionSClass);
+EditFieldTL(h2-60, v, -40, "", M4Str, Normal, 100, NameVPos, False, 0);
+EditFieldTL(h, v += vs, 80, "Сотрудник", M4Code, Normal, 20, CodeUser, False, UserSClass);
+EditFieldTL(h2-60, v, -40, "", M4Str, Normal, 100, NameUser, False, 0);
+EditFieldTL(h, v += vs, -40, "Классификация", M4Str, Normal, 200, Classif, True, tRequPosClSClass);
+EditFieldTL(h, v += vs, 80, "Всего несоответствий", M4Int, Normal, 20, SummInc, True, 0);
+TileButton(1,"Требования");
+TileButton(2,"Соответствия");
+Tile(1, 200, True, "", Education);
+v = 10;
+EditFieldTL(h3, v, -91, "Профиль образования", M4UStr, Normal, 200, Education, False, tEducationSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RPtEducationInfo", "...", 3);
+EditFieldTL(h3, v += vs, 80, "Стаж работы, лет", M4Int, Normal, 20, WorkingTerm, True, 0);
+EditFieldTL(h3, v += vs, -91, "Основные знания", M4UStr, Normal, 200, BasicKnow, False, tBasicKnowSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RPtBasicKnowInfo", "...", 3);
+EditFieldTL(h3, v += vs, -91, "Личные качества", M4UStr, Normal, 200, BasicSkill, False, BasicSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RPBasicSkillInfo", "...", 3);
+EditFieldTL(h3, v += vs, -91, "Основные навыки", M4UStr, Normal, 200, tSkills, False, tSkillsSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RPtSkillsInfo", "...", 3);
+EditFieldTL(h3, v += vs, -91, "Иностранные языки", M4UStr, Normal, 200, LangSkill, False, tLanguagesSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RPtLanguagesInfo", "...", 3);
+EditFieldTL(h3, v += vs, -91, "Владение ПК", M4UStr, Normal, 200, CompSkill, False, CompSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RPCompSkillInfo", "...", 3);
+EditFieldTL(h3, v += vs, -91, "Владение ТС", M4UStr, Normal, 200, TranspSkill, False, TranspSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RPTranspSkillInfo", "...", 3);
+CheckBox(h3, v += vs, 0, "Командировки", MPeMan);
+CheckBox(h3, v += vs, 0, "Управление людьми", PeMan);
+EditFieldTL(h2, v += 40, 80, "Предпочтительный возраст, лет", M4Str, Normal, 20, Age, True, 0);
+ButtonFrame(h2, v += 40, 123, 2, "Предпочтительный пол");
+RadioButton(h2, v, 0, 0, "М",Sex);
+RadioButton(h2, v += 20, 1, 0, "Ж",Sex);
+
+//
+Tile(2, 200, True, "", EducationS);
+v = 10;
+EditFieldTL(h3, v, -91, "Профиль образования", M4UStr, Normal, 200, EducationS, False, tEducationSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "SRPtEducationInfo", "...", 3); 
+CheckBox(-30, v, 0, "", EducationF);
+EditFieldTL(h3, v += vs, 80, "Стаж работы, лет", M4Int, Normal, 20, WorkingTermS, True, 0);
+CheckBox(-30, v, 0, "", WorkingTermF);
+EditFieldTL(h3, v += vs, -91, "Основные знания", M4UStr, Normal, 200, BasicKnowS, False, tBasicKnowSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "SRPtBasicKnowInfo", "...", 3);
+CheckBox(-30, v, 0, "", BasicKnowF);
+EditFieldTL(h3, v += vs, -91, "Личные качества", M4UStr, Normal, 200, BasicSkillS, False, BasicSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "SRPBasicSkillInfo", "...", 3); 
+CheckBox(-30, v, 0, "", BasicSkillF);
+EditFieldTL(h3, v += vs, -91, "Основные навыки", M4UStr, Normal, 200, tSkillsS, False, tSkillsSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "SRPtSkillsInfo", "...", 3); 
+CheckBox(-30, v, 0, "", tSkillsF);
+EditFieldTL(h3, v += vs, -91, "Иностранные языки", M4UStr, Normal, 200, LangSkillS, False, tLanguagesSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "SRPtLanguagesInfo", "...", 3); 
+CheckBox(-30, v, 0, "", LangSkillF);
+EditFieldTL(h3, v += vs, -91, "Владение ПК", M4UStr, Normal, 200, CompSkillS, False, CompSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "SRPCompSkillInfo", "...", 3);
+CheckBox(-30, v, 0, "", CompSkillF);
+EditFieldTL(h3, v += vs, -91, "Владение ТС", M4UStr, Normal, 200, TranspSkillS, False, TranspSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "SRPTranspSkillInfo", "...", 3); 
+CheckBox(-30, v, 0, "", TranspSkillF);
+CheckBox(h3, v += vs, 0, "Командировки", MPeManS);
+CheckBox(-30, v, 0, "", MPeManF);
+CheckBox(h3, v += vs, 0, "Управление людьми", PeManS);
+CheckBox(-30, v, 0, "", PeManF);
+EditFieldTL(h2, v += 40, 80, "Возраст, лет", M4Int, Normal, 20, AgeS, True, 0);
+CheckBox(-30, v, 0, "", AgeF);
+ButtonFrame(h2, v += 40, 123, 2, "Пол");
+RadioButton(h2, v, 0, 0, "М",SexS);
+RadioButton(h2, v += 20, 1, 0, "Ж",SexS);
+CheckBox(-30, v, 0, "", SexF);
+SpecialMenu("Обновить критерии пов. квалификации", '', 0, "ITrnCrtFromRequPosDsm");
+EndWindow; 
+
+WindowBegin("Требования и соответствие должности ГК", tRequPosLClass, CGmlist, -);
+SpawnClass(tRequPosDClass);
+SetWRect(64, 80, 600, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRequPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", CodeVPos, false, Code);
+RlColKey(100, 100, "Должность", NameVPos, false, NameVPos);
+RlColKey(250, 250, "Код", CodeUser, false, Code);
+RlColKey(350, 350, "Сотрудник", NameUser, false, NameUser);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Требования и соответствие должности ГК", tRequPosSClass, CGslist, -);
+SpawnClass(tRequPosDClass);
+SetWRect(64, 80, 600, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRequPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", CodeVPos, false, CodeVPos);
+RlColKey(100, 100, "Должность", NameVPos, false, NameVPos);
+RlColKey(250, 250, "Код", CodeUser, false, CodeUser);
+RlColKey(350, 350, "Сотрудник", NameUser, false, NameUser);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Отчёт по соответствиям должности", tRequPosRClass, CGRcW, RcType);
+SetWRect(20,80,450,250);
+v = 6; vs = 20; h = 70; h1 = 150; h2 = 250; 
+EditFieldTL(h1, v += 20, 80, "Код должности", M4UStr, Normal, 21, f1, false, VPositionSClass);
+EditFieldTL(h1, v += 20, 80, "Код сотрудника", M4UStr, Normal, 21, f3, false, UserSClass);
+EditFieldTL(h1, v += 20, -39, "Классификаторы", M4UStr, Normal, 21, f2, false, tRequPosClSClass);
+CheckBox(h, v += 30 , 0, "Показать несоответствия", flags[1]);
+ButtonFrame(h1, v += 30, 123, 2, "Функция");
+RadioButton(h1, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h1, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+
+WindowBegin("Классификации треб-соотв", tRequPosClDClass, CGview, 0);
+UseView(tRequPosClVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 200, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, TypeCl, false, tRequPosTypeClSClass);
+EndWindow; 
+
+WindowBegin("Классификации треб-соотв",tRequPosClLClass, CGmlist, -);
+SpawnClass(tRequPosClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRequPosClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(250, 250, "Тип", TypeCl, false, TypeCl);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификации треб-соотв",tRequPosClSClass, CGslist, -);
+SpawnClass(tRequPosClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRequPosClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(250, 250, "Тип", TypeCl, false, TypeCl);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Типы классификаторов треб-соотв", tRequPosTypeClDClass, CGview, 0);
+UseView(tRequPosTypeClVc); 
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 200, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Типы классификаторов треб-соотв",tRequPosTypeClLClass, CGmlist, -);
+SpawnClass(tRequPosTypeClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRequPosTypeClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Типы классификаторов треб-соотв",tRequPosTypeClSClass, CGslist, -);
+SpawnClass(tRequPosTypeClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRequPosTypeClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+RETURN;
+end;
+
+global
+procedure RPtBasicKnowInfo()
+begin
+record tRequPosVc VPr;
+record tBasicKnowVc BKr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.BasicKnow, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BKr.Code = ClassCode;
+	if ReadFirstMain(BKr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BKr.Code & ": " & BKr.Name, false);
+		end;
+	ExtractObj(VPr.BasicKnow, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure RPtEducationInfo()
+begin
+record tRequPosVc VPr;
+record tEducationVc tEr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.Education, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	tEr.Code = ClassCode;
+	if ReadFirstMain(tEr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, tEr.Code & ": " & tEr.Name, false);
+		end;
+	ExtractObj(VPr.Education, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure RPBasicSkillInfo()
+begin
+record tRequPosVc VPr;
+record BasicSkillVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.BasicSkill, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.BasicSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure RPtSkillsInfo()
+begin
+record tRequPosVc VPr;
+record tSkillsVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.tSkills, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.tSkills, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure RPtLanguagesInfo()
+begin
+record tRequPosVc VPr;
+record tLanguagesVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.LangSkill, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.LangSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure RPTranspSkillInfo()
+begin
+record tRequPosVc Pr;
+record TranspSkillBlock BKr;
+row TranspSkillBlock BKrw;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Pr.TranspSkill, pos, ClassCode);
+RwCnt = -1;
+BlockLoad(BKr);
+while nonblank(ClassCode) 
+	begin
+	for(RowCnt = 0; RowCnt < MatRowCnt(BKr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(BKr, RowCnt, BKrw);
+		if (ClassCode == BKrw.Code) then
+			begin
+			SetListString(nwn, RwCnt += 1, BKrw.Code & ": " & BKrw.Comment, false);
+			end;
+		end;
+	ExtractObj(Pr.TranspSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure RPCompSkillInfo()
+begin
+record tRequPosVc Pr;
+record CompSkillBlock BKr;
+row CompSkillBlock BKrw;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+pos = 0;
+ClearStringList(nwn);
+ExtractObj(Pr.CompSkill, pos, ClassCode);
+RwCnt = -1;
+BlockLoad(BKr);
+while nonblank(ClassCode) 
+	begin
+	for(RowCnt = 0; RowCnt < MatRowCnt(BKr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(BKr, RowCnt, BKrw);
+		if (ClassCode == BKrw.Code) then
+			begin
+			SetListString(nwn, RwCnt += 1, BKrw.Code & ": " & BKrw.Comment, false);
+			end;
+		end;
+	ExtractObj(Pr.CompSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure SRPtBasicKnowInfo()
+begin
+record tRequPosVc VPr;
+record tBasicKnowVc BKr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.BasicKnowS, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BKr.Code = ClassCode;
+	if ReadFirstMain(BKr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BKr.Code & ": " & BKr.Name, false);
+		end;
+	ExtractObj(VPr.BasicKnowS, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure SRPtEducationInfo()
+begin
+record tRequPosVc VPr;
+record tEducationVc tEr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.EducationS, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	tEr.Code = ClassCode;
+	if ReadFirstMain(tEr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, tEr.Code & ": " & tEr.Name, false);
+		end;
+	ExtractObj(VPr.EducationS, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure SRPBasicSkillInfo()
+begin
+record tRequPosVc VPr;
+record BasicSkillVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.BasicSkillS, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.BasicSkillS, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure SRPtSkillsInfo()
+begin
+record tRequPosVc VPr;
+record tSkillsVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.tSkillsS, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.tSkillsS, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure SRPtLanguagesInfo()
+begin
+record tRequPosVc VPr;
+record tLanguagesVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.LangSkillS, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.LangSkillS, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure SRPTranspSkillInfo()
+begin
+record tRequPosVc Pr;
+record TranspSkillBlock BKr;
+row TranspSkillBlock BKrw;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Pr.TranspSkillS, pos, ClassCode);
+RwCnt = -1;
+BlockLoad(BKr);
+while nonblank(ClassCode) 
+	begin
+	for(RowCnt = 0; RowCnt < MatRowCnt(BKr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(BKr, RowCnt, BKrw);
+		if (ClassCode == BKrw.Code) then
+			begin
+			SetListString(nwn, RwCnt += 1, BKrw.Code & ": " & BKrw.Comment, false);
+			end;
+		end;
+	ExtractObj(Pr.TranspSkillS, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure SRPCompSkillInfo()
+begin
+record tRequPosVc Pr;
+record CompSkillBlock BKr;
+row CompSkillBlock BKrw;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+pos = 0;
+ClearStringList(nwn);
+ExtractObj(Pr.CompSkillS, pos, ClassCode);
+RwCnt = -1;
+BlockLoad(BKr);
+while nonblank(ClassCode) 
+	begin
+	for(RowCnt = 0; RowCnt < MatRowCnt(BKr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(BKr, RowCnt, BKrw);
+		if (ClassCode == BKrw.Code) then
+			begin
+			SetListString(nwn, RwCnt += 1, BKrw.Code & ": " & BKrw.Comment, false);
+			end;
+		end;
+	ExtractObj(Pr.CompSkillS, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+function Boolean CodeUserEA(var record tRequPosVc RPr, Integer wn)
+BEGIN
+Boolean res;
+record UserVc USr;
+
+Usr.Code = RPr.CodeUser;
+if ReadFirstMain(USr,1,true) then
+	begin
+	RPr.NameUser = Usr.Name;
+	PutWindowRecord(wn, RPr);
+	res = true;
+	end;
+
+RETURN;
+end;
+
+global
+function Boolean CodeVPosEA(var record tRequPosVc RPr, Integer wn)
+BEGIN
+Boolean res;
+record UserVc USr;
+record VPositionVc Pr;
+
+Pr.Code = RPr.CodeVPos;
+
+if ReadFirstMain(Pr,1,true) then
+	begin
+	RPr.NameVPos =  Pr.Name;
+	RPr.Education = Pr.Education;
+	RPr.WorkingTerm = Pr.WorkingTerm;
+	RPr.BasicKnow = Pr.BasicKnow;
+	RPr.BasicSkill = Pr.BasicSkill;
+	RPr.LangSkill = Pr.LangSkill;
+	RPr.CompSkill = Pr.CompSkill;
+	RPr.TranspSkill = Pr.TranspSkill;
+	RPr.tSkills = Pr.tSkills;
+	RPr.MPeMan = Pr.Mission;
+	RPr.PeMan = Pr.PeMan;
+	PutWindowRecord(wn, RPr);
+	res = true;
+	end;
+
+RETURN;
+end;
+
+
+
+global
+function Boolean tRequPosDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+Boolean res,resL;
+record tRequPosVc RPr;
+record UserVc USr;
+record tCUAccessBlock CUAb;
+row tCUAccessBlock CUAbr;
+Integer RwCnt;
+  
+res = true;
+resL = False;
+Usr.Code = CurrentUser;
+ReadFirstMain(USr,1,true);
+
+
+GetWindowRecord(wn, RPr);
+if (changed != 0) then
+	begin
+		switch(fieldname)
+		begin
+		  case "CodeVPos": res = CodeVPosEA(RPr, wn); 
+		  case "CodeUser": res = CodeUserEA(RPr, wn);
+		end;
+	end;
+	
+ tRequPosDClassAfterEditField = res;
+  RETURN;
+END;
+
+
+
+
+

@@ -1,0 +1,153 @@
+global
+updating procedure PrintStPodrD(Integer wn,Boolean previewf)
+begin
+  record StPodrVc SPr;
+  record RcVc RepSpec;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  GetWindowRecord(wn,SPr);
+  if nonblank(SPr.Code) then
+    begin
+      RepSpec.f1 = SPr.Code;
+      RepSpec.JobDf = 1; //Диалог выбора принтера
+      if previewf then
+        begin
+          RepSpec.Media = mtScreen;
+        end
+      else
+        begin
+          RepSpec.Media = mtPrinter;
+        end;
+      RepSpec.repname = "PrintStPodrRn";
+      RunReport(RepSpec, 0);
+    end
+  else
+    begin
+      MessageBox(0, "Сначала сохраните документ!");
+    end;
+  Return;
+end;
+
+
+global
+updating procedure PrintVPositionD(Integer wn,Boolean previewf)
+begin
+  record VPositionVc VPr;
+  record RcVc RepSpec;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  GetWindowRecord(wn,VPr);
+  if nonblank(VPr.Code) then
+    begin
+      RepSpec.f1 = VPr.Code;
+      RepSpec.JobDf = 1; //Диалог выбора принтера
+      if previewf then
+        begin
+          RepSpec.Media = mtScreen;
+        end
+      else
+        begin
+          RepSpec.Media = mtPrinter;
+        end;
+      RepSpec.repname = "PrintVPositionRn";
+      RunReport(RepSpec, 0);
+    end
+  else
+    begin
+      MessageBox(0, "Сначала сохраните документ!");
+    end;
+  Return;
+end;
+
+
+global
+procedure PrinttTypeDocD(Integer wn, Boolean previewf)
+begin
+  record tTypeDocVc TDr;
+  record RcVc RepSpec;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  GetWindowRecord(wn,TDr);
+  if nonblank(TDr.Code) then
+    begin
+      RepSpec.f1 = TDr.Code;
+      RepSpec.JobDf = 1; //Диалог выбора принтера
+      if previewf then
+        begin
+          RepSpec.Media = mtScreen;
+        end
+      else
+        begin
+          RepSpec.Media = mtPrinter;
+        end;
+      RepSpec.repname = "PrinttTypeDocRn";
+      RunReport(RepSpec, 0);
+    end
+  else
+    begin
+      MessageBox(0, "Сначала сохраните документ!");
+    end;
+  Return;
+end;
+
+
+global
+procedure PrinttBizProcD(Integer wn, Boolean previewf)
+begin
+  record tBizProcVc BPr;
+  record RcVc RepSpec;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  GetWindowRecord(wn,BPr);
+  if nonblank(BPr.Code) then
+    begin
+      RepSpec.f1 = BPr.Code;
+      RepSpec.JobDf = 1; //Диалог выбора принтера
+      if previewf then
+        begin
+          RepSpec.Media = mtScreen;
+        end
+      else
+        begin
+          RepSpec.Media = mtPrinter;
+        end;
+      RepSpec.repname = "PrinttBizProcRn";
+      RunReport(RepSpec, 0);
+    end
+  else
+    begin
+      MessageBox(0, "Сначала сохраните документ!");
+    end;
+  Return;
+end;
+
+
+global
+procedure PrintRouteD(Integer wn,Boolean previewf)
+begin
+record tRouteVc Rr;
+record RcVc RepSpec;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  GetWindowRecord(wn,Rr);
+  if nonblank(Rr.Code) then
+    begin
+      RepSpec.f1 = Rr.Code;
+      RepSpec.JobDf = 1; //Диалог выбора принтера
+      if previewf then
+        begin
+          RepSpec.Media = mtScreen;
+        end
+      else
+        begin
+          RepSpec.Media = mtPrinter;
+        end;
+      RepSpec.repname = "tRouteDocRn";
+      RunReport(RepSpec, 0);
+    end
+  else
+    begin
+      MessageBox(0, "Сначала сохраните документ!");
+    end;
+  Return;
+end;

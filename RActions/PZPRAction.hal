@@ -1,0 +1,1002 @@
+remote procedure PZPDClassOpenZP(record PZPVc);
+remote procedure PZPDClassOpenOP(record OPVc);
+external function boolean UserIsAdvCouncil(string);
+external function boolean UserIsAccAdmin(string);
+external function boolean UserIsChiefAcc(string);
+external function string 255 IGetAccName(string);
+external function string 255 IAddToSet(string, string);
+external procedure IAddAndReplaceObjs(var string, string);
+external function string 20 IGetObjType(string);
+external procedure CLOutVc_LogAction(var record CLOutVc, string);
+external procedure PPVc_LogAction(var record PPVc, string);
+external updating function LongInt CLOutVcRecordCheck(var record CLOutVc, record CLOutVc, LongInt, LongInt);
+external updating function longint PPVcRecordCheck(var record PPVc, record PPVc, longint, longint);
+external inner procedure NormalizeObjstr(string);
+external inner function Integer CheckObjs(string,string,var string);
+external inner procedure GetFullCurncyRate (var string, Date, var val, var val, var val, var val, var val);
+external inner procedure PPSumup(var record PPVc);
+external inner function Integer GetIntYc(Date);
+external inner procedure PastePMInOP(var record OPVc);
+external inner procedure OPSumup(var record OPVc, Boolean);
+external procedure tMailFromPZP(string, longint, integer);
+
+//===============================================
+//История подписания ПЗП
+//===============================================
+updating procedure PZPWriteEvent(longint PZPNr, string ActStr)
+begin
+  record PZPHistVc PZPHr;
+
+  PZPHr.SerNr = NextSerNr("PZPHistVc", CurrentDate, -1, false, "");
+  PZPHr.PZPNr = PZPNr;
+  PZPHr.ActTime = CurrentTime;
+  PZPHr.ActDate = CurrentDate;
+  PZPHr.ActUser = CurrentUser;
+  PZPHr.Action = ActStr;
+  RecordStore(PZPHr, false);
+  Return;
+end;
+
+//===============================================
+updating procedure PZPFuncHist(record PZPVc PZPr, record PZPVc PZP2r, longint stat)
+begin
+  row PZPVc PZPrw, PZP2rw;
+  integer i, cnt1, cnt2;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  cnt1 = MatRowCnt(PZPr);
+  cnt2 = MatRowCnt(PZP2r);
+  
+  for (i=0; (i < cnt1) and (cnt1 == cnt2); i=i+1)
+    begin
+      MatRowGet(PZPr, i, PZPrw);
+      MatRowGet(PZP2r, i, PZP2rw);
+      if nonblank(PZPrw.FuncSign) and blank(PZP2rw.FuncSign) then
+        begin
+        PZPWriteEvent(PZPr.SerNr, "Функция " & PZPrw.FN1 & " подписана");
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+updating procedure PZPWriteHist(record PZPVc PZPr, record PZPVc PZP2r, longint stat)
+begin
+  integer i;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  
+  if (stat == 1) then
+    begin
+    PZPWriteEvent(PZPr.SerNr, "Создан")
+    end;
+
+  if nonblank(PZPr.ZRSTrueSign) and ((stat == 1) or ((stat == 2) and blank(PZP2r.ZRSTrueSign))) then
+    begin stopalert(1);
+    PZPWriteEvent(PZPr.SerNr, "ЗРС: это верно")
+    end;
+
+  if nonblank(PZPr.ZRSSign) and ((stat == 1) or ((stat == 2) and blank(PZP2r.ZRSSign))) then
+    begin
+      switch (PZPr.ZRSStatus)
+        begin
+          case 1: PZPWriteEvent(PZPr.SerNr, "ЗРС одобрен руководителем");
+          case 2: PZPWriteEvent(PZPr.SerNr, "ЗРС не одобрен руководителем");
+        end;
+    end;
+
+  if nonblank(PZPr.CouncilSign) and ((stat == 1) or ((stat == 2) and blank(PZP2r.CouncilSign))) then
+    begin
+      switch (PZPr.DocStatus)
+        begin
+          case 1: PZPWriteEvent(PZPr.SerNr, "ПЗП одобрен председателем");
+          case 2: PZPWriteEvent(PZPr.SerNr, "ПЗП не одобрен председателем");
+        end;
+    end;
+
+  if nonblank(PZPr.AccAdminSign) and ((stat == 1) or ((stat == 2) and blank(PZP2r.AccAdminSign))) then
+    begin
+    PZPWriteEvent(PZPr.SerNr, "Подписан АС контроля счетов");
+    end;
+
+  if nonblank(PZPr.ChiefAccSign) and ((stat == 1) or ((stat == 2) and blank(PZP2r.ChiefAccSign))) then
+    begin
+    PZPWriteEvent(PZPr.SerNr, "Подписан главным бухгалтером");
+    end;
+ 
+  if (PZPr.PayReady == 1) and ((stat == 1) or ((stat == 2) and (PZP2r.PayReady == 0))) then
+    begin
+    PZPWriteEvent(PZPr.SerNr, "Готов к выплате");
+    end;
+
+  if (PZPr.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (PZP2r.OKFlag == 0))) then
+    begin
+    PZPWriteEvent(PZPr.SerNr, "Установлен OK");
+    end;
+
+  Return;
+end;
+
+
+//===============================================
+//Документ ПЗП/ЗП
+//===============================================
+//Читаем запись операции
+function boolean GetTRByTransStr(string TransStr, var record TRVc TRr)
+begin
+  TRr.IntYc = FirstTransTypeInRange(TransStr);
+  TRr.Number = FirstTransInRange(TransStr);
+  GetTRByTransStr = ReadFirstMain(TRr, 2, true);
+  Return;
+end;
+
+//===============================================
+//Проверяем существование документов
+function boolean DocExist(longint PZPNr, integer RowNr, integer ExpType, longint ExpNr)
+begin
+  record CLOutVc CLr;
+  record PPVc PPr;
+  record OPVc OPr;
+
+  switch (ExpType)
+    begin
+      case 0: //РКО
+        CLr.SerNr = ExpNr;
+        DocExist = ReadFirstMain(CLr, 1, true) and (CLr.RefStr == "PZP." & PZPNr & "." & RowNr);;
+      case 1: //Ав.Пл.
+        PPr.SerNr = ExpNr;
+        DocExist = ReadFirstMain(PPr, 1, true) and (PPr.RefStr == "PZP." & PZPNr) and (PPr.Invalid == 0);
+      case 2: //Пл.пост.
+        OPr.SerNr = ExpNr;
+        DocExist = ReadFirstMain(OPr, 1, true);
+    end;
+  Return;
+end;
+
+//===============================================
+//Код сотрудника существует
+function boolean CheckUser(string UserCode)
+begin
+  record UserVc Usr;
+
+  Usr.Code = UserCode;
+  CheckUser = ReadFirstMain(Usr, 1, true);
+  Return;
+end;
+
+//===============================================
+//Должность
+function string 20 GetUserPosition(string UserCode)
+begin
+  record UserVc Usr;
+
+  Usr.Code = UserCode;
+  ReadFirstMain(Usr, 1, true);
+  GetUserPosition = Usr.VPositionCode;
+  Return;
+end;
+
+//===============================================
+//Создаем РКО
+updating function boolean MakeCLOutFromPZP(var record PZPVc PZPr)
+begin  
+  row PZPVc PZPrw;
+  record CLOutVc CLr, CL2r;
+  string 255 tstr;
+  val frrate, to1, to2, br1, br2;
+  integer i;
+  boolean res;
+
+  res = true;
+  for (i=0; i<MatRowCnt(PZPr); i=i+1)
+    begin
+      MatRowGet(PZPr, i, PZPrw);
+      if (PZPrw.Sum > 0) and nonblank(PZPrw.FuncSign) and not DocExist(PZPr.SerNr, i, PZPr.ExpType, PZPrw.FileNr) then
+        begin
+          RecordNew(CLr);
+          CLr.TransDate = PZPr.PayDate;
+          CLr.NetVal = blankval;
+          CLr.VATVal = blankval;
+          CLr.PayMode = PZPr.PayMode;
+          CLOutVc_LogAction(CLr, "New");
+          CLr.CorspCode = PZPrw.AccNumber;
+          CLr.CorspComment = IGetAccName(PZPrw.AccNumber);
+          if nonblank(PZPr.ExpEmpl) then
+            begin
+              CLr.Person = PZPr.ExpEmpl;
+            end
+          else
+            begin
+              CLr.Person = PZPr.Initiator;
+            end;
+          CLr.CurncyCode = PZPr.Curncy;
+          CLr.FileName = "PZPVc";
+          CLr.FSerNr = PZPr.SerNr;  
+          CLr.TransDate = PZPr.PayDate;
+          GetFullCurncyRate(CLr.CurncyCode, CLr.TransDate, frrate, to1, to2, br1, br2);
+          CLr.FrRate = frrate;
+          CLr.ToRateB1 = to1; 
+          CLr.ToRateB2 = to2;
+          CLr.BaseRate1 = br1;
+          CLr.BaseRate2 = br2;
+          CLr.Total = PZPrw.Sum;
+          CLr.NetVal = PZPrw.Sum;
+          CLr.ColFlag = 1; 
+          CLr.Objects = PZPrw.Objects;
+          CLr.RefStr = "PZP." & PZPr.SerNr & "." & i;
+          CLr.Comment = PZPrw.Destination;
+          CLr.SerNr = NextSerNr("CLOutVc", CLr.TransDate, -1, false, "");
+//          CLr.SerNr = NextSerNr("CLOutVc", CurrentDate, -1, false, "");
+          CLr.OKFlag = 1;
+//          StopAlert("CLOutVc.SerNr:" & CLr.SerNr);
+          SetRecordCheckVc("CLOutVc");
+          res = res and (CLr.SerNr > 0) and (CLOutVcRecordCheck(CLr, CL2r, 1, 0) == 0);
+          SetRecordCheckVc("PZPVc");
+          if res then
+            begin
+              CLOutVc_LogAction(CLr, "Save");
+              RecordStore(CLr, True);
+              PZPrw.FileNr = CLr.SerNr;
+              PZPrw.RowNr = -1;
+              MatRowPut(PZPr, i, PZPrw);
+              CreateRecordLink(PZPr, CurrentCompany, CLr, CurrentCompany);  
+              CreateRecordLink(CLr, CurrentCompany, PZPr, CurrentCompany);  
+            end;
+        end;
+    end;
+
+  MakeCLOutFromPZP = res;
+  Return;
+end;
+
+//===============================================
+//Создаем Ав.Пл.
+updating function boolean MakePPFromPZP(var record PZPVc PZPr)
+begin
+  record PPVc PPr, PP2r;
+  row PPVc PPrw;
+  row PZPVc PZPrw;
+  integer i, RowNr;
+  val frrate, to1, to2, br1, br2;
+  val Sum, FundSum;
+  boolean res;
+
+  res = false;
+  RecordNew(PPr);
+  PPVc_LogAction(PPr, "New");
+  PPr.RegDate = CurrentDate;
+  PPr.PayDate = PZPr.PayDate;
+  PPr.TransDate = PZPr.PayDate;
+  PPr.SerNr = NextSerNr("PPVc", PPr.TransDate, -1, false, "");
+  PPr.PayMode = PZPr.PayMode;
+  PPr.CurncyCode = PZPr.Curncy;
+  GetFullCurncyRate(PPr.CurncyCode, PPr.TransDate, frrate, to1, to2, br1, br2);
+  PPr.FrRate = frrate;
+  PPr.ToRateB1 = to1; 
+  PPr.ToRateB2 = to2;
+  PPr.BaseRate1 = br1;
+  PPr.BaseRate2 = br2;
+  PPr.Sign = PZPr.Initiator;
+  PPr.RefStr = "PZP." & PZPr.SerNr;
+  PPr.BankName = PZPrw.FuncSign;
+  PPr.SentFlag = 1;
+  PPr.OrderedFlag = 1;
+  PPr.DoneFlag = 1; // !!! Проверить !!!
+  PPr.BankAcc = PZPrw.FuncSign;
+  for (i=0; i<MatRowCnt(PZPr); i=i+1)
+    begin
+      MatRowGet(PZPr, i, PZPrw);          
+      if (PZPrw.Sum > 0) and nonblank(PZPrw.FuncSign) and not DocExist(PZPr.SerNr, i, PZPr.ExpType, PZPrw.FileNr) then
+        begin
+          if nonblank(PZPr.ExpEmpl) then
+            begin
+              PPrw.Person = PZPr.ExpEmpl;
+            end
+          else
+            begin
+              PPrw.Person = PZPr.Initiator;
+            end;
+          PPrw.Comment = PZPrw.Destination;
+          PPrw.PayVal = PZPrw.Sum;
+          PPrw.PayMode = PPr.PayMode;
+          PPrw.Objects = PZPrw.Objects;
+          RowNr = MatRowCnt(PPr);
+          MatRowPut(PPr, RowNr, PPrw);
+          PZPrw.FileNr = PPr.SerNr;
+          PZPrw.RowNr = RowNr;
+          MatRowPut(PZPr, i, PZPrw);
+          stopalert("PZPNr: " & PZPr.SerNr & ", PPNr: " & PPr.SerNr & ", Row: " & i);
+        end;
+    end;
+
+  SetRecordCheckVc("PPVc");
+  res = (PPr.SerNr > 0) and (MatRowCnt(PPr) > 0) and (PPVcRecordCheck(PPr, PP2r, 1, 0) == 0);
+  SetRecordCheckVc("PZPVc");  
+  if res then
+    begin
+      PPSumup(PPr);
+      PPVc_LogAction(PPr, "Save");
+      PPVc_LogAction(PPr, "Sent");
+      PPVc_LogAction(PPr, "Ordered");
+      RecordStore(PPr, False);
+      CreateRecordLink(PZPr, CurrentCompany, PPr, CurrentCompany);  
+      CreateRecordLink(PPr, CurrentCompany, PZPr, CurrentCompany);  
+    end;
+
+  MakePPFromPZP = res;
+  Return;
+end;
+
+//===============================================
+//Создаем Платеж поставщику.
+updating function boolean MakeOPFromPZP(var record PZPVc PZPr)
+begin
+  record OPVc OPr;
+  row OPVc OPrw;
+  row PZPVc PZPrw;
+  integer i, RowNr;
+  val frrate, to1, to2, br1, br2;
+  val Sum, FundSum;
+  boolean res;
+
+  res = false;
+  RecordNew(OPr);
+  OPr.TransDate = PZPr.PayDate;
+  OPr.SerNr = NextSerNr("OPVc", OPr.TransDate, -1, false, "");
+  OPr.PayMode = PZPr.PayMode;
+  PastePMInOP(OPr);
+
+//  OPr.CurncyCode = PZPr.Curncy;
+  // GetFullCurncyRate(PPr.CurncyCode, PPr.TransDate, frrate, to1, to2, br1, br2);
+  // PPr.FrRate = frrate;
+  // PPr.ToRateB1 = to1; 
+  // PPr.ToRateB2 = to2;
+  // PPr.BaseRate1 = br1;
+  // PPr.BaseRate2 = br2;
+  // PPr.Sign = PZPr.Initiator;
+  // PPr.RefStr = "PZP." & PZPr.SerNr;
+  // PPr.BankName = PZPrw.FuncSign;
+  // PPr.SentFlag = 1;
+  // PPr.OrderedFlag = 1;
+  // PPr.BankAcc = PZPrw.FuncSign;
+  for (i=0; i<MatRowCnt(PZPr); i=i+1)
+    begin
+      MatRowGet(PZPr, i, PZPrw);          
+      if (PZPrw.Sum > 0) and nonblank(PZPrw.FuncSign) and not DocExist(PZPr.SerNr, i, PZPr.ExpType, PZPrw.FileNr) then
+        begin
+          OPrw.Comment = PZPrw.Destination;
+          OPrw.BankVal = PZPrw.Sum;
+          OPrw.RecVal = PZPrw.Sum;
+          OPrw.PayMode = PZPr.PayMode;
+          OPrw.Objects = PZPrw.Objects;
+          RowNr = MatRowCnt(OPr);
+          MatRowPut(OPr, RowNr, OPrw);
+          PZPrw.FileNr = OPr.SerNr;
+          PZPrw.RowNr = RowNr;
+          MatRowPut(PZPr, i, PZPrw);
+        end;
+    end;
+
+  if (OPr.SerNr > 0) and (MatRowCnt(OPr) > 0) then
+    begin
+      OPSumup(OPr, false);
+      RecordStore(OPr, false);
+      res = ReadFirstMain(OPr, 1, true);
+    end;
+
+  if res then
+    begin
+      CreateRecordLink(PZPr, CurrentCompany, OPr, CurrentCompany);  
+      CreateRecordLink(OPr, CurrentCompany, PZPr, CurrentCompany);
+      PZPDClassOpenOP(OPr);
+    end;
+
+  MakeOPFromPZP = res;
+  Return;
+end;
+
+//===============================================
+//Связываем ЗП с записью операции (Гл.Кн)
+updating function boolean MakeTRFromPZP(var record PZPVc PZPr)
+begin
+  record TRVc TRr;
+  boolean res;
+
+  res = GetTRByTransStr(PZPr.TransStr, TRr);
+  if res then
+    begin
+      CreateRecordLink(PZPr, CurrentCompany, TRr, CurrentCompany);  
+      CreateRecordLink(TRr, CurrentCompany, PZPr, CurrentCompany);  
+    end
+  else
+    begin
+      SetLangMode(LangRussian, "RUS", 2);
+      MessageBox(0, "Проверьте номер записи операции!");
+    end;
+
+  MakeTRFromPZP = res;
+  Return;
+end;
+
+//===============================================
+procedure PutZRSText(var record PZPVc PZPr)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  AddToText("Ситуация:" & Chr(13) & Chr(13), PZPr);
+  AddToText("Данные:" & Chr(13) & Chr(13), PZPr);
+  AddToText("Решение:" & Chr(13) & Chr(13), PZPr);
+  Return;
+end;
+
+//===============================================
+global
+function Longint PZPVcRecordDefaults(var record PZPVc PZPr, record PZPVc PZP2r, LongInt stat, LongInt check)
+begin
+  record UserVc Usr;
+  
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  PZPr.SerNr = -1;
+  PZPr.Initiator = CurrentUser;
+  PZPr.Supervisor = Usr.Supervisor;
+  PZPr.RegDate = CurrentDate;
+  PZPr.Position = GetUserPosition(PZPr.Initiator);
+  PZPr.Invalid = 0;
+  PutZRSText(PZPr);
+  PZPVcRecordDefaults = 0;
+  Return;
+end;
+
+//===============================================
+//Все ли строки подписаны
+function boolean CheckFuncSign(record PZPVc PZPr)
+begin
+  row PZPVc PZPrw;
+  integer i;
+  boolean res;
+
+  for (i=0; i<MatRowCnt(PZPr) and (not res); i=i+1)
+    begin
+      MatRowGet(PZPr, i, PZPrw);
+      res = nonblank(PZPrw.FuncSign);
+    end;
+  CheckFuncSign = res;
+  Return;
+end;
+
+//===============================================
+//Проверка данных накопления
+procedure CheckAccumData(record PZPVc PZPr, var longint res)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+
+  if (PZPr.Sum1 > 0) then
+    begin
+      if (res == 0) and blank(PZPr.Fund1) then
+        begin
+          RecordCheckError(1499, "Укажите фонд", -1, "Fund1");
+          res = -1;
+        end;
+      if (res == 0) and blank(PZPr.Date1) then
+        begin
+          RecordCheckError(1499, "Укажите дату", -1, "Date1");
+          res = -1;
+        end;
+    end;
+
+  if (PZPr.Sum2 > 0) then
+    begin
+      if (res == 0) and blank(PZPr.Fund2) then
+        begin
+          RecordCheckError(1499, "Укажите фонд", -1, "Fund2");
+          res = -1;
+        end;
+      if (res == 0) and blank(PZPr.Date2) then
+        begin
+          RecordCheckError(1499, "Укажите дату", -1, "Date2");
+          res = -1;
+        end;
+    end;
+
+  if (PZPr.Sum3 > 0) then
+    begin
+      if (res == 0) and blank(PZPr.Fund3) then
+        begin
+          RecordCheckError(1499, "Укажите фонд", -1, "Fund3");
+          res = -1;
+        end;
+      if (res == 0) and blank(PZPr.Date3) then
+        begin
+          RecordCheckError(1499, "Укажите дату", -1, "Date3");
+          res = -1;
+        end;
+    end;
+
+  if (PZPr.Sum4 > 0) then
+    begin
+      if (res == 0) and blank(PZPr.Fund4) then
+        begin
+          RecordCheckError(1499, "Укажите фонд", -1, "Fund4");
+          res = -1;
+        end;
+      if (res == 0) and blank(PZPr.Date4) then
+        begin
+          RecordCheckError(1499, "Укажите дату", -1, "Date4");
+          res = -1;
+        end;
+    end;
+
+  if (PZPr.Sum5 > 0) then
+    begin
+      if (res == 0) and blank(PZPr.Fund5) then
+        begin
+          RecordCheckError(1499, "Укажите фонд", -1, "Fund5");
+          res = -1;
+        end;
+      if (res == 0) and blank(PZPr.Date5) then
+        begin
+          RecordCheckError(1499, "Укажите дату", -1, "Date5");
+          res = -1;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+procedure PZPCheckAcc(string AccNumber, integer rownr, integer ExpType, var string CurAcc, var longint res)
+begin
+  record AccVc Accr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  if (res == 0) then
+    begin
+      Accr.AccNumber = AccNumber;
+      if not (ReadFirstMain(Accr, 1, true) and (Accr.blockedFlag == 0)) then
+        begin
+          RecordCheckError(1499, "Проверьте счет", rownr, "AccNumber");
+          res = -1;
+        end;
+        
+      if (ExpType == 1) and (res == 0) then
+        begin
+          if (rownr == 0) then
+            begin
+              CurAcc = AccNumber;
+            end
+          else
+            begin
+              if (AccNumber <> CurAcc) then
+                begin
+                  RecordCheckError(1499, "Разные счета недопустимы!", rownr, "AccNumber");
+                  res = -1;
+                end;
+            end;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверка строк матрицы
+procedure PZPVcRowCheck(row PZPVc PZPrw, integer rownr, var longint res)
+begin
+  string 200 ErrStr;
+  integer ErrCode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  if (res == 0) and (PZPrw.Sum <> 0) then
+    begin
+      if (res == 0) and blank(PZPrw.Objects) then
+        begin
+          RecordCheckError(1499, "Не указаны объекты", rownr, "Objects");
+          res = -1;
+        end;
+    
+      if (res == 0) then
+        begin
+          ErrCode = CheckObjs(PZPrw.AccNumber, PZPrw.Objects, ErrStr);
+          if (ErrCode <> 0) then
+            begin
+              RecordCheckError(ErrCode, ErrStr, rownr, "Objects");      
+              res = -1;
+            end;
+        end;
+
+      if (res == 0) and (IGetObjType(PZPrw.FN2) <> "FN2") then
+        begin
+          RecordCheckError(1499, "Нужен объект типа FN2!", rownr, "FN2");
+          res = -1;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+procedure PZPVcClearMatrix(var record PZPVc PZPr)
+begin
+  while (MatRowCnt(PZPr) > 0) //Очищаем матрицу
+    begin
+      MatRowDelete(PZPr, 0);
+    end;
+  Return;
+end;
+
+//===============================================
+//Списываем сумму из фонда (возвращаем возможное для списания значение, отслеживаем остаток в фонде и остаток требуемой суммы)
+function val GetSumFromFund(var val Rest, var val Sum)
+begin
+  val t;
+  val res;
+
+  if (Sum > 0) then
+    begin
+      t = Rest - Sum;
+      if (t < 0) then //Сумма выделенных из фонда средств меньшее требуемой
+        begin
+          res = Rest;
+          Sum = Sum - Rest;
+          Rest = 0; //Списываем весь остаток
+        end
+      else //Сумма выделенных из фонда средств большее либо равна требуемой
+        begin
+          Rest = t; //Списываем требуемое кол-во
+          res = Sum;
+          Sum = 0;
+        end;
+    end;
+  GetSumFromFund = res;
+  Return;
+end;
+
+//===============================================
+//Распределяем суммы из фондов в строки ЗП
+procedure FundSumToZP(var record PZPVc PZPr, row PZPVc PZPrw, string FundObj, val FundSum)
+begin
+  string 200 ObjStr, ObjsBak;
+
+  if (FundSum > 0) then
+    begin
+      PZPrw.Sum = FundSum;
+      ObjStr = PZPrw.Objects;
+      ObjsBak = ObjStr;
+      IAddAndReplaceObjs(ObjStr, FundObj);
+      PZPrw.Objects = ObjStr;
+      PZPrw.Fund = FundObj;
+      MatRowPut(PZPr, MatRowCnt(PZPr), PZPrw);
+      PZPrw.Objects = ObjsBak;
+    end;
+  Return;
+end;
+
+//===============================================
+//Разбиваем строки ЗП по фондам и накоплениям
+procedure RecalcZPByFunds(var record PZPVc ZPr)
+begin
+  record PZPVc ZP2r;
+  row PZPVc ZPrw;
+  val Sum;
+  integer i;
+
+  RecordCopy(ZP2r, ZPr);
+  PZPVcClearMatrix(ZPr);
+  for (i=0; i<MatRowCnt(ZP2r); i=i+1)
+    begin
+      MatRowGet(ZP2r, i, ZPrw);
+      if blank(ZPrw.Fund) then
+        begin
+          Sum = ZPrw.Sum;
+          FundSumToZP(ZPr, ZPrw, ZPr.Fund1, GetSumFromFund(ZPr.Rest1, Sum));
+          FundSumToZP(ZPr, ZPrw, ZPr.Fund2, GetSumFromFund(ZPr.Rest2, Sum));
+          FundSumToZP(ZPr, ZPrw, ZPr.Fund3, GetSumFromFund(ZPr.Rest3, Sum));
+          FundSumToZP(ZPr, ZPrw, ZPr.Fund4, GetSumFromFund(ZPr.Rest4, Sum));
+          FundSumToZP(ZPr, ZPrw, ZPr.Fund5, GetSumFromFund(ZPr.Rest5, Sum));
+        end
+      else
+        begin
+          MatRowPut(ZPr, MatRowCnt(ZPr), ZPrw); //Если фонд уже распределен, просто переносим строку
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//ЗП из ПЗП
+updating function boolean MakeZPFromPZP(record PZPVc PZPr)
+begin
+  record PZPVc ZPr;
+  boolean res;
+
+  if (PZPr.Closed == 0) and (PZPr.DocType == 1) then
+    begin
+      RecordCopy(ZPr, PZPr);
+      ZPr.SerNr = -1;
+      ZPr.SerNr = NextSerNr("PZPVc", CurrentDate, -1, false, "");
+      if (ZPr.SerNr > -1) then
+        begin
+          ZPr.DocType = 0; //ЗП
+          ZPr.PayReady = 0;
+          ZPr.OKFlag = 0;
+          ZPr.AccAdminSign = blankval;
+          ZPr.ParentNr = PZPr.SerNr;
+          RecordStore(ZPr, true);
+        end;
+
+      res = ReadFirstMain(ZPr, 1, true);
+      if (res) then
+        begin
+          PZPr.Closed = 1;
+          CreateRecordLink(PZPr, CurrentCompany, ZPr, CurrentCompany);  
+          CreateRecordLink(ZPr, CurrentCompany, PZPr, CurrentCompany);  
+          PZPDClassOpenZP(ZPr);
+        end;
+
+      MakeZPFromPZP = res;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+updating function Longint PZPVcRecordCheck(var record PZPVc PZPr, record PZPVc PZP2r, LongInt stat, LongInt check)
+begin
+  longint res;
+  record UserVc Usr;
+  row PZPVc PZPrw;
+  integer i;
+  boolean TransOK;
+  string 10 CurAcc;
+
+  SetLangMode(LangRussian,"RUS", 2);
+  res = 0;
+
+  if not CheckUser(PZPr.Initiator) then
+    begin
+      RecordCheckError(1499, "Требуется код оформившего сотрудника", -1, "Initiator");
+      res = -1;
+    end;
+
+  Usr.Code = PZPr.Initiator;
+  ReadFirstMain(Usr, 1, true);
+  PZPr.SalesGroup = Usr.SalesGroup;
+
+  if (res == 0) and blankdate(PZPr.RegDate) then
+    begin
+      RecordCheckError(1499, "Требуется дата оформления", -1, "RegDate");
+      res = -1;
+    end;
+
+  if (res == 0) and blankdate(PZPr.PlanDate) then
+    begin
+      RecordCheckError(1499, "Требуется планируемая дата выплаты", -1, "PlanDate");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(PZPr.ExpEmpl) and not CheckUser(PZPr.ExpEmpl) then
+    begin
+      RecordCheckError(1499, "Неверный код авансируемого сотрудника", -1, "ExpEmpl");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(PZPr.PayMode) then
+    begin
+      RecordCheckError(1499, "Необходимо указать способ оплаты", -1, "PayMode");
+      res = -1;
+    end;
+    
+  if (res == 0) and (PZPr.ExpType == 1) and blank(PZPr.ExpEmpl) then //13.11.13 INAU - по просьбе службы финансов
+    begin
+      RecordCheckError(1499, "Необходимо указать авансируемое лицо", -1, "ExpEmpl");
+      res = -1;
+    end;
+
+  if (res == 0) and (PZPr.ZRSStatus == 2) and nonblank(PZPr.ZRSSign) 
+                and ((stat == 1) or ((stat == 2) and blank(PZP2r.ZRSSign))) then //Установлена подпись "ЗРС не утверждена"
+    begin
+      PZPr.DocStatus = 2;
+      PZPr.Closed = 1;
+    end;
+ 
+  if (res == 0) and (PZPr.Closed == 0) and nonblank(PZPr.CouncilSign) 
+                and ((stat == 1) or ((stat == 2) and blank(PZP2r.CouncilSign))) then //Установлена подпись РС
+    begin
+      if blank(PZPr.CouncilDate) then
+        begin
+          RecordCheckError(1499, "Укажите дату совета", -1, "CouncilDate");
+          res = -1;
+        end;
+
+      if (res == 0) and (PZPr.DocStatus == 1) then //Утверждено
+        begin
+          if not CheckFuncSign(PZPr) then
+            begin
+              MessageBox(0, "Проверьте подписи руковотителей служб!");
+              res = -1;
+            end;
+        end;
+
+      if (res == 0) and (PZPr.DocStatus == 2) then //Не утверждено
+        begin
+          PZPr.Closed = 1; 
+        end;
+    end;
+
+  CheckAccumData(PZPr, res);
+
+  for (i=0; (i < MatRowCnt(PZPr)) and (res == 0); i=i+1)
+    begin
+      MatRowGet(PZPr, i, PZPrw);
+      PZPCheckAcc(PZPrw.AccNumber, i, PZPr.ExpType, CurAcc, res);
+      PZPVcRowCheck(PZPrw, i, res);
+      PZPr.FN1Idx = IAddToSet(PZPrw.FN1, PZPr.FN1Idx);
+    end;
+
+
+  if (res == 0) and (stat <> 2) and (PZPr.SerNr < 1) then
+    begin
+      PZPr.SerNr = NextSerNr("PZPVc", CurrentDate, -1, false, "");
+    end;
+
+
+  if (res == 0) and (PZPr.PayReady == 1) and ((stat == 1) or ((stat == 2) and (PZP2r.PayReady == 0))) then
+    begin
+      if (res == 0) and (PZPr.DocSum > PZPr.AccumSum) then
+        begin
+          RecordCheckError(1499, "Сумма к выплате превышает доступную сумму", -1, "AccumSum");
+          res = -1;
+        end;
+
+      if (res == 0) and blank(PZPr.ZRSTrueSign) then
+        begin
+          RecordCheckError(1499, "Требуется подпись инициатора", -1, "ZRSTrueSign");
+          res = -1;
+        end;
+
+      if (res == 0) and blank(PZPr.ZRSSign) then
+        begin
+          RecordCheckError(1499, "Требуется подпись руководителя", -1, "ZRSSign");
+          res = -1;
+        end;
+
+      if (res == 0) and blank(PZPr.CouncilSign) then
+        begin
+          RecordCheckError(1499, "Требуется подпись председателя РС", -1, "CouncilSign");
+          res = -1;
+        end;
+
+      if (res == 0) and (PZPr.CashMode == 1) and blank(PZPr.ChiefAccSign) then //Безнал
+        begin
+          RecordCheckError(1499, "Требуется подпись главного бухгалтера", -1, "ChiefAccSign");
+          res = -1;
+        end;
+
+      if (res == 0) and blank(PZPr.AccAdminSign) then
+        begin
+          RecordCheckError(1499, "Требуется подпись администратора секции проверки счетов", -1, "AccAdminSign");
+          res = -1;
+        end;
+    end;
+
+
+  if (res == 0) and (PZPr.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (PZP2r.OKFlag == 0))) then
+    begin
+      if (res == 0) and (PZPr.PayReady == 0) then
+        begin
+          MessageBox(0, "Требуется подтверждение готовности к выплате");
+          res = -1;
+        end;
+
+      if (res == 0) and (PZPr.DocType == 1) then //ПЗП -> ЗП
+        begin
+          if not MakeZPFromPZP(PZPr) then
+            begin
+              MessageBox(0, "Не удалось создать связанный ЗП");
+              res = -1;
+            end;
+        end;
+
+      if (res == 0) and (PZPr.DocType == 0) then //ЗП -> выдача
+        begin
+          if blankdate(PZPr.PayDate) then
+            begin
+              RecordCheckError(1499, "Укажите дату", -1, "PayDate");
+              res = -1;
+            end;
+
+          if (res == 0) then
+            begin
+              TransOK = false;
+              RecalcZPByFunds(PZPr);
+              switch (PZPr.ExpType)
+                begin
+                  case 0: TransOK = MakeCLOutFromPZP(PZPr); //РКО
+                  case 1: TransOK = MakePPFromPZP(PZPr);    //Ав.Пл.
+                  case 2: TransOK = MakeOPFromPZP(PZPr);    //Пл.пост.
+                  case 3: TransOK = MakeTRFromPZP(PZPr);    //Гл.Кн.
+                end;
+                
+              if TransOK then
+                begin
+                  PZPr.Closed = 1;
+                end
+              else
+                begin
+                  MessageBox(0, "Не удалось создать документы!");
+                  res = -1;
+                end;
+            end;
+        end;
+    end;
+
+// TGOR 13.12.13
+if res <> -1 then
+	begin
+	if PZP2r.DocStatus == 0 and PZPr.DocStatus <> 0 then
+		begin
+		tMailFromPZP(PZPr.Initiator, PZPr.SerNr, 1);
+		end;
+	if PZP2r.PayReady == 0 and PZPr.PayReady == 1 then
+		begin
+		tMailFromPZP(PZPr.Initiator, PZPr.SerNr, 2);
+		end;
+	if blank(PZP2r.ZRSSign) and nonblank(PZPr.ZRSSign) then
+		begin
+		tMailFromPZP(PZPr.Initiator, PZPr.SerNr, 3);
+		end;
+  PZPWriteHist(PZPr, PZP2r, stat); //24.01.14 INAU
+	end;
+  PZPVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function longint PZPVcRecordRemoveTest(var record PZPVc PZPr, record PZPVc PZP2r, longint long3, longint long4)
+begin
+  longint res;
+  
+  res = 0;
+  if (PZPr.Closed == 0) and blank(PZPr.ZRSSign) then
+    begin
+      res = 1;
+    end;
+  PZPVcRecordRemoveTest = res;
+  Return;
+end;
+
+//===============================================
+global
+function LongInt PZPVcRecordInvalidateTest(var record PZPVc PZPr, record PZPVc PZP2r, longint long3, longint long4)
+begin
+  longint res;
+  record UserVc Usr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  Usr.Code = PZPr.Initiator;
+  ReadFirstMain(Usr, 1, true);
+
+//  if (PZPr.Closed == 0) and blank(PZPr.ZRSSign) and (PZPr.Initiator == CurrentUser) then
+  if (PZPr.Closed == 0) and (PZPr.OKFlag == 0) 
+                        and (UserIsAdvCouncil(CurrentUser) or UserIsAccAdmin(CurrentUser) or UserIsChiefAcc(CurrentUser) or
+                            (PZPr.Initiator == CurrentUser) or (Usr.Supervisor == CurrentUser)) then
+    begin
+      res = 1;
+      PZPr.Invalid = 1;
+      PZPr.Closed = 1;
+    end
+  else
+    begin
+      MessageBox(0, "Нельзя аннулировать!");
+    end;
+  PZPVcRecordInvalidateTest = res;  
+  Return;
+end;

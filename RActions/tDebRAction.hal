@@ -1,0 +1,84 @@
+
+// From IArRn3Tools
+external function val IPrepayments(record RcVc, string, var array string);
+external function val IGetInvBal(record RcVc, record IVVc, var val, var Longint, var array string);
+external function string 50 IGetItemFromStr(string, integer);
+external procedure DebLateByDays(val, Longint, var val, var val, var val, var val, var val, var val, var val);
+
+
+global
+function val tDeb(String Code, date d1)
+begin
+//  record ARVc ARr;
+record CUVc CUr;
+record IVVc IVr;
+Boolean TrHs,CUs,CustOut,backdatf;
+Boolean first1f,first2f;
+Integer rwcnt,keys,nrofper;
+string 255 frcc,tocc;
+val Sum, Total;
+val Prepay, TotalPrepay;
+val Deb, DebNotLate, DebLate, DebLate_15, DebLate_30, DebLate_30more;       //Всего, Не просроч, Просроч всего, просроч 0-15, 16-30, 31 - ...
+val DebLate_15_100, DebLate_100more, SumDebLate_15_100, SumDebLate_100more; // 15<Просроч<=100, Просроч>100
+val SumDeb, SumDebNotLate, SumDebLate, SumDebLate_15, SumDebLate_30, SumDebLate_30more; 
+val TotalDeb, TotalDebNotLate, TotalDebLate, TotalDebLate_15, TotalDebLate_30, TotalDebLate_30more; 
+string 255 ckey;
+Integer curcnt;
+string 255 lastcurncycode;
+Boolean onecurncyf;
+string 20 CustCode;
+integer i;
+array string 255 InvArr;
+array string 255 PrepayArr;
+Longint LateDays;
+Boolean NeedHeader;
+record TempVc SalesManListr;
+record RcVc RepSpec;
+  
+SetLangMode(LangRussian,"RUS",2);
+
+RepSpec.f1 = Code;  
+RepSpec.f3 = "";
+RepSpec.ArtMode = 1;
+RepSpec.d1 = d1;//дата из импорта
+RepSpec.flags[2] = 1;
+      
+        
+TotalDeb = 0;
+TotalPrepay = TotalDeb;
+  
+CUr.Code = Code;
+ReadFirstMain(CUr,1,true);            
+SumDeb = 0;
+Prepay = IPrepayments(RepSpec, CUr.Code, PrepayArr); //Открытый АВ.ПЛ.
+NeedHeader = true;
+ResetLoop(IVr);
+IVr.CustCode = CUr.Code;
+IVr.SerNr = 0;
+TrHs = True;
+while (LoopKey("CustCode",IVr,2,TrHs))
+	begin
+	Deb = 0;
+	TrHs = (CUr.Code==IVr.CustCode);      
+	if (TrHs) then
+		begin 
+		if (IVr.OKFlag==1) and (IVr.Invalid==0) and 
+			  not ((IVr.InvType==2) or (IVr.InvType==6) or 
+				  ((IVr.InvType==3) and (IVr.CredInv!=-1))) then
+			begin 
+			Deb = IGetInvBal(RepSpec, IVr, Sum, LateDays, InvArr);
+			SumDeb = SumDeb + Deb;
+			end;
+		end;
+	end;
+
+Total = Total + Sum;
+TotalDeb = TotalDeb + SumDeb;
+TotalPrepay = TotalPrepay + Prepay;
+
+
+
+tDeb = TotalDeb-TotalPrepay; //SumDeb-Prepay; 	  
+
+Return;
+End;

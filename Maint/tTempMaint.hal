@@ -1,0 +1,16 @@
+global
+updating procedure tCleartEmpWSVcMn()
+begin
+boolean TrHs;
+record tEmpWSVc Vw;
+TrHs = true;
+while (LoopMain(Vw, 1, TrHs))
+	begin
+	if (TrHs) then
+		begin
+		RecordDelete(Vw);
+		StepBack(Vw);
+		end;
+	end;
+Return;
+end;

@@ -1,0 +1,191 @@
+//===============================================
+//Наименование "родителя" в CalculatedColumn
+global
+function string 255 ICompetitorClassLClassPD(var record ICompetitorClassVc CCr)
+begin
+  record ICompetitorClassVc parentCCr;
+
+  parentCCr.Code = CCr.Parent;
+  ReadFirstMain(parentCCr, 1, true);
+  ICompetitorClassLClassPD = parentCCr.Desc;
+  Return;
+end;
+
+//===============================================
+//Наименование формы собственности в CalculatedColumn
+global
+function string 255 ICompetitorLClassOT(var record ICompetitorVc Cr)
+begin
+  string 60 res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (Cr.OwnershipType)
+    begin
+      case 0: res = "Юр. лицо";
+      case 1: res = "Физ. лицо";
+      otherwise res = "-";
+    end;
+  ICompetitorLClassOT = res;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblICompetitorVc(string dblstr, string l, integer currepwn)
+begin
+  record ICompetitorVc Cr;
+  integer wn;
+  
+  if nonblank(dblstr) then
+    begin
+      Cr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(Cr, 1, true) then
+        begin  
+          wn = OpenWindow("ICompetitorDClass", 1, 0, "", "", Cr);
+        end; 
+    end;
+  Return;
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  Setting("Классификация конкурентов ГК", ICompetitorClassLClass, modVPlan);
+  Register("Конкуренты ГК", "Конкуренты ГК", ICompetitorLClass, modVPlan);
+  Report("Конкуренты ГК", ICompetitorRClass, ICompetitorRn, 0, modVPlan);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, h3, h4, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классификация конкурентов ГК", ICompetitorClassLClass, CGmlist, -);
+  SpawnClass(ICompetitorClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICompetitorClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ICompetitorClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите класс конкурентов", ICompetitorClassSClass, CGslist, -);
+  SpawnClass(ICompetitorClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICompetitorClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ICompetitorClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классификация конкурентов", ICompetitorClassDClass, CGview,-);
+  SetWRect(20, 80, 720, 190);
+  UseView(ICompetitorClassVc);
+  v = 6;
+  EditField(h=100, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2=300, v, -40, "Наименование", Normal, Desc, false, 0);
+  EditField(h, v+=vs, 80, "Иерархия", Normal, Parent, false, ITrnCrtClassSClass);
+  EndWindow;
+
+
+  WindowBegin("Конкуренты ГК", ICompetitorLClass, CGmlist, -);
+  SpawnClass(ICompetitorDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICompetitorVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  CalculatedColumn(-150, -150, "Форма собственности", "ICompetitorLClassOT", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Конкуренты ГК", ICompetitorSClass, CGslist, -);
+  SpawnClass(ICompetitorDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICompetitorVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  CalculatedColumn(-150, -150, "Форма собственности", "ICompetitorLClassOT", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Конкуренты ГК", ICompetitorDClass, CGview,-);
+  SetWRect(20, 80, 720, 390);
+  UseView(ICompetitorVc);
+  Tile(0, 110, false, "", Code);
+  EditField(h=150, v=6, 80, "Код", Normal, Code, false, 0);
+  EditField(h2=350, v, -40, "Наименование", Normal, Name, false, 0);
+  EditField(h, v+=vs, -40, "Классификация", Normal, Classification, false, ICompetitorClassSClass);
+  v = v + 30;
+  StaticText(h, v+10, "Форма собственности:", true);
+  RadioButton(h+70, v, 0, 0, "Юр. лицо", OwnershipType);
+  RadioButton(h+170, v, 1, 0, "Физ. лицо", OwnershipType);
+  TileButton(1, "Описание");
+  TileButton(2, "Общие");
+  TileButton(3, "Продвижение");
+  TileButton(4, "Отличия");
+
+  //Описание
+  Tile(1, 110, true, "", Desc);
+  TextField(20, 11, -39, -39, Desc, 0);
+  
+  //Общие
+  Tile(2, 110, true, "", DelayTerms);
+  EditField(h=170, v=6, -40, "Условия отсрочки", Normal, DelayTerms, false, 0);
+  EditField(h, v+=vs, -40, "Условия док. оформления", Normal, DocTerms, false, 0);
+  EditField(h, v+=vs, -40, "Условия принятия заказа", Normal, OrderTerms, false, 0);
+  EditField(h, v+=vs, -40, "Условия доставки товара", Normal, DeliveryTerms, false, 0);
+  EditField(h, v+=vs, -40, "Условия взаиморасчетов", Normal, PayTerms, false, 0);
+  EditField(h, v+=vs, -40, "Условия бонусирования", Normal, BonusTerms, false, 0);
+  EditField(h, v+=vs, -40, "Условия возврата", Normal, ReturnTerms, false, 0);
+
+  //Продвижение
+  Tile(3, 110, true, "", ActTerms);
+  EditField(h, v=6, -40, "Наличие акций", Normal, ActTerms, false, 0);
+  EditField(h, v+=vs, -40, "Частота появления новинок", Normal, NewsFreq, false, 0);
+  EditField(h, v+=vs, -40, "Cертификаты на продукцию", Normal, Certificates, false, 0);
+  EditField(h, v+=vs, -40, "Рекламные инструменты", Normal, Adversting, false, 0);
+
+  //Отличия
+  Tile(4, 110, true, "", StrongPoint);
+  EditField(h, v=6, -40, "Сильные стороны", Normal, StrongPoint, false, 0);
+  EditField(h, v+=vs, -40, "Слабые стороны", Normal, WeakPoint, false, 0);
+  EditField(h, v+=vs, -40, "Преимущества ГК", Normal, SelfAdvantage, false, 0);
+  EditField(h, v+=vs, -40, "Преимущества конкурента", Normal, CompAdvantage, false, 0);
+  EditField(h, v+=vs, -40, "Представл. Конкурент/ГК", Normal, Representation, false, 0);
+  EndWindow;
+
+
+  WindowBegin("Конкуренты ГК", ICompetitorRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 200);
+  EditFieldTL(h=100, v=6, 100, "Код", M4Code, Normal, 20, f1, false, ICompetitorSClass);
+  EditFieldTL(h, v+=vs, -40, "Классификация", M4UStr, Normal, 200, f2, false, ICompetitorClassSClass);
+  ButtonFrame(h, v+=50, 123, 3, "Форма собственности");
+  v2 = v;
+  RadioButton(h, v,     0, 0, "Все", flags[0]);
+  RadioButton(h, v+=16, 1, 0, "Юр. лица", flags[0]);
+  RadioButton(h, v+=16, 2, 0, "Физ. лица", flags[0]);
+  ButtonFrame(h+=150, v=v2, 123, 2, "Функция");
+  RadioButton(h, v,     0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+  Return;
+end;

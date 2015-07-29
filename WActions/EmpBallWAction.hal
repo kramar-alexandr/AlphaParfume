@@ -1,0 +1,417 @@
+remote function Boolean CheckEmpRatingRows(string, string);
+remote procedure FillEmpRatingRows(var record EmpRatingVc);
+external procedure AddHelpButton(LongInt, LongInt);
+
+event startup 
+begin
+SetLangMode(LangRussian, "RUS", 2);
+SString(31018, "Укажите сотрудника!");
+SString(31019, "Нет критериев для оценки!");
+SString(31020, "Вы уже оценивали данного сотрудника в этом месяце!");
+SString(31021, "Оцените все критерии!");
+SString(31022, "Максимальный балл - 5!");
+SString(31023, "Недопустимая операция!");
+SString(31024, "Неверный диапазон серийных номеров!");
+
+Setting("Закрепление критериев за сотрудниками", EmpCriteriaLClass, modBORG);
+Setting("Критерии оценки сотрудников", CriteriaLClass, modBORG);
+Register("Оценка сотрудников", "Оценка сотрудников", EmpRatingLClass, modBORG);
+Report("Рейтинг сотрудников", EmpRatingRClass, EmpRatingRn, 0, modBORG);
+
+Register("Оценка сотрудников", "Оценка сотрудников", EmpRatingLClass, modXOZ);
+Report("Рейтинг сотрудников", EmpRatingRClass, EmpRatingRn, 0, modXOZ);
+
+Register("Оценка сотрудников", "Оценка сотрудников", EmpRatingLClass, modLAW);
+Report("Рейтинг сотрудников", EmpRatingRClass, EmpRatingRn, 0, modLAW);
+
+RETURN;
+end;
+
+event DefineWindows
+begin
+real h,h1,hl,h2,h3,h4,h5,h6,h7,hs,v,v3,vm,l,vs,f,v2,t;
+real o1, i1, o2, i2;
+record UserVc USr; 
+string 20 level;
+
+SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("Критерии оценки сотрудников", CriteriaDClass, CGview, -);
+UseView(CriteriaVc);
+SetWRect(20, 80, 527, 180);
+//Sizeable(-1,-1,0,0);
+vs = 20; v = 10;
+EditFieldTL(80, v, 50, "Критерий", M4Code, Normal, 20, Code, False, 0);
+EditFieldTL(80, v += vs, -80, "Описание", M4Str, Normal, 100, Name, False, 0);
+EditFieldTL(80, v += vs, 30, "Тип (0/1)", M4Int, Normal, 0, CriteriaType, True, 0);
+//EditFieldTL(180, v, 80, "Заполняет", M4Code, Normal, 20, Person, True, UserSClass);
+EndWindow;
+
+WindowBegin("Критерии оценки сотрудников", CriteriaLClass, CGmlist, -);
+SpawnClass(CriteriaDClass);
+SetWRect(20,80,570,298);
+Sizeable(-1,-1,0,0);
+UseView(CriteriaVc);
+RecordList(4, 17, -21, -39);
+vs = 20; v = 10;
+RlColKey(4, 4, "Критерий", Code, False, Code);
+RlColKey(75, 75,"Описание", Name, False, Name);
+//RlColKey(-100, -100, "Заполняет", Person, False, Person);
+RlColKey(-25, -25, "Тип", CriteriaType, True, CriteriaType);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Критерии оценки сотрудников", CriteriaSClass, CGSlist, -);
+SpawnClass(CriteriaDClass);
+SetWRect(20,80,570,298);
+Sizeable(-1,-1,0,0);
+UseView(CriteriaVc);
+RecordList(4, 17, -21, -39);
+vs = 20; v = 10;
+RlColKey(4, 4, "Критерий", Code, False, Code);
+RlColKey(75, 75,"Описание", Name, False, Name);
+//RlColKey(-100, -100, "Заполняет", Person, False, Person);
+RlColKey(-25, -25, "Тип", CriteriaType, True, CriteriaType);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Закрепление критериев за сотрудником", EmpCriteriaDClass, CGview , -);
+UseView(EmpCriteriaVc);
+SetWRect(20,80,527,340);
+Sizeable(-1,-1,0,0);
+vs = 20; v = 10;
+EditFieldTL(80, v, 80, "Сотрудник", M4Code, Normal, 20, Code, False, UserSClass);
+EnterSkip(Math);
+EditField(180, v, -50, "", ViewOnly, Name, False, 0);
+EditFieldTL(80, v += vs, 80, "Отдел", M4Code, Normal, 20, Department, False, DepartmentSClass);
+EditFieldTL(-130, v, 80, "Дата изменения", M4Date, ViewOnly, 0, TransDate, False, 0);
+MatrixBegin(20, v += 2 * vs, -50, -22, -, 99);
+MatColTL(1, 40, "Критерий", 0, M4Code, Normal, 20, Criteria, False, CriteriaSClass);
+MatColTL(1, 120, "Описание", 0, M4Str, ViewOnly, 100, CriteriaName, False, 0);
+MatColTL(1, -100, "Заполняет", 0, M4Code, Normal, 20, Person, False, UserSClass);
+//MatColTL(1, -40, "Max балл", 0, M4Int, Normal, 0, MaxBall, True, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Закрепление критериев за сотрудниками", EmpCriteriaLClass, CGmlist, -);
+SpawnClass(EmpCriteriaDClass);
+SetWRect(20,80,570,298);
+Sizeable(-1,-1,0,0);
+UseView(EmpCriteriaVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4, "Сотрудник", Code, False, Code);
+RlColKey(75, 75,"Ф.И.О.", Name, False, Name);
+RlColKey(-100, -100, "Отдел", Department, False, Department);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Сотрудники", EmpCriteriaSClass, CGslist, -);
+SpawnClass(EmpCriteriaDClass);
+SetWRect(20,80,570,298);
+Sizeable(-1,-1,0,0);
+UseView(EmpCriteriaVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4, "Сотрудник", Code, False, Code);
+RlColKey(75, 75,"Ф.И.О.", Name, False, Name);
+RlColKey(-100, -100, "Отдел", Department, False, Department);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Оценка сотрудников", EmpRatingDClass, CGview , -);
+UseView(EmpRatingVc);
+SetWRect(20,80,527,340);
+Sizeable(-1,-1,0,0);
+vs = 20; v = 10;
+AddHelpButton(3, 5);
+ActiveFieldOnNew(Code);
+EditField(80, v, 50, "№.", ViewOnly, SerNr, True, 0);
+EditFieldTL(180, v, 80, "Дата", M4Date, Normal, 0, TransDate, False, PasteCurDate);
+EditFieldTL(80, v += vs, 80, "Сотрудник", M4Code, Normal, 20, Code, False, EmpCriteriaSClass);//UserSClass);
+EnterSkip(Math);
+EditField(180, v, -50, "", ViewOnly, Name, False, 0);
+CheckBox(25, -21, 0, "OK", OKFlag);
+MatrixBegin(20, v += 2 * vs, -50, -22, -, 99);
+MatColTL(1, 40, "Критерий", 0, M4Code, ViewOnly, 20, Criteria, false, CriteriaSClass);
+EnterSkip(Ball);
+MatColTL(1, 120, "Описание", 0, M4Str, ViewOnly, 100, CriteriaName, False, 0);
+//MatColTL(1, -40, "Балл", 0, M4Val, Normal, 0, Ball, True, 0);
+MatCol(1, -60, "Балл", 0, Ball, True, 0);
+//MatCol(1, -20, "KT", 0, CriteriaType, True, 0);
+InsertRowTest;
+DeleteRowtest;
+EndMatrix;
+EndWindow;
+
+WindowBegin("Оценка сотрудников", EmpRatingLClass, CGmlist, -);
+SpawnClass(EmpRatingDClass);
+SetWRect(20,80,570,298);
+Sizeable(-1,-1,0,0);
+UseView(EmpRatingVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4, "№", SerNr, True, SerNr);
+RlColKey(75, 75,"Сотрудник", Code, False, SubCode);
+RlColKey(-390, -390, "Ф.И.О.", Name, False, SubName);
+RlColKey(-100, -100, "Дата", TransDate, False, SubTransDate);
+RlColKey(-25, -25, "OK", OKFlag, False, SubOKFlag);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Определите отчет по рейтингу", EmpRatingRClass, CGRcW, RcType);
+SetWRect(20,80,500,308);
+v= 6; vs = 20; h = 180;
+PeriodField(h, v += vs, "Период");
+EditFieldTL(h, v += vs, 80,"Код сотрудника", M4Code, Normal, 20, f1, false, UserSClass);
+ButtonFrame(h, v += 2 * vs, 150, 3, "Функция");
+RadioButton(h, v += vs, 0, 1, "Сводный", flags[0]);
+RadioButton(h, v += vs, 1, 0, "Подробный", flags[0]);
+CheckBox(h, v += 2 * vs, 0, "График", flags[1]);
+EndWindow;
+
+RETURN;
+end;
+
+function Boolean EmpCriteriaDClassCodeEAfter(Integer wn, Integer changed)
+begin
+record UserVc USr;
+record EmpCriteriaVc Er;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Er);
+	USr.Code = Er.Code;
+	if ReadFirstMain(USr, 1, True) then
+		begin
+		Er.Name = USr.Name;
+		Er.Department = USr.Department;
+		end else
+		begin
+		Er.Code = blankval;
+		end;
+	PutWindowRecord(wn, Er);
+	end;
+EmpCriteriaDClassCodeEAfter = res;
+RETURN;
+end;
+
+function Boolean EmpCriteriaDClassCriteriaEAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record CriteriaVc Cr;
+record EmpCriteriaVc Er, E2r;
+row EmpCriteriaVc Erw;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Er);
+	GetPrevWindowRecord(wn, E2r);
+	MatRowGet(Er, rownr, Erw);
+	Cr.Code = Erw.Criteria;
+	res = ReadFirstMain(Cr, 1, True);
+	if res then
+		begin
+		Erw.CriteriaName = Cr.Name;
+		Erw.CriteriaType = Cr.CriteriaType;
+		Erw.Person = Cr.Person;
+		end;
+	if res then 
+		begin
+		MatRowPut(Er, rownr, Erw);
+		PutWindowRecord(wn, Er);
+		end else
+		begin
+		PutWindowRecord(wn, E2r);
+		end;
+	end;
+EmpCriteriaDClassCriteriaEAfter = res;
+RETURN;
+end;
+
+function Boolean EmpCriteriaDClassPersonEAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record CriteriaVc Cr;
+record EmpCriteriaVc Er, E2r;
+record UserVc USr;
+row EmpCriteriaVc Erw;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Er);
+	GetPrevWindowRecord(wn, E2r);
+	MatRowGet(Er, rownr, Erw);
+	USr.Code = Erw.Person;
+	res = ReadFirstMain(USr, 1, True);
+	if ((not res) and nonblank(Erw.Person)) then
+		begin
+		MatRowGet(E2r, rownr, Erw);
+		MatRowPut(Er, rownr, Erw);
+		PutWindowRecord(wn, Er);
+		end;
+	end;
+EmpCriteriaDClassPersonEAfter = res;
+RETURN;
+end;
+
+global
+function Boolean EmpCriteriaDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+Boolean res;
+
+switch (fieldname) 
+	begin
+	case "Code": res = EmpCriteriaDClassCodeEAfter(wn, changed);
+	case "Criteria": res = EmpCriteriaDClassCriteriaEAfter(wn, rownr, changed);
+	case "Person": res = EmpCriteriaDClassPersonEAfter(wn, rownr, changed);
+	end;
+EmpCriteriaDClassAfterEditField = res;	
+RETURN;
+end;
+
+
+
+function Boolean EmpRatingDClassCodeEAfter(Integer wn, Integer changed)
+begin
+record UserVc USr;
+record EmpRatingVc Er;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Er);
+	USr.Code = Er.Code;
+	if ReadFirstMain(USr, 1, True) then
+		begin
+		Er.Name = USr.Name;
+		Er.Department = USr.Department;
+		Er.Superior = USr.Supervisor;
+		FillEmpRatingRows(Er);
+		end else
+		begin
+		Er.Code = blankval;
+		end;
+	PutWindowRecord(wn, Er);
+	end;
+EmpRatingDClassCodeEAfter = res;
+RETURN;
+end;
+
+function Boolean EmpRatingDClassCriteriaEAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record CriteriaVc Cr;
+record EmpRatingVc Er, E2r;
+row EmpRatingVc Erw;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Er);
+	GetPrevWindowRecord(wn, E2r);
+	if (E2r.OKFlag <> 1) then
+		begin
+		MatRowGet(Er, rownr, Erw);
+		Cr.Code = Erw.Criteria;
+		res = ReadFirstMain(Cr, 1, True) and CheckEmpRatingRows(Erw.Criteria, Er.Code);
+		if res then
+			begin
+			Erw.CriteriaName = Cr.Name;
+			Erw.CriteriaType = Cr.CriteriaType;
+			Erw.Person = Cr.Person;
+			end else
+			begin
+			Erw.Criteria = blankval;
+			end;
+		MatRowPut(Er, rownr, Erw);
+		end else
+		begin
+		MatRowDelete(Er, rownr);
+		end;
+	PutWindowRecord(wn, Er);
+	end;
+EmpRatingDClassCriteriaEAfter = res;
+RETURN;
+end;
+
+global
+function Boolean EmpRatingDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+Boolean res;
+
+switch (fieldname) 
+	begin
+	case "Code": res = EmpRatingDClassCodeEAfter(wn, changed);
+	case "Criteria": res = EmpRatingDClassCriteriaEAfter(wn, rownr, changed);
+	end;
+EmpRatingDClassAfterEditField = res;	
+RETURN;
+end;
+
+global
+function Boolean EmpRatingDClassOKFlagButtonAction(Integer wn, Integer value)
+begin
+record EmpRatingVc Er;
+record UserVc USr;
+Boolean res;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+GetPrevWindowRecord(wn, Er);
+EmpRatingDClassOKFlagButtonAction = ((Er.OKFlag == 0) or UserCanAction("UnOKAll", True));
+RETURN;
+end;
+
+global
+procedure EmpRatingDClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+global
+procedure EmpRatingLClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+global 
+function Boolean EmpRatingDClassInsertRowTest(Integer wn, Integer rownr)
+begin
+record EmpRatingVc Er;
+Boolean res;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetPrevWindowRecord(wn, Er);    
+	res = (Er.OKFlag == 0);
+	end;
+EmpRatingDClassInsertRowTest = res;
+RETURN;
+end;
+
+global 
+function Boolean EmpRatingDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record EmpRatingVc Er;
+Boolean res;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetPrevWindowRecord(wn, Er);    
+	res = (Er.OKFlag == 0);
+	end;
+EmpRatingDClassDeleteRowTest = res;
+RETURN;
+end;
+
+global
+function Boolean EmpRatingLClassOnOpenWindow(Integer wn)
+begin
+
+SetWindowSubset(wn, CurrentUser);
+UpdateBrowses("");
+EmpRatingLClassOnOpenWindow = True;
+RETURN;
+end;

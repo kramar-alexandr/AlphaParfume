@@ -1,0 +1,69 @@
+
+//==========================
+
+global
+function Longint tIPCtrlHistVcRecordDefaults(var record tIPCtrlHistVc Fr, record tIPCtrlHistVc F2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then
+  begin
+  Fr.SerNr = NextSerNr("tIPCtrlHistVc", CurrentDate, -1, false, "");
+  end;
+
+tIPCtrlHistVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt tIPCtrlHistVcRecordDuplicate(var record tIPCtrlHistVc Fr, record tIPCtrlHistVc F2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then
+  begin
+  Fr.SerNr = NextSerNr("tIPCtrlHistVc", CurrentDate, -1, false, "");
+  end
+else
+  begin
+  Fr.SerNr = -1;
+  end;
+
+tIPCtrlHistVcRecordDuplicate = res;
+RETURN;
+END;
+ 
+global
+function LongInt tIPCtrlHistVcRecordCheck(var record tIPCtrlHistVc Fr, record tIPCtrlHistVc F2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode;
+record UserVc USr;
+
+SetLangMode(LangRussian,"RUS",2);
+res = 0;
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (Fr.SerNr < 1) then
+  begin
+  Fr.SerNr = NextSerNr("tIPCtrlHistVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (Fr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+  tIPCtrlHistVcRecordCheck = res;
+RETURN;
+end;
+
+

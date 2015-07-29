@@ -1,0 +1,284 @@
+//Согласование затрат
+external inner function Integer CheckObjs(string, string, var string);
+external function string 60 IGetObjByType(string, string);
+
+//15.03.13 INAU
+procedure ApproveCostsVc_LogAction(var record ApproveCostsVc ACr, string ActionName)
+begin
+  if blank(GetFieldValueByName(ACr, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(ACr, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(ACr, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(ACr, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+function Boolean IfAllObjectsExists(record ApproveCostsVc ACr)
+begin
+row ApproveCostsVc ACrw;
+Integer RwCnt;
+Boolean res;
+
+res = True;
+for(RwCnt = 0; (RwCnt < MatRowCnt(ACr)) and res; RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ACr, RwCnt, ACrw);
+	res = nonblank(IGetObjByType(ACrw.Objects, "EMP"));
+	end;
+IfAllObjectsExists = res;
+RETURN;
+end;
+
+function Boolean ObjTypeIncorrect(string Obj, string OType)
+begin
+record ObjVc Objr;
+Boolean res;
+
+Objr.Code = Obj;
+if ReadFirstMain(Objr, 1, True) then
+	begin
+	res = (Objr.OTCode <> OType);
+	end;
+ObjTypeIncorrect = res;
+RETURN;
+end;
+
+global updating
+function LongInt ApproveCostsVcRecordCheck(var record ApproveCostsVc ACr, record ApproveCostsVc AC2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc Usr;
+row ApproveCostsVc ACrw, AC2rw;
+LongInt res;
+Integer insertmode, updatemode;
+Boolean TrHs;
+string 255 ErrStr;
+Integer Cnt, ErrorCode;
+
+res = -1 * AC2r.OKFlag;
+insertmode = 1;
+updatemode = 2;
+SetLangMode(LangRussian, "RUS", 2);
+
+USr.Code = CurrentUser;	
+ReadFirstMain(USr, 1, True);
+if ((ACr.OKFlag == 1) and (AC2r.OKFlag == 1) and SetInSet("CAS", USr.Comment) and (ACr.Summa == AC2r.Summa)) then
+	begin
+	res = 0;
+	end;
+
+if blank(ACr.PM) then
+	begin
+	res = -1;
+	end;
+if (MatRowCnt(ACr) > 0) then
+	begin
+	for(Cnt = 0; Cnt < MatRowCnt(ACr); Cnt = Cnt + 1)
+		begin
+		MatRowGet(ACr, Cnt, ACrw);
+		ErrorCode = CheckObjs(ACrw.Acc, ACrw.Objects, ErrStr);
+		if (ErrorCode <> 0) then
+			begin
+			RecordCheckError(ErrorCode, ErrStr, Cnt, "Objects"); 
+			res = -1;
+			end;
+		if ObjTypeIncorrect(ACrw.Func, "FN2") then
+			begin
+			RecordCheckError(-1, "  Нужен объект типа FN2!", Cnt, "Func");
+			res = -1;
+			end;
+		if ((Cnt > 0) and (ACr.DocType == 0))then
+			begin
+			MatRowGet(ACr, Cnt -1, AC2rw);
+			if (AC2rw.Acc <> ACrw.Acc) then
+				begin
+				RecordCheckError(-1, "  Разные счета недопустимы!", Cnt, "Acc");
+				res = -1;
+				end;
+			end;
+		end;
+	end;
+	
+
+if (res	== 0) and (ACr.OKFlag == 1) and (AC2r.OKFlag <> 1) then
+	begin
+	ACr.SignOK = CurrentUser;
+  ApproveCostsVc_LogAction(ACr, "OK"); //18.03.13 INAU
+	end;
+if ((AC2r.OKFlag == 1) and (ACr.OKFlag == 0) and (CurrentUser == "IYA")) then
+	begin
+	res = 0;
+	end;
+
+
+if (res	== 0) then
+	begin
+	if (stat <> updatemode) and (ACr.SerNr < 1) then
+		begin
+		ACr.SerNr = NextSerNr("ApproveCostsVc", CurrentDate, -1, false, "");
+		end;
+	if (stat == updatemode) and (ACr.SerNr < 1) then
+		begin
+		res = -1;
+		end;
+	end;
+ApproveCostsVcRecordCheck = res;
+RETURN;
+end;
+
+global
+function Longint ApproveCostsVcRecordDefaults(var record ApproveCostsVc ACr, record ApproveCostsVc AC2r, LongInt stat, LongInt long4)
+begin
+record UserVc USr;
+Longint res;
+
+ACr.User = CurrentUser;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+ACr.UserName = USr.Name;
+ACr.DocDate = CurrentDate;
+ACr.PayDate = CurrentDate;
+ACr.DocType = 0;
+ACr.OKFlag = 0;
+ACr.SalesGroup = USr.SalesGroup;
+ACr.Initiator = USr.Code;
+ACr.InitiatorName = USr.Name;
+ACr.SignOK = blankval;
+ACr.Summa = 0;
+if SingleUserMode then
+	begin
+	ACr.SerNr = NextSerNr("ApproveCostsVc", CurrentDate, -1, false, "");
+	end;
+ApproveCostsVc_LogAction(ACr, "New"); //18.03.13 INAU
+ApproveCostsVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function Longint ApproveCostsVcRecordDuplicate(var record ApproveCostsVc ACr, record ApproveCostsVc AC2r, LongInt stat, LongInt long4)
+begin
+record UserVc USr;
+Longint res;
+
+ACr.User = CurrentUser;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+ACr.UserName = USr.Name;
+ACr.DocDate = CurrentDate;
+ACr.OKFlag = 0;
+ACr.SignOK = blankval;
+if SingleUserMode then
+	begin
+	ACr.SerNr = NextSerNr("ApproveCostsVc", CurrentDate, -1, false, "");
+	end;
+  
+//18.03.13 INAU
+ACr.LogNewUser = CurrentUser;
+ACr.LogNewDate = CurrentDate;
+ACr.LogNewTime = CurrentTime;
+ACr.LogSaveUser = blankval;
+ACr.LogSaveDate = "";
+ACr.LogSaveTime = "";
+ACr.LogOKUser = blankval;
+ACr.LogOKDate = "";
+ACr.LogOKTime = "";
+
+ApproveCostsVcRecordDuplicate = res;
+RETURN;
+end;
+
+
+//18.03.13 INAU
+global
+updating function LongInt ApproveCostsVcRecordSave(var record ApproveCostsVc ACr, record ApproveCostsVc AC2r, LongInt stat, LongInt long4)
+begin
+  LongInt res;
+  
+  ApproveCostsVc_LogAction(ACr, "Save");
+  ApproveCostsVcRecordSave = res;
+  Return;
+end;
+
+
+global
+function Boolean CLOutACCExists(record ApproveCostsVc ACr, Integer RwCnt, var LongInt CLOutSerNr)
+begin
+record CLOutVc CLr;
+Boolean res;
+
+ResetLoop(CLr);
+CLr.TransDate = ACr.PayDate;
+while LoopKey("TransDate", CLr, 1 , not res)
+	begin
+	res = (CLr.RefStr == "AC." & ACr.SerNr & "." & RwCnt);
+	end;
+if res then
+	begin
+	CLOutSerNr = CLr.SerNr;
+	end;
+CLOutACCExists = res;	
+RETURN;
+end;
+
+global
+function Boolean PPACCExists(record ApproveCostsVc ACr)
+begin
+record PPVc Pr;
+Boolean res;
+
+ResetLoop(Pr);
+Pr.TransDate = ACr.PayDate;
+while LoopKey("TransDate", Pr, 1 , not res)
+	begin
+	res = (Pr.RefStr == "AC." & ACr.SerNr) and (Pr.Invalid == 0);
+	end;
+PPACCExists = res;	
+RETURN;
+end;
+
+global updating
+function LongInt ApproveCostsVcRecordRemoveTest(var record ApproveCostsVc Ar, record ApproveCostsVc A2r, LongInt long3, LongInt long4)
+begin
+LongInt res;
+
+SetLangMode(LangRussian, "RUS", 2);
+if ((Ar.OKFlag == 1) or (MatRowCnt(Ar) > 0)) then
+  begin
+  ApproveCostsVcRecordRemoveTest = 0;
+  MessageBox(0, "Удалить нельзя!");
+  end else
+  begin
+  ApproveCostsVcRecordRemoveTest = 1;
+  end;
+RETURN;
+END;
+
+global
+updating function Boolean MakeActFromAC(record ApproveCostsVc Ar, var record ActVc Actr)
+BEGIN
+record ApproveCostsVc A2r;
+record UserVc USr;
+record VUserBudVc VB;
+record ObjVc Obj;
+string 20 Function1;
+Integer RwCnt, CC;
+Boolean Res;
+ 
+CC = CurrentCompany;
+Actr.MainPersons = CurrentUser;
+Actr.ActType = "30201";
+Actr.Comment = "Согласование затрат №" & Ar.SerNr;
+Actr.TransDate = CurrentDate;
+Actr.TodoFlag = 0;
+Actr.PrivateFlag = 0;
+Actr.Invalid = 0;
+Actr.CalTimeFlag = 1;
+Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+Res = RecordStore(Actr, false);
+	if Res then 
+	begin	
+	CreateRecordLink(Ar, CurrentCompany, Actr, CurrentCompany);
+	end;
+MakeActFromAC = Res;
+RETURN;
+END;

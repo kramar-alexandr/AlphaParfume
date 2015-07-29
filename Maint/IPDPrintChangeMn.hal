@@ -1,0 +1,15 @@
+global
+updating function IPDPrintChangeMn(record RcVc RepSpec)
+begin
+record IPVc IPr, IP2r;
+IPr.SerNr = RepSpec.long1;
+if ReadFirstMain(IPr, 1, True) then
+	begin
+	IP2r.SerNr = IPr.SerNr;
+	ReadFirstMain(IP2r, 1, True);
+	IPr.Prntdf = 0;
+	RecordUpdate(IP2r, IPr, False);
+	end;
+MessageBox(0, IPr.SerNr & " " & IP2r.Prntdf & " --> " & IPr.Prntdf);
+RETURN;
+end;

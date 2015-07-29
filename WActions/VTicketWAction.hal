@@ -1,0 +1,258 @@
+remote updating procedure ActAfterTicket(record VTicketVc) ;
+remote function LongInt tUserInVTicketSet(string);
+remote function LongInt tFindActTestTicket(record VTicketVc, var LongInt);
+
+
+// global updating
+// function boolean VTicketDClassOnOpenWindow(Integer wn)
+// begin
+// record VTicketVc VTr, VT2r;
+// record UserVc USr;
+
+// GetWindowRecord(wn, VTr);
+// GetWindowRecord(wn, VT2r);
+// Usr.Code = CurrentUser;
+// ReadFirstMain(Usr, 1, True);
+// //if (USr.Department == VTr.ServDepart) and (VTr.SendFlag == 1) and (VTr.RecFlag == 0) then
+	// begin
+	// VTr.DateRec = CurrentDate;
+	// VTr.TimeRec = CurrentTime;
+	// VTr.RecFlag = 1;
+	// RecordUpdate(VT2r, VTr, True);
+	// end;
+// VTicketDClassOnOpenWindow = False;
+// RETURN;
+// end;
+
+global
+updating procedure VTicketDClassOnOpenFromBrowse(Integer wn)
+begin
+record VTicketVc VTr;
+record UserVc USr;
+boolean res;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+GetWindowRecord(wn, VTr);
+res = ((USr.Department == VTr.ServDepart) or (USr.Department == VTr.CastDepart) or (CurrentUser == "ZINOVIY"));
+if (not res) then
+	begin
+	CloseWindow(wn);
+	end;	
+RETURN;
+end;
+
+global
+function Boolean tVarOfInfSClassOnOpenWindow(integer wn)
+begin
+record tVarOfInfBlock VTb;
+row tVarOfInfBlock VTbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(VTb);
+for (RwCnt = 0; RwCnt < MatRowCnt(VTb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(VTb, RwCnt, VTbr);
+    begin
+    SetListString(wn, RwCnt, VTbr.VarOfInf, false);
+    end;
+  end;
+tVarOfInfSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean tVarOfInfSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+tVarOfInfSClassOnOKWindow = false;
+RETURN;
+end;
+
+global updating
+function Boolean VTicketDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+Boolean res;
+record VTicketVc VTr, VT2r;
+record UserVc USr;
+string 255 tstr;
+record DepVc Depr;
+
+if fieldname == "ServDepart" and (WindowState(wn) <> 0) then
+	begin
+	GetWindowRecord(wn, VTr);
+	GetWindowRecord(wn, VT2r);
+	Depr.Code = VTr.ServDepart;
+	ReadFirstMain(Depr, 1, True);
+	if (Depr.Code <> VTr.ServDepart) then
+		begin
+		VTr.ServDepart = "";
+		end;
+	RecordUpdate(VT2r, VTr, True);
+	PutWindowRecord(wn, VTr);
+	end;
+
+if fieldname == "CastCode" and (WindowState(wn) <> 0) then
+	begin
+	GetWindowRecord(wn, VTr);
+	GetWindowRecord(wn, VT2r);
+	Usr.Code = VTr.CastCode;
+	ReadFirstMain(Usr, 1, True);
+	VTr.CastName = USr.Name;
+	VTr.CastAppoint = USr.StateJob;
+	VTr.CastDepart = USr.Department;
+	VTr.UsrGroup = USr.SalesGroup;
+	RecordUpdate(VT2r, VTr, True);
+	PutWindowRecord(wn, VTr);
+	end;
+	
+if  fieldname == "ServCode" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, VTr);
+	GetWindowRecord(wn, VT2r);
+	if  (tUserInVTicketSet(CurrentUser) == 1)  then
+		begin
+		Usr.Code = VTr.ServCode;
+		ReadFirstMain(Usr, 1, True);
+		if (USr.Department == VTr.ServDepart) then
+			begin
+			VTr.ServName = USr.Name;
+			VTr.ServAppoint = USr.StateJob;
+			VTr.ServDepart = USr.Department;
+			end
+		else
+			begin
+			VTr.ServCode = "";
+			end;
+		end
+	else
+		begin
+		VTr.ServCode = "";
+		end;
+	RecordUpdate(VT2r, VTr, True);
+	PutWindowRecord(wn, VTr);
+	end;	
+	
+	Usr.Code = CurrentUser;
+	ReadFirstMain(Usr, 1, True);
+if (tUserInVTicketSet(Usr.Code) <> 1) and (fieldname == "TypeOfTicket") and (WindowState(wn) <> 0) then
+	begin
+	GetWindowRecord(wn, VTr);
+	GetWindowRecord(wn, VT2r);
+	VTr.TypeOfTicket = "";
+	RecordUpdate(VT2r, VTr, True);
+	PutWindowRecord(wn, VTr);
+	end;
+if (tUserInVTicketSet(Usr.Code) <> 1) and (fieldname == "ActionType") and (WindowState(wn) <> 0) then 
+	begin
+	GetWindowRecord(wn, VTr);
+	GetWindowRecord(wn, VT2r);
+	VTr.ActionType = "";
+	RecordUpdate(VT2r, VTr, True);
+	PutWindowRecord(wn, VTr);
+	end;
+if (tUserInVTicketSet(Usr.Code) <> 1) and (fieldname == "PlanDate") and (WindowState(wn) <> 0) then 
+	begin
+	GetWindowRecord(wn, VTr);
+	GetWindowRecord(wn, VT2r);
+	VTr.PlanDate = "";
+	RecordUpdate(VT2r, VTr, True);
+	PutWindowRecord(wn, VTr);
+	end;
+// if  fieldname == "Math" and (WindowState(wn) <> 0)  then
+	// begin
+	// GetWindowRecord(wn, VTr);
+	// GetWindowRecord(wn, VT2r);
+	// tstr = "         /" & "/" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime;
+	// AddToText(tstr, VTr);
+	// RecordUpdate(VT2r, VTr, True);
+	// PutWindowRecord(wn, VTr);
+	// end;	
+
+VTicketDClassAfterEditField = True;
+RETURN;
+end;
+
+global  
+function Boolean VTicketDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+record VTicketVc VTr, VT2r;
+record UserVc USr;
+Boolean res;
+
+GetWindowRecord(wn, VTr);
+
+res = True;
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if nonblank(VTr.ServDepart) and ((Usr.Department <> VTr.ServDepart)) then
+	begin
+	res = False;
+	end;
+if nonblank(VTr.ServDepart) and (Usr.Department == VTr.UsrDepart) then
+	begin
+	res = True;
+	end; 
+if nonblank(VTr.ServDepart) and (Usr.Department == VTr.CastDepart) then
+	begin
+	res = True;
+	end; 	
+if (VTr.SendFlag == 1) or (VTr.RecFlag == 1) then
+	begin
+	res = False;
+	end;
+	
+if (nonblank(VTr.CastCode) and (fieldname == "CastCode")) then
+	begin
+	res = False;
+	end;
+if (nonblank(VTr.ServDepart) and (fieldname == "ServDepart")) then
+	begin
+	res = False;
+	end;
+
+VTicketDClassActiveEditField = res;
+end;
+
+
+global
+updating procedure ActAfterTicket1Dsm()
+BEGIN
+record VTicketVc VTr, VT2r;
+Integer wn;
+record UserVc USr;
+LongInt nAct;
+
+SetLangMode(LangRussian,"RUS",2);
+
+wn = CurWindow;
+GetWindowRecord(wn, VTr);
+GetPrevWindowRecord(wn, VT2r);
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+if (tUserInVTicketSet(Usr.Code) == 1) then
+begin
+	if (WindowState(wn)==0) and (VTr.SendFlag ==1) and (VTr.TestFlag == 1) and (VTr.SolFlag == 0) and (tFindActTestTicket(VTr, nAct) == 1)then 
+		begin 
+		ActAfterTicket(VTr);
+		VTr.TestFlag = 0;
+		VTr.TestDate = "";  
+		PutWindowRecord(wn, VTr);
+		WindowDoOk(wn, 0);
+		UpdateBrowses("VTicketVc");
+		end; 
+end;
+  RETURN;
+END;
+
+

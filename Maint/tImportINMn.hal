@@ -1,0 +1,62 @@
+global
+updating procedure tImportIN(record tImportINVc IINr)
+begin
+date d1;
+record INVc INr, oldINr;
+record tVerifVc Vr, oldVr;
+record ObjBalVc ObjBalr;
+val StartBalUAH, StartBalUSD;
+val dv, cv;
+record VItemGroupVc IGr;
+row tImportINVc IINrw;
+integer i;
+longint x;
+
+x = 0;
+
+SetLangMode(LangRussian,"RUS",2);
+
+//datesv = IINrw.IINrw.Field;
+//d1 = StringToDate(datesv);
+
+//NextImportLine(False);
+//d1 = CurrentDate;
+
+
+for(i = 0; i < matrowcnt(IINr); i = i + 1)
+  begin
+  matrowget(IINr, i, IINrw);
+	INr.Code = IINrw.Field1;
+	if not(ReadFirstMain(INr, 1, true)) and nonblank(IINrw.Field1) then
+		begin
+		RecordNew(INr);
+    INr.Code = IINrw.Field1;
+    INr.Group = IINrw.Field2;
+    INr.Name = IINrw.Field3; //Наименование
+    //INr.Name2 = IINrw.Field4; //Наименование2
+    INr.Unittext = IINrw.Field5; //Единица измерения
+    INr.UPrice1 = StringToVal(IINrw.Field6,M4Val); //Базовая цена
+    INr.Objects = IINrw.Field7; //Объекты
+    INr.DispGroups = IINrw.Field8; //Классификация
+    INr.VItemGroupCode = IINrw.Field9; //Kод серии
+    IGr.Code = INr.VItemGroupCode;
+    if ReadFirstMain(IGr, 1, True) then
+        begin
+        INr.VItemGroupName = IGr.Name;
+        end else
+        begin
+        INr.VItemGroupCode = blankval;
+        end;
+    //INr.VItemGroupName = IINrw.Field10; //Cерия
+    INr.Unittext2 = IINrw.Field11; //Единица 2
+    INr.UnitCoefficient = StringToVal(IINrw.Field12,M4Val); //Коэфф-нт единицы
+    //INr.DispGroupsNew = IINrw.Field13; // Классы
+		if RecordStore(INr, false) then
+		    begin
+		    x = x + 1;
+		    end;
+		end;
+	end;
+MessageBox(0, "Всего импортировано : " & x );
+Return;
+end;

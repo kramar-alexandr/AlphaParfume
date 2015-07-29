@@ -1,0 +1,392 @@
+external function date tGetFirstDayofWN(integer);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+external function string 255 IGetUserName(string);
+remote inner procedure CalcExpRow(var record ExpVc, Integer);
+remote inner procedure GetFullCurncyRate (var string, Date, var val, var val, var val, var val, var val);
+//external procedure tListDinner3(var record TempVc, record RcVc);
+remote procedure tOpenExp(longint);
+external function string 255 IGetAccName(string);
+
+
+global
+updating
+procedure tListDinner3(var record TempVc Listr, record RcVc RepSpec, LongInt ErSerNr)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record tDinnerEmpVc DEr, DE2r ;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+resetLoop(Usr);	
+while (LoopMain(Usr, 1, true))
+	begin
+	if Usr.TerminatedFlag <> 1 then
+		begin
+		DEr.NrWeek = RepSpec.AccSpec;
+		DEr.VECode = RepSpec.f1;
+		DEr.User = Usr.Code;
+		if ReadFirstMain(DEr, 3, True) and (DEr.OKFlag == 1) and (DEr.AOFlag == 0) then //
+			begin	
+			ii = MatRowCnt(Listr); 
+			Listrw.f2 = Usr.Code;
+			MatRowInsert(Listr, ii, Listrw);
+			//=== day i
+			for(i = 0; i <= 7; i = i + 1)
+				begin
+				k = ii + 1;
+				d1 = addday(dfw, i);
+				for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+					begin
+					MatRowGet(DEr, RwCnt, DErw);
+					if DErw.Date == d1 then
+						begin
+						SetFieldValueByName(Listr, "f" & 3 + i, DErw.DPrice, k);  
+						k = k + 1;
+						end;
+					end;	
+				end;
+			// DEr.NrWeek = RepSpec.AccSpec;
+			// DEr.VECode = RepSpec.f1;
+			// DEr.User = Usr.Code;
+			// readfirstmain(DE2r, 1, true);  	
+			// DEr.AOFlag = 1;
+			// DEr.AONr = ErSerNr;
+			// RecordUpdate(DE2r, DEr, false);		
+			//======
+			end;
+		end;
+	end;
+
+return;	
+end;
+//==================================================
+
+global
+function string 250 tSetObjToAO(string UsrCode)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+record ObjVc Objr; 
+string 250 ObjStr, ObjStr1, ObjStr2, ObjStr3;
+record IEmployeeVc IEr;
+
+/*
+Objr.Code = UsrCode;
+readfirstmain(Objr, 1 , true);
+ObjStr1 = Objr.AutoObjects;
+	
+Objr.Code = ObjStr1;
+readfirstmain(Objr, 1 , true);
+ObjStr2 = Objr.AutoObjects;
+
+Objr.Code = ObjStr2;
+readfirstmain(Objr, 1 , true);
+ObjStr3 = Objr.AutoObjects;
+
+if ObjStr1 <> "" then
+	begin
+	ObjStr1 =  ObjStr1  & "," ;
+	end;
+if ObjStr2 <> "" then
+	begin
+	ObjStr2 =  ObjStr2 & ",";
+	end;	
+if ObjStr3 <> "" then
+	begin
+	ObjStr3 =  ObjStr3 & ",";
+	end;		
+	
+ObjStr =  ObjStr3 & ObjStr2  & ObjStr1 & UsrCode & "," &  "NOT" & "," & "O2" & "," & "ZADM" ; // & "," & "" */
+
+IEr.Code = DEr.User;
+readfirstmain(IEr, 1 , true);
+ObjStr = IEr.tObj;
+
+tSetObjToAO = ObjStr;
+Return;
+end;
+
+//==================================================
+global
+updating
+procedure tAddRowToAO(record TempVc Listr, integer i, var val sum, String UsrCode, var record ExpVc Er,
+					var integer d1, var integer d2, var integer d3, var integer d4, var integer d5, var integer d6, var integer d7)
+begin
+row TempVc Listrw;
+row ExpVc Erw;
+record ExpVc E2r;
+record IEmployeeVc IEr;
+integer d;
+val sumK, sumU;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+MatRowGet(Listr, i + 1, Listrw);
+if blank(Listrw.f3) and  blank(Listrw.f4) and blank(Listrw.f5)
+  and blank(Listrw.f6) and blank(Listrw.f7) and  blank(Listrw.f8) and  blank(Listrw.f9) then
+	begin
+	d = d1 + d2 + d3 + d4 + d5 + d6 + d7;
+	SumK = d*15;
+	SumU = Sum - d*15;
+	IEr.Code = UsrCode;
+	ReadFirstMain(IEr, 1, true);
+	if SumK > 0 then
+		begin
+		Erw.AccNumber = IEr.FoodAcc;
+		Erw.Comment = IGetAccName(Erw.AccNumber);
+		Erw.Sum = SumK;
+		Erw.Objects = tSetObjToAO(UsrCode);
+		Erw.VATCode = "2S";
+		matRowInsert(Er, matrowcnt(Er), Erw);
+		CalcExpRow(Er, 0);
+		end;
+	if SumU > 0 then
+		begin
+		Erw.AccNumber = IEr.MotiveCredAcc;
+		Erw.Comment = IGetAccName(Erw.AccNumber);
+		Erw.Sum = SumU;
+		Erw.Objects = UsrCode;
+		Erw.VATCode = "2S";
+		matRowInsert(Er, matrowcnt(Er), Erw);
+		CalcExpRow(Er, 0);
+		end;	
+	sum = 0;
+	d1 = 0;
+	d2 = 0;
+	d3 = 0;
+	d4 = 0;
+	d5 = 0;
+	d6 = 0;
+	d7 = 0;
+	E2r.SerNr = Er.SerNr;
+	ReadFirstMain(E2r, 1, True);
+	RecordUpdate(E2r, Er, false);
+	end;
+RETURN;
+end;
+
+
+//==================================================
+global
+updating
+function Boolean MakeAOFromDinMn(record RcVc RepSpec)//, var record SDVc SDrlongInt Zak
+begin 
+record TempVc Listr;
+row TempVc Listrw;
+boolean TrHr, TrHr1, res;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date dfw; //d1,
+val sum, SumM, SE;
+String 20 UsrCode;
+record ExpVc Er; 
+val frrate, to1, to2, br1, br2;
+integer d, d1, d2, d3, d4, d5, d6, d7;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+RecordNew(Er);
+Er.DocDate = CurrentDate;
+Er.TransDate = CurrentDate;
+Er.SerNr = NextSerNr("ExpVc", Er.TransDate, -1, True, "");
+Er.Person = CurrentUser;
+Er.Name = IGetUserName(CurrentUser);
+Er.CurncyCode = "UAH";
+GetFullCurncyRate(Er.CurncyCode, Er.TransDate, frrate, to1, to2, br1, br2);
+Er.FrRate = frrate;
+Er.ToRateB1 = to1; 
+Er.ToRateB2 = to2;
+Er.BaseRate1 = br1;
+Er.BaseRate2 = br2;
+Er.Sign = CurrentUser;
+RecordStore(Er, true);
+
+tListDinner3(Listr, RepSpec, Er.SerNr);
+sum = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(Listr); RwCnt = RwCnt + 1)
+	begin
+	StartFormat(15);
+	MatRowGet(Listr, RwCnt, Listrw);
+	if nonblank(Listrw.f2) then
+		begin
+		UsrCode = Listrw.f2;
+		end;
+	if blank(Listrw.f2) then
+		begin
+		sum = sum + StringToVal(Listrw.f3, M4Val)+ StringToVal(Listrw.f4, M4Val) 
+					+ StringToVal(Listrw.f5, M4Val) + StringToVal(Listrw.f6, M4Val)
+					+ StringToVal(Listrw.f7, M4Val) + StringToVal(Listrw.f8, M4Val) + StringToVal(Listrw.f9, M4Val);
+		if 	StringToVal(Listrw.f3, M4Val) > 0 then
+			begin
+			d1 = 1;
+			end;
+		if 	StringToVal(Listrw.f4, M4Val) > 0 then
+			begin
+			d2 = 1;
+			end;	
+		if 	StringToVal(Listrw.f5, M4Val) > 0 then
+			begin
+			d3 = 1;
+			end;		
+		if 	StringToVal(Listrw.f6, M4Val) > 0 then
+			begin
+			d4 = 1;
+			end;
+		if 	StringToVal(Listrw.f7, M4Val) > 0 then
+			begin
+			d5 = 1;
+			end;	
+		if 	StringToVal(Listrw.f8, M4Val) > 0 then
+			begin
+			d6 = 1;
+			end;
+    if 	StringToVal(Listrw.f9, M4Val) > 0 then
+      begin
+      d7 = 1;
+      end;
+		end;
+	
+	tAddRowToAO(Listr, RwCnt, sum, UsrCode, Er, d1, d2, d3, d4, d5, d6, d7);
+	end;
+res = true;
+tOpenExp(Er.SerNr);
+MakeAOFromDinMn = res;
+		
+  return;
+end;
+///==========================//==============================//====================================
+global
+procedure tListDinner4(var record TempVc Listr, record tDinnerEmpVc DEr)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+
+ii = 0;
+dfw = tGetFirstDayofWN(DEr.NrWeek);
+if (DEr.OKFlag == 1) then //
+	begin	
+	ii = MatRowCnt(Listr); 
+	Listrw.f2 = DEr.User;
+	MatRowInsert(Listr, ii, Listrw);
+	//=== day i
+	for(i = 0; i <= 7; i = i + 1)
+		begin
+		k = ii + 1;
+		d1 = addday(dfw, i);
+		for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(DEr, RwCnt, DErw);
+			if DErw.Date == d1 then
+				begin
+				SetFieldValueByName(Listr, "f" & 3 + i, DErw.DPrice, k);  
+				k = k + 1;
+				end;
+			end;	
+		end;
+	//======
+	end;
+
+return;	
+end;
+
+//==================================================
+
+global
+updating function Boolean MakeAOFromDE(record tDinnerEmpVc DEr, var record ExpVc Er)
+begin
+Boolean Res;
+val frrate, to1, to2, br1, br2, sum;
+integer d, d1, d2, d3, d4, d5, d6, d7, RwCnt;
+record TempVc Listr;
+row TempVc Listrw;
+string 20 UsrCode;
+record tDinnerEmpVc DE2r;
+
+RecordNew(Er);
+Er.DocDate = CurrentDate;
+Er.TransDate = CurrentDate;
+Er.SerNr = NextSerNr("ExpVc", Er.TransDate, -1, True, "");
+Er.Person = CurrentUser;
+Er.Name = IGetUserName(CurrentUser);
+Er.CurncyCode = "UAH";
+GetFullCurncyRate(Er.CurncyCode, Er.TransDate, frrate, to1, to2, br1, br2);
+Er.FrRate = frrate;
+Er.ToRateB1 = to1; 
+Er.ToRateB2 = to2;
+Er.BaseRate1 = br1;
+Er.BaseRate2 = br2;
+Er.Sign = CurrentUser;
+RecordStore(Er, true);
+
+tListDinner4(Listr,DEr);
+sum = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(Listr); RwCnt = RwCnt + 1)
+	begin
+	StartFormat(15);
+	MatRowGet(Listr, RwCnt, Listrw);
+	if nonblank(Listrw.f2) then
+		begin
+		UsrCode = Listrw.f2;
+		end;
+	if blank(Listrw.f2) then
+		begin
+		sum = sum + StringToVal(Listrw.f3, M4Val)+ StringToVal(Listrw.f4, M4Val) 
+					+ StringToVal(Listrw.f5, M4Val) + StringToVal(Listrw.f6, M4Val)
+					+ StringToVal(Listrw.f7, M4Val) + StringToVal(Listrw.f8, M4Val) + StringToVal(Listrw.f9, M4Val);
+		if 	StringToVal(Listrw.f3, M4Val) > 0 then
+			begin
+			d1 = 1;
+			end;
+		if 	StringToVal(Listrw.f4, M4Val) > 0 then
+			begin
+			d2 = 1;
+			end;	
+		if 	StringToVal(Listrw.f5, M4Val) > 0 then
+			begin
+			d3 = 1;
+			end;		
+		if 	StringToVal(Listrw.f6, M4Val) > 0 then
+			begin
+			d4 = 1;
+			end;
+		if 	StringToVal(Listrw.f7, M4Val) > 0 then
+			begin
+			d5 = 1;
+			end;	
+		if 	StringToVal(Listrw.f8, M4Val) > 0 then
+			begin
+			d6 = 1;
+			end;
+		if 	StringToVal(Listrw.f9, M4Val) > 0 then
+			begin
+			d7 = 1;
+			end;
+		end;
+	
+	tAddRowToAO(Listr, RwCnt, sum, UsrCode, Er, d1, d2, d3, d4, d5, d6, d7);
+	end;
+
+DE2r.NrWeek = DEr.NrWeek;
+DE2r.VECode = DEr.VECode;
+DE2r.User = DEr.User;
+readfirstkey("NoMain", DE2r, 3, true);  
+DEr.AOFlag = 1;
+DEr.AONr = Er.SerNr;
+RecordUpdate(DE2r, DEr, false);	
+	
+Res = true;
+MakeAOFromDE = Res;
+
+RETURN;
+END;

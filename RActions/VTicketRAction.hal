@@ -1,0 +1,535 @@
+external function Longint iMinutesBetween(date, time, date, time);
+
+global 
+updating procedure ActTestTicket(record VTicketVc VTr) 
+begin
+record ActVc Actr;
+row ActVc Actrw;
+record VTicketVc VT2r;
+Integer RwCnt,i;
+string 60 tstr;
+Integer pos,textsize;
+
+SetLangMode(LangRussian,"RUS",2);
+  
+RecordNew(Actr);
+Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+Actr.MainPersons = VTr.CastCode;
+Actr.CCPersons = CurrentUser; //& "," & VTr.CastCode
+Actr.TodoFlag = 1;
+Actr.CalTimeFlag = 1;
+Actr.TransDate = CurrentDate;
+Actr.EndDate = CurrentDate;
+Actr.StartTime = CurrentTime;
+Actr.EndTime = AddSeconds(CurrentTime, 1);
+Actr.PrioLevel = -1;
+Actr.Invalid = 0;
+//Actr.ActType = VTr.ActionType;
+Actr.SerialNr = VTr.SerNr;
+Actr.Comment = "ТЕСТИРОВАНИЕ";
+rwcnt = LineTextCnt(VTr);
+for (i=0;i<rwcnt;i=i+1) 
+  begin
+  tstr = LineTextGet(VTr,i);
+  MatRowGet(Actr, i, Actrw);
+  Actrw.Text = tstr;
+  Actrw.Signature = CurrentUser;
+  MatRowPut(Actr, i, Actrw);
+  end;    
+RecordInsert(Actr, false);
+RecordStore(Actr, false);
+CreateRecordLink(VTr, CurrentCompany, Actr, CurrentCompany);
+
+RETURN;
+end;
+
+global
+function LongInt tFindActTestTicket(record VTicketVc VTr, var LongInt nAct)
+begin
+record ActVc Actr;
+Boolean TrHs;
+
+ResetLoop(Actr);
+Actr.ActType = VTr.ActionType;
+Actr.TransDate = VTr.DateRec;
+while  (LoopBackKey("ActType", Actr, 1, not TrHs)) 
+  begin
+  TrHs = (StringToLongInt(Actr.SerialNr) == VTr.SerNr) and blank(Actr.ActType); 
+  if TrHs then
+    begin
+    if (Actr.OKFlag == 1) then
+		begin
+		tFindActTestTicket = 1;
+		nAct = Actr.SerNr;
+		end
+    else
+		begin
+		tFindActTestTicket = 0; 
+		nAct = Actr.SerNr;
+		end;
+    end;
+  end;
+
+return;
+end;
+
+
+global 
+updating procedure ActAfterTicket(record VTicketVc VTr) 
+begin
+record ActVc Actr;
+row ActVc Actrw;
+record VTicketVc VT2r;
+Integer RwCnt,i;
+string 60 tstr;
+Integer pos,textsize;
+
+SetLangMode(LangRussian,"RUS",2);
+  
+RecordNew(Actr);
+Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+//stopalert(Actr.SerNr);
+Actr.MainPersons = VTr.ServCode;
+Actr.CCPersons = CurrentUser;
+Actr.TodoFlag = 1;
+Actr.CalTimeFlag = 1;
+Actr.TransDate = CurrentDate;
+Actr.EndDate = CurrentDate;
+Actr.StartTime = CurrentTime;
+Actr.EndTime = AddSeconds(CurrentTime, 1);
+Actr.PrioLevel = -1;
+Actr.Invalid = 0;
+Actr.ActType = VTr.ActionType;
+Actr.SerialNr = VTr.SerNr;
+if blank(VTr.ActNr) then 
+  begin
+  Actr.Comment = VTr.Comment;
+  end
+else
+  begin  
+  Actr.Comment = VTr.Comment & "  НЕКАЧЕСТВЕННОЕ ИСПОЛНЕНИЕ";
+  end;
+     
+rwcnt = LineTextCnt(VTr);
+for (i=0;i<rwcnt;i=i+1) 
+  begin
+  tstr = LineTextGet(VTr,i);
+  MatRowGet(Actr, i, Actrw);
+  Actrw.Text = tstr;
+  Actrw.Signature = CurrentUser;
+  MatRowPut(Actr, i, Actrw);
+  end;    
+RecordInsert(Actr, false);
+RecordStore(Actr, false);
+CreateRecordLink(VTr, CurrentCompany, Actr, CurrentCompany);
+
+VTr.ActNr = Actr.SerNr;
+RETURN;
+end;
+
+
+global
+function LongInt tFindActFromTicket(record VTicketVc VTr, var LongInt SumTimeAct, var LongInt nAct)
+begin
+record ActVc Actr;
+Boolean TrHs;
+
+SumTimeAct = 0;
+ResetLoop(Actr);
+Actr.ActType = VTr.ActionType;
+Actr.TransDate = VTr.DateRec;
+
+while  (LoopBackKey("ActType", Actr, 2, not TrHs)) 
+  begin
+  TrHs = (StringToLongInt(Actr.SerialNr) == VTr.SerNr) and (Actr.ActType == VTr.ActionType) and nonblank(Actr.ActType); 
+  if TrHs then
+    begin
+    if (Actr.OKFlag == 1) then
+      begin
+      SumTimeAct = iMinutesBetween(VTr.DateRec, VTr.TimeRec, Actr.EndDate, Actr.EndTime);  
+      tFindActFromTicket = 1;
+	  nAct = Actr.SerNr;
+      end
+    else
+      begin
+      tFindActFromTicket = 0;
+	  nAct = Actr.SerNr;
+      end;
+    end;
+  end;
+end;
+
+updating procedure CreateAlarmFromTicket(record VTicketVc VTr) // Напоминание о тикете
+begin
+record AlarmVc Alarmr, Alarm2r;
+record UserVc USr;
+Boolean TrHs;
+
+ResetLoop(USr);
+USr.Code = blankval;
+TrHs = True;
+while LoopMain(USr, 1, True)
+  begin
+  if (USr.Department == VTr.ServDepart) then
+    begin
+    RecordNew(Alarmr);
+    Alarmr.MainPersons = USr.Code;
+    Alarmr.LTxtCode = "Новый тикет: ";
+    Alarmr.Comment = VTr.Comment;
+    Alarmr.OKFlag = 0;
+    Alarmr.AlarmType = 1;
+	Alarmr.TransDate = VTr.DateSend;
+    Alarmr.TransTime = VTr.TimeSend;
+    Alarmr.ActSerNr = VTr.SerNr;
+    Alarmr.CompNo = CurrentCompany;
+    Alarmr.SerNr = NextSerNr("AlarmVc", Alarmr.TransDate, -1, false, "");
+    if (Alarmr.SerNr > 0) then 
+      begin
+      Alarm2r.SerNr = Alarmr.SerNr;
+      if ReadFirstMain(Alarm2r, 1, True) then
+        begin
+        RecordUpdate(Alarm2r, Alarmr, false);
+        end 
+      else
+        begin
+        RecordStore(Alarmr, false);
+        end;
+      end;
+    end;
+  end;
+RETURN;
+end;
+
+global
+function LongInt tUserInVTicketSet(string curuser)
+BEGIN
+record VTicketSetBlock VTSb;
+row VTicketSetBlock VTSbr;
+Integer RwCnt;
+
+tUserInVTicketSet = 0;
+BlockLoad(VTSb);
+for (RwCnt = 0; RwCnt < MatRowCnt(VTSb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(VTSb, RwCnt, VTSbr);
+	if (VTSbr.Code == curuser) then
+		begin
+		tUserInVTicketSet = 1;
+		end;
+	end;
+RETURN;
+END;
+
+global
+function Longint VTicketVcRecordDefaults(var record VTicketVc VTr, record VTicketVc VT2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+
+if (SingleUserMode) then 
+  begin
+  VTr.SerNr = NextSerNr("VTicketVc", CurrentDate, -1, false, "");
+  end;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+if (tUserInVTicketSet(USr.Code) <> 1) then
+begin
+VTr.VarOfInf = "Тикет";
+VTr.CastCode = USr.Code;
+VTr.CastName = USr.Name;
+VTr.UsrGroup = USr.SalesGroup;
+end;
+VTicketVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt VTicketVcRecordDuplicate(var record VTicketVc VTr, record VTicketVc VT2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+
+if (SingleUserMode) then 
+  begin
+  VTr.SerNr = NextSerNr("VTicketVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  VTr.SerNr = -1;
+  end;
+  
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.ParentNr = blankval;
+VTr.SendFlag = 0;
+VTr.ServCode = blankval;
+VTr.DateRec = "";
+VTr.DateSol = "";
+VTr.TimeRec = "";
+VTr.TimeSol = "";
+VTr.SendFlag = 0;
+VTr.RecFlag = 0;
+VTr.SolFlag = 0;
+VTr.ServName = blankval;
+VTr.ServAppoint = blankval;
+VTr.ServDepart = blankval;
+VTr.TestFlag = 0;
+VTr.TestDate = "";
+VTr.ActNr = blankval;
+VTr.CostTime = -1;
+VTicketVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt VTicketVcRecordRemoveTest(var record VTicketVc VTr, record VTicketVc VT2r, LongInt long3, LongInt long4)
+BEGIN
+record UserVc USr;
+
+VTicketVcRecordRemoveTest = 1;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if ((VTr.SendFlag <> 0) ) and (not UserCanAction("UnOKAll",True)) then 
+  begin
+  VTicketVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+global
+function LongInt VTicketVcRecordCheck(var record VTicketVc VTr, record VTicketVc VT2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res, SumTime, nAct;
+record UserVc USr;
+Integer insertmode,updatemode;
+Boolean TrHs;
+string 255 tstr, tstr2;
+Integer pos, textsize;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+TrHs = False;
+
+if (stat <> updatemode) and (VTr.SerNr < 1) then
+  begin
+  VTr.SerNr = NextSerNr("VTicketVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (VTr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+if (VT2r.SolFlag == 1) then
+  begin
+  res = -1;
+  end;
+
+pos = 0;  
+textsize = SizeTextCnt(VT2r);
+while (pos<textsize) 
+	begin
+	tstr2 = StringFromText(VT2r,pos,1);
+	tstr = StringFromText(VTr,pos,1);
+	pos = pos + len(tstr2);
+	if ((tstr2)<>(tstr)) then 
+		begin
+		res = -1;
+		end;	
+	end;
+// if (stat == updatemode) and
+ // //(VTr.UsrCode <> USr.Code) and  (VTr.ServCode <> USr.Code) and nonblank(VTr.ServCode) then  
+    // begin
+    // res = -1;
+    // end;
+if (res <> -1) then
+  begin
+	  if (VTr.SendFlag == 0) and (VT2r.SendFlag <> 0)and (VT2r.RecFlag <> 0) then 
+		begin
+		res = -1;
+		end;
+		
+	  if (VTr.SolFlag == 0) and (VT2r.SolFlag <> 0) then
+		begin
+		res = -1;
+		end;
+	  if (VTr.ServDepart <> USr.Department) and nonblank(VT2r.ServDepart) and (VT2r.SendFlag == 1) then
+		begin
+		res = -1;
+		
+		end;
+	  if blank(VTr.ServDepart) and ((VTr.SendFlag + VTr.RecFlag + VTr.SolFlag) <> 0) then
+		begin
+		res = -1;
+		end;
+  end;
+  
+  //---универсальный тикет :)
+  // if (tUserInVTicketSet(USr.Code) <> 1) and (USr.Department == VTr.ServDepart) then
+	// begin
+	// RecordCheckError("", VTr.ServDepart, -1, "ServDepart");      
+	// res = -1;
+	// end; 
+  // if (tUserInVTicketSet(USr.Code) <> 1) and blank(VTr.ServDepart) then
+	// begin
+	// RecordCheckError("", VTr.ServDepart, -1, "ServDepart");      
+	// res = -1;
+	// end;
+	
+ if blank(VTr.ServDepart) or blank(VTr.CastCode)  then
+	begin    
+	res = -1;
+	end;
+	
+  if (tUserInVTicketSet(USr.Code) <> 1) and (VTr.SendFlag <> VT2r.SendFlag) and (VTr.SendFlag == 1) then
+	begin
+	res = -1;
+	end;
+	
+  if (tUserInVTicketSet(USr.Code) <> 1) and (VTr.TestFlag <> VT2r.TestFlag)  and (VTr.TestFlag == 1)  then
+	begin
+	res = -1;
+	end;	
+	
+if (tUserInVTicketSet(USr.Code) <> 1) and (VTr.SolFlag <> VT2r.SolFlag) and (VTr.SolFlag == 1) then
+	begin
+	res = -1;
+	end;
+if (tUserInVTicketSet(USr.Code) <> 1) and (VTr.PlanDate <> VT2r.PlanDate) then
+	begin
+	res = -1;
+	end;
+
+if (USr.Department <> VTr.ServDepart) and (VTr.SendFlag <> VT2r.SendFlag) and (VTr.SendFlag == 1) then
+	begin
+	res = -1;
+	end;
+	
+	
+ if (tFindActFromTicket(VTr, SumTime, nAct) <> 1)  and (VTr.TestFlag <> VT2r.TestFlag)  and (VTr.TestFlag == 1) then
+	begin
+	stopalert("Деятельность не закрыта!");
+	res = -1;
+	end;
+  
+  
+  if (blank(VTr.ServCode) or blank(VTr.TypeOfTicket) or blank(VTr.ActionType) or blank(VTr.PlanDate) ) and (VTr.SendFlag == 1) then
+	begin
+    res = -1;
+    end;
+
+  if (VTr.PlanDate <> VT2r.PlanDate) and (VTr.PlanDate < CurrentDate)  then
+    begin
+    RecordCheckError(12001,VTr.PlanDate,-1,"PlanDate");      
+    res = -1; 
+    end;
+  	
+  if  (VTr.SendFlag == 0) and (VTr.TestFlag == 1) then
+	begin
+	res = -1;
+	end;
+	
+if (res <> -1) then
+  begin
+  if (VTr.SolFlag <> VT2r.SolFlag) and (VTr.SolFlag == 1) then
+	  begin
+	  if (tFindActTestTicket(VTr, nAct) == 1) and (tFindActFromTicket(VTr, SumTime, nAct) == 1) then 
+		begin
+		VTr.DateSol = CurrentDate;
+		VTr.TimeSol = CurrentTime;
+		VTr.CostTime = SumTime;  
+		end
+	  else
+		begin
+		res = -1; 
+		stopalert("Последняя деятельность не закрыта!");
+		end;
+	  end;
+  
+ 
+  if (VTr.TestFlag <> VT2r.TestFlag) and (VTr.TestFlag == 1) then
+  	begin
+	VTr.TestDate = CurrentDate;
+	end;
+   // if (VTr.RecFlag<> VT2r.RecFlag) and (VTr.RecFlag == 1) then
+     // begin
+     // VTr.DateRec = CurrentDate;
+     // VTr.TimeRec = CurrentTime;
+    // VTr.ServCode = USr.Code;
+    // VTr.ServName = USr.Name;
+    // VTr.ServAppoint = USr.StateJob;
+    // VTr.ServDepart = USr.Department;
+    // end;
+  
+    
+  if (VTr.SendFlag == 1) and (VTr.RecFlag == 0) then
+    begin    
+      VTr.DateRec = CurrentDate;
+      VTr.TimeRec = CurrentTime;
+      VTr.RecFlag = 1;
+      VTr.TestFlag = 0;
+    end;
+	
+ if (SizeTextCnt(VTr) > SizeTextCnt(VT2r))  then
+	 begin
+	 tstr = "(" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime & ")" ;
+	 AddToText(tstr, VTr);
+	 end;
+	
+  end;
+VTicketVcRecordCheck = res;
+RETURN;
+end;
+
+global updating 
+function LongInt VTicketVcRecordSave(var record VTicketVc VTr,record VTicketVc VT2r,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+string 255 tstr;
+
+tstr = "(" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime & ")" ;
+AddToText(tstr, VTr);
+	 
+if (VTr.SendFlag == 1) and (VTr.TestFlag == 0) and (VTr.RecFlag == 1) then
+  begin
+  //CreateAlarmFromTicket(VTr);
+  ActAfterTicket(VTr); 
+  end;
+VTicketVcRecordSave = res;  
+RETURN;
+end;
+
+global updating 
+function LongInt VTicketVcRecordUpdate(var record VTicketVc VTr,record VTicketVc VT2r,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+
+if (VTr.SendFlag == 1) and (VTr.TestFlag == 0) and (VTr.RecFlag <> VT2r.RecFlag) and (VTr.RecFlag == 1)  then
+  begin
+  ActAfterTicket(VTr); 
+  end;
+if (VTr.TestFlag <> VT2r.TestFlag) and (VTr.TestFlag == 1) then
+	begin
+	 ActTestTicket(VTr);
+	end;
+
+VTicketVcRecordUpdate = res;  
+RETURN;
+end;

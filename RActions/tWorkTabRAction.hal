@@ -1,0 +1,468 @@
+external inner function Time TimeDiff(Time, Time);
+external inner function string 255 MonthName(Date);
+external inner function roundmode SetRoundModeD(Integer);
+external function date tGetFirstDayofWN(integer);
+//external inner procedure Lowercase(string, var string);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+external function string 255 IGetUserName(string);
+
+global
+function Boolean AmIBoss()
+begin
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res;
+
+Hr.Code = CurrentUser;
+AmIBoss = ReadFirstMain(Hr, 1, True);
+RETURN;
+end;
+
+global
+function Boolean AmIBossDep(string Department)
+begin
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res, TrHs;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+Hr.Code = CurrentUser;
+TrHs = ReadFirstMain(Hr, 1, True);
+res = (TrHs and SetInSet(Department, Hr.Department)) or (USr.AccessGroup == "UCHR");
+AmIBossDep = res;
+RETURN;
+end;
+
+global
+function Longint OperShedBlockCheck(var record OperShedBlock OB, record OperShedBlock OB2, LongInt stat, LongInt long4)
+begin
+row OperShedBlock OBr;
+Integer RwCnt;
+Time DiffTime;
+
+for (RwCnt = 0; RwCnt < MatRowCnt(OB); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(OB, RwCnt, OBr);
+	if NonblankTime(OBr.TimeStart) and NonblankTime(OBr.TimeEnd) then
+		begin
+		DiffTime = TimeDiff(OBr.TimeStart, OBr.TimeEnd);
+		OBr.Hours = GetHour(DiffTime);
+		OBr.Minutes = GetMinute(DiffTime) + OBr.Hours * 60;
+		MatRowPut(OB, RwCnt, OBr);
+		end;
+	end;
+OperShedBlockCheck = 0;
+RETURN;
+end;
+
+global
+function Longint tOperSWDaysVcRecordCheck(var record tOperSWDaysVc ODr, record tOperSWDaysVc OD2r, LongInt stat, LongInt long4)
+begin
+Date UDate;
+
+//UDate = StringToDate("01:" & ODr.CWeek & ":" & ODr.CYear);
+//ODr.Comment = MonthName(UDate) & " " & ODr.CYear;
+ODr.Comment = addday(tGetFirstDayofWN(ODr.CWeek),2) & ":" & addday(tGetFirstDayofWN(ODr.CWeek), 8);
+tOperSWDaysVcRecordCheck = 0;
+RETURN;
+end;
+
+
+function string 20 tUserOperShed(string UserCode)
+begin
+record tPostUserVc PUr;
+
+PUr.UserCode = UserCode;
+readfirstmain(PUr, 1, true);
+tUserOperShed = PUr.OperShed;
+
+return;
+end;
+
+global
+procedure tCountSWPercent(var record tEmpWSVc Er, string EmpCode, var val Minutes, var val Hours, var val Days, var val percent)//
+begin
+row tEmpWSVc Erw;
+Integer RwCnt;
+val WMinutes;
+
+for(RwCnt = 0; RwCnt < MatRowCnt(Er); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Er, RwCnt, Erw);
+	if (Erw.ovst <> 1) and (Erw.EmpCode == EmpCode) and (Erw.stp <> 3) then
+		begin
+		WMinutes = Erw.WMinutes;
+		RwCnt = MatRowCnt(Er);
+		end;
+ end;
+for(RwCnt = 0; RwCnt < MatRowCnt(Er); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Er, RwCnt, Erw);
+	if (Erw.ovst <> 1) and (Erw.EmpCode == EmpCode) then
+		begin
+		WMinutes = Erw.WMinutes;
+		Minutes = Minutes + Erw.cHours * 60 + Erw.cMinutes + Erw.aHours * 60 + Erw.aMinutes;
+		Hours = Hours + Erw.cHours + Erw.aHours;
+		if (Erw.stp == 1) then
+			begin
+			Days = Days + 1;
+			end;
+		end;
+	end;
+	percent = Minutes / WMinutes * 100.0;
+
+
+RETURN;
+end;
+
+global
+function Longint tEmpWSVcRecordDefaults(var record tEmpWSVc Er, record tEmpWSVc E2r, LongInt stat, LongInt long4)
+begin
+Date UDate;
+Integer res;
+record UserVc USr;
+row tEmpWSVc Erw;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+Er.SalesGroup = USr.SalesGroup;
+Er.Superior = CurrentUser;
+
+tEmpWSVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function Longint tEmpWSVcRecordCheck(var record tEmpWSVc Er, record tEmpWSVc E2r, LongInt stat, LongInt long4)
+begin
+Date UDate;
+Integer res;
+record UserVc USr;
+record HRInspectorVc HRr;
+row tEmpWSVc Erw;
+Integer RwCnt, MaxRow;
+
+//UDate = StringToDate("01:" & Er.WorkWeek & ":" & Er.WorkYear);
+if blank(Er.Comment) then
+	begin
+	Er.Comment = addday(tGetFirstDayofWN(Er.WorkWeek ),2) & ":" & addday(tGetFirstDayofWN(Er.WorkWeek ), 8);
+	end;
+if (AmIBoss and (Er.DirFlag <> 1)) then
+	begin
+	res = 0;
+	end;
+if (res <> 0) then
+	begin
+	HRr.Code = CurrentUser;
+	ReadFirstMain(HRr, 1, True);
+	if (SetInSet(Er.Department, HRr.Department) and (Er.DirFlag <> 1) and (Er.SuperiorFlag == 1)) then
+		begin
+		res = 0;
+		end;
+	end;
+if (res <> 0) then
+	begin
+	USr.Code = CurrentUser;
+	ReadFirstMain(USr, 1, True);
+	if (USr.AccessGroup == "UCHR") then
+		begin
+		res = 0;
+		end;
+	end;
+//if ((not SetInSet(Er.WorkMonth, "1,2,3,4,5,6,7,8,9,10,11,12")) or blank(Er.WorkMonth)) then
+//	begin
+//	res = -1;
+//	end;
+if (Er.WorkYear < 1) then
+	begin
+	res = -1;
+	end;
+//if (nonblank(Er.OperShed) and nonblank(E2r.OperShed) and (E2r.OperShed <> Er.OperShed) and (MatRowCnt(Er) <> 0)) then
+//	begin
+//	res = -1;
+//	end;
+//if blank(Er.OperShed) then
+//	begin
+//	res = -1;
+//	end;
+if (res == 0) then
+	begin
+	for(RwCnt = 0; RwCnt < MatRowCnt(Er); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Er, RwCnt, Erw);
+		if ((Erw.stp == 2) and blank(Erw.TimeType)) then
+			begin
+			res = -1;
+			end;
+		if (BlankDate(Erw.cDate) and (Erw.stp == 1)) then
+			begin
+			MatRowDelete(Er, RwCnt);
+			RwCnt = RwCnt - 1;
+			end;
+		end;
+	//CountSWPercent(Er);
+	end;
+
+tEmpWSVcRecordCheck = res;
+RETURN;
+end;
+
+procedure CountHoursAdm(var record RcVc RepSpec, record tEmpWSVc Er, string EmpCode )
+begin
+row tEmpWSVc Erw;
+Integer RwCnt;
+
+RepSpec.vals0 = 0;
+RepSpec.vals1 = 0;
+RepSpec.vals2 = 0;
+RepSpec.vals3 = 0;
+SetLangMode(LangRussian, "RUS", 2);
+for(RwCnt = 0; RwCnt < MatRowCnt(Er); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Er, RwCnt, Erw);
+	if ((Erw.stp == 2) and (Erw.ovst == 0)) and (Erw.EmpCode == EmpCode) then
+		begin
+		switch LowerCase(Erw.TimeType)
+			begin
+			case "к": RepSpec.vals0 = RepSpec.vals0 + Erw.aHours * 60 + Erw.aMinutes;
+			case "о": RepSpec.vals1 = RepSpec.vals1 + Erw.aHours * 60 + Erw.aMinutes;
+			case "б": RepSpec.vals2 = RepSpec.vals2 + Erw.aHours * 60 + Erw.aMinutes;
+			case "а": RepSpec.FirstVer = RepSpec.FirstVer + Erw.aHours * 60 + Erw.aMinutes;
+			case "у": RepSpec.vals3 = RepSpec.vals3 + Erw.aHours * 60 + Erw.aMinutes;
+			case "р": RepSpec.vals4 = RepSpec.vals4 + Erw.aHours * 60 + Erw.aMinutes;
+			end;
+		end;
+	end;
+
+RETURN;
+end;
+
+procedure EmpWSDetailRn(record tEmpWSVc Er, string EmpCode)
+begin
+row tEmpWSVc Erw;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+EndFormat;
+for(RwCnt = 0; RwCnt < MatRowCnt(Er); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Er, RwCnt, Erw);
+	StartFormat(15);
+	if (Erw.EmpCode == EmpCode) then
+	  begin
+      if (Erw.stp == 1) then
+        begin
+        OutString(40, 0, Erw.cDate, False);
+        OutString(100, 0, Erw.cTime, False);
+        OutString(200, 0, Erw.cHours, True);
+        OutString(250, 0, Erw.cMinutes, True);
+        end;
+    if (Erw.stp == 2) then
+        begin
+        OutStringOvst(80, 0, "ОПРАВДАНИЕ: ", False, Erw.ovst);
+        OutStringOvst(200, 0, Erw.aHours, True, Erw.ovst);
+        OutStringOvst(250, 0, Erw.aMinutes, True, Erw.ovst);
+        OutStringOvst(300, 0, Erw.TimeType, True, Erw.ovst);
+        end;
+      OutString(320, 0, Erw.aComment, False);
+      EndFormat;
+      end;
+	end;
+RETURN;
+end;
+
+function string 20 tUserOperShed(string UserCode)
+begin
+record tPostUserVc PUr;
+
+PUr.UserCode = UserCode;
+readfirstmain(PUr, 1, true);
+tUserOperShed = PUr.OperShed;
+
+return;
+end;
+
+function val GetWorkHoursPlan(string UserCode)
+begin
+record OperShedBlock OSb;
+row OperShedBlock OSbr;
+Integer RwCnt;
+Boolean TrHs;
+
+BlockLoad(OSb);
+for(RwCnt = 0; (RwCnt < MatRowCnt(OSb) and (not TrHs)); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(OSb, RwCnt, OSbr);
+	TrHs = (OSbr.Comment == tUserOperShed(UserCode));
+	end;
+if TrHs then
+	begin
+	GetWorkHoursPlan = OSbr.Hours;
+	end;
+RETURN;
+end;
+
+global
+procedure tEmpWSRn(record RcVc RepSpec)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+record UserVc USr;
+record DepVc Dr;
+val comH, illH, vacH, stuH, worH, MinTmp, Percent, illAH, TempInt, WorkHoursPlan;
+Boolean TrHs;
+Integer Cnt, RwCnt;
+LongInt maxweek;
+
+maxweek = 53;
+
+if nonblank(RepSpec.f1)  then //and AmIBossDep(RepSpec.f1)
+	begin
+	SetLangMode(LangRussian, "RUS", 2);
+	StartReportNoHeaderJob("Табель учета рабочего времени за неделю");
+	Dr.Code = RepSpec.f1;
+	ReadFirstMain(Dr, 1, True);
+	StartFormat(15);
+	if (RepSpec.flags[1] == 1) then
+		begin
+		OutString(40, 0, "УТВЕРЖДЕНО", False);
+		end;
+	OutString(400, 0,  Dr.Description , True);
+	EndFormat;
+	if (RepSpec.flags[1] == 1) then
+		begin
+		StartFormat(15);
+		OutString(40, 0, "Старов З.Р.", False);
+		EndFormat;
+		end;
+	StartFormat(15);
+	OutString(100, 0, "ТАБЕЛЬ УЧЕТА РАБОЧЕГО ВРЕМЕНИ за неделю № " & RepSpec.frc & "  " & GetYear(RepSpec.sStartDate) & " года", False);
+	EndFormat;
+	Black_Divider(0, 1);
+	StartFormat(15);
+	OutString(40, 0, "Код", True);
+	OutString(50, 0, "Ф.И.О.", False);
+	//OutString(300, 0, "Норма час", True);
+	//OutString(400, 0, "Факт час", True);
+	OutString(450, 0, "%", True);
+	EndFormat;
+	Black_Divider(0, 1);
+	ResetLoop(Er);
+	Er.Department = RepSpec.f1;
+	Er.WorkWeek =  RepSpec.frc;
+	Er.WorkYear = RepSpec.long1;
+	TrHs = True;
+	while LoopMain(Er, 3, TrHs)
+		begin
+		TrHs = (Er.Department == RepSpec.f1) and (Er.WorkWeek == RepSpec.frc) and (Er.WorkYear == RepSpec.long1);
+    if (TrHs and (Er.DirFlag == RepSpec.flags[1])) then
+        begin
+        for(RwCnt = 0; (RwCnt < MatRowCnt(Er)); RwCnt = RwCnt + 1)
+            begin
+            matrowget(Er, RwCnt, Erw);
+            StartFormat(15);
+            if (Erw.stp == 3) then // and (Erw.EmpCode == PUr.UserCode) then
+                begin
+               // OutString(40, 0, Erw.EmpCode, True);
+                OutString(40, "DbltEmpWSVc",Erw.EmpCode, True);
+                OutString(50, 0, IGetUserName(Erw.EmpCode), False);
+               /*  //OutString(50, 0, Er.EmpName, False);
+                OutStringID(50, "DbltEmpWSVc", Er.EmpName, False, Er.EmpCode);
+                MinTmp = Erw.WMinutes;
+                OutVal(300, 0,  MinTmp / 60, M4Val, True);
+                MinTmp = Erw.FMinutes;
+                OutVal(400, 0, MinTmp / 60, M4Val, True);*/
+                OutString(450, 0, Erw.Percent, True);
+                Percent = Percent + Erw.Percent;
+                Cnt = Cnt + 1;
+                EndFormat;
+                if (RepSpec.flags[0] == 1) then
+                    begin
+                    EmpWSDetailRn(Er, Erw.EmpCode);
+                    end;
+                RepSpec.FirstVer = 0;
+                CountHoursAdm(RepSpec, Er, Erw.EmpCode);
+                Gray_Divider(120, 480);
+                StartFormat(15);
+                OutString(120, 0, "К: " & RepSpec.vals0 / 60, False);
+                comH = ComH + RepSpec.vals0 / 60;
+                OutString(180, 0, "О: " & RepSpec.vals1 / 60, False);
+                vacH = vacH + RepSpec.vals1 / 60;
+                OutString(240, 0, "Б: "  & RepSpec.vals2 / 60, False);
+                illH = illH + RepSpec.vals2 / 60;
+                OutString(300, 0, "У: " & RepSpec.vals3 / 60, False);
+                stuH = stuH + RepSpec.vals3 / 60;
+                OutString(370, 0, "Р: " & RepSpec.vals4 / 60, False);
+                worH = worH + RepSpec.vals4 / 60;
+                TempInt = RepSpec.FirstVer;
+                OutString(420, 0, "А: " & TempInt / 60, False);
+                illAH = illAH + TempInt / 60;
+                EndFormat;
+                WorkHoursPlan = GetWorkHoursPlan(Erw.EmpCode);
+                if (WorkHoursPlan > 0) then
+                    begin
+                    Gray_Divider(220, 480);
+                    StartFormat(15);
+                    OutString(220, 0, "Дней больничных:", False);
+                    OutVal(380, 0, Round(RepSpec.vals2 / (60 * WorkHoursPlan), SetRoundModeD(0)), M4Val, True);
+                    EndFormat;
+                    Gray_Divider(220, 480);
+                    StartFormat(15);
+                    OutString(220, 0, "Дней отпускных:", False);
+                    OutVal(380, 0, Round(RepSpec.vals1 / (60 * WorkHoursPlan), SetRoundModeD(0)), M4Val, True);
+                    EndFormat;
+                    end;
+                Black_Divider(0, 1);
+                end;
+            end;
+        end;
+		end;
+	StartFormat(15);
+	OutString(50, 0, "Командировочных:", False);
+	OutVal(200, 0, comH, M4Val, True);
+	EndFormat;
+	StartFormat(15);
+	OutString(50, 0, "Отпускных:", False);
+	OutVal(200, 0, vacH, M4Val, True);
+	EndFormat;
+	StartFormat(15);
+	OutString(50, 0, "Больничных:", False);
+	OutVal(200, 0, illAH, M4Val, True);
+	EndFormat;
+	StartFormat(15);
+	OutString(50, 0, "По Б/л:", False);
+	OutVal(200, 0, illH, M4Val, True);
+	EndFormat;
+	StartFormat(15);
+	OutString(50, 0, "Учебных:", False);
+	OutVal(200, 0, stuH, M4Val, True);
+	EndFormat;
+	StartFormat(15);
+	OutString(50, 0, "По раб.вопросам:", False);
+	OutVal(200, 0, worH, M4Val, True);
+	EndFormat;
+	StartFormat(15);
+	OutString(50, 0, "% по подразделению:", False);
+	OutVal(200, 0, Percent / Cnt, M4Val, True);
+	EndFormat;
+	EndFormat;
+	EndFormat;
+	USr.Code = CurrentUser;
+	ReadFirstMain(USr, 1, True);
+	if ((USr.AccessGroup == "UCHR") and (RepSpec.flags[1] == 0) and (Percent > 0)) then
+		begin
+		StartFormat(15);
+		OutString(450, "DblSigntEmpWSVc", "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР", True);
+		EndFormat;
+		end;
+	EndJob;
+	end else
+	begin
+	MessageBox(0, "Возможен просмотр только своего подразделения!");
+	end;
+RETURN;
+end;
+

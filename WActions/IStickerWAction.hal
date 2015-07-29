@@ -1,0 +1,168 @@
+//Регистр товарных стикеров
+
+external function string 255 IGetAndTruncStrWrap(var string, integer);
+
+//===============================================
+global
+function Boolean IStickerDClassAfterEditField(Integer wn,string FieldName,Integer fn,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record IStickerVc IStickerr;
+  record INVc INr;
+
+  res = (changed != 0);
+  if res then
+    begin
+      switch (FieldName)
+        begin
+          case "ArtCode":
+            GetWindowRecord(wn,IStickerr);
+            INr.Code = IStickerr.ArtCode;
+            res = ReadFirstMain(INr,1,true);
+            if res then
+              begin
+                IStickerr.ArtName = INr.Name;
+                IStickerr.Group = INr.Group;
+                IStickerr.DispGroups = INr.DispGroups;
+              end
+            else
+              begin
+                IStickerr.ArtCode = blankval;
+                IStickerr.ArtName = blankval;
+                IStickerr.Group = blankval;
+                IStickerr.DispGroups = blankval;
+              end;
+            PutWindowRecord(wn,IStickerr);
+          end;
+      end;
+  IStickerDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+//(Код товара, кол-во стикеров, предпросмотр/печать)
+global
+procedure IStickerPrint(string ArtCode, integer cnt, boolean previewf)
+begin
+  record IStickerVc IStickerr;
+  integer i;
+
+  IStickerr.ArtCode = ArtCode;
+  if ReadFirstMain(IStickerr,1,true) then
+    begin
+      for (i=0; i<cnt; i=i+1)
+        begin
+          PrintDocument(IStickerr,"IStickerForm",previewf);
+        end;
+    end;
+  Return;
+end;
+
+//====================================================================
+// Просмотр/Печать из IStickerDClass
+global
+procedure IStickerDClassPrint(Integer wn,Boolean previewf)
+begin
+  record IStickerVc IStickerr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  GetWindowRecord(wn,IStickerr);
+
+  if nonblank(IStickerr.ArtCode) then
+    begin
+      PrintDocument(IStickerr,"IStickerForm",previewf);
+    end
+  else
+    begin
+      MessageBox(0, "Сначала сохраните документ!");
+    end;
+  Return;
+end;
+
+//====================================================================
+//Документ стикера
+global
+procedure DoIStickerForm(record RcVc RepSpec, record IStickerVc IStickerr)
+begin
+  record DocVc Docr;
+  integer rownr;
+  integer Pos, Cnt;
+  longint Size;
+  string 255 s, tstr;
+  
+  SetLangMode(LangRussian,"RUS",2);
+  Docr.Code = IStickerr.FormCode;
+  if ReadFirstMain(Docr, 1, true) then
+    begin
+      OpenForm(Docr.Code);
+
+      rownr = 0;
+      Size = SizeTextCnt(IStickerr);
+      Pos = 0;
+      while (Pos < Size) and (rownr < Docr.nrOfMatrixLinesOnly)
+        begin
+          Cnt = IStickerr.MaxLineLen - Len(tstr) + 1;
+          tstr = tstr & StringFromText(IStickerr, Pos, Cnt);
+          Pos = Pos + Cnt;
+          s = IGetAndTruncStrWrap(tstr, IStickerr.MaxLineLen);
+
+          OUTFORMFIELD("F_ITEXT", s);
+          EndFormRow;
+          rownr = rownr + 1;
+        end;
+      
+      if nonblank(tstr) then //Выводим остатки буфера
+        begin
+          OUTFORMFIELD("F_ITEXT", tstr);
+          EndFormRow;
+          rownr = rownr + 1;
+        end;
+      CloseForm;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Печать стикеров из отгрузок
+global
+procedure SHIStickerDsm() 
+begin
+  record SHVc SHr;
+  row SHVc SHrw;
+  integer i, wn;
+  
+  wn = CurWindow;
+  if (WindowState(wn)==0) then
+    begin
+      GetWindowRecord(wn,SHr);
+      for (i=0; i<MatRowCnt(SHr); i=i+1)
+        begin
+          MatRowGet(SHr,i,SHrw);
+          IStickerPrint(SHrw.ArtCode, SHrw.Ship, false);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Печать стикеров из перемещений
+global
+procedure StockMovIStickerDsm()
+begin
+  record StockMovVc SMr;
+  row StockMovVc SMrw;
+  integer i, wn;
+  
+  wn = CurWindow;
+  if (WindowState(wn)==0) then
+    begin
+      GetWindowRecord(wn,SMr);
+      for (i=0; i<MatRowCnt(SMr); i=i+1)
+        begin
+          MatRowGet(SMr,i,SMrw);
+          IStickerPrint(SMrw.ArtCode, SMrw.SentQuant, false);
+        end;
+    end;
+  Return;
+end;

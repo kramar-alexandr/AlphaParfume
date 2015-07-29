@@ -1,0 +1,137 @@
+
+function val GetIVDiscSum(record IVVc IVr)
+begin
+  row IVVc IVrw;
+  integer i, rowcnt;
+  val res;
+  
+  res = IVr.DiscSum;
+  rowcnt = MatRowCnt(IVr);
+  for (i=0; i<rowcnt; i=i+1)
+    begin
+      MatRowGet(IVr,i,IVrw);
+      res = res + Round(IVrw.Price*IVrw.Quant*IVrw.vRebate/100, DefaultCurRoundOff);
+    end;
+  GetIVDiscSum = res;
+end;
+
+function string 13 GetBarcodeByCodeIVVc(string Code)
+begin
+record BarcodeVc Barr;
+Boolean yes;
+
+Barr.Itemcode = Code;
+yes = True;
+ResetLoop(Barr);
+while LoopKey("Itemcode", Barr, 1, yes)
+	begin
+	if (Barr.1CFlag <> 0) and (Barr.Itemcode == Code) then
+		begin
+		yes = False;
+		end;
+	end;
+if yes then
+	begin
+	GetBarcodeByCodeIVVc = "";
+	end else
+	begin
+	GetBarcodeByCodeIVVc = Barr.Barcode;
+	end;
+RETURN;
+end;
+
+global
+procedure VExportIVVc(record IVVc IVr)
+begin
+record LangToSalesBlock Lb;
+row IVVc IVrw;
+row LangToSalesBlock Lbr;
+string 100 tstr, tstr1, tstr2;
+Integer Cnt;
+val Reb;
+Boolean TrHs;
+
+SetLangMode(LangRussian, "RUS", 2);
+TrHs = SetExportCodePage("CP1251");
+tstr = "18_";
+Cnt = GetDay(CurrentDate);
+if Cnt < 10 then
+	begin
+	tstr = tstr & "0" & Cnt;
+	end 
+	else
+	begin
+	tstr = tstr & Cnt;
+	end;
+Cnt = GetMonth(CurrentDate);
+if Cnt < 10 then
+	begin
+	tstr = tstr & "0" & Cnt;
+	end 
+	else
+	begin
+	tstr = tstr & Cnt;
+	end;
+tstr = tstr & "_";	
+Cnt = GetHour(CurrentTime);
+if Cnt < 10 then
+	begin
+	tstr = tstr & "0" & Cnt;
+	end 
+	else
+	begin
+	tstr = tstr & Cnt;
+	end;
+Cnt = GetMinute(CurrentTime);
+if Cnt < 10 then
+	begin
+	tstr = tstr & "0" & Cnt;
+	end 
+	else
+	begin
+	tstr = tstr & Cnt;
+	end;	
+tstr = tstr & ".txt";	
+CreateFile(tstr);
+OpenFile(tstr);
+
+BlockLoad(Lb);
+for (Cnt = 0; TrHs; Cnt = Cnt + 1)
+	begin
+	TrHs = (Lbr.LangCode <> IVr.LangCode) and (Cnt < MatRowCnt(Lb)) ;
+	if TrHs then 
+		begin
+		MatRowGet(Lb, Cnt, Lbr);
+		end;
+	end;
+
+Reb = GetIVDiscSum(IVr);	
+ExportString("18");
+NewLine;
+ExportString("SH@" & Lbr.INN & "@@" & IVr.SerNr & "@@" & IVr.SerNr & "@@" & IVr.InvDate & "@@" & IVr.Addr0 & "@@" & IVr.CustCode & "@@" & IVr.Addr2 & "@@" & "@@" & IVr.Sum1 & "@@" & IVr.Sum1 & "@@0.00@@" & Reb & "@@" & Round((Reb / IVr.Sum1)* 100, DefaultCurRoundOff) & "@@");
+for (Cnt = 0; Cnt < MatRowCnt(IVr); Cnt = Cnt + 1)
+	begin
+	MatRowGet(IVr, Cnt, IVrw);
+	NewLine;
+	ExportString("TB@" & GetBarcodeByCodeIVVc(IVrw.ArtCode) & "@@" & IVrw.ArtCode & "@@" & IVrw.Spec & "@@@@" & IVrw.Quant & "@@" & IVrw.Price & "@@" & IVrw.Price & "@@0.00@@" & IVrw.Quant * IVrw.Price & "@@" & IVrw.Quant * IVrw.Price & "@@" & Round(IVrw.Price*IVrw.Quant*IVrw.vRebate/100, DefaultCurRoundOff) & "@@" & IVrw.Sum & "@@");
+	end;
+CloseFile;
+MessageBox(0, "Экспорт закончен. " & tstr);
+RETURN;
+end;
+
+global
+procedure VExportFromIVVc()
+BEGIN  
+  record IVVc IVr;
+  
+  GetWindowRecord(CurWindow, IVr);
+  VExportIVVc(IVr);
+  RETURN;
+END;
+
+
+
+
+
+

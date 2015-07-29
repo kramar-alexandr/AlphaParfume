@@ -1,0 +1,830 @@
+external inner procedure ExtractObj(string, var Integer, var string);
+remote procedure ASChangeObjects(var string, string);
+external inner function longint MonthDiff(Date, Date);
+remote function val IGetASInCost(string, string, date);
+remote function val IGetAT2UnitCost(string, date);
+external inner function roundmode SetRoundModeD(Integer);
+
+//===============================================
+//Наименование "родителя" в меню вставки классов ОС
+global
+function string 255 ASClassSClassHD(var record ASClassVc ASClassr)
+begin
+  record ASClassVc parentASClassr;
+
+  parentASClassr.Code = ASClassr.Hierarchy;
+  ReadFirstMain(parentASClassr, 1, true);
+  ASClassSClassHD = parentASClassr.Description;
+  Return;
+end;
+
+//===============================================
+//Категория "родителя"
+global
+function Boolean ASCatDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  record ASCatVc ASCatr, ASCat2r;
+
+  if (fieldname == "Parent") then
+    begin
+      GetWindowRecord(wn, ASCatr);
+      if nonblank(ASCatr.Parent) then
+        begin
+          ASCat2r.Code = ASCatr.Parent;
+          if (not ReadFirstMain(ASCat2r, 1, True)) then
+            begin
+              ASCatr.Parent = blankval;
+            end
+          else
+            begin
+              ASCatr.Objects = blankval;
+              ASCatr.TermWOff = ASCat2r.TermWOff;
+              ASCatr.PurchaseAcc = ASCat2r.PurchaseAcc;
+              ASCatr.AmortizationAcc = ASCat2r.AmortizationAcc;
+              ASCatr.DeprecationAcc = ASCat2r.DeprecationAcc;
+              ASCatr.RevenueAcc = ASCat2r.RevenueAcc;
+              ASCatr.CostAcc = ASCat2r.CostAcc;
+            end;
+          PutWindowRecord(wn, ASCatr);
+        end;
+    end;
+  ASCatDClassAfterEditField = False;
+  Return;
+end;
+
+//===============================================
+//Установлен ли указанный флаг
+function boolean ASFlagStatus(integer wn, string FlagName)
+begin
+  record ASVc ASr;
+
+  if (WindowState(wn)==0) then
+    begin
+      GetWindowRecord(wn, ASr);
+    end;
+    
+  if (WindowState(wn)==2) then
+    begin
+      GetPrevWindowRecord(wn, ASr);
+    end;
+  
+  ASFlagStatus = StringToLongint(GetFieldValueByName(ASr, FlagName, -1)) == 0; //0 - флаг установлен
+  Return;
+end;
+
+//===============================================
+//Расчет ежемесячного износа
+procedure CalcPerMonWOff(var record ASVc ASr)
+begin
+  if blank(ASr.TransDate) then
+    begin
+      ASr.PerMonWOff = ASr.Cost / ASr.TermWOff;
+    end
+  else //Считаем от остаточной стоимости с момента последнего начисления
+    begin
+      ASr.PerMonWOff = ASr.Cost / MonthDiff(ASr.TransDate, ASr.PlanEndDate);;
+    end;
+end;
+
+//===============================================
+procedure ASFillObjects(var record ASVc ASr)
+begin
+  record UserVc Usr;
+  record ObjVc Objr;
+  record ASCatVc ASCatr;
+
+  ASCatr.Code = ASr.ASType;
+  if ReadFirstMain(ASCatr, 1, true) then
+    begin
+      ASChangeObjects(ASr.Objects, ASCatr.Objects);
+    end;
+  Usr.Code = ASr.EmpCode;
+  if ReadFirstMain(Usr, 1, true) then
+    begin
+      Objr.Code = Usr.PersObjx;
+      if ReadFirstMain(Objr, 1, True) and (Objr.TerminateFlag <> 1) then
+        begin
+          ASChangeObjects(ASr.Objects, Objr.AutoObjects);
+        end;
+    end;
+  ASChangeObjects(ASr.Objects, ASr.ASObj);
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassAT2UnitCodeEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr;
+  record AT2UnitVc AT2Ur;
+  boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      AT2Ur.InventoryNr = ASr.AT2UnitCode;
+      if ReadFirstMain(AT2Ur, 1, true) then
+        begin
+          ASr.Code = AT2Ur.InventoryNr;
+          ASr.Name = AT2Ur.Description;
+          ASr.Objects = AT2Ur.Objects;
+          ASr.PurchaseDate = AT2Ur.PurchaseDate;
+          ASr.VECode = AT2Ur.VECode;
+          ASr.VEName = AT2Ur.VEName;
+          ASr.Department = AT2Ur.DepCode;
+          ASr.EmpCode = AT2Ur.RespPerson;
+          ASr.CostIn = AT2Ur.PurchVal;
+          ASr.StartDate = AT2Ur.StartingDate1;
+//          ASr.Cost = AT2Ur.ResVal;
+          ASr.Cost = IGetAT2UnitCost(ASr.AT2UnitCode, CurrentDate);
+        end
+      else
+        begin
+          ASr.AT2UnitCode = blankval;
+        end;
+      PutWindowRecord(wn, ASr);
+    end;
+  ASDClassAT2UnitCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassASObjEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr;
+  record ObjVc Objr;
+  boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      if nonblank(ASr.ASObj) then
+        begin
+          Objr.Code = ASr.ASObj;
+          if ReadFirstMain(Objr, 1, true) and (Objr.TerminateFlag <> 1) then
+            begin
+              ASChangeObjects(ASr.Objects, ASr.ASObj);
+            end
+          else
+            begin
+              ASr.ASObj = blankval;
+            end;
+          PutWindowRecord(wn, ASr);
+        end;
+    end;
+  ASDClassASObjEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassASTypeEFAfter(Integer wn, Integer changed)
+begin
+  record ASCatVc ASCatr;
+  record ASVc ASr;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      ASCatr.Code = ASr.ASType;
+      if ReadFirstMain(ASCatr, 1, True) then
+        begin
+          ASChangeObjects(ASr.Objects, ASCatr.Objects);
+          ASr.TermWOff = ASCatr.TermWOff;
+          ASr.ASAcc = ASCatr.ASAcc;
+          ASr.PurchaseAcc = ASCatr.PurchaseAcc;
+          ASr.AmortizationAcc = ASCatr.AmortizationAcc;
+          ASr.DeprecationAcc = ASCatr.DeprecationAcc;
+          ASr.RevenueAcc = ASCatr.RevenueAcc;
+          ASr.CostAcc = ASCatr.CostAcc;
+          if nonblankdate(ASr.StartDate) then
+            begin
+              ASr.PlanEndDate = AddMonth(ASr.StartDate, ASr.TermWOff);
+              CalcPerMonWOff(ASr);
+            end;
+        end
+      else
+        begin
+          ASr.ASType = blankval;
+        end;
+      PutWindowRecord(wn, ASr);
+    end;
+  ASDClassASTypeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassEmpCodeEFAfter(Integer wn, Integer changed)
+begin
+  record UserVc Usr;
+  record ASVc ASr;
+  record ObjVc Objr;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      Usr.Code = ASr.EmpCode;
+      if ReadFirstMain(Usr, 1, true) and (Usr.TerminatedFlag <> 1) then
+        begin
+          ASr.Department = Usr.Department;
+          Objr.Code = Usr.PersObjx;
+          if ReadFirstMain(Objr, 1, True) and (Objr.TerminateFlag <> 1) then
+            begin
+              ASChangeObjects(ASr.Objects, Objr.AutoObjects);
+            end;
+        end 
+      else
+        begin
+          ASr.Department = blankval;
+          ASr.EmpCode = blankval;
+        end;
+      PutWindowRecord(wn, ASr);
+    end;
+  ASDClassEmpCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassPartOfEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr, AS2r;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      AS2r.Code = ASr.PartOf;
+      if (not ReadFirstMain(AS2r, 1, true)) then
+        begin
+          ASr.PartOf = blankval;
+          PutWindowRecord(wn, ASr);
+        end;
+    end;
+  ASDClassPartOfEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassVECodeEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr;
+  record CUVc CUr;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      CUr.Code = ASr.VECode;
+      if ReadFirstMain(CUr, 1, True) then
+        begin
+          ASr.VEName = CUr.Name;
+        end
+      else
+        begin
+          ASr.VEName = blankval;
+          ASr.VECode = blankval;
+        end;
+      PutWindowRecord(wn, ASr);
+    end;
+  ASDClassVECodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassStartDateEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      if nonblankdate(ASr.StartDate) then
+        begin
+          ASr.PlanEndDate = AddMonth(ASr.StartDate, ASr.TermWOff);
+          CalcPerMonWOff(ASr);
+          PutWindowRecord(wn, ASr);
+        end;
+    end;
+  ASDClassStartDateEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassPlanEndDateEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      if nonblankdate(ASr.StartDate) then
+        begin
+          ASr.TermWOff = MonthDiff(ASr.StartDate, ASr.PlanEndDate);
+          CalcPerMonWOff(ASr);
+          PutWindowRecord(wn, ASr);
+        end;
+    end;
+  ASDClassPlanEndDateEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassPlanTermWOffEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      if nonblankdate(ASr.StartDate) then
+        begin
+          ASr.PlanEndDate = AddMonth(ASr.StartDate, ASr.TermWOff);
+          CalcPerMonWOff(ASr);
+          PutWindowRecord(wn, ASr);
+        end;
+    end;
+  ASDClassPlanTermWOffEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean ASDClassPlanPerMonWOffEFAfter(Integer wn, Integer changed)
+begin
+  record ASVc ASr;
+  Boolean res;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, ASr);
+      if nonblankdate(ASr.StartDate) then
+        begin
+          ASr.TermWOff = Round(ASr.Cost / ASr.PerMonWOff + 0.4, SetRoundModeD(0));
+          if nonblank(ASr.TransDate) then
+            begin
+              ASr.TermWOff = ASr.TermWOff + MonthDiff(ASr.StartDate, ASr.TransDate);
+            end;
+          ASr.PlanEndDate = AddMonth(ASr.StartDate, ASr.TermWOff);
+          PutWindowRecord(wn, ASr);
+        end;
+    end;
+  ASDClassPlanPerMonWOffEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ASDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+
+  switch fieldname
+    begin
+      case "AT2UnitCode": res = ASDClassAT2UnitCodeEFAfter(wn, changed);
+      case "ASObj": res = ASDClassASObjEFAfter(wn, changed);
+      case "ASType": res = ASDClassASTypeEFAfter(wn, changed);
+      case "EmpCode": res = ASDClassEmpCodeEFAfter(wn, changed);
+      case "PartOf": res = ASDClassPartOfEFAfter(wn, changed);
+      case "VECode": res = ASDClassVECodeEFAfter(wn, changed);
+      case "StartDate": res = ASDClassStartDateEFAfter(wn, changed);
+      case "PlanEndDate": res = ASDClassPlanEndDateEFAfter(wn, changed);
+      case "TermWOff": res = ASDClassPlanTermWOffEFAfter(wn, changed);
+      case "PerMonWOff": res = ASDClassPlanPerMonWOffEFAfter(wn, changed);
+    end;
+  ASDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ASDClassActiveEditField(Integer wn, string fieldname, Integer fn, Integer wnst, Integer rownr, Integer changed)
+begin
+  record ASVc ASr, AS2r;
+  boolean res;
+
+  switch (fieldname)
+    begin
+      case "ASClass": res = true;
+      case "PurchaseDate": //Запрещено менять дату приобр. после сохранения
+        GetPrevWindowRecord(wn, ASr);
+        res = blankdate(ASr.PurchaseDate) and not ASFlagStatus(wn, "InExpl");
+      case "Code":  //Запрещено изменять инвентарный номер после сохранения
+        GetPrevWindowRecord(wn, ASr);
+        res = blank(ASr.Code);
+      case "ATUnitCode":  //Запрещено менять код актива после оформления даты приобр. или ввода в экспл.
+        GetPrevWindowRecord(wn, ASr);
+        res = blankdate(ASr.PurchaseDate) and not ASFlagStatus(wn, "InExpl"); 
+      case "Objects": res = not ASFlagStatus(wn, "Closed");
+      case "EmpCode": res = not ASFlagStatus(wn, "Closed");
+      case "Department": res = not ASFlagStatus(wn, "Closed");
+      case "PlanEndDate": res = not ASFlagStatus(wn, "Closed");
+      case "PerMonWOff": res = not ASFlagStatus(wn, "Closed");
+      case "TermWOff": res = not ASFlagStatus(wn, "Closed");
+      case "PlanEndDate": res = not ASFlagStatus(wn, "Closed");
+      case "EndDate": res = not ASFlagStatus(wn, "Closed");
+      case "CostAcc": res = not ASFlagStatus(wn, "Closed");
+      case "SaleAcc": res = not ASFlagStatus(wn, "Closed");
+      case "SaleSum": res = not ASFlagStatus(wn, "Closed");
+      case "CostIn": res = not ASFlagStatus(wn, "InExpl") and UserCanAction("ASVc_CanEditCost", true);
+      case "Cost": res = not ASFlagStatus(wn, "Closed") and UserCanAction("ASVc_CanEditCost", true);
+      case "Name": res = true;
+      otherwise res = not ASFlagStatus(wn, "InExpl");
+    end;
+
+  ASDClassActiveEditField = res;
+  Return;
+end;
+
+//===============================================
+//В эксплуатации
+global
+function boolean ASDClassInExplButtonAction(integer wn, integer value)
+begin
+  ASDClassInExplButtonAction = not ASFlagStatus(wn, "InExpl");
+  Return;
+end;
+
+//===============================================
+//Списано
+global
+function boolean ASDClassWOffButtonAction(integer wn, integer value)
+begin
+  record ASVc ASr;
+  
+  GetWindowRecord(wn, ASr);
+  ASDClassWOffButtonAction = ASFlagStatus(wn, "InExpl") and not ASFlagStatus(wn, "Closed") and (ASr.Sold == 0);
+  Return;
+end;
+
+//===============================================
+//Продано
+global
+function boolean ASDClassSoldButtonAction(integer wn, integer value)
+begin
+  record ASVc ASr;
+  
+  GetWindowRecord(wn, ASr);
+  ASDClassSoldButtonAction = ASFlagStatus(wn, "InExpl") and not ASFlagStatus(wn, "Closed") and (ASr.WOff == 0);
+  Return;
+end;
+
+//===============================================
+global 
+updating procedure ClearASHistDsm()
+begin
+  record ASHistVc AHr;
+
+  ResetLoop(AHr);
+  while LoopKey("Code", AHr, 1, True)
+    begin
+      RecordDelete(AHr);
+      ResetLoop(AHr);
+    end;
+  Return;
+end;
+
+//===============================================
+global 
+procedure CalcASCostInDsm()
+begin
+  record ASVc ASr;
+  integer wn;
+
+  wn = CurWindow;
+  GetWindowRecord(wn, ASr);
+  if (ASr.InExpl == 0) then
+    begin
+      ASr.CostIn = IGetASInCost(ASr.ASObj, ASr.PurchaseAcc, CurrentDate);
+      ASr.Cost = ASr.CostIn;
+      PutWindowRecord(wn, ASr);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblASList(string dblstr, string l, Integer currepwn)
+begin
+  record RcVc RepSpec;
+
+  ReportDefaults(RepSpec, "ASHistRn");
+  RepSpec.Media = mtScreen;
+  RepSpec.f1 = dblstr;
+  RepSpec.repname = "ASHistRn";
+  RunReport(RepSpec, currepwn);
+  Return;
+end;
+
+//===============================================
+global
+procedure DblASVc(string dblstr, string l, Integer currepwn)
+begin
+  record ASVc ASr;
+  integer wn;
+  
+  if nonblank(dblstr) then
+    begin
+      ASr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(ASr, 1, true) then
+        begin  
+          wn = OpenWindow("ASDClass", 1, 0, "", "", ASr);
+        end; 
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure ASDClassButtonFlags(integer wn, var boolean duplOK, var boolean newOK, var boolean saveOK, var boolean restOK)
+begin
+  duplOK = false;
+  Return;
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  Module("Основные средства", "", 793, modOS);
+  Setting("Тип ОС", ASCatLClass, modOS);
+  Setting("Классы ОС", ASClassLClass, modOS);
+  Register("Основные средства", "Основные средства", ASLClass, modOS);
+  Register("История ОС", "История ОС", ASHistLClass, modOS);
+  Maintenance("Создать записи амортизации", ASAmortizationVClass, ASAmortizationMn, modOS);
+  Report("Список ОС", ASListRClass, ASListRn, 0, modOS);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, h, h2, vs;
+  record UserVc USr; 
+
+  vs = 20;
+  
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Типы ОС", ASCatLClass, CGmlist,-);
+  SpawnClass(ASCatDClass);
+  SetWRect(64, 80, 691, 308);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ASCatVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 2, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-70, -70, "Тип", Parent, false, Parent);
+  BrowseSubsetButton(140, -15);
+  SearchField("Найти");
+  EndWindow;
+
+
+  WindowBegin("Выберите тип ОС", ASCatSClass, CGslist,-);
+  SpawnClass(ASCatDClass);
+  SetWRect(64, 80, 691, 308);
+  UseView(ASCatVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 2, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-70, -70, "Тип", Parent, false, Parent);
+  BrowseSubsetButton(140, -15);
+  SearchField("Найти");
+  EndWindow;
+
+
+  WindowBegin("Тип ОС", ASCatDClass, CGview,-);
+  DynamicWindow;
+  SetWRect(20, 80, 720, 360);
+  UseView(ASCatVc);
+  v = 6;
+  EditFieldTL(100, v, 80, "Код", M4Code, Normal, 20, Code, False, 0);
+  EditField(300, v, -40, "Наименование", Normal, Name, False, 0);
+  EditFieldTL(100, v+=vs, 80, "Иерархия", M4Code, Normal, 20, Parent, False, ASCatSClass);
+  EditFieldTL(300, v, 80, "Срок экспл.(мес)", M4Int, Normal, 20, TermWOff, True, 0);  
+  EditFieldTL(300, v+=vs, -40, "Объекты", M4UStr, Normal, 200, Objects, False, ObjSClass);
+  EditFieldTL(300, v+=40, 80, "Счет ОС", M4Code, Normal, 20, ASAcc, False, AccSClass);
+  EditFieldTL(300, v+=40, 80, "Счет приобретения", M4Code, Normal, 20, PurchaseAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет амортизации", M4Code, Normal, 20, AmortizationAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет износа", M4Code, Normal, 20, DeprecationAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет дохода от реализации", M4Code, Normal, 20, RevenueAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет списания остаточной стоимости", M4Code, Normal, 20, CostAcc, False, AccSClass);
+  EndWindow;
+
+
+  WindowBegin("Классы ОС", ASClassLClass, CGmlist, -);
+  SpawnClass(ASClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ASClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+  RlColKey(204, 204, "Наименование", Description, false, Description);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Выберите класс ОС", ASClassSClass, CGslist, -);
+  SpawnClass(ASClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ASClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(100, 100, "Наименование", Description, false, Description);
+  RlColKey(-200, -200, "Род.код", Hierarchy, false, Hierarchy);
+  CalculatedColumn(-100, -100, "Род.Наим.", "ASClassSClassHD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Класс ОС", ASClassDClass, CGview, -);
+  SetWRect(20, 80, 600, 180);
+  //Sizeable(-1, -1, -1, -1);
+  UseView(ASClassVc);
+  v = 16; vs = 20; h = 100; h2 = 300;
+  EditField(h, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2, v, 80, "Иерархия", Normal, Hierarchy, false, ASClassSClass);
+  EditField(h, v += vs, -40,"Наименование", Normal, Description, false, 0);
+  EndWindow;
+
+
+  WindowBegin("Основные средства", ASLClass, CGmlist,-);
+  SpawnClass(ASDClass);
+  SetWRect(64, 80, 791, 308);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ASVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 2, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-450, -450, "Сотрудник", EmpCode, false, EmpCode);
+  RlColKey(-350, -350, "Дирекция", Department, false, Department);
+  RlColKey(-250, -250, "Тип", ASType, false, ASType);
+  RlCol(-150, -150, "Ост. стоимость", Cost, true);
+  RlColKey(-60, -60, "Эк", InExpl, false, InExpl);
+  RlColKey(-40, -40, "Сп", WOff, false, WOff);
+  RlColKey(-20, -20, "Пр", Sold, false, Sold);
+  RlCol(-1, -1, "", Closed, True);
+  BrowseSubsetButton(140, -15);
+  SearchField("Найти");
+  EndWindow;
+
+
+  WindowBegin("Основные средства", ASSClass, CGslist,-);
+  SpawnClass(ASDClass);
+  SetWRect(64, 80, 691, 308);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ASVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 2, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(550, 550, "Сотрудник", EmpCode, false, EmpCode);
+  RlColKey(650, 650, "Дирекция", Department, false, Department);
+  RlColKey(-70, -70, "Тип", ASType, false, ASType);
+  RlCol(-1, -1, "", Closed, True);
+  BrowseSubsetButton(140, -15);
+  SearchField("Найти");
+  EndWindow;
+
+
+  WindowBegin("Карточка ОС", ASDClass, CGview,-);
+  DynamicWindow;
+  SetWRect(20, 80, 720, 460);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ASVc);
+  //FormName(OrdForm);
+  v = 6;
+
+  Tile(0, 200, false, "", Code);
+  EditFieldTL(100, v, 80, "Актив", M4Code, Normal, 20, AT2UnitCode, False, AT2UnitSClass);
+  EditFieldTL(100, v+=vs, 80, "Инв.№", M4Code, Normal, 20, Code, False, ASSClass);
+  EditField(300, v, -40, "Наименование", Normal, Name, False, 0);
+  EditFieldTL(100, v += vs, 80, "Тип ОС", M4Code, Normal, 20, ASType, False, ASCatSClass);
+  EditFieldTL(300, v, 80, "Часть", M4Code, Normal, 20, PartOf, False, ASSClass);
+  EditFieldTL(500, v, -40, "Класс ОС", M4UStr, Normal, 200, ASClass, False, ASClassSClass);
+  EditFieldTL(100, v+=vs, 80, "Объект ОС", M4UStr, Normal, 200, ASObj, False, ObjSClass);
+  EditFieldTL(300, v, -40, "Объекты", M4UStr, Normal, 200, Objects, False, ObjSClass);
+  EditFieldTL(100, v+=vs, 80, "Сотрудник", M4Code, Normal, 20, EmpCode, False, UserSClass);
+  EditFieldTL(300, v, 80, "Дирекция", M4Code, Normal, 20, Department, False, DepSClass);
+  EditFieldTL(100, v+=vs, 80, "Поставщик", M4Code, Normal, 20, VECode, False, VESClass);
+  EnterSkip(Comment);
+  EditFieldTL(300, v, -40, "Наим.", M4Str, Normal, 200, VEName, False, 0);
+  EditFieldTL(100, v += vs, -40, "Комментарий", M4Str, Normal, 200, Comment, False, 0);
+  CheckBox(100, v+=vs, 0, "В экспл.", InExpl);
+  CheckBox(180, v, 0, "Списано", WOff);
+  CheckBox(260, v, 0, "Продано", Sold);
+
+  TileButton(1, "Ввод в эксплуатацию");
+  TileButton(2, "Износ");
+  TileButton(3, "Списание");
+  TileButton(4, "Продажа");
+  TileButton(5, "Счета");
+
+  Tile(1, 190, False, "1", PurchaseDate);
+  v = 6;
+  EditFieldTL(100, v+=vs, 80, "Дата закупки", M4Date, Normal, 20, PurchaseDate, False, PasteCurDate);
+  EditFieldTL(100, v+=vs, 80, "Дата ввода", M4Date, Normal, 20, StartDate, False, PasteCurDate);
+  EditFieldTL(300, v, 80, "Срок экспл.(мес)", M4Int, Normal, 20, TermWOff, True, 0);  
+  EditFieldTL(100, v+=vs, 80, "План.списания", M4Date, Normal, 20, PlanEndDate, False, PasteCurDate);
+  EditFieldTL(300, v, 80, "Ежемесячный износ", M4Val, Normal, 20, PerMonWOff, True, PasteCurDate);
+  EditFieldTL(100, v+=vs, 80, "Бал.стоимость", M4Val, Normal, 20, CostIn, True, 0);
+  EditFieldTL(300, v, 80, "Ост.стоимость", M4Val, Normal, 20, Cost, True, 0);
+  ButtonFrame(100, v+=60, 200, 0, "Счета ввода в эксплуатацию");
+  EditFieldTL(100, v, 80, "Дебет", M4Code, Normal, 20, ASAcc, False, AccSClass);
+  EditFieldTL(300, v, 80, "Кредит", M4Code, Normal, 20, PurchaseAcc, False, AccSClass);
+
+  Tile(2, 191, False, "2", TransDate);
+  v = 6;
+  EditFieldTL(100, v+=vs, 80, "План.списания", M4Date, Normal, 20, PlanEndDate, False, PasteCurDate);
+  EditFieldTL(300, v, 80, "Ежемесячный износ", M4Val, Normal, 20, PerMonWOff, True, PasteCurDate);
+  EditFieldTL(100, v+=vs, 80, "Дата пров.", M4Date, ViewOnly, 20, TransDate, False, 0);
+  EditFieldTL(100, v+=vs, 80, "Бал.стоимость", M4Val, Normal, 20, CostIn, True, 0);
+  EditFieldTL(300, v, 80, "Ост.стоимость", M4Val, Normal, 20, Cost, True, 0);
+  ButtonFrame(100, v+=60, 200, 0, "Счета амортизации");
+  EditFieldTL(100, v, 80, "Дебет", M4Code, Normal, 20, AmortizationAcc, False, AccSClass);
+  EditFieldTL(300, v, 80, "Кредит", M4Code, Normal, 20, DeprecationAcc, False, AccSClass);
+  
+  Tile(3, 191, False, "3", CostAcc);
+  v = 6;
+  EditFieldTL(100, v+=vs, 80, "Дата cписания", M4Date, Normal, 20, EndDate, False, PasteCurDate);
+  EditFieldTL(300, v, 80, "Ост.стоимость", M4Val, Normal, 20, Cost, True, 0);
+  ButtonFrame(100, v+=60, 200, 0, "Счета списания");
+  EditFieldTL(100, v, 80, "Дебет", M4Code, Normal, 20, DeprecationAcc, False, AccSClass);
+  EditFieldTL(300, v, 80, "Кредит", M4Code, Normal, 20, ASAcc, False, AccSClass);
+  EditFieldTL(100, v+=vs, 80, "Дебет ост.", M4Code, Normal, 20, CostAcc, False, AccSClass); //Счет остатка
+  EditFieldTL(300, v, 80, "Кредит ост.", M4Code, Normal, 20, ASAcc, False, AccSClass);
+  
+  Tile(4, 191, False, "4", SaleAcc);
+  v = 6;
+  EditFieldTL(100, v+=vs, 80, "Дата cписания", M4Date, Normal, 20, EndDate, False, PasteCurDate);
+  EditFieldTL(300, v, 80, "Ост.стоимость", M4Val, Normal, 20, Cost, True, 0);
+  EditFieldTL(100, v+=vs, 80, "Сумма продажи", M4Val, Normal, 20, SaleSum, True, 0);
+  ButtonFrame(100, v+=60, 200, 0, "Счета продажи ОС");
+  EditFieldTL(100, v, 80, "Дебет", M4Code, Normal, 20, DeprecationAcc, False, AccSClass);
+  EditFieldTL(300, v, 80, "Кредит", M4Code, Normal, 20, ASAcc, False, AccSClass);
+  EditFieldTL(100, v+=vs, 80, "Дебет ост.", M4Code, Normal, 20, RevenueAcc, False, AccSClass);
+  EditFieldTL(300, v, 80, "Кредит ост.", M4Code, Normal, 20, ASAcc, False, AccSClass);
+  EditFieldTL(100, v+=vs, 80, "Дебет кассы", M4Code, Normal, 20, SaleAcc, False, AccSClass); //Cчет кассы
+  EditFieldTL(300, v, 80, "Кредит", M4Code, Normal, 20, RevenueAcc, False, AccSClass);
+  
+  Tile(5, 191, False, "5", Objects);
+  v = 6;
+  EditFieldTL(300, v+=20, 80, "Счет ОС", M4Code, Normal, 20, ASAcc, False, AccSClass);
+  EditFieldTL(300, v+=40, 80, "Счет приобретения", M4Code, Normal, 20, PurchaseAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет амортизации", M4Code, Normal, 20, AmortizationAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет износа", M4Code, Normal, 20, DeprecationAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет дохода от реализации", M4Code, Normal, 20, RevenueAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет списания остаточной стоимости", M4Code, Normal, 20, CostAcc, False, AccSClass);
+  EditFieldTL(300, v+=vs, 80, "Счет кассы продажи", M4Code, Normal, 20, SaleAcc, False, AccSClass);
+  SpecialMenu("Рассчитать балансовую стоимость", '', 0, "CalcASCostInDsm");
+  EndWindow;
+
+  
+  WindowBegin("История ОС", ASHistLClass, CGmlist,-);
+  //SpawnClass(ASCatDClass);
+  SetWRect(64, 80, 800, 308);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ASHistVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 2, "Код", Code, false, Code);
+  RlColKey(100, 100, "Отдел", Department, false, Department);
+  RlColKey(200, 200, "Сотрудник", EmpCode, false, EmpCode);
+  RlColKey(300, 300, "Группа", SalesGroup, false, SalesGroup);
+  RlCol(400, 400, "Ост.ст.", Cost, true);
+  RlCol(500, 500, "Комментарий", Comment, false);
+  RlColKey(-70, -70, "Дата", TransDate, false, TransDate);
+  SearchField("Найти");
+  SpecialMenu("Очистить историю", '', 0, "ClearASHistDsm");
+  EndWindow;
+
+
+  WindowBegin("Создать записи амортизации", ASAmortizationVClass, CGMnt, RcType);
+  SetWRect(20, 80, 460, 300);
+  EditFieldTL(130, v=20, 82, "Дата", M4Date, Normal, 0, d1, false, PasteCurDate);
+  StaticText(20, v += 50, "Укажите конечную дату списания амортизации", false);
+  StaticText(20, v += 16,"Записи операций будут созданы автоматически.", false);
+  EndWindow;
+
+
+  WindowBegin("Oпределите Список ОС", ASListRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 300);
+  v = 6;
+  PeriodField(130, v += 20, "Период");
+  CheckBox(300, v, 0, "Использовать", flags[0]);
+  EditFieldTL(130, v += vs, 100, "Дирекция", M4UStr, Normal, 21, f1, false, DepSClass);
+  EditFieldTL(130, v += vs, 100, "Сотрудник", M4UStr, Normal, 21, f3, false, UserSClass);
+  EditFieldTL(130, v += vs, 100, "Тип ОС", M4UStr, Normal, 21, f4, false, ASCatSClass);
+  EditFieldTL(130, v += vs, 100, "Объект", M4UStr, Normal, 21, ObjStr, false, ObjSClass);
+  EditFieldTL(130, v += vs, 100, "Класс ОС", M4UStr, Normal, 21, f2, false, ASClassSClass);
+  ButtonFrame(130, v += 54, 123, 5, "Состояние");
+  RadioButton(130, v,       0, 0, "Актуальные ОС", ArtMode);
+  RadioButton(130, v += 16, 1, 0, "Приобретено", ArtMode);
+  RadioButton(130, v += 16, 2, 0, "В эксплуатации", ArtMode);
+  RadioButton(130, v += 16, 3, 0, "Списано", ArtMode);
+  RadioButton(130, v += 16, 4, 0, "Продано", ArtMode);
+  EndWindow;
+
+  Return;
+end;

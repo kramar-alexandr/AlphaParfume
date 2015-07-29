@@ -1,0 +1,558 @@
+remote inner procedure M4PadString(string,Integer,string,Boolean,var string);
+remote inner procedure StripEndingSpaces(var string);
+external inner procedure GetCurUser(var record UserVc);
+
+//===============================================
+function boolean CanUnOk
+begin
+	record UserVc Usr;
+
+	GetCurUser(Usr);
+	CanUnOk = UserCanAction("UnOKAll",true) or (Usr.AccessGroup=="ADMIN"); 
+	Return;
+end;
+
+//===============================================
+function string 255 GetDefValue(string Value, string DefaultValue)
+begin
+  if (StringToLongint(Value) == -1) or blank(Value) then 
+    begin 
+      GetDefValue = DefaultValue;
+    end
+  else
+    begin
+      GetDefValue = Value;
+    end;
+  Return;
+end;
+
+//===============================================
+//Возвращает отгруженное количество из счета (с учетом возвратов)
+function string 30 ItemQntStrByOrd(longint OrderNr, string ArtCode)
+begin
+  string 20 res;
+  record ORVc ORr;
+  row ORVc ORrw;
+  integer i, cnt;
+  boolean found;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = "";
+  if nonblank (ArtCode) then
+    begin
+      ORr.SerNr = OrderNr;
+      ReadFirstMain(ORr,1,true);
+      cnt = MatRowCnt(ORr);
+      found = false;
+      for (i=0; (i<cnt) and not found; i=i+1)
+        begin
+          MatRowGet(ORr,i,ORrw);
+          found = (ORrw.ArtCode == ArtCode);
+        end;
+      if (found) then
+        begin
+          res = " - кол-во: " & ORrw.Shipd2;
+        end;
+    end;
+  ItemQntStrByOrd = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+  record IRetOrdVc IRetOrdr;
+//  row IRetOrdVc IRetOrdrw;
+  Boolean res;
+
+  res = true;
+  GetWindowRecord(wn, IRetOrdR);
+//  if (rownr<>-1) then begin MatRowGet(IRetOrdr, rownr, IRetOrdrw); end;
+  if (changed != 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "ArtCode": res = ((IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag + IRetOrdr.OKFlag) == 0);
+          case "QntOrdered": res = (IRetOrdr.OrderedFlag==0);
+          case "QntReceived": res = (IRetOrdr.ReceivedFlag==0);
+          case "RetCode": res = ((IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag) == 0);
+					case "RegDate": res = ((IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag) == 0) and CanUnOk;
+          otherwise res = (IRetOrdr.OKFlag==0);
+        end;
+    end;
+  IRetOrdDClassActiveEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassCustCodeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+  record CUVc CUr;
+  record IRetOrdVc IRetOrdR;
+
+  res = false;
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed != 0) then
+    begin
+      GetWindowRecord(wn,IRetOrdR);
+      CUr.Code = IRetOrdR.CustCode;
+      res = ReadFirstMain(CUr,1,true);
+      IRetOrdR.CustName = CUr.Name;
+      PutWindowRecord(wn,IRetOrdR);
+    end;
+  IRetOrdDClassCustCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassArtCodeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+  record INVc INr;
+  record IRetOrdVc IRetOrdR;
+  row IRetOrdVc IRetOrdRw;
+  record SHVc SHr;
+  row SHVc SHrw;
+  
+  res = false;
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed != 0) then
+    begin
+      GetWindowRecord(wn,IRetOrdR);
+      MatRowGet(IRetOrdR, rownr, IRetOrdRw);
+      INr.Code = IRetOrdRw.ArtCode;
+      res = ReadFirstMain(INr,1,true);
+      IRetOrdRw.ArtName = INr.Name;
+      IRetOrdRw.ArtCode = INr.Code;
+      MatRowPut(IRetOrdR, rownr, IRetOrdRw);
+      PutWindowRecord(wn,IRetOrdR);
+    end;
+  IRetOrdDClassArtCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassRetCodeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+  record IRetOrdTypesVc IRTr;
+  record IRetOrdVc IRetOrdR;
+  row IRetOrdVc IRetOrdRw;
+  record SHVc SHr;
+  row SHVc SHrw;
+
+  res = false;
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed != 0) then
+    begin
+      GetWindowRecord(wn,IRetOrdR);
+      MatRowGet(IRetOrdR, rownr, IRetOrdRw);
+      IRTr.Code = IRetOrdrw.RetCode;
+      res = ReadFirstMain(IRTr,1,true);
+      IRetOrdRw.RetName = IRTr.Name;
+      IRetOrdRw.RetCode = IRTr.Code;
+      MatRowPut(IRetOrdR, rownr, IRetOrdRw);
+      PutWindowRecord(wn,IRetOrdR);
+    end;
+  IRetOrdDClassRetCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassAfterEditField(Integer wn,string FieldName,Integer fn,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record IRetOrdVc IRetOrdR;
+
+  res = true;
+  switch (FieldName)
+    begin
+      case "CustCode"   : res = IRetOrdDClassCustCodeEFAfter(wn,fn,rownr,changed);
+      case "ArtCode"    : res = IRetOrdDClassArtCodeEFAfter(wn,fn,rownr,changed);
+      case "RetCode"    : res = IRetOrdDClassRetCodeEFAfter(wn,fn,rownr,changed);
+    end;
+
+//  if (changed!=0) then
+//    begin
+//      GetWindowRecord(wn, IRetOrdR)
+//      RecalcTotal(IRetOrdR);
+//      PutWindowRecord(wn, IRetOrdR)
+//    end;
+
+  IRetOrdDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+function longint FlagStatus(integer wn, string FlagName)
+begin
+  record IRetOrdVc IRetOrdr;
+
+  if (WindowState(wn)==0) then
+    begin
+      GetWindowRecord(wn, IRetOrdr);
+    end;
+    
+  if (WindowState(wn)==2) then
+    begin
+      GetPrevWindowRecord(wn,IRetOrdr);
+    end;
+  
+  FlagStatus = StringToLongint(GetFieldValueByName(IRetOrdr, FlagName, -1));
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassOKFlagButtonAction(Integer wn,Integer value)
+begin
+  IRetOrdDClassOKFlagButtonAction = (FlagStatus(wn, "OKFlag") == -1) or CanUnOk;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassOrderedFlagButtonAction(Integer wn,Integer value)
+begin
+  IRetOrdDClassOrderedFlagButtonAction =
+    (FlagStatus(wn, "OrderedFlag") == -1) or ((FlagStatus(wn, "OKFlag") == -1) and CanUnOk);
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassReceivedFlagButtonAction(Integer wn,Integer value)
+begin
+  IRetOrdDClassReceivedFlagButtonAction = 
+    (FlagStatus(wn, "ReceivedFlag") == -1) or ((FlagStatus(wn, "OKFlag") == -1) and CanUnOk);
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassFileTypeButtonAction(Integer wn,Integer value)
+begin
+  IRetOrdDClassFileTypeButtonAction = FlagStatus(wn, "OrderedFlag") == -1;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassPrint(Integer wn,Boolean previewf)
+begin
+  record IRetOrdVc IRetOrdr;
+  string 20 docname;
+
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,IRetOrdr);
+  // switch (IRetOrdr.FoleType) begin
+ //   case 0: docname = "IRetOrdSMForm";
+ //   case 1: docname = "IRetOrdSHForm";
+ // end;
+  docname = "IRetOrdForm";
+  PrintDocument(IRetOrdr,docname,previewf);
+  IRetOrdDClassPrint = true;
+  Return;
+end;
+
+//===============================================
+global
+procedure DoIRetOrdForm(record RcVc RepSpec,record IRetOrdVc IRetOrdr)
+begin
+  row IRetOrdVc IRetOrdrw;
+  record SHVc SHr;
+  record StockMovVc SMr;
+  integer i, cnt;
+  string 100 DocName, FrLocation, ToLocation;
+  
+  if OpenForm("IRetOrdForm") then
+    begin
+      switch (IRetOrdr.FileType)
+        begin
+          case 0:
+            begin
+              SHr.SerNr = IRetOrdr.FileNr;
+              ReadFirstMain(SHr,1,true);
+              DocName = "Отгрузка №";
+              FrLocation = SHr.Location;
+              ToLocation = "---";
+            end;
+          case 1:
+            begin
+              SMr.SerNr = IRetOrdr.FileNr;
+              ReadFirstMain(SMr,1,true);
+              DocName = "Перемещение №";
+              FrLocation = SMr.FrLocation;
+              ToLocation = SMr.ToLocation;
+            end;
+        end;
+      OUTFORMFIELD("F_ISERNR",IRetOrdr.SerNr);
+      OUTFORMFIELD("F_IREGDATE",IRetOrdr.RegDate);
+      OUTFORMFIELD("F_IORIGDOCNAME",DocName);
+      OUTFORMFIELD("F_IORIGDOCNR",GetDefValue(IRetOrdr.FileNr, "---"));
+      OUTFORMFIELD("F_ICUSTCODE",GetDefValue(IRetOrdr.CustCode, "---"));
+      OUTFORMFIELD("F_ICUSTNAME",GetDefValue(IRetOrdr.CustName, "---"));
+      OUTFORMFIELD("F_IFRLOCATION",FrLocation);
+      OUTFORMFIELD("F_ITOLOCATION",ToLocation);
+      OUTFORMFIELD("F_ISUMORDERED",IRetOrdr.SumOrdered);
+      OUTFORMFIELD("F_ISUMRECEIVED",IRetOrdr.SumReceived);
+      OUTFORMFIELD("F_IORDEREDBY",IRetOrdr.OrderedBy);
+      OUTFORMFIELD("F_IRECEIVEDBY",IRetOrdr.ReceivedBy);
+      cnt = MatRowCnt(IRetOrdr);
+      for (i=0; i<cnt; i=i+1)
+        begin
+          MatRowGet(IRetOrdr,i,IRetOrdrw);
+          OUTFORMFIELD("F_IROWNR", i+1);
+          OUTFORMFIELD("F_IARTCODE",IRetOrdrw.ArtCode);
+          OUTFORMFIELD("F_IARTNAME",IRetOrdrw.ArtName);
+          OUTFORMFIELD("F_IFILENR",GetDefValue(IRetOrdrw.FileNr, "---"));
+          OUTFORMFIELD("F_IQNTORDERED",IRetOrdrw.QntOrdered);
+          OUTFORMFIELD("F_IQNTRECEIVED",IRetOrdrw.QntReceived);
+          OUTFORMFIELD("F_IRETNAME",IRetOrdrw.RetName);
+          OUTFORMFIELD("F_IRETCODE",IRetOrdrw.RetCode);
+          OUTFORMFIELD("F_IOBJECTS",GetDefValue(IRetOrdrw.Objects,IRetOrdr.Objects));
+          OUTFORMFIELD("F_ICOMMENT",IRetOrdrw.Comment);
+          EndFormRow;
+        end;
+      CloseForm;
+    end;
+  Return;
+end;
+
+//===============================================
+// Вспомогательные SClass
+//===============================================
+function Boolean IRetOrd_SHSClassOnOpenWindow(integer wn, record IRetOrdVc IRetOrdr, row IRetOrdVc IRetOrdrw)
+begin
+  record SHVc SHr;
+  record ItemHistVc IHr;
+  string 100 s1, s2;
+  Boolean cont, cont2, ok;
+  longint i, rowcnt;
+  string 255 s;
+  date dt;
+  record TempVc Tempr;
+  row TempVc Temprw;
+
+  dt = AddMonth(CurrentDate,-6); //Ограничиваем диапазон дат
+  SHr.CustCode = IRetOrdr.CustCode;
+  cont = true;
+  while LoopKey("CustCode",SHr,1,cont) //Отгрузки на клиента
+    begin
+      cont = (SHr.CustCode == IRetOrdr.CustCode);
+      if cont and (SHr.OKFlag == 1) and (SHr.ShipDate >= dt) then
+        begin
+          ok = false;
+          ResetLoop(IHr);
+          IHr.TransNr = SHr.SerNr;
+          IHr.FileName = "SHVc";
+          cont2 = nonblank(IRetOrdrw.ArtCode); //Если вставка в матрице - проверяем вхождение товара
+          while LoopKey("FNTransNr", IHr, 2, cont2 and not ok) //Имеется ли в найденной отгрузке заданный товар
+            begin
+              cont2 = (IHr.TransNr == SHr.SerNr) and (IHr.FileName == "SHVc");
+              ok = (IHr.ArtCode == IRetOrdrw.ArtCode);
+            end;
+
+          if ok or blank(IRetOrdrw.ArtCode) then //берем номер отгрузки
+            begin
+              s1 = SHr.SerNr;
+              M4PadString(s1,12," ",false,s2);
+              s2 = s2 & " - Счет № " & SHr.OrderNr & " от " & SHr.ShipDate & ItemQntStrByOrd(SHr.OrderNr, IRetOrdrw.ArtCode);
+              Temprw.f2 = s2;
+              MatRowInsert(Tempr,0,Temprw);
+            end;
+        end;
+    end;
+
+  rowcnt = MatRowCnt(Tempr);
+  for (i=0; i<rowcnt; i=i+1)
+    begin
+      MatRowGet(Tempr,i,Temprw);
+      SetListString(wn,i,Temprw.f2,false);
+    end;
+
+  IRetOrd_SHSClassOnOpenWindow = false;
+  Return;
+end;
+
+//===============================================
+function Boolean IRetOrd_StockMovSClassOnOpenWindow(integer wn, record IRetOrdVc IRetOrdr, row IRetOrdVc IRetOrdrw)
+begin
+  record StockMovVc StockMovr;
+  record ItemHistVc IHr;
+  string 100 s1, s2;
+  Boolean cont1, cont2, ok;
+  longint i, rowcnt;
+  string 255 s;
+  Date dt;
+  record TempVc Tempr;
+  row TempVc Temprw;
+
+  dt = AddMonth(CurrentDate,-6); //Ограничиваем диапазон дат
+  StockMovr.OKFlag = 1;
+  StockMovr.TransDate = dt;
+  cont1 = true;
+  while LoopKey("OKFlagTransDate",StockMovr,2,cont1) //Перемещения
+    begin
+      cont1 = (StockMovr.OKFlag == 1) and (StockMovr.TransDate >= dt);
+      if (cont1) then
+        begin
+          ok = false;
+          ResetLoop(IHr);
+          IHr.TransNr = StockMovr.SerNr;
+          IHr.FileName = "StockMovVc";
+          cont2 = nonblank(IRetOrdrw.ArtCode); //Если вставка в матрице - проверяем вхождение товара
+          while LoopKey("FNTransNr", IHr, 2, cont2 and not ok) //Имеется ли в заданный товар в перемещении
+            begin
+              cont2 = (IHr.TransNr == StockMovr.SerNr) and (IHr.FileName == "StockMovVc");
+              ok = (IHr.ArtCode == IRetOrdrw.ArtCode);
+            end;
+
+          if ok or blank(IRetOrdrw.ArtCode) then //берем номер отгрузки
+            begin
+              s1 = StockMovr.SerNr;
+              M4PadString(s1,12," ",false,s2);
+              s2 = s2 & " - Перемещение № " & StockMovr.SerNr & " от " & StockMovr.TransDate;
+              Temprw.f2 = s2;
+              MatRowInsert(Tempr,0,Temprw);
+            end;
+        end;
+    end;
+
+  rowcnt = MatRowCnt(Tempr);
+  for (i=0; i<rowcnt; i=i+1)
+    begin
+      MatRowGet(Tempr,i,Temprw);
+      SetListString(wn,i,Temprw.f2,false);
+    end;
+
+  IRetOrd_StockMovSClassOnOpenWindow = false;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdFileNrSClassOnOpenWindow(integer wn)
+begin
+  integer mwn, rownr;
+  record IRetOrdVc IRetOrdr;
+  row IRetOrdVc IRetOrdrw;
+  longint i;
+  string 255 s;
+  Date dt;
+  boolean res;
+
+  mwn = MotherWindow(wn);
+  GetWindowRecord(mwn, IRetOrdr);
+  rownr = GetWindowCurRow(mwn);
+  if (rownr <> -1) then
+    begin
+      MatRowGet(IRetOrdr, rownr, IRetOrdrw);
+    end;
+    
+  switch (IRetOrdr.FileType)
+    begin
+      case 0: res = IRetOrd_SHSClassOnOpenWindow(wn, IRetOrdr, IRetOrdrw);
+      case 1: res = IRetOrd_StockMovSClassOnOpenWindow(wn, IRetOrdr, IRetOrdrw);
+    end;
+    
+  IRetOrdFileNrSClassOnOpenWindow = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdFileNrSClassOnOKWindow(integer wn)
+begin
+  string 60 s;
+  Integer mwn;
+
+  mwn=MotherWindow(wn);
+  s = left(GetListString(wn,SelectedListLine(wn)), 12);
+  StripEndingSpaces(s);
+  CloseWindow(wn);
+  PasteString(mwn,s);
+  IRetOrdFileNrSClassOnOKWindow = false;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassInsertRowTest(Integer wn, Integer rownr)
+begin
+  record IRetOrdVc IRetOrdr;
+  GetWindowRecord(wn, IRetOrdr);
+  IRetOrdDClassInsertRowTest = (IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag + IRetOrdr.OKFlag) == 0;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+  record IRetOrdVc IRetOrdr;
+  GetWindowRecord(wn, IRetOrdr);
+  IRetOrdDClassDeleteRowTest = (IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag + IRetOrdr.OKFlag) == 0;
+  Return;
+end;
+
+//===============================================
+updating procedure IRetOrd_CreateFromStockMov(record StockMovVc SMr)
+begin
+  row StockMovVc SMrw;
+  record IRetOrdVc IRetOrdr;
+  row IRetOrdVc IRetOrdrw;
+  integer i, rownr, cnt;
+  val qnt;
+
+  rownr=-1;
+  if (SMr.SentOKFlag==1) and (SMr.OKFlag==1) then
+    begin
+      cnt = MatRowCnt(SMr);
+      for (i=0; i<cnt; i=i+1)
+        begin
+          MatRowGet(SMr,i,SMrw);
+          qnt = SMrw.SentQuant-SMrw.Quant;
+          if (qnt>0) then
+            begin
+              rownr = rownr + 1;
+              IRetOrdrw.ArtCode = SMrw.ArtCode;
+              IRetOrdrw.ArtName = SMrw.Spec;
+              IRetOrdrw.QntOrdered = qnt;
+              MatRowPut(IRetOrdr, rownr, IRetOrdrw);
+            end;
+        end;
+    end;
+  if (rownr<>-1) then
+    begin
+      IRetOrdr.FileNr = SMr.SerNr;
+      IRetOrdr.FileType = 1; //перемещение
+      IRetOrdr.LogNewUser = CurrentUser;
+      IRetOrdr.LogNewDate = CurrentDate;
+      IRetOrdr.LogNewTime = CurrentTime;
+      OpenWindow("IRetOrdDClass",1,0,"","",IRetOrdr);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+updating procedure StockMovCreateIRetOrdDsm() 
+begin
+  record StockMovVc SMr;
+  integer wn;
+  
+  wn = CurWindow;
+  if (WindowState(wn)==0) then
+    begin
+      GetWindowRecord(wn,SMr);
+      IRetOrd_CreateFromStockMov(SMr);
+    end;
+  Return;
+end;

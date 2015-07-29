@@ -1,0 +1,61 @@
+
+event startup
+begin
+
+SetLangMode(LangRussian,"RUS",2);
+
+Register("Задачи", "Задачи", tVTicketsLClass, modXOZ);
+Register("Согласование затрат", "Согласование затрат", ApproveCostsVc, modXOZ);
+Register("Авансовые отчеты", "Авансовые отчеты", ExpVc, modXOZ);
+Register("Документы","Документы", DocsVc, modXOZ);
+Register("Мои записки", "Мои записки", VUserNotesLClass, modXOZ);
+//Register("Детельности","Детельности",ActVc,modXOZ);
+Register("Технические задания","Технические задания",VObjectiveVc,modXOZ);
+Register("Товары","Товары",INVc,modXOZ);
+Register("Паспорт офиса", "Паспорт офиса", OffCardLClass, modXOZ);
+Setting("Классификаторы. Офис", tOffClLClass, modXOZ);
+Setting("Группы класс. Офис",tOffGrLClass,modXOZ);
+Setting("Неисправности",RegDefLClass,modXOZ);
+
+Report("Мои деятельности",MyActPersRClass, MyActPersRn, 0, modXOZ);
+Report("Мои задачи", ttMyTicketRClass, ttMyTicketRn, 0, modXOZ);
+Report("Учет и финансы",BudRasRClass,BudRas2Rn,0,modXOZ);
+Report("Выполнение плана прибыли компании",ICompProfitRClass,ICompProfitRn,0,modXOZ);
+Report("Список ОС", AT2ListRClass, AT2ListRn, 0, modXOZ);
+Report("Журнал согласования затрат", ApproveCostsRClass, ApproveCostsRn, 0, modXOZ);
+Report("Журнал выполнения бюджета",  IBudgetDiffJrnRClass, IBudgetDiffJrnRn, 0, modXOZ);
+
+
+
+Register("Задачи", "Задачи", tVTicketsLClass, modLAW);
+Register("Согласование затрат", "Согласование затрат", ApproveCostsVc, modLAW);
+Register("Авансовые отчеты", "Авансовые отчеты", ExpVc, modLAW);
+Register("Документы", "Документы", DocsVc, modLAW);
+Register("Мои записки", "Мои записки", VUserNotesLClass, modLAW);
+//Register("Детельности", "Детельности", ActVc, modLAW);
+//Register("Технические задания", "Технические задания", VObjectiveVc, modLAW);
+Register("Контакты", "Контакты", CUVc, modLAW);
+Register("Договора ГК", "Договора ГК", IContractVc, modLAW);
+Register("Правовые риски и угрозы", "Правовые риски и угрозы",tLegRiskLClass, modLAW);
+Setting("Формы договоров", IContractFormTClass, modLAW);
+Setting("Классы договоров ГК", IClassIContractLClass, modLAW);
+Report("Сумма юридических рисков", tListCURiskClass, tListCURiskRn, 0, modLAW);
+Report("Правовые риски и угрозы", tLegRiskRClass, tLegRiskRn, 0, modLAW);
+Report("Статус отчета", MyStatusRClass, StatusRn, 0, modLAW);
+Report("Мои деятельности", MyActPersRClass, MyActPersRn, 0, modLAW);
+Report("Мои задачи", ttMyTicketRClass, ttMyTicketRn, 0, modLAW);
+Report("Учет и финансы", BudRasRClass, BudRas2Rn, 0, modLAW);
+Report("Журнал авансовых отчетов", ExpJRClass, ExpRn, 0, modLAW);
+Report("Журнал выплат ПЛ", PPJ1RClass, PP1Rn, 0, modLAW);
+Report("Журнал согласования затрат", ApproveCostsRClass, ApproveCostsRn, 0, modLAW);
+Report("Выполнение плана прибыли компании", ICompProfitRClass, ICompProfitRn, 0, modLAW);
+Report("Oтчет по контрагентам", VCuListRClass, VCuListRn, 0, modLAW);
+Report("Наличие документов клиента", tListDocRClass, tListDocRn, 0, modLAW);
+Report("Дебиторская задолженность", AR3RClass, AR3Rn, 0, modLAW);
+Report("Акт сверки", CuPer3RClass, DSverRn, 0, modLAW);
+Report("Журнал выполнения бюджета",  IBudgetDiffJrnRClass, IBudgetDiffJrnRn, 0, modLAW);
+Report("Бюджет - ответственные сотрудники", IBudgetExpUserRClass, IBudgetExpUserRn, 0, modLAW);
+Report("Журнал договоров", IContractJrnRClass, IContractJrnRn, 0, modLAW);
+
+RETURN;
+end;

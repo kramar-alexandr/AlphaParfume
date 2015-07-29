@@ -1,0 +1,1242 @@
+external function Longint iMinutesBetween(date, time, date, time);
+external function LongInt tUserInVTicketSet(string);
+external procedure  tMailActivity(record tVTicketsVc, integer);
+external function string 255 ReplaceSubstrFromStr(string, string, string);
+external inner procedure ExtractObj(string,var Integer,var string);
+external function boolean tOver(record tVTicketsVc);
+
+// global 
+// updating procedure ActTestTicket(record VTicketVc VTr) 
+// begin
+// record ActVc Actr;
+// row ActVc Actrw;
+// record VTicketVc VT2r;
+// Integer RwCnt,i;
+// string 60 tstr;
+// Integer pos,textsize;
+
+// SetLangMode(LangRussian, "RUS", 2);
+  
+// RecordNew(Actr);
+// Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+// Actr.MainPersons = VTr.CastCode;
+// Actr.CCPersons = CurrentUser; //& "," & VTr.CastCode
+// Actr.TodoFlag = 1;
+// Actr.CalTimeFlag = 1;
+// Actr.TransDate = CurrentDate;
+// Actr.EndDate = CurrentDate;
+// Actr.StartTime = CurrentTime;
+// Actr.EndTime = AddSeconds(CurrentTime, 1);
+// Actr.PrioLevel = -1;
+// Actr.Invalid = 0;
+// //Actr.ActType = VTr.ActionType;
+// Actr.SerialNr = VTr.SerNr;
+// Actr.Comment = "ТЕСТИРОВАНИЕ";
+// rwcnt = LineTextCnt(VTr);
+// for (i=0;i<rwcnt;i=i+1) 
+  // begin
+  // tstr = LineTextGet(VTr,i);
+  // MatRowGet(Actr, i, Actrw);
+  // Actrw.Text = tstr;
+  // Actrw.Signature = CurrentUser;
+  // MatRowPut(Actr, i, Actrw);
+  // end;    
+// RecordInsert(Actr, false);
+// RecordStore(Actr, false);
+// CreateRecordLink(VTr, CurrentCompany, Actr, CurrentCompany);
+
+// RETURN;
+// end;
+
+// global
+// function LongInt tFindActTestTicket(record VTicketVc VTr, var LongInt nAct)
+// begin
+// record ActVc Actr;
+// Boolean TrHs;
+
+// ResetLoop(Actr);
+// Actr.ActType = VTr.ActionType;
+// Actr.TransDate = VTr.DateRec;
+// while  (LoopBackKey("ActType", Actr, 1, not TrHs)) 
+  // begin
+  // TrHs = (StringToLongInt(Actr.SerialNr) == VTr.SerNr) and blank(Actr.ActType); 
+  // if TrHs then
+    // begin
+    // if (Actr.OKFlag == 1) then
+		// begin
+		// tFindActTestTicket = 1;
+		// nAct = Actr.SerNr;
+		// end
+    // else
+		// begin
+		// tFindActTestTicket = 0; 
+		// nAct = Actr.SerNr;
+		// end;
+    // end;
+  // end;
+
+// return;
+// end;
+
+
+// global 
+// updating procedure ActAfterTicket(record VTicketVc VTr) 
+// begin
+// record ActVc Actr;
+// row ActVc Actrw;
+// record VTicketVc VT2r;
+// Integer RwCnt,i;
+// string 60 tstr;
+// Integer pos,textsize;
+
+// SetLangMode(LangRussian, "RUS", 2);
+  
+// RecordNew(Actr);
+// Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+// //stopalert(Actr.SerNr);
+// Actr.MainPersons = VTr.ServCode;
+// Actr.CCPersons = CurrentUser;
+// Actr.TodoFlag = 1;
+// Actr.CalTimeFlag = 1;
+// Actr.TransDate = CurrentDate;
+// Actr.EndDate = CurrentDate;
+// Actr.StartTime = CurrentTime;
+// Actr.EndTime = AddSeconds(CurrentTime, 1);
+// Actr.PrioLevel = -1;
+// Actr.Invalid = 0;
+// Actr.ActType = VTr.ActionType;
+// Actr.SerialNr = VTr.SerNr;
+// if blank(VTr.ActNr) then 
+  // begin
+  // Actr.Comment = VTr.Comment;
+  // end
+// else
+  // begin  
+  // Actr.Comment = VTr.Comment & "  НЕКАЧЕСТВЕННОЕ ИСПОЛНЕНИЕ";
+  // end;
+     
+// rwcnt = LineTextCnt(VTr);
+// for (i=0;i<rwcnt;i=i+1) 
+  // begin
+  // tstr = LineTextGet(VTr,i);
+  // MatRowGet(Actr, i, Actrw);
+  // Actrw.Text = tstr;
+  // Actrw.Signature = CurrentUser;
+  // MatRowPut(Actr, i, Actrw);
+  // end;    
+// RecordInsert(Actr, false);
+// RecordStore(Actr, false);
+// CreateRecordLink(VTr, CurrentCompany, Actr, CurrentCompany);
+
+// VTr.ActNr = Actr.SerNr;
+// RETURN;
+// end;
+
+
+// global
+// function LongInt tFindActFromTicket(record VTicketVc VTr, var LongInt SumTimeAct, var LongInt nAct)
+// begin
+// record ActVc Actr;
+// Boolean TrHs;
+
+// SumTimeAct = 0;
+// ResetLoop(Actr);
+// Actr.ActType = VTr.ActionType;
+// Actr.TransDate = VTr.DateRec;
+
+// while  (LoopBackKey("ActType", Actr, 2, not TrHs)) 
+  // begin
+  // TrHs = (StringToLongInt(Actr.SerialNr) == VTr.SerNr) and (Actr.ActType == VTr.ActionType) and nonblank(Actr.ActType); 
+  // if TrHs then
+    // begin
+    // if (Actr.OKFlag == 1) then
+      // begin
+      // SumTimeAct = iMinutesBetween(VTr.DateRec, VTr.TimeRec, Actr.EndDate, Actr.EndTime);  
+      // tFindActFromTicket = 1;
+	  // nAct = Actr.SerNr;
+      // end
+    // else
+      // begin
+      // tFindActFromTicket = 0;
+	  // nAct = Actr.SerNr;
+      // end;
+    // end;
+  // end;
+// end;
+
+// global
+// function LongInt FindPar(LongInt SerNr)
+// begin
+// record tVTicketsVc VTr;
+// Boolean TrHs;
+
+// TrHs = true;
+// FindPar = 1;
+// ResetLoop(VTr);
+// VTr.ParentNr = SerNr;
+// while  (LoopKey("ParentNr", VTr, 1, TrHs)) 
+  // begin
+  // TrHs = (VTr.ParentNr == SerNr); 
+  // if TrHs then
+    // begin
+    // if (VTr.SolFlag <> 1) then
+		// begin
+		// FindPar = 0;
+		// Stopalert("Не закрытые задачи");
+		// end;
+    // end;
+  // end;
+// end;
+
+global
+function boolean NotFreeAlarm(string UserCode)
+begin
+record FreeAlarmVc FAlr;
+
+FAlr.Code = UserCode; 
+if ReadFirstMain(FAlr, 1, true) then
+	begin
+	NotFreeAlarm = false;
+	end
+else
+	begin
+	NotFreeAlarm = true;
+	end;
+return;	
+end;
+
+updating procedure CreateAlarmFromQA(record tVTicketsVc VTr, integer copy) // Оповещение о новом вопросе
+begin
+record AlarmVc Alarmr, Alarm2r;
+record UserVc USr;
+Boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+
+if  NotFreeAlarm(VTr.ServCode) then
+	begin
+	RecordNew(Alarmr);
+	Alarmr.MainPersons = VTr.ServCode;
+	Alarmr.LTxtCode = "Новая задача: ";
+	Alarmr.Comment = VTr.Comment;
+	Alarmr.OKFlag = 0;
+	Alarmr.AlarmType = 1;
+	Alarmr.TransDate = VTr.DateSend;
+	Alarmr.TransTime = VTr.TimeSend;
+	//Alarmr.ActSerNr = VTr.SerNr;
+	Alarmr.CompNo = CurrentCompany;
+	Alarmr.SerNr = NextSerNr("AlarmVc", Alarmr.TransDate, -1, false, "");
+	if (Alarmr.SerNr > 0) then 
+	  begin
+	  Alarm2r.SerNr = Alarmr.SerNr;
+	  if ReadFirstMain(Alarm2r, 1, True) then
+		begin
+		RecordUpdate(Alarm2r, Alarmr, false);
+		end 
+	  else
+		begin
+		RecordStore(Alarmr, false);
+		end;
+	  end;
+	end;
+
+if (VTr.Copy <> "") and (copy == 1) then
+begin  
+ResetLoop(USr);
+USr.Code = blankval;
+TrHs = True;
+while LoopMain(USr, 1, True)
+  begin
+  if SetInSet(USr.Code, VTr.Copy) and not(SetInSet(USr.Code, VTr.Free)) and NotFreeAlarm(USr.Code) then
+    begin
+    RecordNew(Alarmr);
+    Alarmr.MainPersons = USr.Code;
+    Alarmr.LTxtCode = "Новая задача: ";
+    Alarmr.Comment = VTr.Comment;
+    Alarmr.OKFlag = 0;
+    Alarmr.AlarmType = 1;
+	Alarmr.TransDate = VTr.DateSend;
+    Alarmr.TransTime = VTr.TimeSend;
+    //Alarmr.ActSerNr = VTr.SerNr;
+    Alarmr.CompNo = CurrentCompany;
+    Alarmr.SerNr = NextSerNr("AlarmVc", Alarmr.TransDate, -1, false, "");
+    if (Alarmr.SerNr > 0) then 
+      begin
+      Alarm2r.SerNr = Alarmr.SerNr;
+      if ReadFirstMain(Alarm2r, 1, True) then
+        begin
+        RecordUpdate(Alarm2r, Alarmr, false);
+        end 
+      else
+        begin
+        RecordStore(Alarmr, false);
+        end;
+      end;
+    end;
+  end;  
+end; 
+RETURN;
+end;
+
+updating procedure CreateAlarmForUsr(record tVTicketsVc VTr) // Оповещение о новом вопросе создателю
+begin
+record AlarmVc Alarmr, Alarm2r;
+record UserVc USr;
+Boolean TrHs;
+SetLangMode(LangRussian,"RUS",2);
+
+if NotFreeAlarm(VTr.UsrCode) then
+	begin
+	RecordNew(Alarmr);
+	Alarmr.MainPersons = VTr.UsrCode;
+	Alarmr.LTxtCode = "Новая задача: ";
+	Alarmr.Comment = VTr.Comment;
+	Alarmr.OKFlag = 0;
+	Alarmr.AlarmType = 1;
+	Alarmr.TransDate = VTr.DateSend;
+	Alarmr.TransTime = VTr.TimeSend;
+	//Alarmr.ActSerNr = VTr.SerNr;
+	Alarmr.CompNo = CurrentCompany;
+	Alarmr.SerNr = NextSerNr("AlarmVc", Alarmr.TransDate, -1, false, "");
+	if (Alarmr.SerNr > 0) then 
+	  begin
+	  Alarm2r.SerNr = Alarmr.SerNr;
+	  if ReadFirstMain(Alarm2r, 1, True) then
+		begin
+		RecordUpdate(Alarm2r, Alarmr, false);
+		end 
+	  else
+		begin
+		RecordStore(Alarmr, false);
+		end;
+	  end;
+	end;
+RETURN;
+end;
+
+updating procedure CreateAlarmForCC(record tVTicketsVc VTr,record tVTicketsVc VT2r, integer add) // Напоминание о тикете
+begin
+record AlarmVc Alarmr, Alarm2r;
+record UserVc USr;
+Boolean TrHs;
+SetLangMode(LangRussian,"RUS",2);
+
+
+ResetLoop(USr);
+USr.Code = blankval;
+TrHs = True;
+while LoopMain(USr, 1, True)
+  begin
+  if (((VTr.Copy <> "") and (SetInSet(USr.Code, VTr.Copy)) and (not SetInSet(USr.Code, VT2r.Copy))) 
+		or ((add == 1) and ((VTr.Copy <> "") and (SetInSet(USr.Code, VTr.Copy))))) and not(SetInSet(USr.Code, VTr.Free)) 
+		 and NotFreeAlarm(USr.Code)  then //and USr.Code <> CurrentUser
+    begin
+    RecordNew(Alarmr);
+    Alarmr.MainPersons = USr.Code;
+    Alarmr.LTxtCode = "Новая задача: ";
+    Alarmr.Comment = VTr.Comment;
+    Alarmr.OKFlag = 0;
+    Alarmr.AlarmType = 1;
+	Alarmr.TransDate = VTr.DateSend;
+    Alarmr.TransTime = VTr.TimeSend;
+    //Alarmr.ActSerNr = VTr.SerNr;
+    Alarmr.CompNo = CurrentCompany;
+    Alarmr.SerNr = NextSerNr("AlarmVc", Alarmr.TransDate, -1, false, "");
+    if (Alarmr.SerNr > 0) then 
+      begin
+      Alarm2r.SerNr = Alarmr.SerNr;
+      if ReadFirstMain(Alarm2r, 1, True) then
+        begin
+        RecordUpdate(Alarm2r, Alarmr, false);
+        end 
+      else
+        begin
+        RecordStore(Alarmr, false);
+        end;
+      end;
+    end;
+  end;  
+
+RETURN;
+end;
+
+
+global
+function Longint tVTicketsVcRecordDefaults(var record tVTicketsVc VTr, record tVTicketsVc VT2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+SetLangMode(LangRussian,"RUS",2);
+VTr.SerNr = -1;
+if (SingleUserMode) then 
+  begin
+  VTr.SerNr = NextSerNr("tVTicketsVc", CurrentDate, -1, false, "");
+  end;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.Rating = 0;
+tVTicketsVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt tVTicketsVcRecordDuplicate(var record tVTicketsVc VTr, record tVTicketsVc VT2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+Time TimeStart;
+Date DateStart;
+
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then 
+  begin
+  VTr.SerNr = NextSerNr("tVTicketsVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  VTr.SerNr = -1;
+  end;
+  
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.ParentNr = blankval;
+VTr.SendFlag = 0;
+VTr.ServCode = blankval;
+VTr.DateRec = "";
+VTr.DateSol = "";
+VTr.TimeRec = "";
+VTr.TimeSol = "";
+VTr.SendFlag = 0;
+VTr.RecFlag = 0;
+VTr.SolFlag = 0;
+VTr.ServName = blankval;
+VTr.ServAppoint = blankval;
+VTr.ServDepart = blankval;
+VTr.TestFlag = 0;
+VTr.TestDate = "";
+VTr.CostTime = -1;
+VTr.TestTime = -1;
+VTr.Status = 0;
+VTr.Err = 0;
+VTr.Copy = "";
+VTr.Rating = 0;
+VTr.DateDes = DateStart;
+VTr.TimeDes = TimeStart;
+for (i = MatRowCnt(VTr) - 1; i >= 0; i = i - 1) 
+	begin
+	MatRowDelete(VTr,i);
+	end;
+tVTicketsVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt tVTicketsVcRecordRemoveTest(var record tVTicketsVc VTr, record tVTicketsVc VT2r, LongInt long3, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tVTicketsVcRecordRemoveTest = 1;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if ((VTr.SendFlag <> 0)  and ((CurrentUser <> "DELPHI") and (CurrentUser <> "TGOR"))) then //(not UserCanAction("UnOKAll",True))
+  begin
+  tVTicketsVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+
+global
+function longint tWorkTime(string SerNr, time SmsTime, date SmsDate, integer CurStatus, integer i)
+begin
+record tVTicketsVc VTr;
+row tVTicketsVc VTrw;
+longint rwcnt,TestTime;
+		
+VTr.SerNr = SerNr;
+ReadFirstMain(VTr, 1, True);
+rwcnt = MatRowCnt(VTr);
+MatRowGet(VTr,i-1,VTrw);
+if ((VTrw.CurStatus == 0) and (CurStatus == 1)) or ((VTrw.CurStatus == 1) and (CurStatus == 1)) then
+	begin
+	tWorkTime = iMinutesBetween(SmsDate, SmsTime, VTrw.SmsDate, VTrw.SmsTime);
+	end;
+RETURN;	
+end;
+
+global
+function longint tTestTime(string SerNr, time SmsTime, date SmsDate, integer CurStatus, integer i)
+begin
+record tVTicketsVc VTr;
+row tVTicketsVc VTrw;
+longint rwcnt,TestTime;
+		
+VTr.SerNr = SerNr;
+ReadFirstMain(VTr, 1, True);
+rwcnt = MatRowCnt(VTr);
+MatRowGet(VTr,i-1,VTrw);
+if ((VTrw.CurStatus == 1) and (CurStatus == 0)) or ((VTrw.CurStatus == 0) and (CurStatus == 0)) then
+	begin
+	tTestTime = iMinutesBetween(SmsDate, SmsTime, VTrw.SmsDate, VTrw.SmsTime);
+	end;
+RETURN;
+end;
+
+updating function boolean MailList(record tVTicketsVc VTvr)
+begin
+record UserVc USr;
+record tVTicketsVc VTr;
+Integer pos;
+string 255 tstr;
+boolean TrHs,res;
+
+ SetLangMode(LangRussian,"RUS",2);
+
+
+ResetLoop(USr);
+USr.Code = blankval;
+TrHs = True;
+while LoopMain(USr, 1, True)
+	begin
+	if (VTvr.Copy <> "") and (SetInSet(USr.Code, VTvr.Copy)) then
+		begin
+		RecordNew(VTr);
+		VTr.UsrCode = VTvr.UsrCode;
+		VTr.UsrName = VTvr.UsrName;
+		VTr.UsrAppoint = VTvr.UsrAppoint;
+		VTr.UsrDepart = VTvr.UsrDepart;
+		VTr.ServCode = USr.Code;
+		VTr.ServName = USr.Name;
+		VTr.ServDepart = USr.Department;
+		VTr.DateSend = CurrentDate;
+		VTr.TimeSend = CurrentTime;
+		VTr.TypeOfTicket = VTvr.TypeOfTicket;
+		VTr.DateDes = VTvr.DateDes;
+		VTr.Comment = mid(VTvr.Comment,len(FirstInRange(VTvr.Comment, len(VTvr.Comment))) + 1, 255);
+		pos = 0;  
+		while (pos<SizeTextCnt(VTvr)) 
+			begin
+			tstr = StringFromText(VTvr,pos,1);
+			pos = pos + len(tstr);
+			AddToText(tstr,VTr);
+			end;
+		VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+		res = RecordStore(VTr, false);
+		end;
+	end;
+MailList = res;	
+RETURN;
+end;
+
+global
+function LongInt tVTicketsVcRecordCheck(var record tVTicketsVc VTr, record tVTicketsVc VT2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res, SumTime, nAct, WorkTime, TestTime;
+record UserVc USr;
+record tVTicketsVc VTr2;
+row tVTicketsVc VTrw, VTrw2;
+Integer insertmode,updatemode,rwcnt,rwcnt2, Status;
+Boolean TrHs;
+string 255 tstr, tstr2;
+Integer pos, textsize, i, i2, st;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+//TrHs = False;
+
+if (stat == updatemode) and (VTr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+if (VT2r.SolFlag == 1) and (VTr.Privacy == VT2r.Privacy) then
+  begin
+  RecordCheckError(1520,"",i,"UserCode");	  
+  res = -1;
+  end;
+if (VTr.Comment == "") then
+  begin
+  RecordCheckError(20549,"",-1,"Comment");	
+  res = -1;
+  end; 
+ 
+ if  (VTr.Comment <> VT2r.Comment) then
+  begin
+  RecordCheckError(1067,"",-1,"Comment");	
+  res = -1;
+  end; 
+ 
+pos = 0;  
+textsize = SizeTextCnt(VT2r);
+while (pos<textsize) 
+	begin
+	tstr2 = StringFromText(VT2r,pos,1);
+	tstr = StringFromText(VTr,pos,1);
+	pos = pos + len(tstr2);
+	if ((tstr2)<>(tstr)) then 
+		begin
+		RecordCheckError(1067,"",-1,"Math");	
+		res = -1;
+		end;	
+	end;
+	
+// if blank(VTr.ServCode) or blank(VTr.ServDepart)  then
+	// begin    
+	// res = -1;
+	// end;
+	
+if blank(VTr.ServCode) and nonblank(VTr.Copy)  then // для рассылки
+	begin    
+	//MailList(VTr);	
+	end
+else
+	begin
+	if blank(VTr.ServCode)  then
+		begin 
+		RecordCheckError(20549,"",-1,"ServCode");		
+		res = -1;
+		end;
+	end;
+	
+if nonblanktime(VTr.TimeDes) and (stat == 1) and (((VTr.TimeDes <= CurrentTime) and (VTr.DateDes == CurrentDate)) or (VTr.DateDes < CurrentDate))  then //AddHours(CurrentTime,2)
+		begin
+		RecordCheckError(1008,"",-1,"TimeDes");		
+		res = -1;
+		end;		
+	
+if  (VTr.ServCode <> VT2r.ServCode) and ((VTr.SendFlag == 1) and (VTr.SendFlag == VT2r.SendFlag)) then
+	begin
+	res = -1;
+	end;
+	
+if ((VTr.UsrCode <> CurrentUser) and (VTr.SolFlag <> VT2r.SolFlag)) then
+	begin
+	res = -1;
+	end;
+
+// if (USr.Department <> VTr.ServDepart) and (VTr.SendFlag <> VT2r.SendFlag) and (VTr.SendFlag == 1) then
+	// begin
+	// res = -1;
+	// end;
+if (VTr.SolFlag <> VT2r.SolFlag) and (VTr.SolFlag == 1) and ((USr.Department == VTr.UsrDepart) or (CurrentUser == "LTORBA") ) then
+	begin
+	if (((VT2r.TypeOfTicket == "201") and (CurrentUser == VT2r.ServCode)) or (VTr.ServCode == VTr.UsrCode)) then 
+		begin
+		st = 1;
+		end
+	else
+		begin
+		st = 0;
+		rwcnt = MatRowCnt(VTr);
+		for (i = 0; i < rwcnt; i = i + 1) 
+			begin
+			MatRowGet(VTr,i, VTrw);
+			if ((VTrw.CurStatus == 1)) then
+				begin
+				st = 1;	
+				i = rwcnt;
+				end;
+			end;	
+		end;		
+	if (st <> 1)  then
+		begin
+		res = -1;
+		//stopalert("нужен хоть один ответ ");
+		end;
+			
+		
+	end;	
+// if  ((stat == 1) and (VTr.Status == 1)) then
+	// begin
+	// res = -1;
+	// //stopalert("ответ не может быть первым");
+if 	(((USr.Department == VTr.ServDepart) and blank(VTr.DateRec))
+  or ((CurrentUser == VTr.ServCode) and nonblank(VTr.DateRec))) and (stat == 2)   then	//and (USr.Code == VTr.ServCode)
+	begin
+	Status = 1;
+	end
+else
+	begin
+	Status = 0;
+	end;
+
+	
+if  blank(VTr.TypeOfTicket)  then
+	begin
+	RecordCheckError(20549,"",-1,"TypeOfTicket");	
+	res = -1;
+	end;	
+
+if 	(VTr.Rating <> VT2r.Rating) and ((USr.Code <> VTr.UsrCode) or (VTr.ServCode == VTr.UsrCode)  )then
+	begin
+	res = -1;
+	end;
+if (VTr.ServCode == CurrentUser)
+	and (VT2r.TypeOfTicket == "201") and (VTr.SolFlag > VT2r.SolFlag) then
+		begin
+		res = 0;
+		end;	
+	
+if (res <> -1) then
+	begin
+	if (VTr.SolFlag <> VT2r.SolFlag) and (VTr.SolFlag == 1)  then
+		begin
+		WorkTime = 0;
+		TestTime = 0;
+		VTr.DateSol = CurrentDate;
+		VTr.TimeSol = CurrentTime;
+		// rwcnt = MatRowCnt(VTr);
+		// for(i = rwcnt - 1; i > 0; i = i - 1) 
+			// begin
+			// MatRowGet(VTr,i,VTrw);
+			// TestTime = TestTime + tTestTime(VTr.SerNr, VTrw.SmsTime, VTrw.SmsDate, VTrw.CurStatus, i);
+			// WorkTime = WorkTime + tWorkTime(VTr.SerNr, VTrw.SmsTime, VTrw.SmsDate, VTrw.CurStatus, i);
+			// end;	
+		// MatRowGet(VTr,rwcnt - 1,VTrw);
+		// TestTime = TestTime + iMinutesBetween(CurrentDate, CurrentTime, VTrw.SmsDate, VTrw.SmsTime);
+		// VTr.CostTime = WorkTime;
+		// VTr.TestTime = TestTime;
+		end;
+  	
+	if (SizeTextCnt(VTr) > SizeTextCnt(VT2r)) then
+		begin
+		tstr = "<" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime & ">" ;
+		AddToText(Chr(13) & tstr,VTr);
+		//AddToText(tstr, VTr);
+		AddToText(Chr(13),VTr);
+		AddToText("--------------------------------------------------",VTr);
+		end;
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
+	
+	if 	((USr.Department == VTr.ServDepart) and ((Status == 1)) and (VTr.SolFlag == VT2r.SolFlag)) 
+			and (VT2r.ServCode == VTr.ServCode) and (VT2r.Copy == VTr.Copy)  then  //and (VTr.Status <> VT2r.Status)
+		begin
+		rwcnt = MatRowCnt(VTr);
+		if rwcnt <> 0 then
+			begin 
+			for (i = 0; i < rwcnt; i = i + 1) 
+				begin
+				MatRowGet(VTr,i,VTrw);
+				if VTrw.Sign == CurrentUser then
+					begin
+					VTrw.PrStatus = 0;
+					MatRowPut(VTr, i, VTrw);
+					end
+				else
+					begin
+					VTrw.PrStatus = 1;
+					MatRowPut(VTr, i, VTrw);
+					end;
+				end;
+			end;
+		
+		VTrw.SmsDate = CurrentDate;
+		VTrw.SmsTime =  CurrentTime;
+		VTrw.Sign = CurrentUser;
+		VTrw.CurStatus = Status;
+		VTrw.PrStatus = 0;
+		MatRowInsert(VTr, rwcnt, VTrw);
+		
+		VTr.Status = Status;
+		if (VT2r.SendFlag == 0) then 
+			begin
+			VTr.SendFlag = 1;
+			end;
+		end;
+		
+	if 	(((USr.Department == VTr.UsrDepart) or  ((setinset(CurrentUser,VTr.Copy) and VTr.Copy <> "") or (CurrentUser == "ZINOVIY")) ) 
+			and (Status == 0) and (VTr.SolFlag == VT2r.SolFlag)) //and (VT2r.ServCode == VTr.ServCode)
+			 //  and ((VT2r.Status <> 0) or (stat == 1)))) and (VTr.SendFlag == VT2r.SendFlag) 
+			then
+		begin
+		rwcnt = MatRowCnt(VTr);
+		if rwcnt <> 0 then
+			begin 
+			for (i = 0; i < rwcnt; i = i + 1) 
+				begin
+				MatRowGet(VTr,i,VTrw);
+				if VTrw.Sign == CurrentUser then
+					begin
+					VTrw.PrStatus = 0;
+					MatRowPut(VTr, i, VTrw);
+					end
+				else
+					begin
+					VTrw.PrStatus = 1;
+					MatRowPut(VTr, i, VTrw);
+					end;
+				end;
+			end;	
+		
+		VTr.Status = Status;
+
+		VTrw.SmsDate = CurrentDate;
+		VTrw.SmsTime =  CurrentTime;
+		VTrw.Sign = CurrentUser;
+		VTrw.CurStatus = VTr.Status;
+		VTrw.PrStatus = 0;
+		MatRowInsert(VTr, rwcnt, VTrw);
+	
+		end;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	if (VTr.SendFlag == 1) and (VTr.RecFlag == 0) then
+		begin    
+		VTr.DateRec = CurrentDate;
+		VTr.TimeRec = CurrentTime;
+		VTr.RecFlag = 1;
+		VTr.TestFlag = 0;
+		VTr.ServCode = CurrentUser;
+		if VTr.ServCode <> VT2r.ServCode then
+			begin
+			if nonblank(VTr.Copy) and SetInSet(VTr.ServCode, VTr.Copy) then 
+				begin
+				VTr.Copy = ReplaceSubstrFromStr(VTr.Copy, VTr.ServCode, VT2r.ServCode);
+				end
+			else
+				begin
+				if nonblank(VTr.Copy) then
+					begin
+					VTr.Copy = VTr.Copy & "," & VT2r.ServCode;
+					end
+				else
+					begin
+					VTr.Copy = VT2r.ServCode;
+					end;
+				end;
+			end;
+		Usr.Code = VTr.ServCode;
+		ReadFirstMain(Usr, 1, True);
+		VTr.ServName = USr.Name;
+		VTr.ServAppoint = USr.StateJob;
+		VTr.ServDepart = USr.Department;
+		end;
+  end;
+	
+if (res <> -1) then
+	begin
+	if (VTr.SerNr < 1) then
+		begin
+		VTr.SerNr = NextSerNr("tVTicketsVc", CurrentDate, -1, false, "");
+		end;
+	end;
+if (VTr.SerNr < 1) then
+	begin
+	res = -1;
+	end;	
+tVTicketsVcRecordCheck = res;
+RETURN;
+end;
+
+global updating 
+function LongInt tVTicketsVcRecordSave(var record tVTicketsVc VTr,record tVTicketsVc VT2r,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+string 255 tstr;
+string 255 msg, Comment;
+record ApproveCostsVc Ar;
+record ORVc ORr;
+record tVTicketsVc VTvr,VTv2r;
+record CUVc CUr;
+record DocsVc Docr;
+record IVVc IVr;
+record StockMovVc SMr;
+record IRetOrdVc IROr;
+record TTVc TTr;
+record IBudgetDiffVc IBDr;
+record AutoInvVc AIr;
+record PUVc PUr;
+record SDVc SDr;
+
+tstr = StringFromText(VTr,1,1);
+if tstr <> ""  then
+	begin
+	tstr = "<" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime & ">" ;
+	AddToText(Chr(13) ,VTr);
+	AddToText(tstr, VTr);
+	AddToText(Chr(13),VTr);
+	AddToText("--------------------------------------------------",VTr);
+	end;
+
+VTr.Comment = VTr.SerNr &":"  &  VTr.Comment;
+
+if blank(VTr.ServCode) and nonblank(VTr.Copy)  then // для рассылки
+	begin   
+    Comment = VTr.Comment;	
+	if (MailList(VTr)) then
+		begin
+		VTr.Comment = Comment;
+		ReadFirstMain(VTr,1,true);
+		RecordDelete(VTr);
+		StepBack(VTr);
+		end;
+	end
+else
+	begin
+	CreateAlarmFromQA(VTr, 1);
+	end;
+
+if (SizeTextCnt(VTr) > 0) then
+	begin
+	tMailActivity(VTr, 3);
+	end;
+switch (left(VTr.ParentNr, 2))
+    begin
+    case 10:begin 
+			Ar.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(Ar, 0, true); 
+			CreateRecordLink(Ar, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, Ar, CurrentCompany);	
+			end;
+	case 11:begin 
+			ORr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(ORr, 0, true); 
+			CreateRecordLink(ORr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, ORr, CurrentCompany);	
+			end;	
+	case 12:begin 
+			VTvr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(VTvr, 0, true); 
+			CreateRecordLink(VTvr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, VTvr, CurrentCompany);	
+			VTvr.SendFlag = 1;
+			AddToText(Chr(13) & "<ПЕРЕАДРЕСАЦИЯ> Задача№" & VTr.SerNr, VTvr);
+//			RecordCopy(VTv2r,VTvr);
+			VTv2r.SerNr = VTvr.SerNr; 
+			ReadFirstMain(VTv2r, 0, true); 
+			RecordUpdate(VTv2r, VTvr, True);
+			end;
+	// case 13:begin 
+			// CUr.Code = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			// ReadFirstKey("Code",CUr, 0, true); 
+			// CreateRecordLink(CUr, CurrentCompany, VTr, CurrentCompany);
+			// CreateRecordLink(VTr, CurrentCompany, CUr, CurrentCompany);	
+			// end;	
+	// case 14:begin 
+			// Docr.Code = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			// ReadFirstKey("Code", Docr, 0, true); 
+			// CreateRecordLink(Docr, CurrentCompany, VTr, CurrentCompany);
+			// CreateRecordLink(VTr, CurrentCompany, Docr, CurrentCompany);	
+			// end;
+	case 15:begin 
+			IVr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(IVr, 0, true); 
+			CreateRecordLink(IVr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, IVr, CurrentCompany);	
+			end;
+	case 16:begin 
+			SMr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(SMr, 0, true); 
+			CreateRecordLink(SMr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, SMr, CurrentCompany);	
+			end;
+	case 17:begin 
+			IROr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(IROr, 0, true); 
+			CreateRecordLink(IROr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, IROr, CurrentCompany);	
+			end;
+	case 18:begin 
+			TTr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(TTr, 0, true); 
+			CreateRecordLink(TTr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, TTr, CurrentCompany);	
+			end;	
+	case 19:begin 
+			IBDr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(IBDr, 0, true); 
+			CreateRecordLink(IBDr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, IBDr, CurrentCompany);	
+			end;		
+	case 20:begin 
+			AIr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(AIr, 0, true); 
+			CreateRecordLink(AIr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, AIr, CurrentCompany);	
+			end;	
+	case 21:begin 
+			PUr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(PUr, 0, true); 
+			CreateRecordLink(PUr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, PUr, CurrentCompany);	
+			end;	
+	case 22:begin 
+			SDr.SerNr = Right(VTr.ParentNr,(len(VTr.ParentNr)-2)); 
+			ReadFirstMain(SDr, 0, true); 
+			CreateRecordLink(SDr, CurrentCompany, VTr, CurrentCompany);
+			CreateRecordLink(VTr, CurrentCompany, SDr, CurrentCompany);	
+			end;			
+    end;	
+	
+
+
+	
+	
+VTr.ParentNr = 0;	
+  // ActAfterTicket(VTr); 
+  // end;
+tVTicketsVcRecordSave = res;  
+RETURN;
+end;
+
+
+global updating 
+function LongInt tVTicketsVcRecordUpdate(var record tVTicketsVc VTr,record tVTicketsVc VT2r,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+
+
+// if (VTr.SendFlag == 1) and (VTr.TestFlag == 0) and (VTr.RecFlag <> VT2r.RecFlag) and (VTr.RecFlag == 1)  then
+  // begin
+  // ActAfterTicket(VTr); 
+  // end;
+
+if (SizeTextCnt(VTr) > SizeTextCnt(VT2r)) then
+	begin
+    CreateAlarmForCC(VTr, VT2r, 1);
+	CreateAlarmFromQA(VTr, 0);
+	CreateAlarmForUsr(VTr);
+	tMailActivity(VTr, 0);
+	end;	
+	
+if ((VTr.Copy <> "") and (VTr.Copy <> VT2r.Copy)) and (SizeTextCnt(VTr) == SizeTextCnt(VT2r)) and nonblank(VTr.ServCode)  then
+	begin
+    CreateAlarmForCC(VTr, VT2r, 0);
+	tMailActivity(VTr, 1);
+	end;
+
+if (VTr.ServCode <> VT2r.ServCode)  and (SizeTextCnt(VTr) == SizeTextCnt(VT2r))  then
+	begin
+	CreateAlarmFromQA(VTr, 0);
+	tMailActivity(VTr, 2);
+	end;
+
+	
+	
+	
+tVTicketsVcRecordUpdate = res;  
+RETURN;
+end;
+
+
+global
+updating procedure TicketPrew(LongInt SerNr)
+begin
+record tVTicketsVc VTr, VT2r;
+record UserVc USr;
+boolean res, bool;
+string 250 tstr;
+row tVTicketsVc VTrw;
+integer rwcnt, i, stat;
+
+bool = false;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+VTr.SerNr = SerNr;
+ReadFirstMain(VTr, 1, True);
+
+VT2r.SerNr = SerNr;
+ReadFirstMain(VT2r, 1, True);
+
+rwcnt = MatRowCnt(VTr);
+if rwcnt <> 0 then
+	begin 
+	for (i = 0; i < rwcnt; i = i + 1) 
+		begin
+		MatRowGet(VTr,i,VTrw);
+		if VTrw.Sign == CurrentUser then
+			begin
+			VTrw.PrStatus = 0;
+			MatRowPut(VTr, i, VTrw);
+			bool = true;
+			end;
+		stat = VTrw.CurStatus;	
+		end;
+	end;
+if (bool == false) and (CurrentUser <> VTr.ServCode) and (CurrentUser <> VTr.UsrCode) then
+	begin
+	VTrw.SmsDate = CurrentDate;
+	VTrw.SmsTime =  CurrentTime;
+	VTrw.Sign = CurrentUser;
+	VTrw.CurStatus = stat;
+	VTrw.PrStatus = 0;
+	MatRowInsert(VTr, rwcnt, VTrw);
+	end;
+RecordUpdate(VT2r, VTr, False);
+
+RETURN;
+end;
+
+//======================================================================== 4-04-13 TGOR
+global
+function LongInt LegitimUsr(record tVTicketsVc VTr)
+begin
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+longint RwCnt;  
+string 25 SuperiorS, SuperiorU;
+
+Usr.Code = VTr.UsrCode;
+ReadFirstMain(Usr, 1, True);
+SuperiorU = USr.Supervisor;
+
+Usr.Code = VTr.ServCode;
+ReadFirstMain(Usr, 1, True);
+SuperiorS = USr.Supervisor;
+
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+if ((USr.Department == VTr.ServDepart) or (USr.Department == VTr.UsrDepart)) 
+	and ((VTr.Privacy <> 1) or ((VTr.Privacy == 1) 
+	and ((VTr.UsrCode == CurrentUser) or (VTr.ServCode == CurrentUser) or (setinset(CurrentUser,VTr.Copy) and VTr.Copy <> "")))) 
+	or (CurrentUser == "ZINOVIY") or (setinset(CurrentUser,VTr.Copy)) or (SuperiorU == CurrentUser) or (SuperiorS == CurrentUser) then
+		begin
+		LegitimUsr = 1;
+		end
+	else
+		begin
+		LegitimUsr = 0;
+		end;
+return;
+end;
+
+global
+function longint QAPrew(string SerNr,string CurrentUsr)
+begin
+record tVTicketsVc VTr;
+row tVTicketsVc VTrw;
+integer i,rwcnt;
+longint res, resb;
+
+
+resb = 0;
+VTr.SerNr = SerNr;
+ReadFirstMain(VTr, 1, true);
+rwcnt = MatRowCnt(VTr);
+
+for (i = 0; i < rwcnt; i = i + 1) 
+	begin
+	MatRowGet(VTr,i,VTrw);
+	if (VTrw.Sign == CurrentUser) then
+		begin
+		resb = 0;
+		i = rwcnt;
+		end
+	else
+		begin
+		resb = 1;
+		end;
+	end;	
+if resb == 0 then
+	begin	
+	for (i = 0; i < rwcnt; i = i + 1) 
+	begin
+	MatRowGet(VTr,i,VTrw);
+	if (VTrw.Sign == CurrentUser) and (VTrw.PrStatus == 1) then
+		begin
+		res = 1;
+		i = rwcnt;
+		end
+	else
+		begin
+		res = 0;
+		end;
+	end;
+	end;
+if (resb == 1) or (res == 1) then
+	begin
+	QAPrew = 1;
+	end
+else
+	begin
+	QAPrew = 0;
+	end;
+	
+return;
+end;
+
+
+global
+function longint tMin(string SerNr)
+begin
+record tVTicketsVc VTr;
+row tVTicketsVc VTrw;
+integer rwcnt, i, nr;
+date date1,date2;
+time time1,time2;
+
+
+VTr.SerNr = SerNr;
+ReadFirstMain(VTr, 1, True);
+rwcnt = MatRowCnt(VTr);
+if rwcnt > 1 then
+	begin 
+	for (i = 0; i < rwcnt; i = i + 1) 
+		begin
+		MatRowGet(VTr,i,VTrw);
+		if VTrw.Sign == VTr.ServCode then
+			begin
+			nr = i;
+			date2 = VTrw.SmsDate;
+			time2 = VTrw.SmsTime;
+			i = rwcnt;
+			end;
+		end;
+	
+	MatRowGet(VTr,nr-1,VTrw);	
+	date1 = VTrw.SmsDate;
+	time1 = VTrw.SmsTime;
+		
+	tMin = iMinutesBetween(date1, time1, date2, time2);
+	end
+else
+	begin
+	tMin = -1;
+	end;
+return;
+end;
+
+global
+function boolean tExF(string Code)
+begin
+Boolean TrHs, ClF;
+record tVTicketsVc VTr;
+
+ResetLoop(VTr);
+VTr.SolFlag = 0;
+TrHs = true;
+while (LoopKey("SolFlag", VTr,1,TrHs)) 
+	begin
+	TrHs = (VTr.SolFlag == 0);
+	if (VTr.UsrCode == Code) and TrHs then
+		begin
+		TrHs = False;
+		tExF = true;
+		end; 
+	end;
+return;
+end;
+

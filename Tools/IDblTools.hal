@@ -1,0 +1,487 @@
+external function string 50 IGetItemFromStr(string, integer);
+external inner procedure MainRClassReportDef(var record RcVc);
+external procedure UserObjAllow(var record RcVc, string);
+external function string 255 IAddToSet(string, string);
+external function string 255 IDelFromSet(string, string);
+external function boolean IGetOPByPrepaymentNr(var record OPVc, longint);
+external procedure IOpenVcFromTR(record TRVc);
+
+//====================================================================
+global
+procedure DblTTVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record TTVc TTr;
+
+  TTr.SerNr = FirstInRange(l,10);
+  if ReadFirstMain(TTr,1,true) then
+    begin
+      wn = OpenWindow("TTDClass",1,0,"","",TTr);
+    end
+  else
+    begin
+      TTr.SerNr = FirstInRange(dblstr,10);
+      if (ReadFirstMain(TTr,1,true)) then
+        begin
+          wn = OpenWindow("TTDClass",1,0,"","",TTr);
+        end;
+    end;
+  Return;
+end;
+
+//====================================================================
+//IArRn
+global
+procedure DblOpenPrepayDet(string dblstr,string l,Integer currepwn)
+begin
+  record RcVc RepSpec;
+
+  GetWindowRecord(currepwn,RepSpec);
+  RepSpec.Media = mtScreen;
+  RepSpec.long1 = StringToLongint(dblstr); //Номер АВ.ПЛ.
+  RepSpec.d1 = IGetItemFromStr(l,0); //Конечная дата
+  RepSpec.flags[2] = StringToInt(IGetItemFromStr(l,1)); //Валюта
+  RepSpec.repname = "OpenPrepayDetRn";
+  RunReport(RepSpec,0);
+  return;
+end;
+
+//====================================================================
+//Для оборотно-сальдовой (MBARn)
+function string 255 TestObjStr(string ObjStr) //Обрабатываем объект с учетом доступа
+begin
+  string 255 res;
+  string 2 Podr;
+  record UserVc Usr;
+  record ObjVc Objr;
+
+  res = ObjStr;
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr,1,true);
+  Podr = left(Usr.Department,2);
+
+  if (Usr.limitedAccess <> 0) then
+    begin
+      if Blank(ObjStr) then
+        begin
+          res = Podr; //Если объект не указан - ставим PODR
+        end
+      else
+        begin
+          Objr.Code = ObjStr;
+          ReadFirstMain(Objr,1,true);
+          if (Objr.OTCode=="PODR") then
+            begin
+              res = Podr; //Если указан PODR - заменяем на PODR текущего юзверя
+            end;
+            
+          if (Objr.OTCode=="EMP") then
+            begin
+              Usr.Code = Objr.Code;
+              ReadFirstMain(Usr,1,true);
+              if left(Usr.Department,2) <> Podr then
+                begin
+                  res = Podr; //Если указан EMP - заменяем на PODR текущего юзверя
+                end;
+            end;
+        end;
+    end;
+  TestObjStr = res;
+  Return;
+end;
+
+global
+procedure DblMBA(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record RcVc curRepSpec;
+  record RcVc RepSpec;
+  record UserVc Usr;
+  Integer oldcomp,repcompany;
+
+  if (nonblank(dblstr)) then
+    begin
+      GetWIndowRecord(currepwn,curRepSpec);
+      oldcomp = CurrentCompany;
+      if (nonblank(l)) then
+        begin
+          repcompany = StringToInt(l);
+        end
+      else
+        begin
+         repcompany = oldcomp;
+        end;
+      if (repcompany!=0) then
+        begin
+          SetCompany(repcompany,false);
+        end;
+
+      ReportDefaults(RepSpec,"MainRClass");    
+      MainRClassReportDef(RepSpec);
+      RepSpec.repname = "MainRn";
+      RepSpec.Media = mtScreen;
+      RepSpec.basecurncy = curRepSpec.basecurncy;
+      RepSpec.SimVerf = curRepSpec.SimVerf;
+      RepSpec.stoff = -1;
+      RepSpec.f3 = curRepSpec.f6;//excl obj
+      RepSpec.f4 = dblstr;//AccStr
+      RepSpec.CurncyCode = curRepSpec.CurncyCode;
+      RepSpec.sStartDate = curRepSpec.sStartDate;
+      RepSpec.sEndDate = curRepSpec.sEndDate;
+      RepSpec.ObjStr = TestObjStr(curRepSpec.ObjStr);
+   // UserObjAllow(RepSpec, "ObjStr");
+      RepSpec.ObjType = curRepSpec.ObjType;
+      if (curRepSpec.repname=="TrialRn") then
+        begin
+          RepSpec.flags[8] = curRepSpec.flags[5];
+        end;
+      RepSpec.flags[29] = repcompany;
+      Usr.Code = CurrentUser;
+      ReadFirstMain(Usr,1,true);
+      if Usr.limitedAccess <> 0 then
+        begin
+          RepSpec.flags[23] = 1; //Не выводить код операции
+        end;
+      RunReport(RepSpec,0); 
+      if (oldcomp!=CurrentCompany) then
+        begin
+          ResetCompany(oldcomp);
+        end;
+    end;
+  return;
+end;
+
+//global
+//procedure DblNL(string dblstr,string l,Integer currepwn)
+//begin
+//  DblMBA(dblstr, l, currepwn);
+//  Return;
+//end;
+
+//====================================================================
+//Отчет "Заявки на возврат"
+global
+procedure DblIRetOrdVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record IRetOrdVc IRetOrdr;
+
+  IRetOrdr.SerNr = dblstr;
+  if ReadFirstMain(IRetOrdr,1,true) then
+    begin
+      wn = OpenWindow("IRetOrdDClass",1,0,"","",IRetOrdr);
+    end;
+  Return;
+end;
+
+//====================================================================
+global
+procedure DblVBudget(string dblstr, string l, integer currepwn)
+begin
+  integer wn;
+  record VBudgetVc BUr;
+  
+  if (nonblank(dblstr)) then
+    begin
+      BUr.Code = FirstInRange(dblstr,10);
+      if (ReadFirstMain(BUr,1,true)) then
+        begin  
+          wn = OpenWindow("VBudgetDClass",1,0,"","",BUr);
+        end; 
+    end;
+  return;
+end;
+
+//===============================================
+//Навигация по классификаторам
+global
+procedure DblISelectVClass(string dblstr,string l,Integer wn)
+begin
+  record RcVc RepSpec;
+  
+  GetWindowRecord(wn,RepSpec);
+  CloseWindow(wn);
+  if (RepSpec.flags[1] > 0) then //Закрываем окно SClass'а
+    begin
+      CloseWindow(RepSpec.flags[1]);
+      RepSpec.flags[1] = 0;
+    end;
+
+  if (l == "ok") and (RepSpec.flags[0] > 0) then
+    begin
+      PasteString(RepSpec.flags[0], RepSpec.f1);
+    end
+  else
+    begin
+      if (l == "left") and (RepSpec.flags[2] > 1) then
+        begin
+          RepSpec.flags[2] = RepSpec.flags[2] - 1; //Level
+        end;
+
+      if (l == "right") and (RepSpec.flags[2] < 21) then
+        begin
+          RepSpec.flags[2] = RepSpec.flags[2] + 1;
+        end;
+
+      if (l == "select") then
+        begin
+          RepSpec.f1 = IAddToSet(dblstr, RepSpec.f1);
+        end;
+
+      if (l == "delete") then
+        begin
+          RepSpec.f1 = IDelFromSet(dblstr, RepSpec.f1);
+        end;
+
+      RepSpec.repname = "ISelectVClassRn";
+      RunReport(RepSpec,0);
+    end;
+
+  Return;
+end;
+
+//====================================================================
+//АВ.ПЛ. поставщикам
+global
+procedure DblIVEPrepay(string dblstr, string l, integer currepwn)
+begin
+  integer wn;
+  record OPVc OPr;
+
+  if IGetOPByPrepaymentNr(OPr, dblstr) then
+    begin  
+      wn = OpenWindow("OPDClass", 1, 0, "", "", OPr);
+    end;
+
+  Return;
+end;
+
+//====================================================================
+//АВ.ПЛ. поставщикам
+global
+procedure DblITRToRep(string dblstr, string l, integer currepwn)
+begin
+  record RcVc RepSpec;
+  integer IntYc;
+  longint Number;
+
+  Number = FirstTransInRange(dblstr);
+  IntYc = FirstTransTypeInRange(dblstr);
+
+  RepSpec.repname = "ITRToRepRn";
+  RepSpec.Media = mtScreen;
+  RepSpec.f1 = dblstr;
+  RepSpec.long1 = IntYc;
+  RepSpec.long2 = Number;
+  RunReport(RepSpec, 0);
+  Return;
+end;
+
+//====================================================================
+//Согласнование затрат
+global
+procedure DblApproveCostsVc(string dblstr, string l, integer currepwn)
+begin
+  record ApproveCostsVc ACr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      ACr.SerNr = FirstInRange(dblstr, 10);
+      if ReadFirstMain(ACr, 1, true) then
+        begin  
+          wn = OpenWindow("ACDClass", 1, 0, "", "", ACr);
+        end; 
+    end;
+  Return;
+end;
+
+//====================================================================
+//Открыть документ из записи операции (VC from TR)
+global
+procedure IDblVcFromTR(string dblstr, string l, integer currepwn)
+begin
+  record TRVc TRr;
+  integer IntYc;
+  longint Number;
+  integer wn;
+  
+  IntYc = StringToInt(FirstInRange(l, 20));
+  Number = StringToLongint(LastInRange(l, 20));
+
+  TRr.IntYc = IntYc;
+  TRr.Number = Number;
+  if ReadFirstMain(TRr, 2, true) then
+    begin  
+      IOpenVcFromTR(TRr);
+    end;
+  Return;
+end;
+
+//====================================================================
+//Операции
+global
+procedure IDblOperVc(string dblstr, string l, integer currepwn)
+begin
+  record OperVc OPr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      OPr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(OPr, 1, true) then
+        begin  
+          wn = OpenWindow("OperDClass", 1, 0, "", "", OPr);
+        end; 
+    end;
+  Return;
+end;
+
+//====================================================================
+//Функции
+global
+procedure IDblFunVc(string dblstr, string l, integer currepwn)
+begin
+  record FunVc Fr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      Fr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(Fr, 1, true) then
+        begin  
+          wn = OpenWindow("FunDClass", 1, 0, "", "", Fr);
+        end; 
+    end;
+  Return;
+end;
+
+//====================================================================
+//Структурные подразделения
+global
+procedure IDblStPodrVc(string dblstr, string l, integer currepwn)
+begin
+  record StPodrVc SPr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      SPr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(SPr, 1, true) then
+        begin  
+          wn = OpenWindow("StPodrDClass", 1, 0, "", "", SPr);
+        end; 
+    end;
+  Return;
+end;
+
+//====================================================================
+//Должности
+global
+procedure IDblVPositionVc(string dblstr, string l, integer currepwn)
+begin
+  record VPositionVc VPr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      VPr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(VPr, 1, true) then
+        begin  
+          wn = OpenWindow("VPositionDClass", 1, 0, "", "", VPr);
+        end; 
+    end;
+  Return;
+end;
+
+//====================================================================
+//История изменений договорной даты платежа Сч/ф
+global
+procedure DblPlanPayHistByIV(string dblstr, string l, integer currepwn)
+begin
+  record RcVc RepSpec;
+  integer wn;
+  
+  if nonblank(l) then
+    begin
+      ReportDefaults(RepSpec, "PlanPayHistByIVRn");  	
+      RepSpec.long1 = StringToLongint(l);
+      RepSpec.Media = mtScreen;
+      RepSpec.repname = "PlanPayHistByIVRn";
+      RunReport(RepSpec, 0);
+    end;
+  Return;
+end;
+
+//====================================================================
+//Неопл. Сч/ф
+global
+procedure IDblARVc(string dblstr, string l, integer currepwn)
+begin
+  record ARVc ARr;
+  integer wn;
+  
+  if (nonblank(l)) then
+    begin
+      ARr.InvoiceNr = FirstInRange(l, 20);
+      if ReadFirstMain(ARr, 1, true) then
+        begin  
+          wn = OpenWindow("ARDClass", 1, 0, "", "", ARr);
+        end; 
+    end;
+  Return;
+end;
+
+//====================================================================
+//Удалить неопл. Сч/ф
+global
+updating procedure IDblDelFromARVc(string dblstr, string l, integer currepwn)
+begin
+  record ARVc ARr;
+  integer wn;
+  
+  if (nonblank(l)) then
+    begin
+      ARr.InvoiceNr = FirstInRange(l, 20);
+      if ReadFirstMain(ARr, 1, true) then
+        begin  
+        RecordRemove(ARr);
+        end; 
+    end;
+  Return;
+end;
+
+//====================================================================
+//Активность операторов
+global
+procedure DblActOpDet(string dblstr,string l,Integer currepwn)
+begin
+  record RcVc RepSpec;
+
+  GetWindowRecord(currepwn,RepSpec);
+  RepSpec.Media = mtScreen;
+  RepSpec.flags[0] = StringToInt(FirstInRange(l,12)); //Индекс регистра
+  RepSpec.f1 = LastInRange(l,20); //Код юзера
+  RepSpec.repname = "ActOpDetRn";
+  RunReport(RepSpec,0);
+  return;
+end;
+
+//====================================================================
+//Удалить запись операции (Использовать осторожно !!!)
+global
+updating procedure IDblRemoveTrans(string dblstr, string l, Integer currepwn)
+begin
+  record TRVc TRr;
+
+  if (nonblank(l)) then
+    begin
+      TRr.Number = FirstTransInRange(l);
+      TRr.IntYc = FirstTransTypeInRange(l);
+      if ReadFirstMain(TRr, 2, true) then
+        begin
+        RecordRemove(TRr);
+        end;
+    end;
+  Return;
+end;

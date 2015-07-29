@@ -1,0 +1,262 @@
+//===============================================
+//Наименование "родителя" в CalculatedColumn
+global
+function string 255 IMarketSalaryClassLClassPD(var record IMarketSalaryClassVc MSCr)
+begin
+  record IMarketSalaryClassVc parentMSCr;
+
+  parentMSCr.Code = MSCr.Parent;
+  ReadFirstMain(parentMSCr, 1, true);
+  IMarketSalaryClassLClassPD = parentMSCr.Desc;
+  Return;
+end;
+
+//===============================================
+function boolean IMarketSalaryClassDClassParentEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IMarketSalaryClassVc MSCr;
+  record IMarketSalaryClassVc parentMSCr;
+  
+  if (changed <> 0) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, MSCr);
+      parentMSCr.Code = MSCr.Parent;
+      if ReadFirstMain(parentMSCr, 1, true) then
+        begin
+          MSCr.Group = parentMSCr.Group;
+        end
+      else
+        begin
+          MSCr.Parent = blankval;
+        end;
+      PutWindowRecord(wn, MSCr);
+      SelectWindow(wn);
+    end;
+  IMarketSalaryClassDClassParentEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IMarketSalaryClassDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "Parent": res = IMarketSalaryClassDClassParentEFAfter(wn, changed);
+        end;
+    end; 
+  IMarketSalaryClassDClassAfterEditField = res;
+  Return;
+end;
+
+
+//===============================================
+//Наименование должности
+function boolean GetVPositionName(string Code, var string Name)
+begin
+  record VPositionVc VPr;
+
+  VPr.Code = Code;
+  GetVPositionName = ReadFirstMain(VPr, 1, true);
+  Name = VPr.Name;
+  Return;
+end;
+
+//===============================================
+function boolean IMarketSalaryDClassPositionCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IMarketSalaryVc MSr;
+
+  if (changed <> 0) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, MSr);
+      if not GetVPositionName(MSr.PositionCode, MSr.PositionName) then
+        begin
+          MSr.PositionCode = blankval;
+        end;
+      PutWindowRecord(wn, MSr);
+      SelectWindow(wn);
+    end;
+  IMarketSalaryDClassPositionCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IMarketSalaryDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "PositionCode": res = IMarketSalaryDClassPositionCodeEFAfter(wn, changed);
+        end;
+    end; 
+  IMarketSalaryDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblIMarketSalaryVc(string dblstr, string l, integer currepwn)
+begin
+  record IMarketSalaryVc MSr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      MSr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(MSr, 1, true) then
+        begin  
+          wn = OpenWindow("IMarketSalaryDClass", 1, 0, "", "", MSr);
+        end; 
+    end;
+  Return;  
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);  
+  Setting("Классификация окладов на рынке труда", IMarketSalaryClassLClass, modEmp);
+  Register("Оклады на рынке труда", "Оклады на рынке труда", IMarketSalaryLClass, modEmp);
+  Report("Оклады на рынке труда", IMarketSalaryRClass, IMarketSalaryRn, 0, modEmp);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классификация окладов на рынке труда", IMarketSalaryClassLClass, CGmlist, -);
+  SpawnClass(IMarketSalaryClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IMarketSalaryClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-350, -350, "Группа", Group, false, Group);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "IMarketSalaryClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите класс окладов на рынке труда", IMarketSalaryClassSClass, CGslist, -);
+  SpawnClass(IMarketSalaryClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IMarketSalaryClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-350, -350, "Группа", Group, false, Group);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "IMarketSalaryClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классификация окладов на рынке труда", IMarketSalaryClassDClass, CGview,-);
+  SetWRect(20, 80, 720, 190);
+  UseView(IMarketSalaryClassVc);
+  v = 6;
+  EditField(h=100, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2=300, v, -40, "Наименование", Normal, Desc, false, 0);
+  EditField(h, v+=vs, 80, "Иерархия", Normal, Parent, false, IMarketSalaryClassSClass);
+  EditField(h2, v, 80, "Группа", Normal, Group, false, 0);
+  EndWindow;
+
+
+  WindowBegin("Оклады должностей на рынке труда", IMarketSalaryLClass, CGmlist, -);
+  SpawnClass(IMarketSalaryDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IMarketSalaryVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Должность", PositionCode, false, Desc);
+  RlColKey(200, 200, "Наименование", PositionName, false, Desc);
+  RlColKey(-400, -400, "Дата", ActDate, true, ActDate);
+  RlColKey(-320, -320, "Статус", Status, true, Status);
+  RlColKey(-280, -280, "Min", SalaryMin, true, 0);
+  RlColKey(-210, -210, "Max", SalaryMax, true, 0);
+  RlColKey(-140, -140, "Avg", SalaryAvg, true, 0);
+  RlColKey(-70, -70, "Совокуп.", SalaryTot, true, 0);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите оклад должности на рынке труда", IMarketSalarySClass, CGslist, -);
+  SpawnClass(IMarketSalaryDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IMarketSalaryVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Должность", PositionCode, false, Desc);
+  RlColKey(200, 200, "Наименование", PositionName, false, Desc);
+  RlColKey(-400, -400, "Дата", ActDate, true, ActDate);
+  RlColKey(-320, -320, "Статус", Status, true, Status);
+  RlColKey(-280, -280, "Min", SalaryMin, true, 0);
+  RlColKey(-210, -210, "Max", SalaryMax, true, 0);
+  RlColKey(-140, -140, "Avg", SalaryAvg, true, 0);
+  RlColKey(-70, -70, "Совокуп.", SalaryTot, true, 0);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Оклад должности на рынке труда", IMarketSalaryDClass, CGview,-);
+  SetWRect(20, 80, 720, 360);
+  UseView(IMarketSalaryVc);
+  v = 6;
+  EditField(h=150, v, 80, "Код оклада", Normal, Code, false, 0);
+  EditField(h, v+=vs, 80, "Код должности", Normal, PositionCode, false, VPositionSClass);
+  EditField(h2=350, v, -40, "Наименование", Normal, PositionName, false, 0);
+  EditField(h, v+=vs, -40, "Классификация", Normal, Classification, false, IMarketSalaryClassSClass);
+  EditField(h, v+=vs, 80, "На дату", Normal, ActDate, false, PasteCurDate);
+
+  v2=(v+=40);
+  EditField(h, v, 100, "Минимальный оклад", Normal, SalaryMin, true, 0);
+  EditField(h, v+=vs, 100, "Максимальный оклад", Normal, SalaryMax, true, 0);
+  EditField(h, v+=vs, 100, "Средний оклад", Normal, SalaryAvg, true, 0);
+  EditField(h, v+=vs, 100, "Совокупный оклад", Normal, SalaryTot, true, 0);
+
+  ButtonFrame(h2, v=v2, 150,3, "Статус");
+  RadioButton(h2, v, 0, 0, "Официальный", Status);
+  RadioButton(h2, v+=16, 1, 0, "Управленческий (на исп. срок)", Status);
+  RadioButton(h2, v+=16, 2, 0, "Управленческий (после исп. срока)", Status);
+  
+  EndWindow;
+
+
+  WindowBegin("Должностные оклады на рынке труда", IMarketSalaryRClass, CGRcW, RcType);
+  SetWRect(20, 80, 450, 240);
+  EditFieldTL(h=120, v=6, 150, "Код оклада", M4Code, Normal, 20, f1, false, IMarketSalarySClass);
+  EditFieldTL(h, v+=vs, 150, "Код должности", M4Code, Normal, 20, f2, false, VPositionSClass);
+  EditFieldTL(h, v+=vs, -40, "Классификация", M4UStr, Normal, 200, f3, false, IMarketSalaryClassSClassSClass);
+  v2 = (v+=60);
+  ButtonFrame(h=30, v, 125, 3, "Статус");
+  RadioButton(h, v, 0, 0, "Официальный", flags[0]);
+  RadioButton(h, v+=16, 1, 0, "Упр. (на исп. срок)", flags[0]);
+  RadioButton(h, v+=16, 2, 0, "Упр. (после исп. срока)", flags[0]);
+  v = v2;
+  ButtonFrame(h2=180, v, 123, 7," Функция");
+  RadioButton(h2, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h2, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+  Return;
+end;

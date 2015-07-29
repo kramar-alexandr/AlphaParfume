@@ -1,0 +1,485 @@
+//===============================================
+//Наименование "родителя" в CalculatedColumn
+global
+function string 255 ISecObjCatLClassParentName(var record ISecObjCatVc OCr)
+begin
+  record ISecObjCatVc parentOCr;
+
+  parentOCr.Code = OCr.Parent;
+  ReadFirstMain(parentOCr, 1, true);
+  ISecObjCatLClassParentName = parentOCr.Name;
+  Return;
+end;
+
+//===============================================
+//Угрозы безопасности
+function boolean ISecThreatDClassProtectCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record ISecThreatVc Tr;
+  row ISecThreatVc Trw;
+  record ISecProtectVc Pr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, Tr);
+      MatRowGet(Tr, rownr, Trw);
+      Pr.Code = Trw.ProtectCode;
+      if ReadFirstMain(Pr, 1, true) then
+        begin
+          Trw.ProtectName = Pr.Name;
+          Trw.ProtectComment = Pr.Comment;
+        end
+      else
+        begin
+          Trw.ProtectCode = blankval;
+          Trw.ProtectName = blankval;
+          Trw.ProtectComment = blankval;
+        end;
+      MatRowPut(Tr, rownr, Trw);
+      PutWindowRecord(wn, Tr);
+    end;
+  ISecThreatDClassProtectCodeEFAfter = true;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ISecThreatDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+
+  switch fieldname
+    begin
+      case "ProtectCode": res = ISecThreatDClassProtectCodeEFAfter(wn, rownr, changed);
+    end;
+  ISecThreatDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+//Категории объектов защиты
+procedure FillObjCatFromParent(var record ISecObjCatVc OCr, record ISecObjCatVc parentOCr)
+begin
+  row ISecObjCatVc OCrw;
+  row ISecObjCatVc parentOCrw;
+  integer i;
+
+  for (i=0; i<MatRowCnt(parentOCr); i=i+1)
+    begin
+      MatRowGet(parentOCr, i, parentOCrw);
+      OCrw.ThreatCode = parentOCrw.ThreatCode;
+      OCrw.ThreatName = parentOCrw.ThreatName;
+      OCrw.ThreatComment = parentOCrw.ThreatComment;
+      MatRowPut(OCr, i, OCrw);
+    end;
+  Return;
+end;
+
+//===============================================
+function boolean ISecObjCatDClassParentEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record ISecObjCatVc OCr;
+  record ISecObjCatVc parentOCr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, OCr);
+      parentOCr.Code = OCr.Parent;
+      if ReadFirstMain(parentOCr, 1, true) then
+        begin
+          if (MatRowCnt(OCr) == 0) then //Если матрица не заполнена, заполняем данными из родительской категории
+            begin
+              FillObjCatFromPArent(OCr, parentOCr);
+              PutWindowRecord(wn, OCr);
+            end;
+        end
+      else
+        begin
+          OCr.Parent = blankval;
+          PutWindowRecord(wn, OCr);
+        end;
+    end;
+  ISecObjCatDClassParentEFAfter = true;
+  Return;
+end;
+
+//===============================================
+function boolean ISecObjCatDClassThreatCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record ISecObjCatVc OCr;
+  row ISecObjCatVc OCrw;
+  record ISecThreatVc Tr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, OCr);
+      MatRowGet(OCr, rownr, OCrw);
+      Tr.Code = OCrw.ThreatCode;
+      if ReadFirstMain(Tr, 1, true) then
+        begin
+          OCrw.ThreatName = Tr.Name;
+          OCrw.ThreatComment = Tr.Comment;
+        end
+      else
+        begin
+          OCrw.ThreatCode = blankval;
+          OCrw.ThreatName = blankval;
+          OCrw.ThreatComment = blankval;
+        end;
+      MatRowPut(OCr, rownr, OCrw);
+      PutWindowRecord(wn, OCr);
+    end;
+  ISecObjCatDClassThreatCodeEFAfter = true;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ISecObjCatDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+
+  switch fieldname
+    begin
+      case "Parent": res = ISecObjCatDClassParentEFAfter(wn, rownr, changed);
+      case "ThreatCode": res = ISecObjCatDClassThreatCodeEFAfter(wn, rownr, changed);
+    end;
+  ISecObjCatDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+//Объекты защиты
+procedure FillObjFromObjCat(var record ISecObjVc SOr, record ISecObjCatVc OCr)
+begin
+  row ISecObjVc SOrw;
+  row ISecObjCatVc OCrw;
+  integer i;
+
+  for (i=0; i<MatRowCnt(OCr); i=i+1)
+    begin
+      MatRowGet(OCr, i, OCrw);
+      SOrw.ThreatCode = OCrw.ThreatCode;
+      SOrw.ThreatName = OCrw.ThreatName;
+      SOrw.ThreatComment = OCrw.ThreatComment;
+      MatRowPut(SOr, i, SOrw);
+    end;
+  Return;
+end;
+
+//==============================================
+function boolean ISecObjDClassObjCatEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record ISecObjVc SOr;
+  record ISecObjCatVc OCr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, SOr);
+      OCr.Code = SOr.ObjCat;
+      if ReadFirstMain(OCr, 1, true) then
+        begin
+          if (MatRowCnt(SOr) == 0) then //Если матрица не заполнена, заполняем данными из категории
+            begin
+              FillObjFromObjCat(SOr, OCr);
+              PutWindowRecord(wn, SOr);
+            end;
+        end
+      else
+        begin
+          SOr.ObjCat = blankval;
+          PutWindowRecord(wn, SOr);
+        end;
+    end;
+  ISecObjDClassObjCatEFAfter = true;
+  Return;
+end;
+
+//===============================================
+function boolean ISecObjDClassThreatCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record ISecObjVc SOr;
+  row ISecObjVc SOrw;
+  record ISecThreatVc Tr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, SOr);
+      MatRowGet(SOr, rownr, SOrw);
+      Tr.Code = SOrw.ThreatCode;
+      if ReadFirstMain(Tr, 1, true) then
+        begin
+          SOrw.ThreatName = Tr.Name;
+          SOrw.ThreatComment = Tr.Comment;
+        end
+      else
+        begin
+          SOrw.ThreatCode = blankval;
+          SOrw.ThreatName = blankval;
+          SOrw.ThreatComment = blankval;
+        end;
+      MatRowPut(SOr, rownr, SOrw);
+      PutWindowRecord(wn, SOr);
+    end;
+  ISecObjDClassThreatCodeEFAfter = true;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ISecObjDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+
+  switch fieldname
+    begin
+      case "ObjCat": res = ISecObjDClassObjCatEFAfter(wn, rownr, changed);
+      case "ThreatCode": res = ISecObjDClassThreatCodeEFAfter(wn, rownr, changed);
+    end;
+  ISecObjDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblISecObjVc(string dblstr, string l, integer currepwn)
+begin
+  record ISecObjVc SOr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      SOr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(SOr, 1, true) then
+        begin  
+          wn = OpenWindow("ISecObjDClass", 1, 0, "", "", SOr);
+        end; 
+    end;
+  Return;  
+end;
+
+//===============================================
+global
+procedure DblISecThreatVc(string dblstr, string l, integer currepwn)
+begin
+  record ISecThreatVc Tr;
+  integer wn;
+
+  if (nonblank(dblstr)) then
+    begin
+      Tr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(Tr, 1, true) then
+        begin  
+          wn = OpenWindow("ISecThreatDClass", 1, 0, "", "", Tr);
+        end; 
+    end;
+  Return;  
+end;
+
+//===============================================
+global
+procedure DblISecProtectVc(string dblstr, string l, integer currepwn)
+begin
+  record ISecProtectVc Pr;
+  integer wn;
+
+  if (nonblank(dblstr)) then
+    begin
+      Pr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(Pr, 1, true) then
+        begin  
+          wn = OpenWindow("ISecProtectDClass", 1, 0, "", "", Pr);
+        end; 
+    end;
+  Return;  
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  Module("Служба Безопасности", "", 793, modSECUR);
+  Setting("Угрозы ГК", ISecThreatLClass, modSECUR);
+  Setting("Средства защиты ГК", ISecProtectLClass, modSECUR);
+  Setting("Категории объектов защиты ГК", ISecObjCatLClass, modSECUR);
+  Register("Объекты защиты", "Объекты защиты", ISecObjLClass, modSECUR);
+  Report("Объекты защиты", ISecObjRClass, ISecObjRn, 0, modSECUR);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Средства защиты ГК", ISecProtectLClass, CGmlist, -);
+  SpawnClass(ISecProtectDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecProtectVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код средства", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-200, -200, "Примечание", Comment, false, Comment);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Выберите средство защиты ГК", ISecProtectSClass, CGslist, -);
+  SpawnClass(ISecProtectDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecProtectVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код средства", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-200, -200, "Примечание", Comment, false, Comment);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Средство защиты ГК", ISecProtectDClass, CGview,-);
+  SetWRect(20, 80, 720, 160);
+  UseView(ISecProtectVc);
+  v = 6;
+  EditField(100, v, 80, "Код средства", Normal, Code, false, 0);
+  EditField(300, v, -40, "Наименование", Normal, Name, false, 0);
+  EditField(100, v+=vs, -40, "Примечание", Normal, Comment, false, 0);
+  EndWindow;
+
+  WindowBegin("Угрозы безопасности ГК", ISecThreatLClass, CGmlist, -);
+  SpawnClass(ISecThreatDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecThreatVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код угрозы", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-200, -200, "Примечание", Comment, false, Comment);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите угрозу безопасности ГК", ISecThreatSClass, CGslist, -);
+  SpawnClass(ISecThreatDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecThreatVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код угрозы", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-200, -200, "Примечание", Comment, false, Comment);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Угроза безопасности ГК", ISecThreatDClass, CGview,-);
+  SetWRect(20, 80, 720, 360);
+  UseView(ISecThreatVc);
+  v = 6;
+  EditField(100, v, 80, "Код угрозы", Normal, Code, false, 0);
+  EditField(300, v, -40, "Наименование", Normal, Name, false, 0);
+  EditField(100, v+=vs, -40, "Примечание", Normal, Comment, false, 0);
+  MatrixBegin(4, v+=40, -53, -40, ISecThreatRowType, 199);
+  MatCol(1, h=24, "Код средства", 0, ProtectCode, false, ISecProtectSClass);
+  MatCol(1, h+=100, "Наименование", 0, ProtectName, false, 0);
+  MatCol(1, h+=300, "Примечание", 0, ProtectComment, false, 0);
+  EndMatrix;
+  EndWindow;
+
+  WindowBegin("Категории объектов защиты ГК", ISecObjCatLClass, CGmlist, -);
+  SpawnClass(ISecObjCatDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecObjCatVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код категории", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-400, -400, "Примечание", Comment, false, Comment);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ISecObjCatLClassParentName", false);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите категорию объекта защиты ГК", ISecObjCatSClass, CGslist, -);
+  SpawnClass(ISecObjCatDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecObjCatVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код категории", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-400, -400, "Примечание", Comment, false, Comment);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ISecObjCatLClassParentName", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Категория объектов защиты ГК", ISecObjCatDClass, CGview,-);
+  SetWRect(20, 80, 720, 360);
+  UseView(ISecObjCatVc);
+  v = 6;
+  EditField(100, v, 80, "Код категории", Normal, Code, false, 0);
+  EditField(300, v, -40, "Наименование", Normal, Name, false, 0);
+  EditField(100, v+=vs, -40, "Примечание", Normal, Comment, false, 0);
+  EditField(100, v+=vs, 80, "Иерархия", Normal, Parent, false, ISecObjCatSClass);
+  MatrixBegin(4, v+=40, -53, -40, ISecThreatRowType, 199);
+  MatCol(1, h=24, "Код угрозы", 0, ThreatCode, false, ISecThreatSClass);
+  MatCol(1, h+=100, "Наименование", 0, ThreatName, false, 0);
+  MatCol(1, h+=300, "Примечание", 0, ThreatComment, false, 0);
+  EndMatrix;
+  EndWindow;
+
+  WindowBegin("Объекты защиты ГК", ISecObjLClass, CGmlist, -);
+  SpawnClass(ISecObjDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecObjVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код объекта", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-400, -400, "Примечание", Comment, false, Comment);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите объект защиты ГК", ISecObjSClass, CGslist, -);
+  SpawnClass(ISecObjDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISecObjVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код объекта", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  RlColKey(-400, -400, "Примечание", Comment, false, Comment);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Объект защиты ГК", ISecObjDClass, CGview,-);
+  SetWRect(20, 80, 720, 360);
+  UseView(ISecObjVc);
+  v = 6;
+  EditField(100, v, 80, "Код объекта", Normal, Code, false, 0);
+  EditField(300, v, -40, "Наименование", Normal, Name, false, 0);
+  EditField(100, v+=vs, 80, "Категория", Normal, ObjCat, false, ISecObjCatSClass);
+  EditField(100, v+=vs, -40, "Примечание", Normal, Comment, false, 0);
+  MatrixBegin(4, v+=40, -53, -40, ISecObjRowType, 199);
+  MatCol(1, h=24, "Код угрозы", 0, ThreatCode, false, ISecThreatSClass);
+  MatCol(1, h+=100, "Наименование", 0, ThreatName, false, 0);
+  MatCol(1, h+=300, "Примечание", 0, ThreatComment, false, 0);
+  EndMatrix;
+  EndWindow;
+
+  WindowBegin("Oпределите Объекты защиты", ISecObjRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 300);
+  v = 6;
+  EditFieldTL(h=180, v,   100, "Объект защиты", M4UStr, Normal, 20, f1, false, ISecObjSClass);
+  EditFieldTL(h, v += vs, 100, "Категория объекта защиты", M4UStr, Normal, 20, f2, false, ISecObjCatSClass);
+  EditFieldTL(h, v += vs, 100, "Угроза безопасности", M4UStr, Normal, 20, f3, false, ISecThreatSClass);
+  EditFieldTL(h, v += vs, 100, "Средство защиты", M4UStr, Normal, 20, f4, false, ISecProtectSClass);
+  ButtonFrame(h, v += 54, 123, 5, "Функция");
+  RadioButton(h, v,       0, 0, "Сводный", ArtMode);
+  RadioButton(h, v += 16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+  Return;
+end;

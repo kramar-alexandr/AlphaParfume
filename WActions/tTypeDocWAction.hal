@@ -1,0 +1,599 @@
+event DefineWindows
+begin
+   real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+   string 255 label;
+   SetLangMode(LangRussian,"RUS",2);
+   
+//============================================================================ Виды документов
+WindowBegin("Виды документов",tTypeDocDClass,CGview,-);
+SetWRect(20,80,900,350);
+//  Sizeable(0,-1,0,0);
+UseView(tTypeDocVc);
+FormName(PrinttTypeDocD);
+Tile(0,80,false,"",Code);
+vs = 25; h=100; h1=200; h2=400; vs2 = 30;
+EditField(h,v=15, 90, "Код",Normal,Code,false,0);
+EditFieldTL(h2, v, -35, "Краткое наименование документа", M4Str, Normal, 100, ChtName, false, 0);
+TileButton(1,"Общая информация");
+TileButton(2,"Описание документа");
+TileButton(3,"Содержание");
+Tile(1,100,false,"1",LngName);
+v=20;
+EditFieldTL(h1, v, -35, "Полное наименование документа", M4Str, Normal, 250, LngName, false, 0);
+EditFieldTL(h, v += vs , 90, "Разработчик", M4Code, Normal, 20, User, false, UserSClass);
+EditFieldTL(h1, v, -125, "", M4Str, Normal, 100, UsrName, false, 0);
+EditFieldTL(h, v += vs , 90, "Должность", M4Code, Normal, 20, PostCode, false, 0);
+EditFieldTL(h1, v, -125, "", M4Str, Normal, 100, PostName, false, 0);
+EditField(h, v += vs,-125, "Классификация", Normal, Classif, false, tDocClSClass);
+ButtonFrame(-100, v = 55,70,2,"Статус");
+RadioButton(-100, v,0,0,"подготовка",Status);
+RadioButton(-100, v = v + 16, 1,0,"работа",Status);
+RadioButton(-100, v = v + 16, 2,0,"архив",Status);
+Tile(2,170,false,"2",Nom);
+v=15;
+EditField(h,v,-35, "Назначение",Normal,Nom,false,0);
+StaticText(40,v+=40,"Краткое описание документа:",false); 
+TextField(h, v +=10, -35, -20, Math, 0);
+Tile(3,170,false,"3",InDate);
+v=5;
+EditField(h2, v,80, "Дата вступления документа в силу",Normal,InDate,false,PasteCurDate);
+EditField(h2, v += 20 ,80, "Дата последнего изменения документа",Normal,ChDate,false,PasteCurDate);
+MatrixBegin(4, v += 40, -20, -5,-,99);
+MatCol(1, 25, "Период", 0, Period, false, 0);
+MatCol(1, 170, "Кто", 0, Who, false, 0);
+MatCol(1, 320, "Действие", 0, Action, false, 0);
+MatCol(1, 470, "Документ", 0, Doc, false, 0);
+MatCol(1, 620, "Кому", 0, Whom, false, 0);
+MatCol(1, 770, "Результат (документ/действие)", 0, Resalt, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Виды документов",tTypeDocLClass, CGmlist, -);
+SpawnClass(tTypeDocDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTypeDocVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", ChtName, false, ChtName);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Виды документов",tTypeDocSClass, CGslist, -);
+SpawnClass(tTypeDocDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTypeDocVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", ChtName, false, ChtName);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Классификации видов документов", tDocClDClass, CGview, 0);
+UseView(tDocClVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 180, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, TypeCl, false, tDocTClSClass);//
+EndWindow; 
+
+WindowBegin("Классификации видов документов",tDocClLClass, CGmlist, -);
+SpawnClass(tDocClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tDocClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-60, -60, "Тип", TypeCl, false, TypeCl);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификации видов документов",tDocClSClass, CGslist, -);
+SpawnClass(tDocClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tDocClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-60, -60, "Тип", TypeCl, false, TypeCl);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Виды документов ГК", tTypeDocRClass, CGRcW, RcType);
+SetWRect(20,80,450,250);
+v = 6; vs = 20; h = 70; h1 = 150; h2 = 250; 
+EditFieldTL(h1, v += 20, 80, "Код вида документа", M4UStr, Normal, 21, f1, false, tTypeDocSClass);
+EditFieldTL(h1, v += 20, 80, "Разработчик", M4UStr, Normal, 21, f2, false, UserSClass);
+EditFieldTL(h1, v += 20, -39, "Классификаторы", M4UStr, Normal, 21, f3, false, tDocClSClass);
+ButtonFrame(h, v += 40,123,2,"Статус");
+RadioButton(h, v,0,0,"подготовка",flags[2]);
+RadioButton(h, v = v + 16, 1,0,"работа",flags[2]);
+RadioButton(h, v = v + 16, 2,0,"архив",flags[2]);
+ButtonFrame(h2, v = v -30, 123, 2, "Функция");
+RadioButton(h2, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h2, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+// ================================================== Бизнес-процессы
+WindowBegin("Бизнес-процессы",tBizProcDClass,CGview,-);
+SetWRect(20,80,750,550);
+//  Sizeable(0,-1,0,0);
+UseView(tBizProcVc);
+FormName(PrinttBizProcD);
+vs = 25; h=100; h1=200; h2=320; vs2 = 30;
+EditField(h,v = 30, 80, "Код",Normal,Code,false,0);
+EditFieldTL(h2, v, -125, "Наименование", M4Str, Normal, 100, BizName, false, 0);
+EditField(h, v += vs, 80, "Код типового",Normal,CodeT,false,tBizTypSClass);
+EditFieldTL(h2, v, -125, "Наименование типового", M4Str, Normal, 100, BizNameT, false, 0);
+EditField(h, v += vs,-125, "Классификация", Normal, Classif, false, tBizClSClass);
+ButtonFrame(-100, v = 30,70,2,"Статус");
+RadioButton(-100, v,0,0,"подготовка",Status);
+RadioButton(-100, v += vs, 1,0,"работа",Status);
+RadioButton(-100, v += vs, 2,0,"архив",Status);
+EditFieldTL(h2, -45, 50, "Нормативное время выполнения БП, мин", M4Val, Normal, 20, NormTime, false, 0);
+EditFieldTL(h2, -25, 50, "Нормативная стоимость выполнения БП, грн", M4Val, Normal, 20, NormCost, false, 0);
+MatrixBegin(10, 120, -50, -65, tBizProcRowType, 50);
+Flip(0);
+MatColTL(1, h = 24, "Код операции", 0, M4Code, Normal, 20, CodeOp, false, OperSClass);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 100, NameOp, false, 0);
+Flip(1);
+MatColTL(1, -250, "Кратность", 0, M4Val, Normal, 20, Mult, false, 0);
+MatColTL(1, -175, "Время", 0, M4Val, Normal, 20, Time, false, 0);
+MatColTL(1, -100, "Стоимость", 0, M4Val, Normal, 100, Cost, false, 0);
+Flip(2);
+MatColTL(1, 324, "Код должности", 0, M4Code, Normal, 20, CodePost, false, VPositionSClass);
+MatColTL(1, 400, "Наименование", 0, M4Str, Normal, 100, NamePost, false, 0);
+Flip(3);
+MatColTL(1, 324, "Код вида док-та", 0, M4Code, Normal, 20, CodeDoc, false, tTypeDocSClass);
+MatColTL(1, 400, "Наименование", 0, M4Str, Normal, 100, NameDoc, false, 0);
+Flip(4);
+MatColTL(1, 324, "Код оборудования", 0, M4Code, Normal, 20, CodeEqu, false, AT2UnitSClass);
+MatColTL(1, 400, "Наименование", 0, M4Str, Normal, 100, NameEqu, false, 0);
+EndMatrix;
+vs = 25;
+v = 120; 
+VTab(-35,v ,-16,v+vs,ToolFlip,1,"A");
+VTab(-35,v += vs,-16,v+vs,ToolFlip,2,"B");
+VTab(-35,v += vs,-16,v+vs,ToolFlip,3,"C");
+VTab(-35,v += vs,-16,v+vs,ToolFlip,4,"D");
+  InsertRowTest;
+  DeleteRowTest;
+EndWindow;
+
+WindowBegin("Бизнес-процессы",tBizProcLClass, CGmlist, -);
+SpawnClass(tBizProcDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizProcVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", BizName, false, BizName);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Бизнес-процессы",tBizProcSClass, CGslist, -);
+SpawnClass(tBizProcDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizProcVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", BizName, false, BizName);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Классификации бизнес-процессов", tBizClDClass, CGview, 0);
+UseView(tBizClVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 180, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, TypeCl, false, tBizTClSClass);//
+EndWindow; 
+
+WindowBegin("Классификации бизнес-процессов",tBizClLClass, CGmlist, -);
+SpawnClass(tBizClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-60, -60, "Тип", TypeCl, false, TypeCl);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификации бизнес-процессов",tBizClSClass, CGslist, -);
+SpawnClass(tBizClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-60, -60, "Тип", TypeCl, false, TypeCl);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Бизнес-процессы ГК", tBizProcRClass, CGRcW, RcType);
+SetWRect(20,80,450,250);
+v = 6; vs = 20; h = 70; h1 = 150; h2 = 250; h3 = 480;
+EditFieldTL(h1, v += 20, 80, "Код бизнес-процесса", M4UStr, Normal, 21, f1, false, tBizProcSClass);
+EditFieldTL(h1, v += 20, -39, "Классификаторы", M4UStr, Normal, 21, f2, false, tBizClSClass);
+CheckBox(h, v += 30, 0, "Операции", flags[0]);
+CheckBox(h1+5, v, 0, "Документы", flags[1]);
+CheckBox(h2, v, 0, "Оборудование", flags[3]);
+ButtonFrame(h, v += 40,123,2,"Статус");
+RadioButton(h, v,0,0,"подготовка",flags[2]);
+RadioButton(h, v = v + 16, 1,0,"работа",flags[2]);
+RadioButton(h, v = v + 16, 2,0,"архив",flags[2]);
+ButtonFrame(h2, v = v -30, 123, 2, "Функция");
+RadioButton(h2, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h2, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+WindowBegin("Типовые бизнес-процессы", tBizTypDClass, CGview, 0);
+UseView(tBizTypVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 180, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Типовые бизнес-процессы",tBizTypLClass, CGmlist, -);
+SpawnClass(tBizTypDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizTypVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Типовые бизнес-процессы",tBizTypSClass, CGslist, -);
+SpawnClass(tBizTypDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizTypVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Типы крассификаторов видов документов", tDocTClDClass, CGview, 0);
+UseView(tDocTClVc);
+SetWRect(64, 80, 450, 250);
+v = 30; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Имя", M4Str, Normal, 200, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Типы крассификаторов видов документов", tDocTClLClass, CGmlist, -);
+SpawnClass(tDocTClDClass);
+SetWRect(64, 80, 450, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tDocTClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Имя", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Типы крассификаторов видов документов",tDocTClSClass, CGslist, -);
+SpawnClass(tDocTClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tDocTClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Имя", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Типы крассификаторов Бизнес-процессов", tBizTClDClass, CGview, 0);
+UseView(tBizTClVc);
+SetWRect(64, 80, 450, 250);
+v = 30; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Имя", M4Str, Normal, 200, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Типы крассификаторов Бизнес-процессов", tBizTClLClass, CGmlist, -);
+SpawnClass(tBizTClDClass);
+SetWRect(64, 80, 450, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizTClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Имя", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Типы крассификаторов Бизнес-процессов",tBizTClSClass, CGslist, -);
+SpawnClass(tBizTClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tBizTClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Имя", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+return;
+end;
+
+
+global
+procedure tTypeDocRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "tTypeDocRClass");  
+RepSpec.f2 = CurrentUser;
+RepSpec.flags[2] = -1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+global
+procedure tBizProcRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "tBizProcRClass");  
+RepSpec.flags[2] = -1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+global
+function Boolean tTypeDocDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record tTypeDocVc TDr;
+record IEmployeeVc IEr;
+record VPositionVc VPr;
+record UserVc Usr;
+Boolean res;
+
+if (changed <> 0) and (fieldname == "User") then 
+	begin
+	GetWindowRecord(wn, TDr);
+	Usr.Code = TDr.User;
+	ReadFirstMain(Usr, 1, true);
+	TDr.UsrName = Usr.Name; 
+	TDr.PostCode = Usr.VPositionCode;
+	VPr.Code = Usr.VPositionCode; 
+	ReadFirstMain(VPr, 1, true);
+	TDr.PostName = VPr.Name;
+	
+	// IEr.Code = TDr.User;
+	// ReadFirstMain(IEr, 1, true);
+	// TDr.UserName = IEr.Name; 
+	// TDr.PostCode = IEr.PositionCode; надо IErw.PositionCode;
+	// TDr.PostName = IEr.PositionName;
+	PutWindowRecord(wn, TDr);	
+	end;
+tTypeDocDClassAfterEditField = res;
+RETURN;
+END;
+
+//===============================================
+
+procedure tCostEFAfter(Integer wn) //пересчёт суммы
+begin
+record tBizProcVc BPr;
+row tBizProcVc BPrw;
+record OperVc Opr;
+row OperVc Oprw;  
+Integer i;
+val sum;
+
+sum = 0;
+GetWindowRecord(wn, BPr);
+
+for(i = 0; i < MatRowCnt(BPr);  i = i +1)
+	begin
+	matRowGet(BPr, i, BPrw);
+	sum = sum + BPrw.Cost;
+	end;
+BPr.NormCost = sum;
+PutWindowRecord(wn, BPr);	
+
+RETURN;
+END;
+
+//===============================================
+
+procedure tTimeEFAfter(Integer wn) //пересчёт суммы
+begin
+record tBizProcVc BPr;
+row tBizProcVc BPrw;
+record OperVc Opr;
+row OperVc Oprw;  
+Integer i;
+val sum;
+
+sum = 0;
+GetWindowRecord(wn, BPr);
+
+for(i = 0; i < MatRowCnt(BPr);  i = i +1)
+	begin
+	matRowGet(BPr, i, BPrw);
+	sum = sum + BPrw.Time;
+	end;
+BPr.NormTime = sum;
+PutWindowRecord(wn, BPr);	
+
+RETURN;
+END;
+
+
+//===============================================
+
+procedure tCodeOpEFAfter(Integer wn,  Integer rownr, Integer changed)
+begin
+record tBizProcVc BPr;
+row tBizProcVc BPrw;
+record OperVc Opr;
+row OperVc Oprw;
+
+GetWindowRecord(wn, BPr);
+matRowGet(BPr,rownr, BPrw);
+Opr.Code = BPrw.CodeOp;
+ReadFirstMain(Opr, 1, true);
+BPrw.NameOp = Opr.Name;
+BPrw.Time = Opr.CostTime;
+BPrw.Cost = Opr.Cost;
+MatRowPut(BPr,rownr, BPrw);
+PutWindowRecord(wn, BPr);	
+tTimeEFAfter(wn);
+tCostEFAfter(wn);
+
+RETURN;
+END;
+//===============================================
+
+procedure tCodeTEFAfter(Integer wn, Integer changed)
+begin
+record tBizProcVc BPr;
+record tBizTypVc BTr;
+
+GetWindowRecord(wn, BPr);
+BTr.Code = BPr.CodeT;
+ReadFirstMain(BTr, 1, true);
+BPr.BizNameT = BTr.Name;
+PutWindowRecord(wn, BPr);	
+
+RETURN;
+END;
+
+//===============================================
+
+procedure tCodePostEFAfter(Integer wn,  Integer rownr, Integer changed)
+begin
+record tBizProcVc BPr;
+row tBizProcVc BPrw;
+record VPositionVc Vpr;
+
+GetWindowRecord(wn, BPr);
+matRowGet(BPr,rownr, BPrw);
+Vpr.Code = BPrw.CodePost;
+ReadFirstMain(Vpr, 1, true);
+BPrw.NamePost = Vpr.Name;
+MatRowPut(BPr,rownr, BPrw);
+PutWindowRecord(wn, BPr);	
+
+RETURN;
+END;
+
+
+//===============================================
+
+procedure tCodeDocEFAfter(Integer wn,  Integer rownr, Integer changed)
+begin
+record tBizProcVc BPr;
+row tBizProcVc BPrw;
+record tTypeDocVc TDr;
+
+GetWindowRecord(wn, BPr);
+matRowGet(BPr,rownr, BPrw);
+TDr.Code = BPrw.CodeDoc;
+ReadFirstMain(TDr, 1, true);
+BPrw.NameDoc = TDr.ChtName;
+MatRowPut(BPr,rownr, BPrw);
+PutWindowRecord(wn, BPr);	
+
+RETURN;
+END;
+
+//===============================================
+
+procedure tCodeEquEFAfter(Integer wn,  Integer rownr, Integer changed)
+begin
+record tBizProcVc BPr;
+row tBizProcVc BPrw;
+record AT2UnitVc ATr; 
+
+GetWindowRecord(wn, BPr);
+matRowGet(BPr,rownr, BPrw);
+ATr.InventoryNr = BPrw.CodeEqu;
+ReadFirstMain(ATr, 1, true);
+BPrw.NameEqu = ATr.Description;
+MatRowPut(BPr,rownr, BPrw);
+PutWindowRecord(wn, BPr);	
+
+RETURN;
+END;
+//===============================================
+global
+function boolean tBizProcDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tBizProcVc BPr;
+
+GetWindowRecord(wn, BPr);
+
+if (changed <> 0) then
+	begin
+	switch (fieldname)
+		begin
+		case "CodeT": tCodeTEFAfter(wn, changed);		
+		case "CodeOp": tCodeOpEFAfter(wn, rownr, changed);			  
+		case "Time": tTimeEFAfter(wn);
+		case "Cost": tCostEFAfter(wn);		
+		case "CodePost": tCodePostEFAfter(wn, rownr, changed);			  
+		case "CodeDoc": tCodeDocEFAfter(wn, rownr, changed);
+		case "CodeEqu": tCodeEquEFAfter(wn, rownr, changed);
+		end;
+	end;                                                              
+
+tBizProcDClassAfterEditField = res;
+Return;
+end;
+
+//===============================================
+
+global 
+updating
+function Boolean tBizProcDClassDeleteRowTest(Integer wn,Integer rownr)
+begin
+record tBizProcVc BPr;
+row tBizProcVc BPrw;
+Boolean res;
+Integer updatemode;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetWindowRecord(wn, BPr);
+	matRowGet(BPr, rownr , BPrw);
+	BPr.NormTime = BPr.NormTime - BPrw.Time;	
+	BPr.NormCost = BPr.NormCost - BPrw.Cost;	
+	PutWindowRecord(wn, BPr);
+	end;
+
+
+tBizProcDClassDeleteRowTest = res;
+return;
+end;
+

@@ -1,0 +1,71 @@
+procedure PUVc_LogAction(var record PUVc PUr, string ActionName) //Добвавлено 25.11.09 INAU
+begin
+  if blank(GetFieldValueByName(PUr,"Log"&ActionName&"User",-1)) then
+    begin
+      SetFieldValueByName(PUr,"Log"&ActionName&"User", CurrentUser, -1);
+      SetFieldValueByName(PUr,"Log"&ActionName&"Date", CurrentDate, -1);
+      SetFieldValueByName(PUr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+
+global
+function LongInt PUVcRecordDefaults(var record PUVc PUr,record PUVc PU2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+	res = inner.PUVcRecordDefaults(PUr, PU2r, stat, long4);
+	PUVc_LogAction(PUr,"New"); //25.11.09 INAU
+	PUVcRecordDefaults = res;
+	Return;
+end;
+
+
+global
+function LongInt PUVcRecordDuplicate(var record PUVc PUr,record PUVc PU2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+	res = inner.PUVcRecordDuplicate(PUr, PU2r, stat, long4);
+  PUr.RegDate = CurrentDate;
+  PUr.TransDate = CurrentDate;
+  //25.11.09 INAU
+  PUr.LogNewUser=blankval;
+  PUr.LogNewDate="";
+  PUr.LogNewTime="";
+  PUr.LogSaveUser=blankval;
+  PUr.LogSaveDate="";
+  PUr.LogSaveTime="";
+  PUr.LogOKUser=blankval;
+  PUr.LogOKDate="";
+  PUr.LogOKTime="";
+  PUVc_LogAction(PUr,"New");
+	PUVcRecordDuplicate = res;
+	Return;
+end;
+
+
+global
+function LongInt PUVcRecordCheck(var record PUVc PUr,record PUVc PU2r,LongInt stat,LongInt check)
+begin
+  LongInt res;
+	integer insertmode, updatemode;
+
+	res = inner.PUVcRecordCheck(PUr, PU2r, stat, check);
+
+  insertmode = 1;//Rs_insert
+  updatemode = 2;//Rs_update
+
+	if (res == 0) then 
+    begin
+      PUVc_LogAction(PUr,"Save"); //25.11.09 INAU
+      if (PUr.OKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (PU2r.OKFlag==0))) then //OKFlag
+        begin
+          PUVc_LogAction(PUr, "OK");
+        end;
+    end;
+
+	PUVcRecordCheck = res;
+	Return;
+end;

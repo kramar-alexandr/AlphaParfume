@@ -1,0 +1,239 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function boolean CloseWindowByName(string);
+
+//===============================================
+//Наименование "родителя" в CalculatedColumn
+global
+function string 255 ICUWorkMethodClassLClassPD(var record ICUWorkMethodClassVc CWMCr)
+begin
+  record ICUWorkMethodClassVc parentCWMCr;
+
+  parentCWMCr.Code = CWMCr.Parent;
+  ReadFirstMain(parentCWMCr, 1, true);
+  ICUWorkMethodClassLClassPD = parentCWMCr.Desc;
+  Return;
+end;
+
+//===============================================
+//Наименование "статуса" в CalculatedColumn
+global
+function string 255 ICUWorkMethodLClassStatus(var record ICUWorkMethodVc CWMr)
+begin
+  string 20 StatusName;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (CWMr.Status)
+    begin
+      case 0: StatusName = "Подготовка";
+      case 1: StatusName = "В работе";
+      case 2: StatusName = "Архив";
+    end;
+  ICUWorkMethodLClassStatus = StatusName;
+  Return;
+end;
+
+//===============================================
+//Наименование класса методики
+function string 200 MethodClassName(string ClassCode)
+begin
+  record ICUWorkMethodClassVc CWMCr;
+
+  CWMCr.Code = ClassCode;
+  ReadFirstMain(CWMCr, 1, true);
+  MethodClassName = CWMCr.Desc;
+  Return;
+end;
+
+//===============================================
+//Методики работы с клиентами - список классификаторов
+global
+procedure ICUWorkMethodClassBtn()
+begin
+  record ICUWorkMethodVc CWMr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, CWMr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", CWMr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(CWMr.MethodClass);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(CWMr.MethodClass, i);
+      Name = MethodClassName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblICUWorkMethodVc(string dblstr, string l, integer currepwn)
+begin
+  record ICUWorkMethodVc CWMr;
+  integer wn;
+  
+  if nonblank(dblstr) then
+    begin
+      CWMr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(CWMr, 1, true) then
+        begin  
+          wn = OpenWindow("ICUWorkMethodDClass", 1, 0, "", "", CWMr);
+        end; 
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblICUWorkMetClassVc(string dblstr, string l, integer currepwn)
+begin
+  record ICUWorkMethodClassVc CWMCr;
+  integer wn;
+
+  if nonblank(dblstr) then
+    begin
+      CWMCr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(CWMCr, 1, true) then
+        begin  
+          wn = OpenWindow("ICUWorkMethodClassDClass", 1, 0, "", "", CWMCr);
+        end; 
+    end;
+  Return;
+end;
+
+//===============================================
+//Открываем методики ил зарточки клиента
+global
+procedure IWorkMethodFromCUDClassBtn()
+begin
+  record CUVc CUr;
+  record RcVc RepSpec;
+
+  GetWindowRecord(CurWindow, CUr);
+  ReportDefaults(RepSpec, "ICUWorkMethodRClass");    
+  RepSpec.repname = "ICUWorkMethodRn";
+  RepSpec.ArtMode = 1;
+  RepSpec.Media = mtScreen;
+  RepSpec.f3 = CUr.Classification;
+  RepSpec.flags[0] = 1;
+  RunReport(RepSpec, 0);   
+  Return;
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  Setting("Класс. методик работы с клиентами ГК", ICUWorkMethodClassLClass, modVPlan);
+  Register("Методики работы с клиентами ГК", "Методики работы с клиентами ГК", ICUWorkMethodLClass, modVPlan);
+  Report("Методики работы с клиентами ГК", ICUWorkMethodRClass, ICUWorkMethodRn, 0, modVPlan);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, h3, h4, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Класс. методик работы с клиентами ГК", ICUWorkMethodClassLClass, CGmlist, -);
+  SpawnClass(ICUWorkMethodClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICUWorkMethodClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ICUWorkMethodClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Класс. методик работы с клиентами ГК", ICUWorkMethodClassSClass, CGslist, -);
+  SpawnClass(ICUWorkMethodClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICUWorkMethodClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ICUWorkMethodClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Класс. методик работы с клиентами ГК", ICUWorkMethodClassDClass, CGview,-);
+  SetWRect(20, 80, 720, 190);
+  UseView(ICUWorkMethodClassVc);
+  v = 6;
+  EditField(h=100, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2=300, v, -40, "Наименование", Normal, Desc, false, 0);
+  EditField(h, v+=vs, 80, "Иерархия", Normal, Parent, false, ICUWorkMethodClassSClass);
+  EndWindow;
+
+
+  WindowBegin("Методики работы с клиентами ГК", ICUWorkMethodLClass, CGmlist, -);
+  SpawnClass(ICUWorkMethodDClass);
+  SetWRect(64, 80, 720, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICUWorkMethodVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  CalculatedColumn(-150, -150, "Статус", "ICUWorkMethodLClassStatus", false);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Методики работы с клиентами ГК", ICUWorkMethodSClass, CGslist, -);
+  SpawnClass(ICUWorkMethodDClass);
+  SetWRect(64, 80, 720, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ICUWorkMethodVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Desc);
+  CalculatedColumn(-150, -150, "Статус", "ICUWorkMethodLClassStatus", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Методики работы с клиентами ГК", ICUWorkMethodDClass, CGview,-);
+  SetWRect(20, 80, 640, 299);
+  UseView(ICUWorkMethodVc);
+  v = 6;
+  EditField(h=150, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h, v+=vs, -40, "Наименование", Normal, Name, false, 0);
+  EditField(h, v+=vs, -90, "Классификация методики", Normal, MethodClass, false, ICUWorkMethodClassSClass);
+  ColourPushButton(-80, v,  -40, v+18, "ICUWorkMethodClassBtn", "...", 3);
+  EditField(h, v+=vs, -90, "Классификация контакта", Normal, CUClassification, false, CClassSClass);
+  ButtonFrame(h, v+=40, 100, 3, "Статус");
+  RadioButton(h, v, 0, 0, "Подготовка", Status);
+  RadioButton(h, v+=16, 1, 0, "Работа", Status);
+  RadioButton(h, v+=16, 2, 0, "Архив", Status);
+  EndWindow;
+
+  WindowBegin("Методики работы с клиентами ГК", ICUWorkMethodRClass, CGRcW, RcType);
+  SetWRect(20, 80, 490, 220);
+  EditFieldTL(h=150, v=6, 100, "Код методики", M4Code, Normal, 20, f1, false, ICUWorkMethodSClass);
+  EditFieldTL(h, v+=vs, -40, "Классификация методики", M4UStr, Normal, 200, f2, false, ICUWorkMethodClassSClass);
+  EditFieldTL(h, v+=vs, -40, "Классификация клиента", M4UStr, Normal, 200, f3, false, CClassSClass);
+  ButtonFrame(h, v+=50, 123, 2, "Функция");
+  v2 = v;
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  ButtonFrame(h+=150, v = v2, 123, 3, "Статус");
+  RadioButton(h, v, 0, 0, "Подготовка", flags[0]);
+  RadioButton(h, v+=16, 1, 0, "Работа", flags[0]);
+  RadioButton(h, v+=16, 2, 0, "Архив", flags[0]);
+  EndWindow;
+
+  Return;
+end;

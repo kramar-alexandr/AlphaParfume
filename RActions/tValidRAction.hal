@@ -1,0 +1,435 @@
+
+global
+function Longint tQuestionsVcRecordDefaults(var record tQuestionsVc Qr, record tQuestionsVc Q2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS", 2);
+
+Qr.DateCr = CurrentDate;
+Qr.UserCode = CurrentUser;
+if (SingleUserMode) then 
+	begin
+	Qr.SerNr = NextSerNr("tQuestionsVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	Qr.SerNr = -1;
+	end;
+
+tQuestionsVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt tQuestionsVcRecordDuplicate(var record tQuestionsVc Qr, record tQuestionsVc Q2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS", 2);
+if (SingleUserMode) then 
+  begin
+  Qr.SerNr = NextSerNr("tQuestionsVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  Qr.SerNr = -1;
+  end;
+//Qr.OKFlag = 0;
+tQuestionsVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt tQuestionsVcRecordRemoveTest(var record tQuestionsVc Qr, record tQuestionsVc Q2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tQuestionsVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not UserCanAction("UnOKAll",True)) then 
+  begin
+  tQuestionsVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+global
+function LongInt tQuestionsVcRecordCheck(var record tQuestionsVc Qr, record tQuestionsVc Q2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+row tQuestionsVc Qrw;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (Qr.SerNr < 1) then
+  begin
+  Qr.SerNr = NextSerNr("tQuestionsVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (Qr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+// sum = 0;
+for (i = 0; i < MatRowCnt(Qr); i = i + 1)
+	begin
+	MatRowGet(Qr,i,Qrw); 
+	if Qrw.Ball > 1 then
+		begin
+		res = -1;
+		end;
+	end;
+// if sum <> 1 then
+  // begin
+  // res = -1;
+  // end;
+if Qr.QTypeCode == "" then
+  begin
+  res = -1;
+  end;  
+  tQuestionsVcRecordCheck = res;
+RETURN;
+end;
+
+global
+function LongInt tQuestionsVcRecordSave(var record tQuestionsVc Qr, record tQuestionsVc Q2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+
+Qr.DateCon = CurrentDate;
+Qr.Conserv = CurrentUser;
+
+tQuestionsVcRecordSave = res; 
+RETURN;
+END;
+
+//=================================================
+global
+function Longint ValidVcRecordDefaults(var record ValidVc Vr, record ValidVc V2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS", 2);
+
+
+Vr.UserCode = CurrentUser;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, true);
+Vr.UserName = USr.Name;
+Vr.UserPodr = USr.Department;
+if (SingleUserMode) then 
+	begin
+	Vr.SerNr = NextSerNr("ValidVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	Vr.SerNr = -1;
+	end;
+
+ValidVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt ValidVcRecordDuplicate(var record ValidVc Vr, record ValidVc V2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS", 2);
+
+Vr.UserCode = CurrentUser;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, true);
+Vr.UserName = USr.Name;
+Vr.UserPodr = USr.Department;
+
+if (SingleUserMode) then 
+  begin
+  Vr.SerNr = NextSerNr("ValidVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  Vr.SerNr = -1;
+  end;
+//Vr.OKFlag = 0;
+ValidVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt ValidVcRecordRemoveTest(var record ValidVc Vr, record ValidVc V2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+ValidVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if not(SetInSet(CurrentUser, "DELPHI,INAU,TGOR")) then //(not UserCanAction("UnOKAll",True)) 
+  begin
+  ValidVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+global
+function LongInt ValidVcRecordCheck(var record ValidVc Vr, record ValidVc V2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+row ValidVc Vrw;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (Vr.SerNr < 1) then
+  begin
+  Vr.SerNr = NextSerNr("ValidVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (Vr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+if  (V2r.OKFlag == 1) then
+	begin
+	  res = -1;
+	end;
+  
+if   (Vr.OKFlag == 1) and (Vr.OKFlag <> V2r.OKFlag) then
+	begin
+	sum = 0;
+	for (i = 0; i < MatRowCnt(Vr); i = i + 1)
+		begin
+		MatRowGet(Vr,i,Vrw); 
+		sum = sum + Vrw.Ball;
+		end;
+	Vr.SumBall = Sum;	
+	end;
+  ValidVcRecordCheck = res;
+RETURN;
+end;
+
+
+global
+function LongInt ValidVcRecordSave(var record ValidVc Vr, record ValidVc V2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+
+Vr.DateCon = CurrentDate;
+
+ValidVcRecordSave = res; 
+RETURN;
+END;
+//=================================================
+global
+function Longint QTypeVcRecordDefaults(var record QTypeVc Vr, record QTypeVc V2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+
+
+Vr.UserCode = CurrentUser;
+
+QTypeVcRecordDefaults = res;
+RETURN;
+end;
+//=================================================
+
+global
+updating
+procedure UpVr(record RcVc RepSpec, string dblstr)
+begin
+record tQuestionsVc Qr;
+record ValidVc Vr, V2r;
+row tQuestionsVc Qrw;
+row ValidVc Vrw;
+integer i,k;
+boolean res;
+
+res = false;
+Vr.SerNr = RepSpec.f2;
+
+if readfirstmain(Vr, 1, true) then
+	begin
+	V2r.SerNr = Vr.SerNr;
+	readfirstmain(V2r, 1, true)
+	MatRowGet(Vr, RepSpec.frc, Vrw);
+	Vrw.Answer = dblstr;
+	Qr.SerNr = Vrw.QuestNum;
+	readfirstmain(Qr, 1, true);
+	for (i = 0; i < MatRowCnt(Qr); i = i + 1)
+		begin
+		MatRowGet(Qr, i ,Qrw);
+		if Qrw.Answer == dblstr then
+			begin
+			Vrw.Ball = Qrw.Ball;
+			end;		
+		end;
+	MatRowPut(Vr, RepSpec.frc, Vrw);
+	RecordUpdate(V2r, Vr, true);
+	end;
+RETURN;
+END;
+
+
+global
+procedure tRunRepNext(record RcVc RepSpec)
+begin
+RepSpec.frc = RepSpec.frc + 1;
+RepSpec.Media = mtScreen;
+RepSpec.repname = "tQuestionRn";
+RunReport(RepSpec,0);
+RETURN;
+end;	
+	
+global
+updating
+procedure tResVr(string l, record RcVc RepSpec, var val Pers)
+begin
+record ValidVc Vr, V2r;
+row ValidVc Vrw;
+integer i,k, Sum;
+boolean res;
+
+Sum = 0;
+Vr.SerNr = l;
+if readfirstmain(Vr, 1, true) then
+	begin
+	V2r.SerNr = Vr.SerNr;
+	readfirstmain(V2r, 1, true)
+	for (i = 0; i < MatRowCnt(Vr); i = i + 1)
+		begin
+		MatRowGet(Vr, i ,Vrw);
+		Sum = Sum + Vrw.Ball;
+		end;
+	Vr.SumBall = Sum;
+	Vr.Pers = (Sum * 100) / i;
+	Vr.OKFlag = 1;
+	RecordUpdate(V2r, Vr, true);
+	Pers = Vr.Pers;
+	end;
+RETURN;
+END;		
+
+global
+procedure tRunRepRes(record RcVc RepSpec, val Pers)
+begin
+
+RepSpec.vals0 = Pers;
+RepSpec.Media = mtScreen;
+RepSpec.repname = "tQuestResRn";
+RunReport(RepSpec,0);
+
+RETURN;
+END;
+
+global
+procedure tRunRep(record ValidVc Vr)
+BEGIN
+record RCVc RepSpec;
+Integer wn,nwn;
+
+if Vr.OKFlag <> 1 and (matrowcnt(Vr) > 0) and (Vr.UserCode == CurrentUser) then
+	begin
+	RepSpec.f2 = Vr.SerNr;
+	RepSpec.frc = 0;
+	RepSpec.Media = mtScreen;
+	RepSpec.repname = "tQuestionRn";
+	RunReport(RepSpec,0);
+	end
+else
+	begin
+	RepSpec.vals0 = Vr.Pers;
+	RepSpec.Media = mtScreen;
+	RepSpec.repname = "tQuestResRn";
+	RunReport(RepSpec,0);
+	end;
+RETURN;
+END;	
+
+global
+procedure tSertPrint(record ValidVc Vr)
+BEGIN
+record RCVc RepSpec;
+Integer wn,nwn;
+
+if Vr.OKFlag == 1 then
+	begin
+	RepSpec.f1 = Vr.UserName;
+	RepSpec.f2 = Vr.QTypeName;
+	RepSpec.d1 = Vr.DateCon;
+	RepSpec.vals0 = Vr.Pers;
+	RepSpec.Media = mtScreen;
+	RepSpec.repname = "tSertPrintRn";
+	RunReport(RepSpec,0);
+	end;
+RETURN;
+END;		
+
+global
+procedure tPrevQu(record RCVc RepSpec)
+BEGIN
+
+RepSpec.frc = RepSpec.frc - 1;
+RepSpec.Media = mtScreen;
+RepSpec.repname = "tQuestionRn";
+RunReport(RepSpec,0);	
+RETURN;
+END;
+
+global
+procedure tNextQu(record RcVc RepSpec)
+begin
+RepSpec.frc = RepSpec.frc + 1;
+RepSpec.Media = mtScreen;
+RepSpec.repname = "tQuestionRn";
+RunReport(RepSpec,0);
+
+RETURN;
+end;
+
+
+global
+function Boolean Creator(string QTypeCode)
+BEGIN
+record QTypeVc QUr;
+boolean res;
+
+res = false;
+QUr.Code = QTypeCode;
+readfirstmain(QUr, 1, true);
+if QUr.UserCode == CurrentUser then
+	begin
+	res = true;
+	end;
+Creator = res;
+RETURN;
+END;

@@ -1,0 +1,146 @@
+global
+function Integer CanViewConfidentNote(string User)
+begin
+record UserVc USr;
+Integer res;
+
+res = 0;
+if SetInSet(CurrentUser, "ZINOVIY,AOCHER,EPAV") then
+	begin
+	res = 9;
+	end else
+	begin
+	USr.Code = User;
+	ReadFirstMain(USr, 1, True);
+	if (USr.Supervisor == CurrentUser) then
+		begin
+		res = 1;
+		end;
+	end;
+CanViewConfidentNote = res;	
+RETURN;
+end;
+
+global
+function Boolean CheckUsersSuperiorCurrent(string User)
+begin
+record UserVc USr;
+string 20 Code;
+Boolean res;
+
+if (User <> "ZINOVIY") then
+	begin
+	USr.Code = User;
+	while ((not res) and (USr.Supervisor <> "ZINOVIY"))
+		begin
+		ReadFirstMain(USr, 1, True);
+		
+		res = (USr.Supervisor == CurrentUser);
+		if res or blank(USr.Supervisor) or (USr.Supervisor == USr.Code) then
+			begin
+			CheckUsersSuperiorCurrent = res;
+			RETURN;
+			end;
+		USr.Code = USr.Supervisor;
+		end;
+	end;
+CheckUsersSuperiorCurrent = res;	
+RETURN;
+end;
+
+global
+procedure ConfidentNoteRn(record RcVc RS)
+begin
+record CDataVc CD;
+record UserVc Usr;
+Boolean TrHs;
+
+Usr.Code = RS.f1;
+if ReadFirstMain(USr, 1, True) and (USr.Supervisor <> USr.Code) and nonblank(USr.Supervisor) then
+	begin
+	 //if (USr.Superior == CurrentUser) or SetInSet(CurrentUser, "ZINOVIY,AOCHER") then
+	if CheckUsersSuperiorCurrent(USr.Code) or SetInSet(CurrentUser, "ZINOVIY,AOCHER,EPAV") then
+		begin
+		SetLangMode(LangRussian, "RUS", 2);
+		StartReportNoHeaderJob("Характеристика " & USr.Name);
+		SetRepCol(2, 20);
+		CD.Code = RS.f1;
+		if ReadFirstMain(CD, 1, True) then
+			begin
+			if (CD.ShowNote == 1) or (SetInSet(CurrentUser, "ZINOVIY,AOCHER,EPAV")) then
+				begin
+				StartFormat(15);
+				OutString(80, 0, USr.Name, False);
+				EndFormat;
+				Black_Divider(0, 1);
+				StartFormat(15);
+				OutText(2, 90, CD);
+				EndFormat;
+				Black_Divider(0, 1);
+				end;
+			end;
+		EndJob;
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure CNoteExistsRn(record RcVc RepSpec)
+begin
+record CDataVc CD;
+record UserVc Usr;
+Boolean TrHs, HsTr;
+
+if SetInSet(CurrentUser, "ZINOVIY,AOCHER,EPAV") then
+	begin
+	SetLangMode(LangRussian, "RUS", 2);
+	StartReportNoHeaderJob("Наличие характеристики");
+	
+	StartFormat(15);
+	OutString(20, 0, "Код", False);
+	OutString(100, 0, "Имя", False);
+	OutString(200, 0, "Руководитель", False);
+	EndFormat;
+	Black_Divider(0, 1);
+	USr.Code = blankval;
+	ResetLoop(USr);
+	while LoopMain(USr, 1, True)
+		begin
+		if (USr.Closed <> 1) and ((USr.Department == RepSpec.f1) or blank(RepSpec.f1)) then
+			begin
+			CD.Code = USr.Code;
+			TrHs = ReadFirstMain(CD, 1, True);
+			if (TrHs and (RepSpec.flags[0] == 0)) or (not(TrHs) and (RepSpec.flags[0] == 1)) then
+				begin			
+				StartFormat(15);
+				OutString(20, "DblUserVc", USr.Code, False);
+				OutString(100, 0, USr.Name, False);
+				OutString(300, 0, USr.Supervisor, False);
+				if TrHs then
+					begin
+					OutStringID(400, "DblCDataVc", "Посмотреть", False, USr.Code);
+					end;
+				EndFormat;
+				end;
+			end;
+		end;
+	Black_Divider(0, 1);
+	EndJob;
+	end;
+RETURN;
+end;
+
+
+global
+procedure DblCDataVc(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+
+RepSpec.f1 = l;
+RepSpec.repname = "ConfidentNoteRn";
+RepSpec.Media = mtScreen;
+RunReport(RepSpec, 0);
+
+RETURN;
+end;

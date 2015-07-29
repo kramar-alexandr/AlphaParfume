@@ -1,0 +1,404 @@
+external function date FirstDayOfMonth(date);
+external function date LastDayOfMonth(date);
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external function boolean ISetInSet(string, string);
+//external function string 20 IGetObjType(string);
+external function boolean InRange(string, string);
+external inner procedure CalcSum(val,val,val,val,var val,Integer);
+external inner procedure IVSumup(var record IVVc,Boolean);
+external inner procedure FindSalesExVat(record TaxMatrixVc,string,val,Integer,Integer,var val);
+external inner function Boolean GetItemPriceDiscount3(string,val,var record INVc,string,val,val,val,val,val,string,string,string,string,
+                                                      var val,var string,var val,var string,var val,var string,Integer,var Boolean,Date,Time,
+                                                      string,Boolean,var Boolean,string,var string,var val,string,string,var string);
+
+//===============================================
+//Скидки на товары по суммам (СЧ-Ф)
+function val GetRebate(record IVVc IVr, row IVVc IVrw) //Возвращаем стандартную скидку
+begin
+  Boolean chsum,res;
+  Boolean chrsum;
+  record INVc INr;
+  val price,vreb,baseprice,tax2prc;
+  string 255 curitemname,salesacc,vatcode,tax2code,taxtemplatecode;
+  Boolean calcprice;
+  val Quant;
+  Integer exportflag;
+  Boolean dummyf;
+
+  INr.Code = IVrw.ArtCode;
+  ReadFirstMain(INr, 1, true);
+
+  GetItemPriceDiscount3(IVrw.ArtCode,IVrw.Quant,INr,IVr.CurncyCode,
+                        IVr.FrRate,IVr.ToRateB1,IVr.ToRateB2,IVr.BaseRate1,IVr.BaseRate2,
+                        IVr.LangCode,IVr.CustCat,IVr.PriceList,IVr.RebCode,
+                        price,curitemname,vreb,vatcode,baseprice,salesacc,
+                        exportflag,calcprice,IVr.TransDate,"",IVr.CustCode,true,dummyf,IVr.PayDeal,
+                        tax2code,tax2prc,IVr.Region,IVr.Location,taxtemplatecode);
+
+  GetRebate = vreb;
+  Return;
+end;
+
+procedure DiscountByItems(var record IVVc IVr, record IVVc origIVr, row IDiscountBySumBlock IDBSbr) //Скидка по диапазону товаров
+begin
+  row IVVc IVrw;
+  record VSetSetBlock VSet;
+  record GeneralOptionBlock GenOptr;
+  integer i, rwcnt;
+  val Sum, t, s, rowsum;
+  record TaxMatrixVc TMr;
+
+  if InRange(origIVr.InvDate, IDBSbr.StartDate & ":" & IDBSbr.EndDate) and
+      (Blank(IDBSbr.Objects) or SetInSet(IDBSbr.Objects, origIVr.Objects)) then
+    begin
+      BlockLoad(VSet);
+      BlockLoad(GenOptr);
+      rwcnt = MatRowCnt(origIVr);
+      if (VSet.DiscountBySumUseIVSum == 1) then //Используем сумму СЧ-Ф
+        begin
+          Sum = MulRateToBase1(origIVr.CurncyCode, origIVr.Sum4, origIVr.FrRate, origIVr.ToRateB1, origIVr.ToRateB2, origIVr.BaseRate1, origIVr.BaseRate2, DefaultCurRoundOff);
+        end
+      else //Используем сумму по заданным товарам
+        begin
+          Sum = 0;
+          for (i=0; i<rwcnt; i=i+1)
+            begin
+              MatRowGet(origIVr, i, IVrw);
+              if ISetInSet(IVrw.ArtCode, IDBSbr.ArtCode) then
+                begin
+                  Sum = Sum + MulRateToBase1(origIVr.CurncyCode, IVrw.Sum, origIVr.FrRate, origIVr.ToRateB1, origIVr.ToRateB2, origIVr.BaseRate1, origIVr.BaseRate2, DefaultCurRoundOff);
+                end;
+            end;
+        end;
+
+      if (Sum >= IDBSbr.Sum) then //Порог срабатывания скидки
+        begin
+          for (i=0; i<rwcnt; i=i+1)
+            begin
+              MatRowGet(origIVr, i, IVrw);
+              if ISetInSet(IVrw.ArtCode, IDBSbr.ArtCode) then
+                begin
+                  IVrw.vRebate = GetRebate(origIVr, IVrw) + IDBSbr.Discount;
+                  CalcSum(IVrw.Quant,IVrw.Price,IVrw.PriceFactor,IVrw.vRebate,t,GenOptr.UseDiscount);
+                  IVrw.Sum = t;
+//GP
+                  t = IVrw.Quant*IVrw.BasePrice;   // cost  
+                  if (IVrw.PriceFactor <> 0) then
+                    begin
+                      t = t / IVrw.PriceFactor;
+                    end;
+                  s = MulRateToBase1(origIVr.CurncyCode,IVrw.Sum,origIVr.FrRate,origIVr.ToRateB1,origIVr.ToRateB2,origIVr.BaseRate1,origIVr.BaseRate2,DefaultCurRoundOff);// sales
+                  FindSalesExVat(TMr,IVrw.VATCode,s,origIVr.InclVAT,origIVr.NoTAXonVAT,rowsum);
+                  IVrw.rowGP = rowsum - t;          // GP    
+//
+                  MatRowPut(IVr, i, IVrw);
+                end;
+            end;
+        end;
+    end;
+  Return;
+end;
+
+global
+procedure IIVDiscountBySum(var record IVVc IVr) //Расчет скидок по суммам
+begin
+  record IVVc origIVr;
+  record IDiscountBySumBlock IDBSb;
+  row IDiscountBySumBlock IDBSbr;
+  integer i, rwcnt;
+  boolean Changed;
+
+  if (IVr.Invalid == 0) and (IVr.InvType <> 3) then
+    begin
+      BlockLoad(IDBSb);
+      RecordCopy(origIVr, IVr);
+      rwcnt = MatRowCnt(IDBSb);
+      for (i=0; i<rwcnt; i=i+1)
+        begin
+          MatRowGet(IDBSb, i, IDBSbr);
+          DiscountByItems(IVr, origIVr, IDBSbr);
+        end;
+      IVSumUp(IVr, true);
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Расход из кассы - История
+global
+procedure CLOutVc_LogAction(var record CLOutVc CLOutr, string ActionName)
+begin
+  if blank(GetFieldValueByName(CLOutr, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(CLOutr, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(CLOutr, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(CLOutr, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+//===============================================
+//Приход в кассу - История
+global
+procedure CLInVc_LogAction(var record CLInVc CLInr, string ActionName)
+begin
+  if blank(GetFieldValueByName(CLInr, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(CLInr, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(CLInr, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(CLInr, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+//===============================================
+//Выплата ПЛ - История
+global
+procedure PPVc_LogAction(var record PPVc PPr, string ActionName)
+begin
+  if blank(GetFieldValueByName(PPr, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(PPr, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(PPr, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(PPr, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+//===============================================
+//Авансовый отчет - История
+global
+procedure ExpVc_LogAction(var record ExpVc Expr, string ActionName)
+begin
+  if blank(GetFieldValueByName(Expr, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(Expr, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(Expr, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(Expr, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+//===============================================
+//История изменений договорной даты оплаты Сч/ф
+global
+updating procedure StoreIVPlanPayHist(var record IVVc IVr, record IVVc IV2r)
+begin
+  record IVPlanPayHistVc PHr;
+  record ARVc ARr;
+  integer insertmode, updatemode;
+
+  if (IVr.InvType <> 3) and (IV2r.OKFlag == 1) and (IVr.PlanPayDate <> IV2r.PlanPayDate) then
+    begin
+      RecordNew(PHr);
+      PHr.InvoiceNr = IVr.SerNr;
+      PHr.CustCode = IVr.CustCode;
+      PHr.InvDate = IVr.InvDate;
+      PHr.InvPayDate = IVr.PayDate;
+      PHr.PrevPlanPayDate = IV2r.PlanPayDate;
+      PHr.PlanPayDate = IVr.PlanPayDate;
+      PHr.RegUser = CurrentUser;
+      PHr.RegDate = CurrentDate;
+      PHr.SalesGroup = IVr.SalesGroup;
+      PHr.InvCurncy = IVr.CurncyCode;
+      PHr.InvVal = IVr.Sum4;
+      ARr.InvoiceNr = IVr.SerNr;
+      ReadFirstMain(ARr, 1, true);
+      PHr.InvRVal = ARr.RVal;
+      PHr.SerNr = NextSerNr("IVPlanPayHistVc", PHr.RegDate, -1, false, "");    
+      RecordStore(PHr, false);
+    end;
+
+  Return;
+end;
+
+
+//===============================================
+//Счет клиенту - Сортировка товара по коду
+//===============================================
+//Добавляем строку в матрицу счета клиенту с сортировкой
+procedure ORAddRow(var record ORVc ORr, row ORVc NewORrw)
+begin
+  row ORVc ORrw;
+  integer Pos, lPos, rPos;
+  boolean cont;
+
+  Pos = 0;
+  lPos = 0; 
+  rPos = MatRowCnt(ORr);
+
+  while (lPos < rPos)
+    begin
+      Pos = (lPos + rPos) / 2;
+      MatRowGet(ORr, Pos, ORrw);
+      cont = (NewORrw.ArtCode > ORrw.ArtCode);
+      if cont then
+        begin
+          lPos = Pos + 1;
+        end
+      else
+        begin
+          rPos = Pos;
+        end;
+    end;
+
+  if (cont) then
+    begin
+      Pos = rPos;
+    end;
+
+  MatRowInsert(ORr, Pos, NewORrw);
+  Return;
+end;
+
+//===============================================
+//Счет на продукцию "Элита"
+function boolean CheckELOrd(record ORVc ORr)
+begin
+  row ORVc ORrw;
+
+  MatRowGet(ORr, 0, ORrw);
+  CheckELOrd = SetInSet("EL", ORrw.Objects);
+  Return;
+end;
+
+//===============================================
+//Очищаем матрицу счета клиенту
+procedure ORClearMatrix(var record ORVc ORr)
+begin
+  while (MatRowCnt(ORr) > 0)
+    begin
+    MatRowDelete(ORr, 0);
+    end;
+  Return;
+end;
+
+//===============================================
+//Сортируем товар в счете клиенту по коду
+global
+procedure ISortORMatrix(record ORVc ORr)
+begin
+  record ORVc OR2r;
+  row ORVc ORrw;
+  integer i;
+
+  if not CheckELOrd(ORr) then //Сортировать только не "элиту"
+    begin
+    RecordCopy(OR2r, ORr);
+    ORClearMatrix(ORr);
+    for (i=0; i<MatRowCnt(OR2r); i=i+1)
+      begin
+      MatRowGet(OR2r, i, ORrw);
+      if nonblank(ORrw.ArtCode) then
+        begin
+        ORAddRow(ORr, ORrw);
+        end;
+      end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Печать Акта сверки совместно со Сч/ф
+global
+procedure IPrintDSverRnFromIV(record IVVc IVr)
+begin
+  record CUVc CUr;
+  record RcVc RepSpec;
+
+  CUr.Code = IVr.CustCode;
+  if ReadFirstMain(CUr, 1, true) and (CUr.DontPrintSverkaFlag == 0) then
+    begin
+    ReportDefaults(RepSpec, "CuPer3RClass");
+    RepSpec.repname = "DSverRn";
+    RepSpec.f1 = IVr.CustCode;
+    RepSpec.ArtMode = 2;
+    RepSpec.sStartDate = FirstDayOfMonth(AddMonth(IVr.InvDate, -1));
+    RepSpec.sEndDate = LastDayOfMonth(IVr.InvDate);
+    RepSpec.Media = mtPrinter;
+    RunReport(RepSpec,0);
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Находятся ли открузки по указанной Сч/ф в открытой финансовой неделе
+global
+function boolean ICheckSHDateOpened(longint OrderNr)
+begin
+  boolean res;
+  boolean cont;
+  record tBanOperVc BOr;
+  record SHVc SHr;
+
+  res = true;
+
+  BOr.Code = "IYA";
+  cont = ReadFirstMain(BOr, 1, true) and (OrderNr <> -1);
+  SHr.OrderNr = OrderNr;
+  while ReadFirstKey("OrderKey", SHr, 1, cont)
+    begin
+    cont = (SHr.OrderNr == OrderNr) and res;
+    if cont then
+      begin
+      res = res and (SHr.ShipDate >= BOr.BanDate);
+      end;
+    end;
+
+  ICheckSHDateOpened = res;
+  Return;
+end;
+
+
+//===============================================
+//Собираем сводную накладную по клиенту за день
+
+procedure AppendInvoice(var record IVVc CommonIVr, record IVVc IVr)
+begin
+  row IVVc IVrw;
+  integer i;
+
+  for(i=0; i<MatRowCnt(IVr); i=i+1)
+    begin
+    MatRowGet(IVr, i, IVRw);
+    MatRowPut(CommonIVr, MatRowCnt(CommonIVr), IVrw);
+    end;
+
+  Return;
+end;
+
+
+global
+procedure IGetCommonInvoice(record IVVc IVp, var record IVVc CommonIVr)
+begin
+  record IVVc IVr;
+  boolean cont;
+  boolean FirstTime;
+
+  FirstTime = true;
+  cont = true;
+  IVr.CustCode = IVp.CustCode;
+  IVr.InvDate = IVp.InvDate;
+  while LoopKey("CustDate", IVr, 2, cont)
+    begin
+      cont = (IVr.CustCode == IVp.CustCode) and (IVr.InvDate == IVp.InvDate);
+      if cont and (IVr.OKFlag == 1) then
+        begin
+          if FirstTime then //Копируем всю накладную в сводную
+            begin
+            RecordCopy(CommonIVr, IVr);
+            CommonIVr.SerNr = -CommonIVr.SerNr; //Сохраняем номер с отрицательным знаком для идентификации
+            FirstTime = false;
+            end
+          else //Добавляем строки матрицы в сводную накладную
+            begin
+            AppendInvoice(CommonIVr, IVr);
+            end;
+        end;
+    end;
+
+  IVSumUp(CommonIVr, true);
+  Return;
+end;

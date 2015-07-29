@@ -1,0 +1,205 @@
+//21/01/09 DELPHI исправления в карточках товаров InVc
+external function string 255 DelSubStr(string, string);
+external inner procedure ExtractObj(string,var Integer,var string);
+
+global 
+function Boolean GetObjectType(var string Obje, var string ObType) //by DELPHI Checking if an object exists in group;
+begin
+record ObjVc Ob;
+boolean res, TrHs;
+
+TrHs = True;
+Ob.Code = Obje;
+if (ReadFirstMain(Ob, 1, True)) then 
+	begin
+	if Ob.OTCode==ObType then //if object in group
+		begin
+		GetObjectType = True;
+		end else
+		begin
+		GetObjectType = False;
+		end;
+	end else
+	begin
+	GetObjectType = False;
+	end;
+return
+end;
+
+global updating 
+procedure VITUpdateRn(record RcVc RepSpec) //by DELPHI
+begin
+record INVc Inv;
+boolean testf,TrHs;
+string 255 ObSt;
+record  ObjVc Ob;
+Integer pos;
+string 2 Oo;
+
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportnoheaderJob("Редактирование карточки товара");
+TrHs = True;
+if (nonblank(RepSpec.f1)) then 
+	begin
+	StartFormat(15);
+	OutString(0, 0, "Код товара", False);
+	OutString(50, 0, "Наименование", False);
+	OutString(250, 0, "Объекты", False);
+	OutString(350, 0, "Классификаторы", False);
+	EndFormat;
+	Black_Divider(0, 400);
+	INv.Group = RepSpec.f1;
+	while (LoopKey("Group", Inv, 1, TrHs)) 
+	
+		begin
+		if (setinset(Inv.Group, RepSpec.f1) and nonblank(Inv.Group)) then 
+			
+			begin 
+			if (nonblank(RepSpec.ObjType)) then 
+				begin
+				/*pos = 0;
+				ExtractObj(Inv.Objects, pos, ObSt);
+					while (nonblank(ObSt))
+						begin
+						if (GetObjectType(ObSt, RepSpec.ObjType)) then
+							begin
+							Inv.Objects = DelSubstr(ObSt,RepSpec.ObjType);
+							if (RepSpec.flags[0]==1) then
+								begin
+								Inv.DispGroups = Inv.DispGroups & "," & ObSt;
+								end;
+							end;
+						ExtractObj(Inv.Objects, pos, ObSt);
+						end;*/
+					Oo = Left(Inv.Code, 2);
+					//StopAlert(Oo);
+					Inv.Objects = Oo;
+				end;		
+				
+			
+			if (nonblank(RepSpec.ObjStr)) then
+				begin
+				//Inv.DispGroups = DelSubstr(RepSpec.ObjStr, Inv.DispGroups);
+				
+				end;
+			
+			if (nonblank(RepSpec.AccStr)) then
+				begin
+				Inv.SalesAcc=RepSpec.AccStr;
+				end else
+				begin
+				if (RepSpec.flags[1]==1) then
+					begin
+					Inv.SalesAcc="";
+					end;
+				end;
+			if (nonblank(RepSpec.FirstAcc)) then
+				begin
+				Inv.EUSalesAcc=RepSpec.FirstAcc;
+				end else
+				begin
+				if (RepSpec.flags[2]==1) then
+					begin
+					Inv.EUSalesAcc="";
+					end;
+				end;
+			if (nonblank(RepSpec.LastAcc)) then
+				begin
+				Inv.ExpSalesAcc=RepSpec.LastAcc;
+				end else
+				begin
+				if (RepSpec.flags[3]==1) then
+					begin
+					Inv.ExpSalesAcc="";
+					end;
+				end;
+			if (nonblank(RepSpec.f2)) then
+				begin
+				Inv.CostAcc=RepSpec.f2;
+				end else
+				begin
+				if (RepSpec.flags[4]==1) then
+					begin
+					Inv.CostAcc="";
+					end;
+				end;
+			if (nonblank(RepSpec.f3)) then
+				begin
+				Inv.EUCostAcc=RepSpec.f3;
+				end else
+				begin
+				if (RepSpec.flags[5]==1) then
+					begin
+					Inv.EUCostAcc="";
+					end;
+				end;
+			if (nonblank(RepSpec.f4)) then
+				begin
+				Inv.ExpCostAcc=RepSpec.f4;
+				end else
+				begin
+				if (RepSpec.flags[6]==1) then
+					begin
+					Inv.ExpCostAcc="";
+					end;
+				end;	
+			StartFormat(15);
+			if (RecordStore(Inv,true)) then 
+				begin			
+				OutString(0, 0, Inv.Code, False);
+				OutString(15, 0, Inv.Name, False);
+				OutString(150, 0, Inv.Objects, False);
+				OutString(200, 0, Inv.DispGroups, False);
+				end;
+			EndFormat;
+			
+			end else
+			begin
+			TrHs = False;
+			end;
+   
+		end;
+	end; 
+ endjob;
+ return;
+end;
+
+global updating 
+procedure VDelObjCUMn(record RcVc RepSpec) //by DELPHI
+begin
+record CuVc CUr, CU2r;
+string 255 ObSt;
+string 255 res;
+Integer pos, Cnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+Cnt = 0;
+CUr.Code = blankval;
+ResetLoop(CUr);
+while LoopMain(CUr, 1, True)
+	begin
+	pos = 0;
+	ExtractObj(CUr.Objects, pos, ObSt);
+	res = blankval;
+	while (nonblank(ObSt))
+		begin
+		if (not GetObjectType(ObSt, RepSpec.f1)) then
+			begin
+			if blank(res) then
+				begin
+				res = ObSt;
+				end else
+				begin
+				res = res & "," & ObSt;
+				end;
+			end;
+		ExtractObj(CUr.Objects, pos, ObSt);			
+		end;
+	CUr.Objects = res;
+	CU2r.Code = CUr.Code;
+	ReadFirstMain(CU2r, 1, True);
+	RecordUpdate(CU2r, CUr, False);
+	end;
+MessageBox(0, "All records updated");
+RETURN;
+end;

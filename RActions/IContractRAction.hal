@@ -1,0 +1,59 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+remote inner procedure StripEndingSpaces(var string);
+
+//===============================================
+function boolean CheckClass(string ClassStr)
+begin
+  record IClassIContractVc CCr;
+  integer i, cnt;
+  string 60 Class;
+  boolean res;
+  
+  res = true;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      Class = IGetItemFromStr(ClassStr, i);
+      StripEndingSpaces(Class);
+      CCr.Code = Class;
+      res = blank(Class) or ReadFirstMain(CCr, 1, true);
+    end;
+  CheckClass = res;
+end;
+
+//===============================================
+global
+function Longint IContractVcRecordDuplicate(var record IContractVc ICr, record IContractVc IC2r, longint stat, longint check)
+begin 
+  ICr.Code = blankval;
+  IContractVcRecordDuplicate = 0;
+  Return;
+end;
+
+
+//===============================================
+global
+updating function Boolean IContractVcRecordCheck(var record IContractVc ICr, record IContractVc IC2r, longint stat, longint check)
+begin
+  longint res;
+  integer i;
+
+  SetLangMode(LangRussian,"RUS", 2);
+  res = 0;
+
+  if blank(ICr.Code) then
+    begin
+      RecordCheckError(1499, "Проверьте код документа!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res <> -1) and not CheckClass(ICr.Classification) then
+    begin
+      RecordCheckError(1499, "Неверная классификация", -1, "Classification");
+      res = -1;      
+    end;
+
+  IContractVcRecordCheck = res;
+  Return;
+end;

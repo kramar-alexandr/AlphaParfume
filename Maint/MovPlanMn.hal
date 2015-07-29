@@ -1,0 +1,754 @@
+external inner function Boolean SetInSet2(string,string);
+external function Boolean INInPlan(string, Integer);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+//external inner function Integer DaysInMonth(Integer,Integer);
+external function string 5 GetMonthName(Integer);
+external function string 255 IGetArtName(string);
+external inner function LongInt DateDiff(Date,Date);
+external inner function val GetStockQty(string,string,Date,Boolean);
+external function integer IItemCountInStr(string );
+external function integer tGetQuarter(date, var date, var date);
+//===============================================
+function val GetIVCoeff(integer InvType)
+begin
+  integer coeff;
+
+  coeff = 1;
+  if (InvType == 3) then
+    begin
+      coeff = -1;
+    end;
+  GetIVCoeff = coeff;
+  Return;
+end;
+
+//===============================================
+//Факты из Истории Товаров
+global
+function integer tGetFact(string Code, string LocCode, date bd, date ed)
+begin
+record  ItemHistVc ItemHistr;
+row SHVc SHNrw;
+record SHVc SHNr;
+boolean cont,TrHs;
+integer coeff, Kol, i;
+string 60 KeyStr;
+
+Kol = 0;
+ItemHistr.Location = LocCode;
+ItemHistr.ArtCode = Code;
+TrHs = true;
+While (LoopKey("ArtCodeLoc", ItemHistr, 2, TrHs)) 
+	begin
+	TrHs = (ItemHistr.Location == LocCode and  ItemHistr.ArtCode == Code);
+	if ((ItemHistr.TransDate >= bd) and (ItemHistr.TransDate <= ed)) then 
+		begin
+		if  (ItemHistr.FileName=="RetVc") or (ItemHistr.FileName=="SHVc") then 
+			begin 
+			Kol = Kol + ItemHistr.Qty;
+			end;
+		end;
+	end;
+
+// Kol = 0;
+// SHNr.ShipDate = bd;
+// SHNr.Location = LocCode;
+// SHNr.OKFlag = 1;
+// cont = true;
+// while (LoopKey("LocOK", SHNr, 3, cont))
+    // begin
+    // cont = DateInRange(SHNr.ShipDate, bd, ed);
+    // if (cont) and (SHNr.OKFlag == 1) and (SHNr.Location == LocCode) then
+        // begin
+        // for (i = 0; i < MatRowCnt(SHNr); i = i + 1)
+            // begin
+            // MatRowGet(SHNr, i, SHNrw);
+			// if (SHNrw.ArtCode == Code) then
+				// begin
+				// Kol = Kol + SHNrw.Ship;
+				// end;
+            // end;
+        // end;
+    // end;
+
+tGetFact = -1 * Kol;
+  Return;
+end;
+
+// ===========================  Количество нового товара
+global
+function integer QtyNEW(string Code, string LocCode, date DatePlan)
+begin
+boolean bool;
+date DayL;
+record StockMovVc SMr;
+row StockMovVc SMrw;
+integer i;
+
+QtyNEW = 0;
+bool = true;
+resetloop(SMr);
+SMr.OKFlag = 1;
+SMr.ToLocation = LocCode;
+while (LoopBackKey("ToLocOK", SMr, 1, bool))
+	begin	
+	for (i=0; i < MatRowCnt(SMr); i=i+1)
+		begin
+		MatRowGet(SMr, i, SMrw);
+		if (SMrw.ArtCode == Code) then 
+			begin
+			QtyNEW = tGetFact(Code, LocCode, SMr.TransDate, CurrentDate);
+			bool = false;
+			i = MatRowCnt(SMr);
+			end;
+		end;
+	end;
+
+return;
+end;
+
+//=== Среднедневной прогноз продаж
+
+function val SredDnPrPr(date d2, val PlanNaMes, string SalesGroup, string Code)
+begin
+date bd, ed;
+integer i, Month,ii;
+boolean cont, TrHs;
+record tWeekPlanVc WPr;
+row tWeekPlanVc WPrw;
+LongInt maxweek;
+string 250 tstr;
+val sum, sr, S, S3, Fin;
+val KolDnNed;
+val res;
+ 
+maxweek = 53;
+//=== Коэф.недели, Кол-во раб дней в неделе
+WPr.Code = SalesGroup;
+ReadFirstMain(WPr, 1, True);
+for (i=0; i < MatRowCnt(WPr); i=i+1)
+	begin
+	MatRowGet(WPr,i,WPrw);
+	if WPrw.NumWeek == GetWeekNr(d2, "", maxweek) and not(setinset(GetDay(d2),WPrw.WorkDay)) then
+		begin
+		KolDnNed = 7 - IItemCountInStr(WPrw.WorkDay);
+		res = WPrw.Koeff * PlanNaMes / KolDnNed; 
+		i = MatRowCnt(WPr);	
+		end
+	else
+		begin
+		res = 0;
+		end;	
+	end;
+SredDnPrPr = res;		
+return;	
+end;
+
+global
+function val tPlanNaMes(string Obj, string Code,date bd)
+begin
+val PlanNaMes;
+integer i, Month,ii, d,RwCnt;
+record VPlanSpecVc VPr;
+row VPlanSpecVc VPrw;
+boolean cont, TrHs;
+			
+ResetLoop(VPr);
+Month = bd.Month;
+VPr.Objects = Obj;
+cont = true;
+while (LoopKey("Objects", VPr, 1, cont))
+    begin
+    cont = (VPr.Objects == Obj);
+    if (cont) and (VPr.Year == bd.Year) then
+		begin
+		for (i=0; i < MatRowCnt(VPr); i=i+1)
+			begin
+			MatRowGet(VPr, i, VPrw);
+			if VPrw.ArtCode == Code then
+				begin
+				PlanNaMes = StringToVal(GetFieldValueByName(VPr, GetMonthName(Month) & "P", i), M4Val);
+				end;
+			end;
+		end;
+	end;
+
+// while (LoopKey("Objects", VPr, 1, true))
+	// begin
+	// //cont = (VPr.Objects == OLbr.Obj);
+	// if (VPr.Objects == OLbr.Obj) and (VPr.Year == bd.Year) and nonblank(VPr.Objects) then
+		// begin
+		// for (i=0; i < MatRowCnt(VPr); i=i+1)
+			// begin
+			// MatRowGet(VPr,i,VPrw);
+			// if VPrw.ArtCode == Code then
+				// begin
+				// PlanNaMes = StringToVal(GetFieldValueByName(VPr, GetMonthName(Month) & "P", i), M4Val);
+				// end;
+			// end;
+		// end;
+	// end;
+tPlanNaMes = PlanNaMes;
+return;	
+end;	
+
+//===========================  Количество основного товара
+global
+function integer QtyOSN(string Code,record RcVc RepSpec, var val PrVente, var val SigmaTot, integer SansSig)
+begin
+record tMovPlanVc MPr;
+val PlanNaMes, KoefNed, KoefNed1,KolDnNed, PrINed, OstDenPl, PrOstDenDost, PrI1Ned, PlanMov;
+record VPlanSpecVc VPr;
+record TempVc Listr;
+record LocationVc Locr;
+record tWeekPlanVc WPr;
+record LogPlanDVc LPlDr;
+record LogPlWVc LPlWr;
+row LogPlWVc LPlWrw;
+row LogPlanDVc LPlDrw;
+row VPlanSpecVc VPrw;
+date bd, ed;
+string 20 SalesGroup; 
+integer i, Month,ii, d,RwCnt;
+boolean cont, TrHs;
+row tWeekPlanVc WPrw;
+LongInt maxweek;
+string 250 tstr;
+val sum, sr, S, S3, Fin;
+date date1, date2;
+record ObjLocBlock OLb;
+row ObjLocBlock OLbr;
+
+BlockLoad(OLb);
+ 
+maxweek = 53;
+PlanNaMes = 0;
+//=== План на месяц по объектам планирования
+if nonblank(RepSpec.f2) then 
+	begin
+	for (RwCnt = 0; (RwCnt < MatRowCnt(OLb)); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(OLb, RwCnt, OLbr);	
+		if OLbr.Loc == RepSpec.f2 then
+			begin
+			//SalesGroup = RepSpec.f1;
+			//Listr.f1 = IGetSalesGroupName(SalesGroup);
+			bd = RepSpec.d2;
+			//ed = RepSpec.d2;
+			PlanNaMes = PlanNaMes + tPlanNaMes(OLbr.Obj, Code, bd);
+			end;
+		end;	
+	//=== Остаток на день планирования
+	// TrHs = true;
+	// while (LoopMain(Locr, 1, TrHs))
+		// begin
+		// if (Locr.Addr3 == RepSpec.f1) then
+			// begin
+			OstDenPl = GetStockQty(Code, RepSpec.f2, RepSpec.d1, false);
+			// TrHs = False;
+			// end;
+		//end;
+	for (d = 0; (RepSpec.d2 > date1) ; d = d + 1) //проверить -1 день нужен?  addday(date1,-1)
+		begin
+		date1 = AddDay(RepSpec.d1, d);
+		PrINed = PrINed + SredDnPrPr(date1, PlanNaMes, RepSpec.f1, Code);		
+		end;
+	//=== Прогноз остатка на день доставки	
+	PrOstDenDost = OstDenPl - PrINed;//(DateDiff(RepSpec.d2, RepSpec.d1) * ) 
+
+	if PrOstDenDost < 0 then
+		begin
+		PrOstDenDost = 0;
+		end;
+			
+	//=== Прогноз продаж i-той недели
+	ResetLoop(LPlWr);	
+	LPlWr.SalesGroup = RepSpec.f1;	
+	LPlWr.ArtCode = Code;
+	TrHs = True;
+	while (LoopKey("ArtSalesKey", LPlWr, 2, TrHs)) 
+		begin 
+		TrHs = (LPlWr.SalesGroup == RepSpec.f1) and (LPlWr.ArtCode == Code);
+		if TrHs then
+			begin
+			sum = 0;
+			for (ii = 0; ii < MatRowCnt(LPlWr); ii = ii + 1) 
+				begin
+				MatRowGet(LPlWr,ii,LPlWrw);
+				sum = sum + LPlWrw.Stock;
+				end;
+			sr = sum / ii;
+			S = 0;
+			for (ii = 0; ii < MatRowCnt(LPlWr); ii = ii + 1) 
+				begin
+				MatRowGet(LPlWr,ii,LPlWrw);
+				S = S + Power((LPlWrw.Stock - sr),2);
+				end;
+			S = Power((S/ii),0.5);
+			S3 = S * 3;
+			if S3 >= 25 then
+				begin
+				Fin = 25;
+				end
+			else
+				begin
+				Fin = S3;
+				end;		
+			end;
+		end;
+	
+	//PrI1Ned = KoefNed1 * PlanNaMes + Fin;
+	//===План перемещения 
+	for (d = 1; (RepSpec.RegDate > date2) ; d = d + 1)   //addday(date2,-1)
+		begin
+		date2 = AddDay(RepSpec.d2, d);
+		PrI1Ned = PrI1Ned + SredDnPrPr(date2, PlanNaMes, RepSpec.f1, Code);		
+		end;
+	PrVente = PrI1Ned;
+	SigmaTot =  Fin * SredDnPrPr(RepSpec.d2, PlanNaMes, RepSpec.f1, Code);
+	if SansSig == 0 then
+		begin
+		PlanMov = (PrI1Ned + Fin * SredDnPrPr(RepSpec.d2, PlanNaMes, RepSpec.f1, Code)) - PrOstDenDost;
+		end
+	else
+		begin
+		PlanMov = PrI1Ned - PrOstDenDost;
+		end;
+		
+//========
+	QtyOSN = Round(PlanMov, DefaultCurRoundOff);
+	if Round(PlanMov, DefaultCurRoundOff) < 0 then
+		begin
+		QtyOSN = 0;
+		end;
+	end
+else
+	begin
+	QtyOSN = 0;
+	end;
+	
+  Return;	
+end;
+
+
+procedure tAddPlan(record RcVc RepSpec, string ArtCode, val StockQty, val MultiShip, integer SansSig , integer nr,
+					var val QtyAuto, var val PlanMois, var val PrVente, var val Sigma, var val MultiQty)
+begin
+
+integer i, RwCnt;
+date bd, ed;
+boolean TrHs;
+record LocationVc Locr;
+val Kol, SigmaTot, PlanNaMes; //PrVente, 
+record ObjLocBlock OLb;
+row ObjLocBlock OLbr;
+
+
+BlockLoad(OLb);
+PlanNaMes = 0;
+QtyAuto = 0;
+PlanMois = 0;
+PrVente = 0;
+Sigma = 0;
+
+//=== План на месяц по объектам планирования
+for (RwCnt = 0; (RwCnt < MatRowCnt(OLb)); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(OLb, RwCnt, OLbr);	
+	if OLbr.Loc == RepSpec.f2 then
+		begin
+		bd = RepSpec.d2;
+		PlanNaMes = PlanNaMes + tPlanNaMes(OLbr.Obj, ArtCode, bd);
+		end;
+	end;
+	
+If PlanNaMes > 0 then
+	begin
+	QtyAuto = QtyOSN(ArtCode, RepSpec, PrVente, SigmaTot, SansSig);
+	PlanMois = PlanNaMes;
+	PrVente = PrVente;
+	Sigma = SigmaTot;
+	end
+else
+	begin
+	Kol = tGetFact(ArtCode, RepSpec.f2, AddDay(RepSpec.d1, -7), RepSpec.d1) - StockQty;//продажа за 7 дней - остаток на филиале
+	if Kol >= 0 then
+		begin
+		QtyAuto = Kol;
+		PlanMois = 0;
+		PrVente = 0;
+		Sigma = 0;
+		end;
+	end;
+if MultiShip > 0 then
+	begin
+	if Mod(QtyAuto, MultiShip) <> 0 then
+		begin
+		MultiQty = (Round(((QtyAuto / MultiShip) + 0.5), DefaultCurRoundOff) ) * MultiShip ;
+		end
+	else
+		begin
+		MultiQty = QtyAuto;
+		end;
+	end
+else
+	begin
+	MultiQty = QtyAuto;
+	end;
+
+  Return;	
+end;	
+
+
+global
+updating
+procedure MovPlanMn(record RcVc RepSpec)
+begin
+
+integer i, Month, nr, RwCnt;
+boolean cont, planned;
+record VPlanSpecVc VPr;
+record TempVc Listr;
+date bd, ed;
+string 20 SalesMan, SalesGroup; 
+record LogPlWVc LPlWr;
+record LogPlanDVc LPlDr;
+record INVc INr;
+record tMovPlanVc MPr;
+row tMovPlanVc MPrw;
+boolean TrHs;
+record LocationVc Locr;
+val PrVente, SigmaTot, PlanNaMes, PlanNaMesMak, Deficit, MaksanQty, CQty, Kol, QtyAuto, MultiQty;
+record ObjLocBlock OLb;
+row ObjLocBlock OLbr;
+
+RecordNew(LPlDr);
+MPr.SerNr = NextSerNr("tMovPlanVc", CurrentDate, -1, false, "");;
+MPr.DatePlan = RepSpec.d1;
+MPr.DateSup = RepSpec.d2;
+MPr.NextSup = RepSpec.RegDate;
+Locr.Code = RepSpec.f2;
+ReadFirstMain(Locr, 1, true);
+RepSpec.f1 = Locr.Addr3;
+MPr.LocCode = RepSpec.f2;
+MPr.SalesGroup = RepSpec.f1;
+
+
+BlockLoad(OLb);
+
+// TrHs = true;
+// while (LoopMain(Locr, 1, TrHs))
+	// begin
+	// if (Locr.Addr3 == RepSpec.f1) then
+		// begin
+		// RepSpec.f1 = Locr.Addr3;
+		// end;
+	// end;
+ 
+ResetLoop(INr);
+nr = 0;
+TrHs = true;
+INr.Terminated = 0;
+while (LoopKey("ActCode", INr, 1, TrHs))
+	begin
+	TrHs = (INr.Terminated == 0);
+	if (TrHs) and (INr.NotForSales == 0) and (Right(INr.Name,1) <> "@")  then //and (INr.AlternativeCode <> "-1")
+		begin
+		MaksanQty = GetStockQty(INr.Code, "A001", CurrentDate, false);	
+		CQty = GetStockQty(INr.Code, "C002", CurrentDate, false);	
+		if (MaksanQty + CQty) > 0 then
+			begin
+			MPrw.ArtCode = INr.Code;
+			MPrw.ArtName = INr.Name;
+			MPrw.StockQty = GetStockQty(INr.Code, RepSpec.f2, RepSpec.d1, false);
+			MPrw.MaksanQty = MaksanQty;	
+			MPrw.CQty = CQty;	
+		
+			if SetInSet("NEW", INr.DispGroups)  then // and (INInPlan(INr.Code, GetYear(CurrentDate)))
+				begin
+				MPrw.GP = "NEW";
+				MPrw.QtyAuto = 0;
+				MPrw.PlanMois = 0;
+				MPrw.PrVente = 0;
+				MPrw.MultiQty = 0;
+				MPrw.Sigma = 0;
+				MPrw.QtyAuto = QtyNEW(INr.Code, RepSpec.f2, RepSpec.d1);//продажи с последнего поступления 
+				if (INInPlan(INr.Code, GetYear(CurrentDate))) then
+					begin
+					PlanNaMes = 0;
+					//=== План на месяц по объектам планирования
+					for (RwCnt = 0; (RwCnt < MatRowCnt(OLb)); RwCnt = RwCnt + 1)
+						begin
+						MatRowGet(OLb, RwCnt, OLbr);	
+						if OLbr.Loc == RepSpec.f2 then
+							begin
+							bd = RepSpec.d2;
+							PlanNaMes = PlanNaMes + tPlanNaMes(OLbr.Obj, INr.Code, bd);
+							end;
+						end;
+					MPrw.PlanMois = PlanNaMes;
+					end;
+				MPrw.PrVente = 0;
+				MPrw.Sigma = 0;
+				if INr.MultiShip > 0 then
+					begin
+					if Mod(MPrw.QtyAuto, INr.MultiShip) <> 0 then
+						begin
+						MPrw.MultiQty = (Round(((MPrw.QtyAuto / INr.MultiShip) + 0.5), DefaultCurRoundOff) ) * INr.MultiShip ;
+						end
+					else
+						begin
+						MPrw.MultiQty = MPrw.QtyAuto;
+						end;
+					end
+				else
+					begin
+					MPrw.MultiQty = MPrw.QtyAuto;
+					end;
+				MatRowInsert(MPr, nr, MPrw);
+				nr = nr + 1;
+				end;
+				
+			if SetInSet("DSC", INr.DispGroups)  then // and (INInPlan(INr.Code, GetYear(CurrentDate))) 
+				begin
+				MPrw.GP = "DSC";
+				MPrw.QtyAuto = 0;
+				MPrw.PlanMois = 0;
+				MPrw.PrVente = 0;
+				MPrw.MultiQty = 0;
+				MPrw.Sigma = 0;
+				MatRowInsert(MPr, nr, MPrw);
+				nr = nr + 1;
+				end;	
+			if SetInSet("OSN", INr.DispGroups)  then // and (INInPlan(INr.Code, GetYear(CurrentDate)))
+				begin
+				MPrw.GP = "OSN";
+				MPrw.QtyAuto = 0;
+				MPrw.PlanMois = 0;
+				MPrw.PrVente = 0;
+				MPrw.MultiQty = 0;
+				MPrw.Sigma = 0;
+				if (INInPlan(INr.Code, GetYear(CurrentDate))) then
+					begin
+					
+					PlanNaMesMak = 0;
+					//=== План на месяц по объектам планирования для Максана
+					for (RwCnt = 0; (RwCnt < MatRowCnt(OLb)); RwCnt = RwCnt + 1)
+						begin
+						MatRowGet(OLb, RwCnt, OLbr);	
+						if OLbr.Loc == "A001" then
+							begin
+							bd = RepSpec.d2;
+							PlanNaMesMak = PlanNaMesMak + tPlanNaMes(OLbr.Obj, INr.Code, bd); 
+							end;
+						end;
+					if PlanNaMesMak > 0 then
+						begin
+						Deficit = (MPrw.MaksanQty + MPrw.CQty) / (PlanNaMesMak / 21);  // разделили на среднее кол-во раб.дней...21
+											
+						if (Deficit < 7 ) then
+							begin
+							MPrw.QtyAuto = 0;
+							end;
+						
+						if (Deficit >= 7) and (Deficit < 14) then
+							begin
+							QtyAuto = 0;
+							PlanNaMes = 0;
+							PrVente = 0;
+							MultiQty = 0;
+							SigmaTot = 0;
+							tAddPlan(RepSpec, MPrw.ArtCode, MPrw.StockQty, INr.MultiShip, 1, nr, QtyAuto, PlanNaMes, PrVente, SigmaTot, MultiQty); //3
+							MPrw.QtyAuto = QtyAuto;
+							MPrw.PlanMois = PlanNaMes;
+							MPrw.PrVente = PrVente;
+							MPrw.Sigma = SigmaTot;
+							MPrw.MultiQty = MultiQty;
+							end;
+							
+						if (Deficit >= 14) then
+							begin
+							QtyAuto = 0;
+							PlanNaMes = 0;
+							PrVente = 0;
+							MultiQty = 0;
+							SigmaTot = 0;
+							tAddPlan(RepSpec, MPrw.ArtCode, MPrw.StockQty, INr.MultiShip, 0, nr, QtyAuto, PlanNaMes, PrVente, SigmaTot, MultiQty); //2
+							MPrw.QtyAuto = QtyAuto;
+							MPrw.PlanMois = PlanNaMes;
+							MPrw.PrVente = PrVente;
+							MPrw.Sigma = SigmaTot;
+							MPrw.MultiQty = MultiQty;
+							end;
+						end
+					else
+						begin
+						QtyAuto = 0;
+						PlanNaMes = 0;
+						PrVente = 0;
+						MultiQty = 0;
+						SigmaTot = 0;
+						tAddPlan(RepSpec, MPrw.ArtCode, MPrw.StockQty, INr.MultiShip, 0, nr, QtyAuto, PlanNaMes, PrVente, SigmaTot, MultiQty); //1
+						MPrw.QtyAuto = QtyAuto;
+						MPrw.PlanMois = PlanNaMes;
+						MPrw.PrVente = PrVente;
+						MPrw.Sigma = SigmaTot;
+						MPrw.MultiQty = MultiQty;
+						end;
+					end
+				else
+					begin
+					QtyAuto = 0;
+					PlanNaMes = 0;
+					PrVente = 0;
+					MultiQty = 0;
+					SigmaTot = 0;
+					tAddPlan(RepSpec, MPrw.ArtCode, MPrw.StockQty, INr.MultiShip, 0, nr, QtyAuto, PlanNaMes, PrVente, SigmaTot, MultiQty); //1
+					MPrw.QtyAuto = QtyAuto;
+					MPrw.PlanMois = PlanNaMes;
+					MPrw.PrVente = PrVente;
+					MPrw.Sigma = SigmaTot;
+					MPrw.MultiQty = MultiQty;
+					end;
+				MatRowInsert(MPr, nr, MPrw);
+				nr = nr + 1;
+				end;		
+			end;
+		end;	
+	end;
+
+RecordStore(MPr,true);
+
+  Return;
+end;
+
+
+
+function date tLastInMonth(date d)
+begin
+Integer i,j;
+
+i = GetYear(d);
+j = GetMonth(d);
+i = DaysInMonth(i,j);
+j = GetDay(d);
+i = i-j;
+tLastInMonth = AddDay(d,i);
+
+RETURN;
+END;
+
+
+global
+function val tPlanQuatr(string Obj, string Code,integer qu)
+begin
+val PlanQuatr;
+integer i, Month,ii, d,RwCnt;
+record VPlanSpecVc VPr;
+row VPlanSpecVc VPrw;
+boolean cont, TrHs;
+			
+ResetLoop(VPr);
+VPr.Objects = Obj;
+cont = true;
+while (LoopKey("Objects", VPr, 1, cont))
+    begin
+    cont = (VPr.Objects == Obj);
+    if (cont) and (VPr.Year == GetYear(CurrentDate)) then
+		begin
+		for (i=0; i < MatRowCnt(VPr); i=i+1)
+			begin
+			MatRowGet(VPr, i, VPrw);
+			if VPrw.ArtCode == Code then
+				begin
+				PlanQuatr = StringToVal(GetFieldValueByName(VPr, "Qua" & qu & "P", i), M4Val);
+				end;
+			end;
+		end; 
+	end;
+
+tPlanQuatr = PlanQuatr;
+return;	
+end;		
+
+	
+Global
+function val PlanQuatr(string LocCode, string Code, integer qu)	
+begin
+record ObjLocBlock OLb;
+row ObjLocBlock OLbr;
+val Sum;
+integer i, Month,ii, d,RwCnt;
+
+BlockLoad(OLb);
+ 
+Sum = 0;
+//=== План на квартал по объектам планирования
+for (RwCnt = 0; (RwCnt < MatRowCnt(OLb)); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(OLb, RwCnt, OLbr);	
+	if OLbr.Loc == LocCode then
+		begin
+		Sum = Sum + tPlanQuatr(OLbr.Obj, Code, qu);
+		end;
+	end;		
+PlanQuatr = Sum;		
+  Return;
+end;		
+
+Global
+procedure tFacts(string SerNr, var record TempVc Tmpr)	
+begin
+row TempVc Tmprw;
+integer i, Month,ii, d,RwCnt,qu;
+date bd,ed;
+row tMovPlanVc MPrw;
+record tMovPlanVc MPr;
+val ost, PlanQ;
+
+
+MPr.SerNr = SerNr;
+ReadFirstMain(MPr, 1, true);
+qu = tGetQuarter(MPr.DatePlan, bd, ed); 
+
+for(i = 0 ; i < MatRowCnt(MPr); i = i + 1)
+	begin
+	ost = 0;
+	PlanQ = 0;
+	MatRowGet(MPr, i, MPrw);
+	Tmprw.f2 = MPrw.ArtCode;
+	Tmprw.f3 = tGetFact(MPrw.ArtCode, MPr.LocCode, AddDay(MPr.DatePlan, -7), MPr.DatePlan);
+	Tmprw.f4 = tGetFact(MPrw.ArtCode, MPr.LocCode, AddDay(MPr.DatePlan, -30), MPr.DatePlan);
+	if (INInPlan(MPrw.ArtCode, GetYear(CurrentDate))) then
+		begin
+		PlanQ = PlanQuatr(MPr.LocCode, MPrw.ArtCode, qu);
+		end;
+	ost = PlanQ - tGetFact(MPrw.ArtCode, MPr.LocCode, bd, MPr.DatePlan);
+	Tmprw.f5 = ost;
+	MatRowInsert(Tmpr, i, Tmprw);
+	end;
+		
+  Return;
+end;
+
+global
+function string 50 ClassGP(string Code)
+begin
+row VoieVc Vrw;
+record DIVc CCr;
+record INVc INr;
+
+INr.Code = Code;
+ReadFirstMain(INr, 1, true);
+
+Resetloop(CCr);
+While LoopMain(CCr, 1, true)
+	begin
+	if (CCr.CType == "GP") and SetInSet(CCr.Code, INr.DispGroups) and nonblank(INr.DispGroups) then
+		begin
+		ClassGP = CCr.Code;
+		end;
+	end;	
+	
+RETURN;
+END;

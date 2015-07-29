@@ -1,0 +1,41 @@
+function boolean tLimKredDebZad(var record CUVc CUr,val BaseSum4)
+begin
+boolean TrHs, res;
+val MegaSumm;
+
+res = false;
+//stopalert(GetBalance(CUr,"balance",CurrentDate) & "   " & BaseSum4);
+MegaSumm = GetBalance(CUr,"balance",CurrentDate) + BaseSum4;
+if MegaSumm > CUr.tCreditLimit then
+	begin
+    res = true;
+	end;
+tLimKredDebZad = res;
+return;
+end;
+
+global
+function boolean tLimKred(var record ORVc ORr)
+begin
+record tTermsITVc TITr;
+record INVc INr;
+record CUVc CUr;
+row ORVc ORrw;
+string 200 tStr;
+string 20 Str;
+integer i, ii, pos;
+boolean TrHs, res;
+record VSetSetBlock VSSb;
+
+res = false;
+
+CUr.Code = ORr.CustCode;
+readfirstmain(CUr, 1, true);
+if nonblank(CUr.tCreditLimit) and (CUr.tCreditLimit > 0) then
+	begin
+	res = tLimKredDebZad(CUr, ORr.BaseSum4);
+	end;
+
+tLimKred = res;
+return;
+end;

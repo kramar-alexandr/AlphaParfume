@@ -1,0 +1,114 @@
+external procedure CLInVc_LogAction(var record CLInVc, string);
+
+
+global
+updating function longint CLInVcRecordCheck(var record CLInVc CLInr, record CLInVc CLIn2r, longint stat, longint long4)
+begin
+  longint res;
+  record TRVc TR1r;
+  record UserVc Usr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  res = inner.CLInVcRecordCheck(CLInr, CLIn2r, stat, long4);
+
+  //=== 21.05.13 TGOR
+  TR1r.TransDate = CLInr.TransDate;
+  TR1r.Number = CLInr.SerNr;
+  if not(ReadFirstKey("TransDate", TR1r,2,true)) and ((CLInr.OKFlag <> CLIn2r.OKFlag) and (CLInr.OKFlag == 1)) then
+    begin
+    res = -1;
+    MessageBox(0, "Создавать запись операции запрещено.");
+    end;
+  //===
+
+  if (res == 0) and (CLInr.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (CLIn2r.OKFlag == 0))) then //Установлен OK
+    begin
+    CLInVc_LogAction(CLInr, "OK");
+    end;
+
+  if (res == 0) and (CLInr.Invalid == 1) and ((stat == 1) or ((stat == 2) and (CLIn2r.Invalid == 0))) then //Запись аннулирована
+    begin
+    CLInVc_LogAction(CLInr, "Annul");
+    end;
+
+  if blank(CLInr.SalesGroup) then
+    begin
+    Usr.Code = CLInr.Person;
+    if blank(Usr.Code) then //Если не заполнен сотрудник - берем создателя
+      begin
+      Usr.Code = CLInr.LogNewUser;
+      end;
+    ReadFirstMain(Usr,1,true);
+    CLInr.SalesGroup = Usr.SalesGroup;
+    end;
+
+  CLInVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+updating function longint CLInVcRecordSave(var record CLInVc CLInr, record CLInVc CLIn2r, longint stat, longint long4)
+begin
+  longint res;
+
+  res = inner.CLInVcRecordSave(CLInr, CLIn2r, stat, long4);
+  if (res == 0) then
+    begin
+      CLInVc_LogAction(CLInr, "Save");
+    end;
+
+  CLInVcRecordSave = res;
+  Return;
+end;
+
+
+global
+function longint CLInVcRecordDefaults(var record CLInVc CLInr, record CLInVc CLIn2r, longint long3, longint long4)
+begin
+  longint res;
+
+  res = inner.CLInVcRecordDefaults(CLInr, CLIn2r, long3, long4);
+
+  CLInr.LogNewUser = CurrentUser;
+  CLInr.LogNewDate = CurrentDate;
+  CLInr.LogNewTime = CurrentTime;
+  CLInr.LogSaveUser = blankval;
+  CLInr.LogSaveDate = "";
+  CLInr.LogSaveTime = "";
+  CLInr.LogOKUser = blankval;
+  CLInr.LogOKDate = "";
+  CLInr.LogOKTime = "";
+  CLInr.LogAnnulUser = blankval;
+  CLInr.LogAnnulDate = "";
+  CLInr.LogAnnulTime = "";
+
+  CLInVcRecordDefaults = res;
+  Return;
+end;
+
+
+global
+function longint CLInVcRecordDuplicate(var record CLInVc CLInr, record CLInVc CLIn2r, longint long3, longint long4)
+begin
+  longint res;
+
+  res = inner.CLInVcRecordDuplicate(CLInr, CLIn2r, long3, long4);
+
+  CLInr.LogNewUser = CurrentUser;
+  CLInr.LogNewDate = CurrentDate;
+  CLInr.LogNewTime = CurrentTime;
+  CLInr.LogSaveUser = blankval;
+  CLInr.LogSaveDate = "";
+  CLInr.LogSaveTime = "";
+  CLInr.LogOKUser = blankval;
+  CLInr.LogOKDate = "";
+  CLInr.LogOKTime = "";
+  CLInr.LogAnnulUser = blankval;
+  CLInr.LogAnnulDate = "";
+  CLInr.LogAnnulTime = "";
+
+  CLInVcRecordDuplicate = res;
+  Return;
+end;

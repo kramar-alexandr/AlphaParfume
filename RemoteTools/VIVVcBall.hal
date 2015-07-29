@@ -1,0 +1,303 @@
+//By DELPHI баллы
+external function boolean InRange(string,string);
+external inner procedure IVVc_PasteQuantity(record IVVc,Integer);
+external inner function Boolean IVDchrsum(var record IVVc,Integer);
+external inner procedure IVSumup(var record IVVc,Boolean);
+external inner procedure IVDchsum(var record IVVc,Integer);
+remote inner procedure IVVc_PasteQuant(var record IVVc,Integer,var Boolean,string);
+external function boolean ISetInSet(string, string); //01.11.13 INAU
+external inner function roundmode SetRoundModeD(Integer);
+
+//01.11.13 INAU - Дополнительное бонусное предложение - кол-во боеусных SKU
+procedure CountBonusSKU(record IBonusToBallBlock BTBb, string ArtCode, integer RecicNumber, var integer SKUQty)
+begin
+	row IBonusToBallBlock BTBrw;
+	integer i;
+	boolean found;
+
+	for (i=0; (i < MatRowCnt(BTBb)) and not found; i=i+1)
+		begin
+		MatRowGet(BTBb, i, BTBrw);
+		if ISetInSet(RecicNumber, BTBrw.RecicNumber) and ISetInSet(ArtCode, BTBrw.ArtCode) then
+			begin
+			SKUQty = SKUQty + 1;
+			found = true;
+			end;
+    end;
+	Return;
+end;
+
+//01.11.13 INAU - Дополнительное бонусное предложение - накапливаем баллы
+procedure AccumBonusSKUBall(record IBonusToBallBlock BTBb, integer RecicNumber, integer SKUQty, var integer BonusSKUBal)
+begin
+	row IBonusToBallBlock BTBrw;
+	integer i;
+	boolean found;
+
+	for (i=0; (i < MatRowCnt(BTBb)) and not found; i=i+1)
+		begin
+		MatRowGet(BTBb, i, BTBrw);
+		if ISetInSet(RecicNumber, BTBrw.RecicNumber) and (SKUQty >= BTBrw.SKUQty) then
+			begin
+			BonusSKUBal = BonusSKUBal + BTBrw.Ball;
+			found = true;
+			end;
+    end;
+	Return;
+end;
+
+
+global updating
+function integer CountBallForIVVc(record IVVc IVp, record IVVC IVr, Integer res)
+begin
+record VsetPriseBallBlock VPRb; //By DELPHI баллы
+row VsetPriseBallBlock VPRw; //By DELPHI баллы
+row IVVc IVrw;
+integer CountBlock, CountRow, Signa; //By DELPHI баллы
+val teemp,teemp2;
+boolean Ende;//By DELPHI баллы
+record INVc INr;//By DELPHI баллы
+record IBonusToBallBlock BTBb; //01.11.13 INAU - Доп. бонустное предложение
+integer RecicleCount; // Shmalya
+row IVVc IVrwtmp;
+boolean Err;
+integer Ball, Basket, Max, CountBasket, QuantOfBaskets, i, j;
+integer BonusSKUCnt; //01.11.13 INAU
+integer BonusSKUBall; //01.11.13 INAU
+integer CurToCommonBasket, CommonBasket; //05.11.13 INAU - "Общая" корзина
+
+Signa = 0;
+switch (IVp.InvType) 
+	begin
+	case 1: Signa = 1;
+	case 6: Signa = 1;
+	case 3: Signa = -1;
+	end;
+IVp.Ball = 0;
+	
+if ((res ==0) and (IVp.OKFlag == 1) and (Signa <> 0)) then 
+	begin
+	BlockLoad(VPrb);
+	BlockLoad(BTBb);
+	CountBlock = 0; 
+	CountRow = 0;
+	IVp.Ball = 0;
+	BonusSKUBall = 0;
+	for (CountRow = 0; CountRow < MatRowCnt(IVp); CountRow = CountRow + 1)
+		begin
+		MatRowGet(IVp, CountRow, IVrw);
+		IVrw.BallSum = 0;
+		MatRowPut(IVp, CountRow, IVrw);
+		end;
+
+	for (CountRow = 0; CountRow < MatRowCnt(IVp); CountRow = CountRow + 1)
+		begin
+		Ende = True;
+		MatRowGet(IVp, CountRow, IVrw);
+		for (CountBlock = 0; CountBlock < MatRowCnt(VPRb) and Ende; CountBlock = CountBlock + 1) 
+			begin
+			MatRowGet(VPRb, CountBlock, VPRw);
+			if (InRange(IVrw.ArtCode, VPRw.Code)) then
+				begin
+				Ende = false;
+				IVrw.BallRow = VPRw.RecicNumber;
+				end else
+				begin
+				IVrw.BallRow = 0;
+				end;
+
+			MatRowPut(IVp, CountRow, IVrw);
+			end;
+		if (Ende) then
+			begin
+			INr.Code = IVrw.ArtCode;
+			ReadFirstMain(INr, 1, True);
+			for (CountBlock = 0; CountBlock < MatRowCnt(VPRb) and Ende; CountBlock = CountBlock + 1) 
+				begin
+				MatRowGet(VPRb, CountBlock, VPRw);
+				if InRange(INr.Group, VPRw.Code) then
+					begin
+					Ende = false;
+					IVrw.BallRow = VPRw.RecicNumber;
+					MatRowPut(IVp, CountRow, IVrw);
+					end;
+				end;
+			end;
+		end;
+
+	BlockLoad(VPrb);
+	CountBlock = 0; 
+	CountRow = 0;
+	IVp.Ball = 0;
+	Ball = 0;
+	Max = 0;
+	CommonBasket = -1;
+	QuantOfBaskets = 0;
+	for (i = 0; i < MatRowCnt(VPrb); i = i + 1) 
+		begin
+		Basket = 0;
+		CurToCommonBasket = 0;
+		BonusSKUCnt = 0;
+		MatRowGet(VPrb, i, VPrw);
+		for (j = 0; j < MatRowCnt(IVp); j = j + 1)
+			begin
+			MatRowGet(IVp, j, IVrw);
+			CountBonusSKU(BTBb, IVrw.ArtCode, VPrw.RecicNumber, BonusSKUCnt); //01.11.13 INAU - Кол-во бонусных SKU
+			if (IVrw.BallRow == VPrw.RecicNumber) then 
+				begin
+				if (Max < IVrw.Quant) then 
+					begin
+					Max = IVrw.Quant;
+					end;
+				end;
+			end;
+
+		for (CountRow = 1; CountRow <= Max; CountRow = CountRow + 1)
+			begin
+			CountBasket = 0;
+			for (j = 0; j < MatRowCnt(IVp); j = j + 1)
+				begin
+				MatRowGet(IVp, j, IVrw);
+				if (IVrw.BallRow == VPrw.RecicNumber) and (IVrw.Quant >= CountRow) then
+					begin
+					CountBasket = CountBasket + 1;
+					end;
+				end;
+
+			if ISetInSet(VPrw.RecicNumber, "1:7") then //05.11.13 INAU - +2SKU в общую корзину
+				begin
+				CurToCommonBasket = CurToCommonBasket + Round((CountBasket / 2 - 0.5), SetRoundModeD(0));
+				end;
+
+			if Round(CountBasket / VPrw.DivNum, SetRoundModeD(0)) > (CountBasket / VPrw.DivNum) then
+				begin
+				CountBasket = Round(CountBasket / VPrw.DivNum, SetRoundModeD(0)) - 1;
+				end else
+				begin
+				CountBasket = Round(CountBasket / VPrw.DivNum, SetRoundModeD(0));
+				end;
+			Basket = Basket + CountBasket;
+			end;
+
+		if (Basket > 0) then //01.11.13 INAU - если корзина сработала - суммируем доп. предложение
+			begin
+			AccumBonusSKUBall(BTBb, VPrw.RecicNumber, BonusSKUCnt, BonusSKUBall);
+			end;
+
+		if ISetInSet(VPrw.RecicNumber, "1:7") and ((CommonBasket == -1) or (CommonBasket > CurToCommonBasket)) then
+			begin
+			CommonBasket = CurToCommonBasket;
+			end;
+
+		Ball = Ball + Basket * VPrw.Ball;
+		QuantOfBaskets = QuantOfBaskets + Basket;
+		end;
+
+	// if (QuantOfBaskets >= 3) then
+		// begin
+		// QuantOfBaskets = 30;
+		// end else
+		// begin
+		// QuantOfBaskets = 0;
+		// end;
+		QuantOfBaskets = 0;
+	IVp.Ball = Ball * Signa + QuantOfBaskets * Signa + BonusSKUBall * Signa;
+	
+	if (IVp.Ball == 0) and (CommonBasket > 0) then //Если корзины не сработали - считаем общую корзину
+		begin
+		IVp.Ball = Signa * CommonBasket * 80; //80 баллов за 1 общую корзину * количество полных
+		end;
+
+	end;
+RETURN;
+end;
+
+global updating procedure RecountIVVc(record RcVc RepSpec)
+begin
+record IVVc IVr, IV2r;
+string 20 keystr;
+Boolean TrHs;
+Integer Signa;
+
+
+if blank(RepSpec.f1) then
+	begin
+	keystr = "InvDate";
+	end else
+	begin
+	keystr = "SerNr";
+	end;
+TrHs = True;
+ResetLoop(IVr);
+IVr.InvDate = RepSpec.sStartDate;
+IVr.SerNr = RepSpec.f1;
+while LoopKey(keystr, IVr, 1, TrHs)
+	begin
+	IV2r.SerNr = IVr.SerNr;
+	ReadFirstMain(IV2r, 1, True);
+	TrHs = (IVr.InvDate >= RepSpec.sStartDate) and 
+			(IVr.InvDate <= RepSpec.sEndDate);// and 
+				//(InRange(IVr.SerNr, RepSpec.f1));
+	Signa = 0;
+	switch (IVr.InvType) 
+	begin
+	case 1: Signa = 1;
+	case 6: Signa = 1;
+	case 3: Signa = -1;
+	end;
+	CountBallForIVVc(IVr, IVr, Signa);
+	//StopAlert("!");
+	RecordUpdate(IVr, IV2r, True);
+	end;
+MessageBox(0, "All is done!"	);
+	
+RETURN;
+end;
+
+global 
+updating 
+procedure GlueDoubleRows(record IVVc IVp)
+begin
+row IVVc IVrw;
+row IVVc IVrwtmp;
+Integer res;
+Integer i, j;
+Boolean chsum;
+  record ModuleBlock OptFeature;
+  record LocalMachineBlock LMb;
+
+for (i = 0; i < MatRowCnt(IVp); i = i + 1) 
+	begin
+	MatRowGet(IVp, i, IVrw);
+	for (j = i + 1; j < MatRowCnt(IVp); j = j + 1) 
+		begin
+		MatRowGet(IVp, j, IVrwtmp);
+		if (IVrw.ArtCode == IVrwtmp.ArtCode) and nonblank(IVrw.ArtCode) and (IVrw.Price > 0) then
+			begin
+			IVrw.Quant = IVrw.Quant + IVrwtmp.Quant;
+			IVVc_PasteQuantity(IVp, i);
+			MatRowPut(IVp, i, IVrw);
+			MatRowDelete(IVp, j);
+			j = j -1;			
+			//=== целиком взято из procedure IVVc_PasteQuantity
+			BlockLoad(OptFeature);
+			if (OptFeature.NoQtyDepPrices==0) then 
+				begin
+				BlockLoad(LMb);
+				IVVc_PasteQuant(IVp,i,chsum,LMb.DefReturnLocation);
+				end;
+			chsum = IVDchrsum(IVp,i);
+			if (chsum) then 
+				begin
+				IVSumup(IVp,true);
+				end;  
+			if (chsum) then 
+				begin
+				IVDchsum(IVp,i);
+				end;
+			//=== конец копипасты
+			end;
+		end;
+	end; 
+RETURN;
+end;

@@ -1,0 +1,128 @@
+global
+updating procedure RegMovAddRec(record RcVc RepSpec)
+begin
+record RegMovVc RMr;
+record RegMovVc RMOr;
+row RegMovVc RMOrw;
+row RegMovVc RMrw;
+record INVc INr;
+record ORVc ORr;
+record RcVc SpecRep;
+Integer i, Cnt, wn1;
+Boolean Ins, yes;
+
+RMr.DoneFlag = 0;
+RMr.ORNr = RepSpec.FirstVer;
+
+RMr.SalesMan = RepSpec.FirstAcc;
+
+ORr.SerNr = RepSpec.FirstVer;
+ReadFirstMain(ORr, 1, True);
+
+INr.Code = RepSpec.AccStr;
+ReadFirstMain(INr, 1, True);
+
+yes = True;
+if not ReadFirstKey("DoneFlag", RMr, 3, True) then 
+	begin
+	RecordNew(RMr);
+	RMr.RegDate = CurrentDate;
+	RMr.Comment = RepSpec.f1;
+	
+	RMr.DoneFlag = 0;
+    RMr.ORNr = RepSpec.FirstVer;
+	RMr.SalesMan = RepSpec.FirstAcc;
+	RMr.Location = ORr.Location;
+	RMr.Comment = RepSpec.f1;
+	yes = False;
+	RMrw.ArtCode = RepSpec.AccStr;
+	RMrw.ArtName = INr.Name;
+	RMrw.FromStock = RepSpec.TransStr;
+	RMrw.ToStock = ORr.Location;	
+	MatRowPut(RMr, 0, RMrw);
+	RecordStore(RMr, false);
+	CreateRecordLink(RMOr, CurrentCompany, ORr, CurrentCompany);
+	WindowFieldGoto(OpenWindow("RegMovDClass", 0, 0, "", "", RMr), RMr, 0, "Quant", True);
+	end else
+	begin
+	Cnt = MatRowCnt(RMr);
+	Ins = True;
+	for (i=0; (i < Cnt) or Ins; i = i + 1)
+		begin
+		MatRowGet(RMr, i, RMrw);
+		Ins = ((RepSpec.AccStr == RMrw.ArtCode) and (RepSpec.TransStr == RMrw.FromStock));
+		end;
+	RMOr.SerNr = RMr.SerNr;
+	ReadFirstMain(RMOr, 1, True);
+	RMOrw.ArtCode = RepSpec.AccStr;
+	RMOrw.ArtName = INr.Name;
+	RMOrw.FromStock = RepSpec.TransStr;
+	RMOrw.ToStock = "A001";
+	OpenWindow("RegMovDClass", 0, 0, "", "", RMr);
+	MatRowPut(RMOr, Cnt, RMOrw);
+	RMOr.Comment = RepSpec.f1;
+	wn1 = OpenWindow("RegMovDClass", 0, 0, "", "", RMr);
+	PutWindowRecord(wn1, RMOr);
+	WindowFieldGoto(wn1, RMOr, Cnt, "Quant", True);
+	RecordStore(RMOr, False);
+	CreateRecordLink(RMOr, CurrentCompany, ORr, CurrentCompany);
+	end;
+RETURN;
+end;
+
+function boolean RegMovDClassArtCodeEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+record RegMovVc RMr;
+row RegMovVc RMrw;
+record RegMovVc RMOld;
+row RegMovVc RMOldrw;
+
+DeselectWindow(wn, false);
+GetPrevWindowRecord(wn, RMOld);
+MatRowGet(RMOld, rownr, RMOldrw);
+RMrw.ArtCode = RMOldrw.ArtCode;
+RMrw.Quant = RMOldrw.Quant;
+RMrw.ArtName = RMOldrw.ArtName;
+RMrw.FromStock = RMOldrw.FromStock;
+RMrw.ToStock = RMOldrw.ToStock;
+MatRowPut(RMr, rownr, RMrw);
+PutWindowRecord(wn, RMOld);
+RegMovDClassArtCodeEFAfter = False;
+RETURN;
+end;
+
+updating function boolean RegMovDClassQuantEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+record RegMovVc RMr;
+row RegMovVc RMrw;
+record RegMovVc RMOld;
+row RegMovVc RMOldrw;
+
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RMr);
+RecordStore(RMr, False);
+RegMovDClassQuantEFAfter = False;
+RETURN;
+end;
+
+
+global
+updating function Boolean RegMovDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+Boolean res;
+
+res = False;
+switch (fieldname) 
+	begin
+	case "Quant": res = RegMovDClassQuantEFAfter(wn,fn,rownr,changed);
+	case "Comment": res = True;
+	case "ArtCode": res = RegMovDClassArtCodeEFAfter(wn,fn,rownr,changed);
+	case "ArtName": res = RegMovDClassArtCodeEFAfter(wn, fn, rownr, changed);
+	case "FromStock": res = RegMovDClassArtCodeEFAfter(wn, fn, rownr, changed);
+	case "ToStock": res = RegMovDClassArtCodeEFAfter(wn, fn, rownr, changed);
+	end;		
+RegMovDClassAfterEditField = res;
+RETURN;
+END;
+
+

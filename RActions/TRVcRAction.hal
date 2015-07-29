@@ -1,0 +1,23 @@
+remote inner procedure GetUserAccessGroup(string, var string);
+
+global
+function LongInt TRVcRecordRemoveTest(var record TRVc TRr, record TRVc TR2r, LongInt long3, LongInt long4)
+begin
+  longint res;
+  string 20 AccGroup;
+
+  GetUserAccessGroup(CurrentUser, AccGroup);
+  if (AccGroup == "ADMIN") then
+    begin
+    res = 1;
+    StopAlert(CurrentUser & " -> Remove TRVc N " & TRr.Number);
+    end
+  else
+    begin
+    res = inner.TRVcRecordRemoveTest(TRr, TR2r, long3, long4);
+    end;
+
+  TRVcRecordRemoveTest = res;
+  Return;
+end;
+

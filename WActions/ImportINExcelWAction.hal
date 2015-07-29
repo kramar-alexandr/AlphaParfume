@@ -1,0 +1,87 @@
+global updating
+procedure ImportINExcelTClassOnOKWindow(Integer wn)
+begin
+record ImportINExcelBlock INEr;
+row ImportINExcelBlock INErw;
+record INVc INr;
+record INVc IN2r;
+Integer rwcnt;
+
+GetWindowRecord(wn, INEr);
+for (rwcnt = 0; rwcnt < MatRowCnt(INEr); rwcnt = rwcnt + 1)
+	begin
+	MatRowGet(INEr, rwcnt, INErw);
+	INr.Code = INErw.Code;
+	if ReadFirstMain(INr, 1, True) then
+		begin
+		IN2r.Code = INErw.Code;
+		ReadFirstMain(IN2r, 1, True);
+		INr.Objects = blankval;
+		INr.DispGroups = INErw.DispGroups;
+		RecordUpdate(IN2r, INr, False);
+		end else
+		begin
+		INr.Objects = blankval;
+		INr.DispGroups = INErw.DispGroups;
+		INr.Code = INErw.Code;
+		INr.Name =INErw.Name;
+		INr.Group = INErw.Group;
+		INr.Unittext = INErw.Unittext;
+		INr.UPrice1 = INErw.UPrice1;
+		INr.BarCode = INErw.BarCode;
+		INr.AlternativeCode = INErw.AlternativeCode;
+		INr.ItemType = 1;
+		INr.SerNrf = 0;
+		INr.Terminated = 0;
+		INr.WarrantyLength = 0;
+		INr.ChangePrice = 0;
+		INr.ExplodeRec = 0;
+		INr.ItemMaterial = 0;
+		INr.Internal = 0;
+		INr.InclItemFreight = 0;
+		INr.colnr = 0;
+		INr.PrimaryCostModel = 0;
+		INr.QueuedCostModel = 0;
+		INr.FIFOPerSerialNr = 0;
+		INr.FIFOPerLocation = 0;
+		INr.WAPerLocation = 0;
+		INr.CostPricePerLocation = 0;
+		INr.NotForSales = 0;
+		INr.SRUpdateCost = 0;
+		if nonblank(INr.Code) then
+			begin
+			RecordStore(INr, False);
+			end;
+		end;
+	end;
+MessageBox(0, "Товары импортированы!");
+
+RETURN;
+end;
+
+
+event DefineWindows
+begin
+  real i,h,h1,h2,h3,h4,h5,v,vs,vm,hl,l;
+  string 255 label;
+  SetLangMode(LangRussian,"RUS",2);
+
+  WindowBegin("Импорт новых товаров", ImportINExcelTClass, CGHbl, HBlRecType);
+  SetWRect(64, 80, 900, 540);
+  Sizeable(-1, -1, 0, 0);
+  SetBlid(ImportINExcelBlock);
+  v = 10; vs = 20; h = 120; h2 = 340; l = -60;
+  MatrixBegin(20, 100, -40, -20, ImportINExcelVcRowType, 600);
+  MatCol(1, h =30, "Код", Normal, Code, false, 0);
+  MatCol(1, h += 80, "Наименование", Normal, Name, false, 0);
+  MatCol(1, h += 180, "Ед.изм.", Normal, Unittext, false, 0);
+  MatCol(1, h += 40, "Альт.код", Normal, AlternativeCode, false, 0);
+  MatCol(1, h += 60, "Группа", Normal, Group, false, 0);
+  MatCol(1, h += 80, "Классификаторы", Normal, DispGroups, false, 0);
+  MatCol(1, h += 180, "Штрих-код", Normal, BarCode, false, BarcodeSClass);
+  MatCol(1, h = -50, "Цена", Normal, UPrice1, True, 0);
+  EndMatrix;
+  EndWindow;
+  
+RETURN;
+end;

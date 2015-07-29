@@ -1,0 +1,1536 @@
+external procedure AddHelpButton(LongInt, LongInt);
+remote function string 255 IGetUserName(string);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+external inner function Integer WeekNr(Date,string);
+remote function date tGetFirstDayofWN(integer);
+remote function string 250 IGetStPodrName(string);
+remote function string 100 IGetVPositionName(string);
+//remote function boolean tAccesstCalcWage(record tCalcWageVc);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("Коэффициенты состояний статистики", tStCooefDClass, CGview, -);
+UseView(tStCooefVc);
+SetWRect(10, 80, 700, 250);
+h1 = 50; h2 = 270; h3 = 550; vs = 25; v = 55;
+AddHelpButton(5, 5);
+EditField(h1, v , 80, "Код", Normal, Code, False, 0);
+EditField(h2-50, v , 200, "Наименование", Normal, Name, False, 0);
+EditField(h3, v, 80, "Коэффициент", Normal, Coeff, False, 0);
+EndWindow;
+
+WindowBegin("Коэффициенты состояний статистики", tStCooefLClass, CGmlist, DMView);
+SpawnClass(tStCooefDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tStCooefVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-50, -50, "Коэффициент", Coeff, false, Coeff);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Коэффициенты состояний статистики", tStCooefSClass, CGslist, -);
+SpawnClass(tStCooefDClass);
+UseView(tStCooefVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-50, -50, "Коэффициент", Coeff, false, Coeff);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("ФОТ по службам", tWageRateDClass, CGview, -);
+UseView(tWageRateVc);
+SetWRect(10, 80, 700, 500);
+h1 = 150; h2 = 300; h3 = 530; vs = 25; v = 20;
+AddHelpButton(5, 5);
+EditField(h1, v , 80, "Серийный номер", ViewOnly, SerNr, False, 0);
+MatrixBegin(30, v += 40, -30, -45,-,20);
+MatCol(1, 25, "Код службы", 0, CodeServ, false, tDepartSClass);
+EnterSkip(FOT);
+MatCol(1, 100, "Наименование", 0, NameServ, false, 0);
+MatCol(1, -240, "% ФОТ", 0, FOT, false, 0);
+//MatCol(1, -240, "Ставки суммарно", 0, WageRates, false, 0);
+MatCol(1, -160, "Валюта", 0, CurCode, false, CurncyCodeSClass);
+MatCol(1, -70, "Подпись", 0, Sign, false, UserSClass);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+EndWindow;
+
+WindowBegin("ФОТ по службам", tWageRateLClass, CGmlist, DMView);
+SpawnClass(tWageRateDClass);
+SetWRect(64, 80, 650, 300);
+Sizeable(-1, -1, 0, 0);
+UseView(tWageRateVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Серийный номер", SerNr, false, SerNr);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("ФОТ по службам", tWageRateSClass, CGslist, -);
+SpawnClass(tWageRateDClass);
+UseView(tWageRateVc);
+SetWRect(64,80,650,300);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Серийный номер", SerNr, false, SerNr);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Подразделение для ЗП", tDepartDClass, CGview, -);
+UseView(tDepartVc);
+SetWRect(10, 80, 500, 250);
+h1 = 50; h2 = 270; h3 = 550; vs = 25; v = 55;
+EditField(h1, v , 80, "Код", Normal, Code, False, 0);
+EnterSkip(CodeF1);
+EditField(h2-50, v , 200, "Наименование", Normal, Name, False, 0);
+EditField(h2-50, v += vs , 80, "Ответственный за выработку часов", Normal, CodeF1, False, UserSClass);
+EditField(h2-50, v += vs, 80, "Ответственный за статистику", Normal, CodeST, False, UserSClass);
+EditField(h2-50, v += vs, 80, "Руководитель подразделения", Normal, CodeDIR, False, UserSClass);
+EndWindow;
+
+WindowBegin("Подразделения для ЗП", tDepartLClass, CGmlist, DMView);
+SpawnClass(tDepartDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tDepartVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Подразделения для ЗП", tDepartSClass, CGslist, -);
+SpawnClass(tDepartDClass);
+UseView(tDepartVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Службы NEW", tDepartNewDClass, CGview, -);
+UseView(tDepartNewVc);
+SetWRect(10, 80, 500, 250);
+h1 = 50; h2 = 270; h3 = 550; vs = 25; v = 50;
+EditField(h1, v , 80, "Код", Normal, Code, False, 0);
+EditField(h2-50, v , 200, "Наименование", Normal, Name, False, 0);
+EditField(h1, v+= vs , 80, "Руководитель", Normal, Dir, False, tPostUserSClass);
+EditField(h2-50, v , 200, "Подразделение ЗП", Normal, Field1, False, tDepartSClass);
+EndWindow;
+
+WindowBegin("Службы NEW", tDepartNewLClass, CGmlist, DMView);
+SpawnClass(tDepartNewDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tDepartNewVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-100, -100, "Подразделение ЗП", Field1, false, Field1);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Службы NEW", tDepartNewSClass, CGslist, -);
+SpawnClass(tDepartNewDClass);
+UseView(tDepartNewVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(-100, -100, "Подразделение ЗП", Field1, false, Field1);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Статистика", tStatDClass, CGview, -);
+UseView(tStatVc);
+SetWRect(10, 80, 500, 250);
+h1 = 50; h2 = 270; h3 = 550; vs = 25; v = 55;
+AddHelpButton(5, 5);
+EditField(h1, v , 80, "Код", Normal, Code, False, 0);
+EditField(h2-50, v , 200, "Наименование", Normal, Name, False, 0);
+EndWindow;
+
+WindowBegin("Статистики", tStatLClass, CGmlist, DMView);
+SpawnClass(tStatDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tStatVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Статистики", tStatSClass, CGslist, -);
+SpawnClass(tStatDClass);
+UseView(tStatVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Должности сотрудника", tPostUserDClass, CGview,-);
+SetWRect(20, 80, 800, 350);
+UseView(tPostUserVc);
+AddHelpButton(-100, -30);
+EditField(h=100, v=15, 80,"Сотрудник", Normal, UserCode, false, UserSClass);
+EnterSkip(tDepart);
+EditField(h2=250, v, -220,"ФИО", Normal, UserName, false, 0);
+EditField(h, v+=vs, 80,"Должность", Normal, PosCode, false, VPositionSClass);
+EditField(h2, v, -220,"Наим.", Normal, PosName, false, 0);
+EditField(h, v+=vs, 80,"Подразд. для ЗП", Normal, tDepart, false, tDepartSClass);
+EnterSkip(tDepartNew);
+EditField(h2, v, -220,"Наим.", Normal, tDepartName, false, 0);
+EditField(h, v+=vs, 80,"Служба", Normal, tDepartNew, false, tDepartNewSClass);
+EnterSkip(tStatCode);
+EditField(h2, v, -220,"Наим.", Normal, tDepartNewName, false, 0);
+EditField(h, v+=vs, 80,"Статистика", Normal, tStatCode, false, tStatSClass);
+EnterSkip(Points);
+EditField(h2, v, -220,"Наим.", Normal, tStatName, false, 0);
+EditField(h, v+=vs, 80,"Баллы", Normal, Points, false, 0);
+EditField(h2, v, 80,"Ставка", Normal, WageRates, false, 0);
+EditFieldTl(h, v+=vs, -220, "Объекты", M4UStr, Normal, 200, ObjStr, false, ObjSClass);
+EditFieldTL(h, v += 24, 100, "График работы", M4Str, Normal, 60, OperShed, False, OperShedSClass);
+StaticText(30,v+=40, "Счета:", false);
+EditField(h, v+=10, 80,"расходов", Normal, AccCalc, false, AccSClass);
+EditField(h2, v, 80,"зарплаты", Normal, AccWage, false, AccSClass);
+EditField(h3-150, v, 80,"премии", Normal, AccAward, false, AccSClass);
+EditField(h3+10, v, 80,"мотивации", Normal, AccMotiv, false, AccSClass);
+ButtonFrame(h3=-180, v=25, 100, 3, "Должность:");
+RadioButton(h3, v, 0, 0, "приоритетная", Status);
+RadioButton(h3, v+=16, 1, 0, "неприоритетная", Status);
+ButtonFrame(h3=-180, v=90, 100, 3, "Мотивация:");
+RadioButton(h3, v, 0, 0, "нет", Motiv);
+RadioButton(h3, v+=16, 1, 0, "есть", Motiv);
+CheckBox(h3, v+=40, 0, "Закрыт", SolFlag);
+EndWindow;
+
+WindowBegin("Должности сотрудников", tPostUserLClass, CGmlist, DMView);
+SpawnClass(tPostUserDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tPostUserVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Сотрудник", UserCode, false, UserCode);
+RlColKey(100, 100, "Имя", UserName, false, UserName);
+RlColKey(250, 250, "Должность", PosCode, false, PosCode);
+RlColKey(400, 400, "Наименование", PosName, false, PosName);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Должности сотрудников", tPostUserSClass, CGslist, -);
+SpawnClass(tPostUserDClass);
+UseView(tPostUserVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Сотрудник", UserCode, false, UserCode);
+RlColKey(100, 100, "Имя", UserName, false, UserName);
+RlColKey(250, 250, "Должность", PosCode, false, PosCode);
+RlColKey(400, 400, "Наименование", PosName, false, PosName);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Скорректированная маржинальная прибыль", tMarginDClass, CGview, -);
+UseView(tMarginVc);
+SetWRect(10, 80, 700, 500);
+h1 = 150; h2 = 300; h3 = 500; vs = 25; v = 20;
+AddHelpButton(5, 5);
+EditField(h1, v , 80, "Серийный номер", ViewOnly, SerNr, False, 0);
+EditField(h2, v, 80, "№ недели", Normal, WeekNr, False, 0);
+EditField(h3, v, -20, "Период", ViewOnly, WeekPeriod, False, 0);
+EditField(h1, -30 , 80, "Подпись", Normal, Sign, False, UserSClass);
+MatrixBegin(30, v += 40, -30, -45,-,20);
+MatCol(1, 25, "Код службы", 0, CodeServ, false, tDepartSClass);
+EnterSkip(Margin);
+MatCol(1, 100, "Наименование", 0, NameServ, false, 0);
+MatCol(1, -160, "Марж.Прибыль", 0, Margin, false, 0);
+MatCol(1, -80, "Валюта", 0, CurCode, false, CurncyCodeSClass);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+EndWindow;
+
+WindowBegin("Скорректированная маржинальная прибыль", tMarginLClass, CGmlist, DMView);
+SpawnClass(tMarginDClass);
+SetWRect(64, 80, 650, 300);
+Sizeable(-1, -1, 0, 0);
+UseView(tMarginVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Серийный номер", SerNr, false, SerNr);
+RlColKey(100, 100, "№ недели", WeekNr, false, WeekNr);
+RlColKey(180, 180, "Период", WeekPeriod, false, WeekPeriod);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Скорректированная маржинальная прибыль", tMarginSClass, CGslist, -);
+SpawnClass(tMarginDClass);
+UseView(tMarginVc);
+SetWRect(64,80,650,300);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Серийный номер", SerNr, false, SerNr);
+RlColKey(100, 100, "№ недели", WeekNr, false, WeekNr);
+RlColKey(180, 180, "Период", WeekPeriod, false, WeekPeriod);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Расчет ЗП", tCalcWageDClass, CGview, -);
+UseView(tCalcWageVc);
+SetWRect(10, 80, 850, 600);
+Sizeable(-1,-1,0,0);
+
+h1 = 150; h2 = 400; h3 = 630; vs = 25; v = 20;
+AddHelpButton(5, 5);
+EditField(h1, v , 80, "Серийный номер", ViewOnly, SerNr, False, 0);
+
+EditField(h2-90, v, 80, "№ недели", Normal, WeekNr, False, 0);
+EnterSkip(CodeServ);
+EditField(h3-150, v, 190, "Период", Normal, WeekPeriod, False, 0);
+EditField(h1, v += vs , 80, "Подр.для ЗП", Normal, CodeServ, False, tDepartSClass);
+EnterSkip(Math);
+EditField(h2-150, v, 150, " ", Normal, NameServ, False, 0);
+EditField(h3-150, v, 80, "Валюта", ViewOnly, Currency, False, 0);
+EditField(h3 + 50, v , 80, "ФОТ", Normal, FOT, False, 0);
+EditField(h1, v+= vs, 80, "Сдельная суммарно", ViewOnly, PieceRates, False, 0);
+EditField(h2, v, 80, "Сдельная суммарно EL", ViewOnly, PieceRatesEL, False, 0);
+EditField(h3 + 50, v, 80, "Ставки суммарно", ViewOnly, Wages, False, 0);
+EditField(h1, v += vs , 80, "Мотивация суммарно", Normal, Motiv, False, 0);
+EditField(h2, v, 80, "Премиальный фонд", Normal, BonusFunds, False, 0);
+EditField(h3 + 50, v, 80, "Займ премиального  фонда", Normal, Loan, False, 0);
+StaticText(30, -140,"Коэффициент выработки:",false);
+EditField(h1 + 100, -130 , 80, "Подпись руководителя службы", Normal, SignDirWork, False, UserSClass);
+EditField(h3, -130 , 80, "Подпись ответственного сотрудника", Normal, SignRespWork, False, UserSClass);
+StaticText(30, -100,"Коэффициент статистики:",false);
+EditField(h1 + 100, -90 , 80, "Подпись руководителя службы", Normal, SignDirStat, False, UserSClass);
+EditField(h3, -90 , 80, "Подпись ответственного сотрудника", Normal, SignRespStat, False, UserSClass);
+EditField(-150, -30 , 80, "Подпись АС начисления и выплаты управленческой зарплаты", Normal, SignMain, False, UserSClass);
+CheckBox(20, -20, 0, "OK", OKFlag);
+CheckBox(120, -20, 0, "Запись операции", TRFlag);
+MatrixBegin(30, v += 40, -60, -150,-,150);
+Flip(0);
+MatCol(1, 25, "Код сотрудника", 0, UserCode, false, UserSClass);
+MatCol(1, 120, "Сотрудник", 0, UserName, false, 0);
+Flip(1);
+MatCol(1, 350, "Служба New", 0, DepNewCode, false, 0);
+MatCol(1, 450, "Наименование", 0, DepNewName, false, 0);
+MatCol(1, -100, "Коэф.выработки", 0, KoefWork, false, 0);
+Flip(2);
+MatCol(1, 350, "Код статистики", 0, StatCode, false, 0);
+MatCol(1, 450, "Наименование", 0, StatName, false, 0);
+MatCol(1, 650, "Статус.стат.", 0, Condition, false, tStCooefSClass);
+MatCol(1, 700, "Коэф.стат.", 0, KoefStat, false, 0);
+Flip(3);
+MatCol(1, 350, "Ставка", 0, Wage, false, 0);
+MatCol(1, 430, "Мотивация", 0, Motivw, false, 0);
+MatCol(1, 510, "Сдельная", 0, PieceRatesw, false, 0);
+MatCol(1, 590, "Сдельная EL", 0, PieceRateswEL, false, 0);
+MatCol(1, 670, "Баллы", 0, Points, false, 0);
+Flip(4);
+MatCol(1, 350, "Cкорр.баллы", 0, CorPoints, false, 0);
+MatCol(1, 450, "Премия", 0, Award, false, 0);
+MatCol(1, 550, "Всего", 0, Total, false, 0);
+EndMatrix;
+vs = 20;
+VTab(-45,v,-16,v+vs,ToolFlip,1,"A");
+v=v+vs;
+VTab(-45,v,-16,v+vs,ToolFlip,2,"B");
+v=v+vs;
+VTab(-45,v,-16,v+vs,ToolFlip,3,"C");
+v=v+vs;
+VTab(-45,v,-16,v+vs,ToolFlip,4,"D");
+InsertRowTest;
+DeleteRowTest;
+SpecialMenu("Заполнить выработку",'',0,"tGetWorkTimeDsm");
+SpecialMenu("Расчитать премии",'',0,"tGetAwardDsm");
+SpecialMenu("Открыть запись операций",'A',0,"tOpenTRFromCWDsm");
+SpecialMenu("Заем по службе",'Z',0,"tGetLoanDsm");
+EndWindow;
+
+WindowBegin("Расчет ЗП", tCalcWageLClass, CGmlist, DMView);
+SpawnClass(tCalcWageDClass);
+SetWRect(64, 80, 650, 300);
+Sizeable(-1, -1, 0, 0);
+UseView(tCalcWageVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Серийный номер", SerNr, false, SerNr);
+RlColKey(100, 100, "№ недели", WeekNr, false, WeekNr);
+RlColKey(180, 180, "Служба", NameServ, false, NameServ);
+RlColKey(-160, -160, "OK", OKFlag, false, OKFlag);
+RlColKey(-80, -80, "Запись операции", TRFlag, false, TRFlag);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+SpecialMenu("Создать проводки по отделам",'',0,"tOperMakeAllTransLsm"); //11.05.10 INAU
+EndWindow;
+
+WindowBegin("Расчет ЗП", tCalcWageSClass, CGslist, -);
+SpawnClass(tCalcWageDClass);
+UseView(tCalcWageVc);
+SetWRect(64,80,650,300);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Серийный номер", SerNr, false, SerNr);
+RlColKey(100, 100, "№ недели", WeekNr, false, WeekNr);
+RlColKey(180, 180, "Служба", NameServ, false, NameServ);
+RlColKey(-160, -160, "OK", OKFlag, false, OKFlag);
+RlColKey(-80, -80, "Запись операции", TRFlag, false, TRFlag);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+/*
+WindowBegin("Займы", tLoanDClass, CGview, -);
+UseView(tLoanVc);
+SetWRect(10, 80, 600, 250);
+h1 = 100; h2 = 275; h3 = 460; vs = 25; v = 55;
+EditField(h1, v , 80, "Серийный номер", ViewOnly, SerNr, False, 0);
+EditField(h3, v , -30, "Серийный номер Расчета ЗП", ViewOnly, tCalcWageSerNr, False, 0);
+EditField(h1, v += vs, 80, "Займ", ViewOnly, SumLoan, False, 0);
+EditField(h2, v, 80, "Дата займа", ViewOnly, LDate, False, 0);
+EditField(h3, v , -30, "Неделя", ViewOnly, WeekNr, False, 0);
+//EditField(h3, v, -30, "Вал.займа", ViewOnly, LDate, False, 0);
+EditField(h1, v += vs, 80, "Код подр. для ЗП", Normal, Code, False, 0);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+EndWindow;
+*/
+
+WindowBegin("Займы", tLoanDClass, CGview, -); // Normal
+UseView(tLoanVc);
+SetWRect(10, 80, 600, 250);
+h1 = 100; h2 = 275; h3 = 460; vs = 25; v = 55;
+EditField(h1, v , 80, "Серийный номер", Normal, SerNr, False, 0);
+EditField(h3, v , -30, "Серийный номер Расчета ЗП", Normal, tCalcWageSerNr, False, 0);
+EditField(h1, v += vs, 80, "Займ", Normal, SumLoan, False, 0);
+EditField(h2, v, 80, "Дата займа", Normal, LDate, False, 0);
+EditField(h3, v , -30, "Неделя", Normal, WeekNr, False, 0);
+//EditField(h3, v, -30, "Вал.займа", Normal, LDate, False, 0);
+EditField(h1, v += vs, 80, "Код подр. для ЗП", Normal, Code, False, 0);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+EndWindow;
+
+
+WindowBegin("Займы", tLoanLClass, CGmlist, DMView);
+SpawnClass(tLoanDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tLoanVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Займы", tLoanSClass, CGslist, -);
+SpawnClass(tLoanDClass);
+UseView(tLoanVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+  //Создание операций
+WindowBegin("Создать записи операций", tOperMakeTransVClass, CGMnt, RcType);
+SetWRect(20,80,350,200);
+UseView(RcVc);
+EditFieldTL(h=100, v=20, 100, "Дата операции", M4Date, Normal, 20, d1, false, PasteCurDate);
+EndWindow;
+
+WindowBegin("Журнал документов ЗП", tWages1RClass,CGRcW,RcType);
+SetWRect(20,80,450,280);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+EditFieldTL(h1, v += 20, 80, "Номер недели", M4INt, Normal, 21, frc, false, 0);
+EditFieldTL(h1, v += 20, 80, "Подр. для ЗП", M4UStr, Normal, 21, f1, false, tDepartSClass);
+EditFieldTL(h1, v += 20, 80, "Служба для ЗП", M4UStr, Normal, 21, f2, false, tDepartNewSClass);
+ButtonFrame(h2, v = 130, 123, 2, "Статус");
+RadioButton(h2, v, 0, 0, "Неутвержденные",flags[1]);
+RadioButton(h2, v += 20, 1, 0, "Утвердженные",flags[1]);
+EndWindow;
+
+WindowBegin("ЗП сотрудников", tWages2RClass,CGRcW,RcType);
+SetWRect(20,80,450,280);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+EditFieldTL(h1, v += 20, 30, "Номера недель", M4Int, Normal, 21, frc, false, 0);
+EditFieldTL(h1+50, v , 30, ":", M4Int, Normal, 21, toc, false, 0);
+EditFieldTL(h1, v += 20, 80, "Служба для ЗП", M4UStr, Normal, 21, f1, false, tDepartNewSClass);
+EditFieldTL(h1, v += 20, 80, "Сотрудник", M4UStr, Normal, 21, f2, false, UserSClass);
+ButtonFrame(h, v = 130, 123, 2, "Функция");
+RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+ButtonFrame(h2, v = 130, 123, 2, "Статус");
+RadioButton(h2, v, 0, 0, "Неутвержденные",flags[1]);
+RadioButton(h2, v += 20, 1, 0, "Утвердженные",flags[1]);
+EndWindow;
+
+WindowBegin("РАСЧЕТНАЯ ВЕДОМОСТЬ NEW",tDRPV1RClass,CGRcW,RcType);
+SetWRect(20,80,450,250);
+h = 200; vs = 20; v = 20;
+EditFieldTL(h, v += 20, 30, "Номера недель для Расчета ЗП", M4Int, Normal, 21, frc, false, 0);
+EditFieldTL(h+50, v , 30, ":", M4Int, Normal, 21, toc, false, 0);
+PeriodField(h,v+=20,"Период для Оботно-сальдовой");
+EditFieldTL(h,v+=20, 70,"Служба для ЗП", M4UStr,Normal,6,f5,false,tDepartNewSClass);
+EditFieldTL(h,v+=20, 50,"Валюта", M4UStr,Normal,3,f2,false,CurncyCodeSClass);
+EndWindow;
+
+WindowBegin("Займы в ФОТ", tDepartLoan1RClass,CGRcW,RcType);
+SetWRect(20,80,450,280);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+EditFieldTL(h1, v , 80, "Дата", M4Date, Normal, 21, d1, false, PasteCurDate);
+//EditFieldTL(h1, v += 20, 30, "от  Год:", M4Long, Normal, 21, long1, false, 0);
+//EditFieldTL(h1 + 100, v, 30, "неделя", M4Int, Normal, 21, frc, false, 0);
+//EditFieldTL(h1, v += 20, 30, "до  Год:", M4Long, Normal, 21, long2, false, 0);
+//EditFieldTL(h1 + 100, v , 30, "неделя", M4Int, Normal, 21, toc, false, 0);
+EditFieldTL(h1, v += 20, 80, "Подразделения для ЗП", M4UStr, Normal, 21, f1, false, tDepartSClass);
+ButtonFrame(h1, v += 40, 123, 2, "Функция");
+RadioButton(h1, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h1, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+return;
+end;
+//================ WActions
+
+//===============================================
+
+//===============================================
+global
+function Boolean tDRPV1RClassAfterEditField(Integer wn,string fieldname,Integer fn,Integer rownr,Integer changed)
+BEGIN
+  Boolean res;
+  record RcVc RepSpec;
+
+  res = false;
+  switch (fieldname) begin
+    case "f5":
+      GetWindowRecord(wn,RepSpec);
+      RepSpec.Media = 20;//DELPHI в Excel!!!
+    //RepSpec.f2 = "UAH";
+    PutWindowRecord(wn,RepSpec);
+
+   /* case "frc": GetWindowRecord(wn,RepSpec);
+                RepSpec.sStartDate = addday(tGetFirstDayofWN(RepSpec.frc),2);
+                PutWindowRecord(wn,RepSpec);
+
+    case "toc": GetWindowRecord(wn,RepSpec);
+                RepSpec.sEndDate = addday(tGetFirstDayofWN(RepSpec.toc), 8);
+                PutWindowRecord(wn,RepSpec);*/
+
+
+  end;
+  tDRPV1RClassAfterEditField = res;
+  RETURN;
+END;
+
+global
+function Boolean tWageRateDClassActiveEditField(Integer wn, string fieldname, Integer fn, Integer wnst, Integer rownr, Integer changed)
+begin
+boolean res;
+res = true;
+  if fieldname == "Sign" and  changed == 1 then
+    begin
+     res = false;
+    end;
+
+  tWageRateDClassActiveEditField = res;
+  Return;
+end;
+
+//========================================
+
+global
+function boolean tWageRateDClassCodeServEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tWageRateVc WRr;
+row tWageRateVc WRrw;
+record tDepartVc Dr;
+
+GetWindowRecord(wn, WRr);
+
+MatRowGet(WRr, rownr, WRrw);
+Dr.Code = WRrw.CodeServ;
+ReadFirstMain(Dr, 1, true);
+WRrw.NameServ = Dr.Name;
+WRrw.Sign = currentuser;
+MatRowPut(WRr, rownr, WRrw);
+
+PutWindowRecord(wn, WRr);
+
+  tWageRateDClassCodeServEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tWageRateDClassFOTEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tWageRateVc WRr;
+row tWageRateVc WRrw;
+record tDepartVc Dr;
+
+GetWindowRecord(wn, WRr);
+
+MatRowGet(WRr, rownr, WRrw);
+WRrw.Sign = currentuser;
+MatRowPut(WRr, rownr, WRrw);
+
+PutWindowRecord(wn, WRr);
+
+  tWageRateDClassFOTEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tWageRateDClassCurCodeEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tWageRateVc WRr;
+row tWageRateVc WRrw;
+record tDepartVc Dr;
+
+GetWindowRecord(wn, WRr);
+
+MatRowGet(WRr, rownr, WRrw);
+WRrw.Sign = currentuser;
+MatRowPut(WRr, rownr, WRrw);
+
+PutWindowRecord(wn, WRr);
+
+  tWageRateDClassCurCodeEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tUserCanSignWageRate(string UserCode)
+begin
+Boolean res;
+record tWageRateVc WRr;
+record tDepartVc Dr;
+
+// нужно придумать по какому принципу разрешать подписывать строку
+
+tUserCanSignWageRate = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tWageRateDClassSignEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tWageRateVc WRr;
+row tWageRateVc WRrw;
+record tDepartVc Dr;
+
+GetWindowRecord(wn, WRr);
+MatRowGet(WRr, rownr, WRrw);
+
+ if (WRrw.Sign <> CurrentUser) or ((WRrw.Sign == CurrentUser) and not(tUserCanSignWageRate(CurrentUser))) then
+    begin
+    WRrw.Sign = "";
+    PutWindowRecord(wn, WRr);
+    end;
+  tWageRateDClassSignEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tWageRateDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tWageRateVc WRr;
+
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "CodeServ": res = tWageRateDClassCodeServEFAfter(wn, changed, rownr);
+    case "FOT": res = tWageRateDClassFOTEFAfter(wn, changed, rownr);
+    case "CurCode": res = tWageRateDClassCurCodeEFAfter(wn, changed, rownr);
+		//case "Sign": res = tWageRateDClassSignEFAfter(wn, changed, rownr);
+		end;
+	end;
+  tWageRateDClassAfterEditField = res;
+  Return;
+end;
+
+//========================================
+
+function boolean tPostUserDClassUserCodeEFAfter(integer wn, integer changed, string fieldname)
+begin
+  boolean res;
+  record tPostUserVc tPUr;
+  record UserVc Usr;
+
+  if (changed <> 0) and fieldname == "UserCode" then
+    begin
+      GetWindowRecord(wn, tPUr);
+      Usr.Code = tPUr.UserCode;
+      if ReadFirstMain(Usr, 1, true) then
+        begin
+          tPUr.UserName = Usr.Name;
+          tPUr.PosCode = Usr.VPositionCode;
+          tPUr.PosName = IGetVPositionName(Usr.VPositionCode);
+          //FillFuncByVPosition(tPUr);
+        end;
+      PutWindowRecord(wn, tPUr);
+    end;
+  tPostUserDClassUserCodeEFAfter = res;
+  Return;
+end;
+
+//========================================
+
+global
+function Boolean tPostUserDClasstStatCodeEFAfter(Integer wn, Integer changed)
+BEGIN
+record tPostUserVc tPUr;
+record tStatVc SCr;
+
+GetWindowRecord(wn, tPUr);
+SCr.Code = tPUr.tStatCode;
+ReadFirstMain(SCr, 1, true);
+tPUr.tStatName = SCr.Name;
+PutWindowRecord(wn, tPUr);
+
+tPostUserDClasstStatCodeEFAfter = True;
+RETURN;
+END;
+
+//========================================
+
+global
+function Boolean tPostUserDClasstDepartEFAfter(Integer wn, Integer changed)
+BEGIN
+record tPostUserVc tPUr;
+record tDepartVc Dr;
+
+GetWindowRecord(wn, tPUr);
+Dr.Code = tPUr.tDepart;
+ReadFirstMain(Dr, 1, true);
+tPUr.tDepartName = Dr.Name;
+PutWindowRecord(wn, tPUr);
+
+tPostUserDClasstDepartEFAfter = True;
+RETURN;
+END;
+
+//========================================
+
+global
+function Boolean tPostUserDClasstDepartNewEFAfter(Integer wn, Integer changed)
+BEGIN
+record tPostUserVc tPUr;
+record tDepartNewVc Dr;
+
+GetWindowRecord(wn, tPUr);
+Dr.Code = tPUr.tDepartNew;
+ReadFirstMain(Dr, 1, true);
+tPUr.tDepartNewName = Dr.Name;
+PutWindowRecord(wn, tPUr);
+
+tPostUserDClasstDepartNewEFAfter = True;
+RETURN;
+END;
+
+//========================================
+
+global
+function boolean tPostUserDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tPostUserVc WRr;
+
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "UserCode": res = tPostUserDClassUserCodeEFAfter(wn, changed, fieldname);
+		case "tStatCode": res = tPostUserDClasstStatCodeEFAfter(wn, changed);
+		case "tDepart": res = tPostUserDClasstDepartEFAfter(wn, changed);
+		case "tDepartNew": res = tPostUserDClasstDepartNewEFAfter(wn, changed);
+		end;
+	end;
+  tPostUserDClassAfterEditField = res;
+  Return;
+end;
+
+//========================================
+
+global
+function boolean tMarginDClassCodeServEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tMarginVc MRr;
+row tMarginVc MRrw;
+record tDepartVc Dr;
+
+GetWindowRecord(wn, MRr);
+
+MatRowGet(MRr, rownr, MRrw);
+Dr.Code = MRrw.CodeServ;
+ReadFirstMain(Dr, 1, true);
+MRrw.NameServ = Dr.Name;
+MatRowPut(MRr, rownr, MRrw);
+
+PutWindowRecord(wn, MRr);
+
+  tMarginDClassCodeServEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tMarginDClassWeekNrEFAfter(Integer wn, Integer changed)
+begin
+Boolean res;
+record tMarginVc MRr;
+
+GetWindowRecord(wn, MRr);
+
+MRr.WeekPeriod = addday(tGetFirstDayofWN(MRr.WeekNr),2) & ":" & addday(tGetFirstDayofWN(MRr.WeekNr), 8);
+
+PutWindowRecord(wn, MRr);
+
+  tMarginDClassWeekNrEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tMarginDClassSignEFAfter(Integer wn, Integer changed)
+begin
+Boolean res;
+record tMarginVc MRr;
+row tMarginVc MRrw;
+
+
+GetWindowRecord(wn, MRr);
+
+  if (MRr.Sign <> CurrentUser) or ((MRr.Sign == CurrentUser) and not(tUserCanSignWageRate(CurrentUser))) then
+    begin
+    MRr.Sign = "";
+    PutWindowRecord(wn, MRr);
+    end;
+  tMarginDClassSignEFAfter = res;
+Return;
+end;
+
+
+//========================================
+
+global
+function boolean tMarginDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tMarginVc WRr;
+
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "WeekNr": res = tMarginDClassWeekNrEFAfter(wn, changed);
+		case "Sign": res = tMarginDClassSignEFAfter(wn, changed);
+		case "CodeServ": res = tMarginDClassCodeServEFAfter(wn, changed, rownr);
+		end;
+	end;
+
+  tMarginDClassAfterEditField = res;
+  Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassWeekNrEFAfter(Integer wn, Integer changed)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+
+GetWindowRecord(wn, CWr);
+
+CWr.WeekPeriod = addday(tGetFirstDayofWN(CWr.WeekNr),2) & ":" & addday(tGetFirstDayofWN(CWr.WeekNr), 8);
+
+PutWindowRecord(wn, CWr);
+
+ tCalcWageDClassWeekNrEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassCodeServEFAfter(Integer wn, Integer changed)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+record tDepartVc Dr;
+record tMarginVc Mr;
+row tMarginVc Mrw;
+integer RwCnt, RwCnt1;
+record tWageRateVc WRr;
+row tWageRateVc WRrw;
+val Margin;
+record tPostUserVc PUr;
+boolean TrHs;
+
+GetWindowRecord(wn, CWr);
+SetLangMode(LangRussian, "RUS", 2);
+
+if CWr.WeekNr <= 0 then
+    begin
+    messagebox(0, "Внесите номер недели!");
+    CWr.CodeServ = "";
+    end
+  else
+    begin
+    Dr.Code = CWr.CodeServ;
+    ReadFirstMain(Dr, 1, true);
+    CWr.NameServ = Dr.Name;
+
+    PUr.tDepart = CWr.CodeServ;
+    TrHs = true;
+    RwCnt1 = 0;
+    CWr.Wages = 0;
+    while (loopkey("tDepart", PUr, 1, TrHs))
+        begin
+        TrHs = (PUr.tDepart == CWr.CodeServ);
+        if TrHs and (PUr.SolFlag == 0) then //and (PUr.Status == 0)
+            begin
+            CWrw.UserCode = PUr.UserCode;
+            CWrw.UserName = PUr.UserName;
+            CWrw.DepNewCode = PUr.tDepartNew;
+            CWrw.DepNewName = PUr.tDepartNewName;
+            CWrw.StatCode = PUr.tStatCode;
+            CWrw.StatName = PUr.tStatName;
+            CWrw.Wage = PUr.WageRates;
+            CWr.Wages = CWr.Wages + PUr.WageRates;
+            CWrw.Points = PUr.Points;
+            CWrw.ObjStr = PUr.ObjStr;
+            MatRowPut(CWr, RwCnt1, CWrw);
+            RwCnt1 = RwCnt1 + 1;
+            end;
+        end;
+    end;
+PutWindowRecord(wn, CWr);
+  tCalcWageDClassCodeServEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassConditionEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+record tStCooefVc SCr;
+record tPostUserVc PUr;
+val MotivSum;
+integer RwCnt;
+
+GetWindowRecord(wn, CWr);
+
+MatRowGet(CWr, rownr, CWrw);
+SCr.Code = CWrw.Condition;
+ReadFirstMain(SCr, 1, true);
+CWrw.KoefStat = SCr.Coeff;
+
+PUr.UserCode = CWrw.UserCode;
+readfirstkey("UserCode", PUr, 1, true);
+if PUr.Motiv == 1 then
+    begin
+    CWrw.Motivw = (SCr.Coeff-1) * CWrw.Wage;
+    end
+  else
+    begin
+    CWrw.CorPoints = SCr.Coeff * CWrw.Points * CWrw.KoefWork;
+    end;
+MatRowPut(CWr, rownr, CWrw);
+
+MotivSum = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(CWr, RwCnt, CWrw);
+  MotivSum = MotivSum + CWrw.Motivw;
+  end;
+CWr.Motiv = MotivSum;
+PutWindowRecord(wn, CWr);
+
+  tCalcWageDClassConditionEFAfter = res;
+Return;
+end;
+
+/*
+global
+function boolean tCalcWageDClassConditionEFAfter2(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+record tStCooefVc SCr;
+record tPostUserVc PUr;
+val MotivSum;
+integer RwCnt;
+
+MatRowGet(CWr, rownr, CWrw);
+SCr.Code = CWrw.Condition;
+ReadFirstMain(SCr, 1, true);
+CWrw.KoefStat = SCr.Coeff;
+
+PUr.UserCode = CWrw.UserCode;
+readfirstkey("UserCode", PUr, 1, true);
+if PUr.Motiv == 1 then
+    begin
+    CWrw.Motivw = (SCr.Coeff-1) * CWrw.Wage;
+    end
+  else
+    begin
+    CWrw.CorPoints = SCr.Coeff * CWrw.Points * CWrw.KoefWork;
+    end;
+MatRowPut(CWr, rownr, CWrw);
+
+MotivSum = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(CWr, RwCnt, CWrw);
+  MotivSum = MotivSum + CWrw.Motivw;
+  end;
+CWr.Motiv = MotivSum;
+//PutWindowRecord(wn, CWr);
+
+  tCalcWageDClassConditionEFAfter2 = res;
+Return;
+end;
+*/
+
+//========================================
+
+global
+function boolean tCalcWageDClassPieceRateswEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+record tStCooefVc SCr;
+record tPostUserVc PUr;
+integer RwCnt;
+val PieceRateswSum;
+
+PieceRateswSum = 0;
+GetWindowRecord(wn, CWr);
+for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(CWr, RwCnt, CWrw);
+  PieceRateswSum = PieceRateswSum + CWrw.PieceRatesw;
+  end;
+CWr.PieceRates = PieceRateswSum;
+PutWindowRecord(wn, CWr);
+
+  tCalcWageDClassPieceRateswEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassPieceRateswELEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+record tStCooefVc SCr;
+record tPostUserVc PUr;
+integer RwCnt;
+val PieceRateswSum;
+
+PieceRateswSum = 0;
+GetWindowRecord(wn, CWr);
+for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(CWr, RwCnt, CWrw);
+  PieceRateswSum = PieceRateswSum + CWrw.PieceRateswEL;
+  end;
+CWr.PieceRatesEL = PieceRateswSum;
+PutWindowRecord(wn, CWr);
+
+  tCalcWageDClassPieceRateswELEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassWageEFAfter(Integer wn, Integer changed, Integer rownr)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+record tStCooefVc SCr;
+record tPostUserVc PUr;
+integer RwCnt;
+val Wage;
+
+Wage = 0;
+GetWindowRecord(wn, CWr);
+for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(CWr, RwCnt, CWrw);
+  Wage = Wage + CWrw.Wage;
+  end;
+CWr.Wages = Wage;
+PutWindowRecord(wn, CWr);
+
+  tCalcWageDClassWageEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tUserCanSigntCalcWage(string UserCode, string fieldname, string CodeServ)
+begin
+Boolean res;
+record UserVc USr;
+record tDepartVc Dr;
+
+USr.Code = UserCode;
+ReadFirstMain(Usr, 1, True);
+
+
+Dr.Code = CodeServ;
+ReadFirstMain(Dr, 1, True);
+
+
+	switch (fieldname)
+		begin
+    case "SignMain": res = CurrentUser == "LTVERDOKHL"or CurrentUser == "IYA";
+    case "SignDirStat": res = Dr.CodeDIR == UserCode;
+    case "SignRespStat": res = Dr.CodeST == UserCode;
+    case "SignDirWork": res = Dr.CodeDIR == UserCode;;
+    case "SignRespWork": res = Dr.CodeF1 == UserCode;
+		end;
+
+
+  tUserCanSigntCalcWage = res;
+  Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassSignMainEFAfter(Integer wn, Integer changed,
+                                                string UserCode, string fieldname, string CodeServ)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+
+GetWindowRecord(wn, CWr);
+
+  if (CWr.SignMain <> CurrentUser) or ((CWr.SignMain == CurrentUser) and not(tUserCanSigntCalcWage(CurrentUser, "SignMain", CWr.CodeServ))) then
+    begin
+    CWr.SignMain = "";
+    PutWindowRecord(wn, CWr);
+    end;
+  tCalcWageDClassSignMainEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassSignDirStatEFAfter(Integer wn, Integer changed,
+                                                string UserCode, string fieldname, string CodeServ)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+
+GetWindowRecord(wn, CWr);
+
+  if (CWr.SignDirStat <> CurrentUser) or ((CWr.SignDirStat == CurrentUser) and not(tUserCanSigntCalcWage(CurrentUser, "SignDirStat", CWr.CodeServ))) then
+    begin
+    CWr.SignDirStat = "";
+    PutWindowRecord(wn, CWr);
+    end;
+  tCalcWageDClassSignDirStatEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassSignRespStatEFAfter(Integer wn, Integer changed,
+                                                string UserCode, string fieldname, string CodeServ)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+
+GetWindowRecord(wn, CWr);
+
+  if (CWr.SignRespStat <> CurrentUser) or ((CWr.SignRespStat == CurrentUser) and not(tUserCanSigntCalcWage(CurrentUser, "SignRespStat", CWr.CodeServ))) then
+    begin
+    CWr.SignRespStat = "";
+    PutWindowRecord(wn, CWr);
+    end;
+  tCalcWageDClassSignRespStatEFAfter = res;
+Return;
+end;
+
+//========================================
+
+
+global
+function boolean tCalcWageDClassSignDirWorkEFAfter(Integer wn, Integer changed,
+                                                string UserCode, string fieldname, string CodeServ)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+
+GetWindowRecord(wn, CWr);
+
+  if (CWr.SignDirWork <> CurrentUser) or ((CWr.SignDirWork == CurrentUser) and not(tUserCanSigntCalcWage(CurrentUser, "SignDirWork", CWr.CodeServ))) then
+    begin
+    CWr.SignDirWork = "";
+    PutWindowRecord(wn, CWr);
+    end;
+  tCalcWageDClassSignDirWorkEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassSignRespWorkEFAfter(Integer wn, Integer changed,
+                                                string UserCode, string fieldname, string CodeServ)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+
+GetWindowRecord(wn, CWr);
+
+  if (CWr.SignRespWork <> CurrentUser) or ((CWr.SignRespWork == CurrentUser) and not(tUserCanSigntCalcWage(CurrentUser, "SignRespWork", CWr.CodeServ))) then
+    begin
+    CWr.SignRespWork = "";
+    PutWindowRecord(wn, CWr);
+    end;
+  tCalcWageDClassSignRespWorkEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean tCalcWageDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tCalcWageVc CWr;
+
+//DeselectWindow(wn, false);
+GetWindowRecord(wn, CWr);
+
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "WeekNr": res = tCalcWageDClassWeekNrEFAfter(wn, changed);
+		case "CodeServ": res = tCalcWageDClassCodeServEFAfter(wn, changed);
+		case "Condition": res = tCalcWageDClassConditionEFAfter(wn, changed, rownr);
+		case "PieceRatesw": res = tCalcWageDClassPieceRateswEFAfter(wn, changed, rownr);
+		case "PieceRateswEL": res = tCalcWageDClassPieceRateswELEFAfter(wn, changed, rownr);
+		case "SignMain": res = tCalcWageDClassSignMainEFAfter(wn, changed, CurrentUser, "SignMain", CWr.CodeServ);
+		case "SignDirStat": res = tCalcWageDClassSignDirStatEFAfter(wn, changed, CurrentUser, "SignDirStat", CWr.CodeServ);
+    case "SignRespStat": res = tCalcWageDClassSignRespStatEFAfter(wn, changed, CurrentUser, "SignRespStat", CWr.CodeServ);
+    case "SignDirWork": res = tCalcWageDClassSignDirWorkEFAfter(wn, changed, CurrentUser, "SignDirWork", CWr.CodeServ);
+    case "SignRespWork": res = tCalcWageDClassSignRespWorkEFAfter(wn, changed, CurrentUser, "SignRespWork", CWr.CodeServ);
+    case "Wage": res = tCalcWageDClassWageEFAfter(wn, changed, rownr);
+		end;
+	end;
+
+  tCalcWageDClassAfterEditField = res;
+  Return;
+end;
+
+
+
+
+global
+procedure tGetWorkTimeDsm()
+begin
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+integer wn, RwCnt, RwCnt1;
+boolean TrHs;
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+wn = CurWindow;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, CWr);
+
+for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+    begin
+    matRowGet(CWr, RwCnt , CWrw);
+    Er.Department = CWrw.DepNewCode;
+    Er.WorkWeek = CWr.WeekNr;
+    Er.WorkYear = getyear(lastinrange(CWr.WeekPeriod, 10));
+    ReadFirstMain(Er, 3, true);
+    if Er.SuperiorFlag == 1 and Er.DirFlag == 1 then
+        begin
+        for (RwCnt1 = 0; RwCnt1 < MatRowCnt(Er); RwCnt1 = RwCnt1 + 1)
+            begin
+            matRowGet(Er, RwCnt1 , Erw);
+            if  CWrw.UserCode == Erw.EmpCode and Erw.stp == 3 then
+                begin
+                CWrw.KoefWork = Erw.Percent/100;
+                MatRowPut(CWr, RwCnt, CWrw);
+               // tCalcWageDClassConditionEFAfter2(wn, 1, RwCnt);
+                RwCnt1 = MatRowCnt(Er);
+                end;
+            end;
+        end;
+    end;
+PutWindowRecord(wn, CWr);
+
+  Return;
+end;
+
+//========================================
+
+global
+procedure tGetAwardDsm()
+begin
+record tCalcWageVc CWr;
+row tCalcWageVc CWrw;
+integer wn, RwCnt;
+val SumCorPoints, srAwordPoints;
+record tDepartVc Dr;
+record tMarginVc Mr;
+row tMarginVc Mrw;
+record tWageRateVc WRr;
+row tWageRateVc WRrw;
+val Margin;
+record tPostUserVc PUr;
+boolean TrHs;
+
+
+wn = CurWindow;
+SumCorPoints = 0;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, CWr);
+
+    Dr.Code = CWr.CodeServ;
+    ReadFirstMain(Dr, 1, true);
+    //CWr.NameServ = Dr.Name;
+
+    Mr.WeekPeriod = CWr.WeekPeriod;
+    ReadFirstKey("WeekPeriod", Mr, 1, true);
+    if nonblank(Mr.Sign) then
+        begin
+        for (RwCnt = 0; RwCnt < MatRowCnt(Mr); RwCnt = RwCnt + 1)
+          begin
+          matRowGet(Mr, RwCnt , Mrw);
+          if (Mrw.CodeServ == CWr.CodeServ) then
+            begin
+            Margin = Mrw.Margin;
+            CWr.Currency = Mrw.CurCode;
+            end;
+          end;
+        end;
+
+    WRr.SerNr = 1;
+    ReadFirstMain(WRr, 1, true);
+    for (RwCnt = 0; RwCnt < MatRowCnt(WRr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(WRr, RwCnt , WRrw);
+      if (WRrw.CodeServ == CWr.CodeServ) and nonblank(WRrw.Sign) then
+        begin
+        CWr.FOT = (Margin * WRrw.FOT)/100;
+       // CWr.Wages = WRrw.WageRates;
+        end;
+      end;
+
+
+ if blank(CWr.SignDirStat) or blank(CWr.SignRespStat) or blank(CWr.SignDirWork) or blank(CWr.SignRespWork) then
+        begin
+        messagebox(0, "Проверьте наличие всех подписей!");
+        end
+    else
+        begin
+        CWr.BonusFunds =  CWr.FOT - CWr.PieceRates - CWr.PieceRatesEL -  CWr.Wages - CWr.Motiv +  CWr.Loan;
+
+        for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+          begin
+          MatRowGet(CWr, RwCnt, CWrw);
+          SumCorPoints = SumCorPoints + CWrw.CorPoints;
+          end;
+
+        srAwordPoints = CWr.BonusFunds / SumCorPoints;
+        CWr.CostOfOne = srAwordPoints;
+        CWrw.Award = 0;
+        CWrw.Motivw = 0;
+        CWrw.Wage = 0;
+        CWrw.PieceRatesw = 0;
+        CWrw.PieceRateswEL = 0;
+
+        for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+          begin
+          MatRowGet(CWr, RwCnt, CWrw);
+          CWrw.Award = CWrw.CorPoints * srAwordPoints;
+          CWrw.Total = CWrw.Award + CWrw.Motivw + CWrw.Wage + CWrw.PieceRatesw + CWrw.PieceRateswEL;
+          MatRowPut(CWr, RwCnt, CWrw);
+          end;
+        end;
+
+PutWindowRecord(wn, CWr);
+
+  Return;
+end;
+
+
+//========================================
+
+global
+procedure tGetLoanDsm()
+begin
+record tCalcWageVc CWr;
+record RcVc RepSpec;
+integer wn;
+
+wn = CurWindow;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, CWr);
+RepSpec.f1 = CWr.CodeServ;
+RepSpec.repname = "tDepartLoanRn";
+RunReport(RepSpec, 0);
+
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure tOperMakeAllTransLsm()
+begin
+record RcVc RepSpec;
+record tCalcWageVc CWr;
+integer wn;
+
+wn = CurWindow;
+//DeselectWindow(wn, false);
+GetWindowRecord(wn, CWr);
+
+  // создание записи операции
+  ReportDefaults(RepSpec, "tOperMakeTransVClass");
+  RepSpec.repname = "tOperMakeTransMn";
+  RepSpec.d1 = CurrentDate;
+  RepSpec.flags[0] = 1;
+  wn = OpenWindow("tOperMakeTransVClass", 1, 0, "", "", RepSpec);
+
+  Return;
+end;
+
+//================================================
+
+global
+updating procedure tOpenTRFromCWDsm()
+BEGIN
+record tCalcWageVc CWr;
+record TRVc TRr;
+Integer wn,nwn,RwCnt;
+
+wn = CurWindow;
+GetWindowRecord(wn, CWr);
+RwCnt = GetWindowCurRow(wn);
+if CWr.TRFlag == 1 then
+    begin
+	  TRr.IntYc = CWr.TRIntYc;
+    TRr.Number = CWr.TRNumber;
+	//TRr.Number = DEr.AONr;
+	  if ReadFirstMain(TRr, 2, true) then
+        begin
+        nwn = OpenWindow("TRDClass", 1, 0, "", "", TRr);
+        end;
+	  end;
+RETURN;
+end;
+
+//========================================
+
+function boolean tAccesstCalcWage(record tCalcWageVc CWr)
+begin
+boolean res;
+record tDepartVc Dr;
+
+res = false;
+Dr.Code = CWr.CodeServ;
+ReadFirstMain(Dr, 1, true);
+
+If ((currentuser == Dr.CodeDIR))//and (blank(CWr.SignDirStat) or blank(CWr.SignDirWork) )
+    or ((currentuser == Dr.CodeST) and blank(CWr.SignRespStat))
+    or ((currentuser == Dr.CodeF1) and blank(CWr.SignRespWork))
+    or setinset(currentuser, "IYA,ZINOVIY,LTVERDOKHL") then
+    begin
+    res = true;
+    end;
+
+tAccesstCalcWage = res;
+end;
+
+global
+updating procedure tCalcWageDClassOnOpenFromBrowse(Integer wn)
+begin
+record tCalcWageVc CWr;
+record UserVc USr;
+boolean res;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+GetWindowRecord(wn, CWr);
+
+if not(tAccesstCalcWage(CWr)) then
+	begin
+	CloseWindow(wn);
+	end;
+
+
+RETURN;
+end;

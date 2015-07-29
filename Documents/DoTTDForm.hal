@@ -1,0 +1,477 @@
+external inner procedure Base1ToBase2(var val,Date,var val);
+
+//====================================================================
+function val GetSumForCurncy(string Code, val sum)
+begin
+  record IVVc IVr;
+  
+  IVr.SerNr = Code;
+  ReadFirstMain(IVr,1,true);
+  if IVr.CurncyCode == "UAH" then
+  begin
+  GetSumForCurncy = sum;
+  end
+ else
+  begin
+  GetSumForCurncy = sum * IVr.BaseRate2;
+  end;
+  Return;
+end;
+
+//====================================================================
+global
+updating procedure PrintTTD(Integer wn,Boolean previewf)
+begin
+  record TTVc TTr;
+  record RcVc RepSpec;
+
+  SetLangMode(LangRussian,"RUS",2);
+  GetWindowRecord(wn,TTr);
+  if nonblank(TTr.SerNr) then
+    begin
+      RepSpec.f1 = TTr.SerNr;
+      RepSpec.JobDf = 1; //Диалог выбора принтера
+      if previewf then
+        begin
+          RepSpec.Media = mtScreen;
+        end
+      else
+        begin
+          RepSpec.Media = mtPrinter;
+        end;
+      RepSpec.repname = "TTDPrintRn";
+      RunReport(RepSpec, 0);
+    end
+  else
+    begin
+      MessageBox(0, "Сначала сохраните документ!");
+    end;
+  Return;
+end;
+
+
+//====================================================================
+function string 20 GetLocationName(string Code)
+begin
+  record LocationVc Locationr;
+  
+  Locationr.Code = Code;
+  ReadFirstMain(Locationr,1,true);
+  GetLocationName = Locationr.Name;
+  Return;
+end;
+
+
+//====================================================================
+function string 20 GetObjName(string Code)
+begin
+  record ObjVc Objr;
+  
+  Objr.Code = Code;
+  ReadFirstMain(Objr,1,true);
+  GetObjName = Objr.Comment;
+  Return;
+end;
+
+
+//====================================================================
+function string 20 GetDepName(string Code)
+begin
+  record DepVc Depr;
+  
+  Depr.Code = Code;
+  ReadFirstMain(Depr,1,true);
+  GetDepName = Depr.Description;
+  Return;
+end;
+
+
+//====================================================================
+//наименование, прайс
+procedure GetArtDetails(string Code, var string Name, var val Price)
+begin
+  record INVc INr;
+  record PLVc PLr;
+
+  //Наименование  
+  INr.Code = Code;
+  ReadFirstMain(INr,1,true);
+  Name = INr.Name;
+  if nonblank(INr.EUCodex) then
+    begin
+      Name = INr.EUCodex & " " & Name;
+    end;
+
+  //Прайс
+  PLr.PLCode = "MMDI$";
+  PLr.ArtCode = Code;
+  if ReadFirstMain(PLr, 2, true) then
+    begin
+      Price = PLr.ExVatPrice;
+    end
+  else
+    begin
+      Price = INr.UPrice1;
+    end;
+  Base1ToBase2(Price, CurrentDate, Price);
+  Return;
+end;
+
+
+//====================================================================
+procedure PrintIVDetails(string IVCode)
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+  integer i;
+  val Price, Sum, TotalQnt, TotalSum;
+  string 20 ArtName;
+
+  TotalQnt = 0;
+  TotalSum = 0; 
+  IVr.SerNr = IVCode;
+  if ReadFirstMain(IVr, 1, true) then
+    begin
+      for (i=0; i<MatRowCnt(IVr); i=i+1)
+        begin
+          MatRowGet(IVr, i, IVrw);
+          GetArtDetails(IVrw.ArtCode, ArtName, Price);
+          Sum = IVrw.Quant * Price;
+          TotalQnt = TotalQnt + IVrw.Quant;
+          TotalSum = TotalSum + Sum;
+          StartFormat(15);
+          outstring(25,0, (i+1) & ".", true);
+          outstring(30,0, ArtName, false);
+          outstring(350,0, IVrw.Quant, true);
+          outstring(430,0, Sum, true);
+          EndFormat;
+          Gray_Divider(30,430);
+        end;
+      //Подбиваем суммы
+      Black_Divider(300,430);
+      outstring(350,0, TotalQnt, true);
+      outstring(430,0, TotalSum, true);
+    end;
+  Return;
+end;
+
+
+//====================================================================
+//Печать Товарно-транспортной накладной
+global 
+procedure TTDPrintRn(record RcVc RepSpec)
+begin
+  record TTVc TTr;
+  record ObjVc Obj;
+  record ObjVc ParentObj;
+  row TTVc TTrw;
+  integer i, strlen, strlenCU;
+  string 250 Tmp, CUCode, Temp;
+  Val tSum;
+
+  SetLangMode(LangRussian,"RUS",2);
+  TTr.SerNr = RepSpec.f1;
+  ReadFirstMain(TTr,1,true);
+  StartReportNoHeaderJob("Товарно-транспортная накладная");
+
+  //Шапка
+  StartFormat(20);
+  outstring(260,0, "Маршрутный лист №: " & TTr.SerNr, true);
+  EndFormat;
+  
+  StartFormat(20);
+  /*outstring(60,0, "Дата:", true);
+  outstring(65,0, TTr.Date, false);
+  outstring(360,0, "Дата отправки:", true);
+  outstring(365,0, TTr.TransDate, false);
+  EndFormat;
+
+  StartFormat(20);
+  outstring(60,0, "Склад:", true);
+  outstring(65,0, GetLocationName(TTr.Stock), false);
+  outstring(360,0, "Подразделение:", true);
+  outstring(365,0, GetDepName(TTr.Department), false);
+  EndFormat;*/
+  Black_Divider(20, 450);
+  StartFormat(15);
+  outstring(40,0, "Марка А/М        |", false);
+  outstring(140,0, "Г/Н           |", false);
+  
+  outstring(280,0, "Водитель         ", false);
+  outstring(400,0, "|      Дата", false);
+  EndFormat;
+  Black_Divider(20, 450);
+  StartFormat(15);
+  outstring(200,0, GetObjName(TTr.TransCode), false);
+  outstring(410,0, TTr.TransDate, false);
+  EndFormat;
+  /*outstring(360,0, "Километраж:", true);
+  outstring(365,0, TTr.Km, false);*/
+  Black_Divider(20, 450);
+  StartFormat(30);
+  EndFormat;
+ /* StartFormat(20);
+  outstring(60,0, "Сумма:", true);
+  outstring(65,0, TTr.Summa, false);
+  outstring(200,0, "Валюта:", true);
+  outstring(205,0, TTr.Curncy, false);
+  outstring(360,0, "Курс:", true);
+  outstring(365,0, TTr.CurncyRate, false);
+  EndFormat;  */
+  Black_Divider(0,1);
+  
+  //Заголовок таблицы
+  
+  StartFormat(15);
+  outstring(30,0,"Клиент", false);
+  outstring(130,0,"|       Адрес", true);
+  outstring(480,0,"|     Прибыл    |       Убыл    |№ накладной", true);
+  //outstring(410,0,", true);
+  EndFormat;
+  Black_Divider(0,1);
+  StartFormat(15);
+  outstring(240,0,"Показания спидометра перед выездом ", True);
+  outstring(480,0,"|                      |                    |                      ", True);
+  EndFormat;
+  Black_Divider(0,1);
+  
+  if nonblank(TTr.Comment0) then
+    begin
+      StartFormat(20);
+      outstring(60,0, "Комментарий:", true);
+      outstring(65,0, TTr.Comment0, false);
+      EndFormat;
+    end;
+   
+  //Таблица
+  
+  for (i=0; i<MatRowCnt(TTr); i=i+1)
+    begin
+    
+    MatRowGet(TTr, i, TTrw); 
+    
+//    TTrw.Comment = TTrw.Comment  & " (" & TTrw.PlanDate & " " & TTrw.PlanTime & ")";
+
+    if (CUCode <> TTrw.Comment) then
+      begin
+      Black_Divider(0,1);      
+      StartFormat(10);
+      OutString(0,0,Left(TTrw.CUName, 15), false);
+      OutString(90, 0, Left(TTrw.Comment, 60), false);
+      end else
+      begin
+      StartFormat(10);
+      end;
+    //outstring(430,0,"|                      |                    |", True);
+    
+    OutString(380, 0, " (" & TTrw.PlanDate & " " & TTrw.PlanTime & ")", true);
+
+    OutString(480,0,TTrw.IVCode, true);
+  //      OutString(430,0,TTrw.IVSum, true);
+    EndFormat;
+    if (CUCode <> TTrw.Comment) then
+      begin
+      if ((len(TTrw.Comment) > 60) or (len(TTrw.CUName) > 15)) then
+        begin
+        strlen = len(TTrw.Comment);
+        strlenCU = len(TTrw.CUName);
+        while ((strlen > 0) or (strlenCU > 0))
+          begin
+          StartFormat(10);
+          Tmp = Right(TTrw.Comment, strlen - 60);
+          Temp = Right(TTrw.CUName, strlenCU - 15);
+          OutString(0, 0, Left(Temp, 15), false);
+          OutString(90, 0, Left(Tmp, 60), false);
+          strlen = len(Tmp);
+          strlenCU = len(Temp);
+          EndFormat;
+          end;
+      Tmp = blankval;
+      Temp = blankval;
+      end;
+    CUCode = TTrw.Comment;  
+    end;
+    
+    //CUCode = TTrw.Comment;
+     // PrintIVDetails(TTrw.IVCode);
+  end;
+  Black_Divider(0,1);
+  StartFormat(15);
+  outstring(240,0,"Показания спидометра на конец маршрута ", True);
+  outstring(480,0,"|                      |                    |                      ", True);
+  EndFormat;
+  Black_Divider(0,1);
+  StartFormat(20);
+  EndFormat;
+    
+  //Footer
+  //Black_Divider(0,1);
+  //StartFormat(20);
+  //EndFormat;
+  StartFormat(20);
+  outstring(60,0, "Кол-во:", true);
+  outstring(65,0, TTr.Quant, false);
+  outstring(200,0, "Масса:", true);
+  outstring(205,0, TTr.Mass, false);
+  outstring(360,0, "Объем:", true);
+  outstring(365,0, TTr.Volume, false);
+  EndFormat;
+ //================================================= MOL
+  if TTr.Mol <> 0 then
+  begin
+  CUCode = "";
+  NewPage(false);
+  //Шапка
+  StartFormat(20);
+  outstring(260,0, "Маршрутный лист №: " & TTr.SerNr, true);
+  EndFormat;
+  
+  StartFormat(20);
+ 
+  Black_Divider(20, 450);
+  StartFormat(15);
+  outstring(40,0, "Марка А/М        |", false);
+  outstring(140,0, "Г/Н           |", false);
+  
+  outstring(280,0, "Водитель         ", false);
+  outstring(400,0, "|      Дата", false);
+  EndFormat;
+  Black_Divider(20, 450);
+  StartFormat(15);
+  outstring(200,0, GetObjName(TTr.TransCode), false);
+  outstring(410,0, TTr.TransDate, false);
+  EndFormat;
+  
+  Black_Divider(20, 450);
+  StartFormat(30);
+  EndFormat;
+ 
+  Black_Divider(0,1);
+  
+  //Заголовок таблицы
+  
+  StartFormat(15);
+  outstring(30,0,"Клиент", false);
+  outstring(130,0,"|       Адрес", true);
+  outstring(480,0,"|     Прибыл    |       Убыл    |№ накладной |  Сумма", true);
+  EndFormat;
+  Black_Divider(0,1);
+  StartFormat(15);
+  outstring(240,0,"Показания спидометра перед выездом ", True);
+  outstring(480,0,"|                      |                    |                      ", True);
+  EndFormat;
+  Black_Divider(0,1);
+  
+  if nonblank(TTr.Comment0) then
+    begin
+      StartFormat(20);
+      outstring(60,0, "Комментарий:", true);
+      outstring(65,0, TTr.Comment0, false);
+      EndFormat;
+    end;
+   
+  //Таблица
+  
+  for (i=0; i<MatRowCnt(TTr); i=i+1)
+    begin
+    
+    MatRowGet(TTr, i, TTrw);
+    if (CUCode <> TTrw.Comment) then
+      begin
+      stopalert (TTrw.CUName);
+      Black_Divider(0,1);      
+      StartFormat(10);
+      OutString(0,0,Left(TTrw.CUName, 15), false);
+      OutString(90, 0, Left(TTrw.Comment, 60), false);
+      end else
+      begin
+      StartFormat(10);
+      end;
+
+    OutString(480,0,TTrw.IVCode & " |" & GetSumForCurncy(TTrw.IVCode, TTrw.IVSum), true);
+
+    EndFormat;
+    if (CUCode <> TTrw.Comment) then
+      begin
+      if ((len(TTrw.Comment) > 60) or (len(TTrw.CUName) > 15)) then
+        begin
+        strlen = len(TTrw.Comment);
+        strlenCU = len(TTrw.CUName);
+        while ((strlen > 0) or (strlenCU > 0))
+          begin
+          StartFormat(10);
+          Tmp = Right(TTrw.Comment, strlen - 60);
+          Temp = Right(TTrw.CUName, strlenCU - 15);
+          OutString(0, 0, Left(Temp, 15), false);
+          OutString(90, 0, Left(Tmp, 60), false);
+          strlen = len(Tmp);
+          strlenCU = len(Temp);
+          EndFormat;
+          end;
+      Tmp = blankval;
+      Temp = blankval;
+      end;
+    CUCode = TTrw.Comment;  
+    end;
+
+  end;
+  Black_Divider(0,1);
+  StartFormat(15);
+  outstring(240,0,"Показания спидометра на конец маршрута ", True);
+  outstring(480,0,"|                      |                    |                      ", True);
+  EndFormat;
+  Black_Divider(0,1);
+  StartFormat(20);
+  EndFormat;
+  
+  outstring(60,0, "Кол-во:", true);
+  outstring(65,0, TTr.Quant, false);
+  outstring(150,0, "Масса:", true);
+  outstring(155,0, TTr.Mass, false);
+  outstring(310,0, "Объем:", true);
+  outstring(315,0, TTr.Volume, false);
+  outstring(420,0, "Общая сумма:", true);
+  tSum = 0;
+for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+  begin
+  MatRowGet(TTr, i, TTrw);
+  if nonblank(TTrw.IVCode) then
+    begin
+    tSum = tSum + GetSumForCurncy(TTrw.IVCode, TTrw.IVSum);
+    end else
+    begin
+    MatRowDelete(TTr, i);
+    end;
+  end;
+  outstring(425,0, tSum & "грн.", false);
+  EndFormat;
+  StartFormat(20);
+  EndFormat;
+  StartFormat(20);
+  EndFormat;
+  StartFormat(20); 
+  StartFormat(20);
+  outstring(60,0, " Я, _______________________________, принял под индивидуальную материальную", false);
+  EndFormat;
+  StartFormat(20);
+  outstring(60,0, "ответственность товар, согласно вышеуказанных накладных на вышеуказанную", false);
+  EndFormat;
+  StartFormat(20);
+  outstring(60,0, "сумму для доставки клиентам, в связи с чем, несу полную материальную", false);
+  EndFormat;
+  StartFormat(20);
+  outstring(60,0, "ответственность за сохранность товара и доставку по назначению.", false);
+  EndFormat;
+  StartFormat(20);
+  EndFormat;
+  StartFormat(20);
+  EndFormat;
+  StartFormat(20);
+  outstring(60,0, "Число ________________                         Подпись ________________", false);
+  EndFormat;
+  end;
+
+  EndJob;
+  Return;
+end;
+

@@ -1,0 +1,308 @@
+external function string 255 IGetUserName(string);
+
+//===============================================
+global
+function Boolean IAccessItemVcRecordDuplicate(var record IAccessItemVc AIr, record IAccessItemVc AI2r, longint stat, longint check)
+begin
+  longint res;
+
+  AIr.AccName = blankval;
+//  AIr.AccDesc = blankval;
+  IAccessItemVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IAccessItemVcRecordCheck(var record IAccessItemVc AIr, record IAccessItemVc AI2r, longint stat, longint check)
+begin
+  longint res;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+
+//  if blank(AIr.AccName) then
+//    begin
+//      RecordCheckError(1499, "Не указан Регистр/Модуль/Действие...!", -1, "AccName");
+//      res = -1;
+//    end;
+  if blank(AIr.AccName) and blank(AIr.AccDesc) then
+    begin
+      AIr.AccDesc = "По умолчанию";
+    end;
+
+  if (res == 0) and blank(AIr.AccDesc) then
+    begin
+      RecordCheckError(1499, "Укажите краткое описание", -1, "AccDesc");
+      res = -1;
+    end;
+
+  IAccessItemVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+//Наименование уровня доступа
+function string 255 GetAccessLevelName(integer AccLevel)
+begin
+  string 255 res;
+
+  switch (AccLevel)
+    begin
+      case 1: res = USetStr(13220); //Полный
+      case 2: res = USetStr(13221); //Чтение
+      case 3: res = USetStr(13222); //Чтение/Новый
+      case 6: res = USetStr(13223); //Просмотр
+      case 7: res = USetStr(13224); //Просмотр/Новый
+      case 4: res = USetStr(13225); //Огранич.
+      case 5: res = USetStr(13226); //Нет
+      otherwise res = "по умолчанию";
+    end;
+  GetAccessLevelName = res;
+  Return;
+end;
+
+//===============================================
+//Код группы доступа равен коду сотрудника
+updating procedure GetAccessRec(string UserCode, record AccessVc Ar)
+begin
+  Ar.Code = UserCode;
+  if not ReadFirstMain(Ar, 1, true) then //Создаем, если не существует
+    begin
+      RecordNew(Ar);
+      Ar.Code = UserCode;
+      Ar.Comment = IGetUserName(USerCode);
+      RecordStore(Ar, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Изменить уровень доступа для заданного элемента
+function boolean ChangeAccessLevel(var record AccessVc Ar, string AccName, integer AccType, integer AccLevel)
+begin
+  integer i;
+  row AccessVc Arw;
+  boolean res, found;
+
+  for (i=0; (i < MatRowCnt(Ar)) and not found; i=i+1)
+    begin
+      MatRowGet(Ar, i, Arw);
+      found = (Arw.AccName == AccName) and (Arw.AccType == AccType);
+      if found and (Arw.AccLevel <> AccLevel) then //Изменяем доступ
+        begin
+          Arw.AccLevel = AccLevel;
+          MatRowPut(Ar, i, Arw);
+          res = true;
+        end;
+    end;
+
+  if not found then //Добавляем
+    begin
+      Arw.AccName = AccName;
+      Arw.AccType = AccType;
+      Arw.AccLevel = AccLevel;
+      MatRowInsert(Ar, MatRowCnt(Ar), Arw);
+      res = true;
+    end;
+
+  ChangeAccessLevel = res;
+  Return;
+end;
+
+//===============================================
+//Устанавливает уровень доступа для заданного пользователя
+global
+updating procedure IUserAccessSetLevel(string UserCode, string AccName, integer AccType, integer AccLevel)
+begin
+  record AccessVc Ar, A2r;
+
+  Ar.Code = UserCode;
+  if ReadFirstMain(Ar, 1, true) then
+    begin
+      if ChangeAccessLevel(Ar, AccName, AccType, AccLevel) then
+        begin
+          RecordCopy(A2r, Ar);
+          RecordUpdate(A2r, Ar, false);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Вывести OutStringID с признаком активного элемента
+procedure OutStringActiveID(integer Pos, string Dbl, string tstr, boolean Align, string ID, string ActiveID)
+begin
+  if (ID == ActiveID) then
+    begin
+      OutStringID(Pos, 0, "[ " & tstr & " ]", Align,  ID);
+    end
+  else
+    begin
+      OutStringID(Pos, Dbl, tstr, Align,  ID);
+    end;
+  Return;
+end;
+
+//===============================================
+//Получить уровень доступа для указанного объектаre раздельного доступа
+function integer GetAccessLevel(record AccessVc Ar, string AccName, integer AccType)
+begin
+  row AccessVc Arw;
+  integer i;
+  boolean found;
+
+  for (i=0; (i < MatRowCnt(Ar)) and not found; i=i+1)
+    begin
+      MatRowGet(Ar, i, Arw);
+      found = (Arw.AccName == AccName) and (Arw.AccType == AccType);
+      if found then
+        begin
+          GetAccessLevel = Arw.AccLevel;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Получить уровень доступа к указанному объекту раздельного доступа
+procedure OutAccTypeLine(integer ActiveType)
+begin
+  StartFormat(15);
+  OutStringActiveID(20,  "DblIAccessSetType", USetStr(13210), false,  1, ActiveType); //Модуль
+  OutStringActiveID(110, "DblIAccessSetType", USetStr(13211), false,  2, ActiveType); //Регистр
+  OutStringActiveID(200, "DblIAccessSetType", USetStr(13212), false,  3, ActiveType); //Настройка
+  OutStringActiveID(290, "DblIAccessSetType", USetStr(13213), false,  4, ActiveType); //Отчет
+  OutStringActiveID(380, "DblIAccessSetType", USetStr(13214), false,  5, ActiveType); //Документ
+  EndFormat;
+  Gray_Divider(0, 1);
+  EndFormat;
+  OutStringActiveID(20,  "DblIAccessSetType", USetStr(13215), false,  6, ActiveType); //Экспорт
+  OutStringActiveID(110, "DblIAccessSetType", USetStr(13216), false,  7, ActiveType); //Импорт
+  OutStringActiveID(200, "DblIAccessSetType", USetStr(13217), false,  8, ActiveType); //Обслуживание
+  OutStringActiveID(290, "DblIAccessSetType", USetStr(13218), false,  9, ActiveType); //Действие
+  OutStringActiveID(380, "DblIAccessSetType", USetStr(13219), false, 10, ActiveType); //Группа отображения
+  EndFormat;
+  Black_Divider(0, 1);
+  EndFormat;
+  Return;
+end;
+
+//===============================================
+//Выводим строку доступа
+procedure OutAcccessLine(string AccName, string AccDesc, integer AccType, integer AccLevel)
+begin
+  OutString(12, 0, AccName & " (" & AccDesc & ")", false);
+  OutStringID(350, "DblIAccessLevelList", GetAccessLevelName(AccLevel), false, AccName);
+  Return;
+end;
+
+//===============================================
+//Список объектов доступа для заданного пользователя
+//f1 - Код пользователя
+//AccSpec - Тип объекта доступа (Модуль, Регистр, ...)
+global
+updating procedure ISetUserAccessRn(record RcVc RepSpec)
+begin
+  record IAccessItemVc AIr;
+  record AccessVc Ar;
+  row AccessVc Arw;
+  boolean cont;
+  integer AccLevel;
+  integer i;
+
+  if blank(RepSpec.f1) then
+    begin
+      Return;
+    end;
+
+  if (RepSpec.AccSpec <=0) then
+    begin
+      RepSpec.AccSpec = 1; //Модуль
+    end;
+
+  GetAccessRec(RepSpec.f1, Ar);
+
+  SetLangMode(LangRussian,"RUS",2);
+  StartReportNoHeaderJob("Настройка доступа для пользователя " & RepSpec.f1);
+
+  OutAccTypeLine(RepSpec.AccSpec);
+
+  cont = true;
+  AIr.AccType = RepSpec.AccSpec;
+  while LoopKey("AccType", AIr, 2, cont)
+    begin
+      cont = (AIr.AccType == RepSpec.AccSpec); //Тип объекта доступа
+      if cont then
+        begin
+          StartFormat(15);
+          AccLevel = GetAccessLevel(Ar, AIr.AccName, AIr.AccType);
+          OutAcccessLine(AIr.AccName, AIr.AccDesc, AIr.AccType, AccLevel);
+          EndFormat;
+          Gray_Divider(0, 1);
+        end;
+    end;
+
+  EndFormat;
+  Black_Divider(0, 1);
+  
+  //Доступ, не прописанный в списке, но заданный в AccessVc
+  for (i=0; i<MatRowCnt(Ar); i=i+1)
+    begin
+      MatRowGet(Ar, i, Arw)
+      if (Arw.AccType == RepSpec.AccSpec) then
+        begin
+          AIr.AccName = Arw.AccName;
+          AIr.AccType = Arw.AccType;
+          if not ReadFirstMain(AIr, 2, true) then
+            begin
+              StartFormat(15);
+              OutAcccessLine(Arw.AccName, Arw.AccName, Arw.AccType, Arw.AccLevel);
+              EndFormat;
+              Gray_Divider(0, 1);
+            end;
+        end;
+    end;
+  
+  EndJob;
+  Return;
+end;
+
+//===============================================
+//Выбор уровней доступа для заданного элемента
+//f1 - Код пользователя
+//f2 -AccName
+//AccSpec - Тип объекта доступа (Модуль, Регистр, ...)
+//GroupsOnly - номер дочернего окна
+global
+updating procedure IAccessLevelListRn(record RcVc RepSpec)
+begin
+  record AccessVc Ar;
+  integer AccLevel;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  StartReportNoHeaderJob("Уровень доступа для " & RepSpec.f1);
+
+  GetAccessRec(RepSpec.f1, Ar);
+  AccLevel = GetAccessLevel(Ar, RepSpec.f2, RepSpec.AccSpec);
+
+  StartFormat(15);
+  OutStringActiveID(20,  "DblIAccessSetLevel", GetAccessLevelName(1), false,  1, AccLevel); //Полный
+  OutStringActiveID(120, "DblIAccessSetLevel", GetAccessLevelName(5), false,  5, AccLevel); //Нет
+  EndFormat;
+  Gray_Divider(0, 1);
+  EndFormat;
+  OutStringActiveID(20, "DblIAccessSetLevel", GetAccessLevelName(2), false,  2, AccLevel); //Чтение
+  OutStringActiveID(120, "DblIAccessSetLevel", GetAccessLevelName(3), false,  3, AccLevel); //Чтение/Новый
+  OutStringActiveID(220, "DblIAccessSetLevel", GetAccessLevelName(6), false,  6, AccLevel); //Просмотр
+  OutStringActiveID(320, "DblIAccessSetLevel", GetAccessLevelName(7), false,  7, AccLevel); //Просмотр/Новый
+  EndFormat;
+  Gray_Divider(0, 1);
+  EndFormat;
+  OutStringActiveID(20,  "DblIAccessSetLevel", GetAccessLevelName(4), false,  4, AccLevel); //Огранич.
+  OutStringActiveID(320,  "DblIAccessSetLevel", GetAccessLevelName(0), false,  0, AccLevel); //По умолчанию
+  EndFormat;
+  EndJob;
+  Return;
+end;

@@ -1,0 +1,495 @@
+external procedure tSetAcc(string, var string, var string);
+
+global
+function Boolean TTDClassUpdateTest(Integer wn)
+BEGIN
+record TTVc TTr;
+record TTVc TTrold;
+boolean res;
+  
+GetPrevWindowRecord(wn, TTrold);
+GetWindowRecord(wn, TTr);
+res = ((TTr.OKFlag==0) or UserCanAction("UnOKAll", True)); 
+TTDClassUpdateTest = res;
+
+RETURN;
+END;
+
+global 
+function Boolean TTDClassDeleteRowTest(Integer wn, Integer rownr)
+BEGIN
+Boolean res;
+record TTVc TTr;
+
+res = false;
+GetWindowRecord(wn, TTr);
+res = (TTr.OKFlag == 0);
+TTDClassDeleteRowTest = res;
+RETURN;
+END;
+
+global 
+function Boolean TTDClassInsertRowTest(Integer wn, Integer rownr)
+BEGIN
+Boolean res;
+record TTVc TTr;
+
+res = false;
+GetWindowRecord(wn, TTr);
+res = (TTr.OKFlag == 0);
+TTDClassInsertRowTest = res;
+RETURN;
+END;
+
+
+function boolean TTDClassIVCodeEFAfter(Integer wn, Integer rownr)
+begin
+record IVVc IVr;
+record ORVc ORr;
+row IVVc IVrw;
+record TTVc TTr;
+row TTVc TTrw;
+record TTVc TTrold;
+row TTVc TTrwold;
+record TTVc TTrTmp;
+row TTVc TTrwTmp;
+boolean res;
+Integer i;
+
+res = false;
+GetWindowRecord(wn, TTr);
+GetPrevWindowRecord(wn, TTrold);
+
+if (TTrold.OKFlag == 0) then
+begin
+if NonBlank(TTr.Stock) then 
+  begin
+  MatRowGet(TTr, rownr, TTRw);
+  MatRowGet(TTrold, rownr, TTRwold);
+  if (TTRwold.IVCode <> TTrw.IVCode) then
+  begin
+  IVr.SerNr = TTrw.IVCode;
+  if (ReadFirstMain(IVr, 1, True) and (IVr.OKFlag <> 0) and (IVr.Invalid == 0))then
+    begin
+    TTrw.SMCode = blankval;
+    TTrw.CUCode = IVr.CustCode;
+    TTrw.CUName = IVr.Addr0;
+    TTrw.IVWeight = IVr.TotWeight;
+    TTrw.IVQuant = IVr.TotQty;
+    TTrw.IVVol = IVr.TotVolume;
+    TTrw.IVSum = IVr.Sum4;
+    TTrw.Comment = IVr.ShipAddr1;
+    ORr.SerNr = IVr.OrderNr; 
+    TTrw.PlanDate = IVr.PlanDeliveryDate; //26.01.12 INAU
+    TTrw.PlanTime = IVr.PlanDeliveryTime; //26.01.12 INAU
+    ORr.SerNr = IVr.OrderNr; 
+    ReadFirstMain(ORr, 1, True);
+    TTrw.PlanDateSh = ORr.PlanShip; //16.05.12 t+
+    TTrw.PlanTimeSh = ORr.PlanShipTime; //16.05.12 t+
+    if blank(TTrw.PlanDate) then //06.02.14 INAU
+      begin
+      TTrw.PlanDate = ORr.DespatchDate;
+      TTrw.PlanTime = ORr.DespatchTime;
+      end;
+    MatRowGet(IVr, 0, IVrw);
+    TTrw.ObjStr = IVrw.Objects & "," & IVr.Objects;
+    res = True;
+    GetWindowRecord(wn, TTrTmp);
+    for (i = 0; i < MatRowCnt(TTrTmp); i = i + 1)
+      begin   
+      MatRowGet(TTrTmp, i, TTrwTmp);
+      if ((TTrwTmp.IVCode == TTrw.IVCode) and (WindowActiveRow(wn) <> i)) then
+        begin
+        res = False;
+        end;
+      end;
+    /*if res then
+      begin
+      TTr.Mass = TTr.Mass + TTrw.IVWeight;
+      TTr.Volume = TTr.Volume + TTrw.IVVol;
+      TTr.Quant = TTr.Quant + TTrw.IVQuant;
+      end;*/
+    end;
+  end;
+  end; 
+end;
+if res then
+  begin
+  MatRowPut(TTr, rownr, TTrw);
+  PutWindowRecord(wn, TTr);
+  end else
+  begin
+  MatRowPut(TTr, rownr, TTrwold);
+  PutWindowRecord(wn, TTr);
+  end;
+
+TTDClassIVCodeEFAfter = res;
+RETURN;
+end;
+
+function boolean TTDClassSMCodeEFAfter(Integer wn, Integer rownr)
+begin
+record IVVc IVr;
+record ORVc ORr;
+row IVVc IVrw;
+record TTVc TTr;
+row TTVc TTrw;
+record TTVc TTrold;
+row TTVc TTrwold;
+record TTVc TTrTmp;
+row TTVc TTrwTmp;
+record StockMovVc StockMovr;
+row StockMovVc StockMovrw;
+boolean res;
+Integer i;
+
+res = false;
+GetWindowRecord(wn, TTr);
+GetPrevWindowRecord(wn, TTrold);
+
+if (TTrold.OKFlag == 0) then
+begin
+if NonBlank(TTr.Stock) then 
+  begin
+  MatRowGet(TTr, rownr, TTRw);
+  MatRowGet(TTrold, rownr, TTRwold);
+  if (TTRwold.SMCode <> TTrw.SMCode) then
+	  begin
+	  StockMovr.SerNr = TTrw.SMCode;
+	  if (ReadFirstMain(StockMovr, 1, True) and (StockMovr.Invalid == 0))then //and (StockMovr.OKFlag <> 0)
+		begin
+		TTrw.IVCode = blankval;
+		TTrw.CUCode = blankval;
+		TTrw.CUName = " ";
+		TTrw.IVWeight = StockMovr.TotWeight;
+		TTrw.IVQuant = StockMovr.TotSentQty;
+		TTrw.IVVol = StockMovr.TotVolume;
+		for (i = 0; i < MatRowCnt(StockMovr); i = i + 1)
+		  begin   
+		  MatRowGet(StockMovr, i, StockMovrw);
+		  TTrw.IVSum = TTrw.IVSum + StockMovrw.BasePrice * StockMovrw.Quant;
+		  end;
+		//TTrw.IVSum = blankval;
+		TTrw.Comment = StockMovr.Comment;
+		TTrw.PlanDateSh = StockMovr.PlanSendDate; //16.05.12 t+
+		TTrw.PlanTimeSh = StockMovr.PlanSendTime; //16.05.12 t+
+    TTrw.PlanDate = StockMovr.PlanArrDate; //15.03.12 INAU
+    TTrw.PlanTime = StockMovr.PlanArrTime; //15.03.12 INAU
+		MatRowGet(StockMovr, 0, StockMovrw);
+		TTrw.ObjStr = StockMovrw.Objects & "," & StockMovr.Objects;
+		res = True;
+		GetWindowRecord(wn, TTrTmp);
+		for (i = 0; i < MatRowCnt(TTrTmp); i = i + 1)
+		  begin   
+		  MatRowGet(TTrTmp, i, TTrwTmp);
+		  if ((TTrwTmp.SMCode == TTrw.SMCode) and (WindowActiveRow(wn) <> i)) then
+			begin
+			res = False;
+			end;
+		  end;
+		if res then
+		  begin
+		  TTr.Mass = TTr.Mass + TTrw.IVWeight;
+		  TTr.Volume = TTr.Volume + TTrw.IVVol;
+		  TTr.Quant = TTr.Quant + TTrw.IVQuant;
+		  end;
+		end;
+	  end;
+  end; 
+end;
+if res then
+  begin
+  MatRowPut(TTr, rownr, TTrw);
+  PutWindowRecord(wn, TTr);
+  end else
+  begin
+  MatRowPut(TTr, rownr, TTrwold);
+  PutWindowRecord(wn, TTr);
+  end;
+TTDClassSMCodeEFAfter = res;
+RETURN;
+end;
+procedure RecalcDeliveryCost(var record TTVc TTr) //08.07.11 INAU
+begin
+  TTr.DeliveryCostPlan = TTr.KmPlan * TTr.Cost1kmPlan;
+  TTr.DeliveryCost = TTr.Km * TTr.Cost1km;
+	TTr.Summa = TTr.DeliveryCost; 
+	if TTr.Curncy <> "UAH" then
+		begin
+			TTr.Summa = TTr.Summa / TTr.CurncyRate;
+		end;
+  Return;
+end;
+
+function boolean TTDClassTransCodeEFAfter(integer wn) //08.07.11 INAU
+begin
+  record TTVc TTr;
+  record IVehicleVc IVehicler;
+  record tFuelPrVc Fr;
+  string 25 AccCre, AccDeb;
+  
+  GetWindowRecord(wn, TTr);
+  IVehicler.Code = TTr.TransCode;
+  ReadFirstMain(IVehicler, 1, true);
+  Fr.FType = IVehicler.FuelCode;
+  ReadLastKey("FType", Fr, 1, true);
+  TTr.Cost1kmPlan = (IVehicler.FuelCons / 100) * Fr.FPrice;//TTr.KmPlan * 
+  TTr.Cost1km =  (IVehicler.FuelCons / 100) * Fr.FPrice;//TTr.Km *
+  //TTr.Cost1kmPlan = IVehicler.Cost1km;
+  //TTr.Cost1km = IVehicler.Cost1km;
+  RecalcDeliveryCost(TTr);
+  PutWindowRecord(wn, TTr);
+  TTDClassTransCodeEFAfter = true;
+  Return;
+end;
+
+function boolean TTDClassKmEFAfter(integer wn) //08.07.11 INAU
+begin
+  record TTVc TTr;
+
+  GetWindowRecord(wn, TTr);
+  RecalcDeliveryCost(TTr);
+  PutWindowRecord(wn, TTr);
+  TTDClassKmEFAfter = True;
+  Return;
+end;
+
+function boolean TTDClassTransDateEFAfter(integer wn) //23.11.12 INAU
+begin
+  record TTVc TTr, prevTTr;
+  
+  GetWindowRecord(wn, TTr);
+  if GetMonth(TTr.TransDate) > GetMonth(CurrentDate) then //Запрещено датировать отправку следующим месяцем
+    begin
+      GetPrevWindowRecord(wn, prevTTr);
+      TTr.TransDate = prevTTr.TransDate;
+      PutWindowRecord(wn, TTr);
+    end;
+  TTDClassTransDateEFAfter = true;
+  Return;
+end;
+
+function boolean TTDClassActDateEFAfter(integer wn, integer rownr) //23.11.12 INAU
+begin
+  record TTVc TTr, prevTTr;
+  row TTVc TTrw, prevTTrw;
+
+  if (rownr > -1) then
+    begin
+      GetWindowRecord(wn, TTr);
+      MatRowGet(TTr, rownr, TTrw);
+      if (TTrw.ActDate < TTr.TransDate) then //Дата доставки не может быть меньше даты отправки
+        begin
+          GetPrevWindowRecord(wn, prevTTr);
+          MatRowGet(prevTTr, rownr, prevTTrw);
+          TTrw.ActDate = prevTTrw.ActDate;
+          MatRowPut(TTr, rownr, TTrw);
+          PutWindowRecord(wn, TTr);
+        end;
+    end;
+  TTDClassActDateEFAfter = true;
+  Return;
+end;
+
+function boolean CountDeliveryPrice(Integer wn)
+begin
+record TTVc TTr;
+row TTVc TTrw;
+Integer i;
+
+GetWindowRecord(wn, TTr);
+TTr.Mass = 0;
+TTr.Volume = 0;
+TTr.Quant = 0;
+for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+  begin
+  MatRowGet(TTr, i, TTrw);
+  if nonblank(TTrw.IVCode) or nonblank(TTrw.SMCode) then
+    begin
+    TTr.Mass = TTr.Mass + TTrw.IVWeight;
+    TTr.Volume = TTr.Volume + TTrw.IVVol;
+    TTr.Quant = TTr.Quant + TTrw.IVQuant;
+    end else
+    begin
+    MatRowDelete(TTr, i);
+    end;
+  end;
+for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+  begin
+  MatRowGet(TTr, i, TTrw);
+  if nonblank(TTrw.IVCode) or nonblank(TTrw.SMCode) then
+    begin
+    
+    TTrw.DSum = TTr.Summa * (TTrw.IVQuant / TTr.Quant); 
+    MatRowPut(TTr, i, TTrw);
+    end else
+    begin
+    MatRowDelete(TTr, i);
+    end;
+  end;
+PutWindowRecord(wn, TTr);
+CountDeliveryPrice = True;
+
+RETURN;
+end;
+
+global
+function Boolean TTDClassOnOKWindow(Integer wn)
+begin
+
+TTDClassOnOKWindow = CountDeliveryPrice(wn);
+RETURN;
+end;
+
+global
+function boolean TTDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+Boolean res;
+record TTVc TTr;
+record TTVc TTrold;
+
+GetWindowRecord(wn, TTr);
+res = False;
+if ((TTr.OKFlag == 0) and (changed <> 0)) then
+  begin
+  switch (fieldname) 
+    begin
+    case "IVCode": res = TTDClassIVCodeEFAfter(wn, rownr);  
+    case "SMCode": res = TTDClassSMCodeEFAfter(wn, rownr);
+    case "Summa": res = CountDeliveryPrice(wn);
+    case "TransCode": res = TTDClassTransCodeEFAfter(wn);
+    case "KmPlan": res = TTDClassKmEFAfter(wn);
+    case "Km": res = TTDClassKmEFAfter(wn);
+    case "Cost1km": res = TTDClassKmEFAfter(wn);
+    case "Curncy": res = TTDClassKmEFAfter(wn);
+    case "CurncyRate": res = TTDClassKmEFAfter(wn);
+    case "TransDate": res = TTDClassTransDateEFAfter(wn); //23.11.12 INAU
+    case "ActDate": res = TTDClassActDateEFAfter(wn, rownr); //23.11.12 INAU
+    end; 
+  end;/* else
+  begin
+  GetPrevWindowRecord(wn, TTrold);
+  PutWindowRecord(wn, TTrold);
+  end;*/
+  
+TTDClassAfterEditField = res;
+
+RETURN;
+end;
+
+global
+function boolean TTDClassActiveEditField(integer wn,string fieldname,integer fn,integer wnst,integer rownr,integer changed) //08.0711 INAU
+begin
+  record TTVc TTr;
+  record TTVc prevTTr;
+  record ObjVc Objr;
+  boolean res;
+
+//  res = true;
+  GetPrevWindowRecord(wn, prevTTr);
+  res = not (((WindowState(wn) == 0) or (WindowState(wn) == 2)) and (prevTTr.FormalizedFlag == 1));
+
+  switch (fieldname) begin  
+    case "Cost1km":     
+      GetWindowRecord(wn,TTr);
+      Objr.Code = TTr.TransCode;
+      ReadFirstMain(Objr,1,true);
+      res = (Objr.OTCode == "PRVZ");
+
+    case "KmPlan":
+      res = (WindowState(wn) == 1) or UserCanAction("UnOKAll", True); //ViewOnly после записи
+  end;
+  
+  TTDClassActiveEditField = res;
+  return;
+end;
+
+global
+function Boolean TTDClassMolButtonAction(Integer wn, Integer value)
+begin
+record UserVc USr;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+TTDClassMolButtonAction = (UserCanAction("UnOKAll", True) or (USr.AccessGroup == "LOGS") or (USr.AccessGroup == "101") or (Usr.AccessGroup == "101PL"));
+RETURN;
+end;
+
+
+function Boolean TTDClassButtonAction(string whichone, Integer wn, Integer value)
+begin
+  Boolean res;
+  record TTVc TTr;
+  Integer normalmode,updatemode;
+ 
+res = true;
+normalmode = 0;//Rs_normal
+updatemode = 2;//Rs_update
+if (WindowState(wn) == normalmode) then 
+  begin
+    GetWindowRecord(wn, TTr);
+    if (TTr.OKFlag <> 0) then 
+    begin
+    res = false;    
+    if (UserCanAction("UnOKAll",false)) then 
+      begin
+      res = true;
+      end;
+    end;
+  end;  
+if (WindowState(wn) == updatemode) then 
+  begin
+    GetPrevWindowRecord(wn, TTr);
+    if (TTr.OKFlag <> 0) then 
+    begin
+    res = false;
+    end;
+  end;  
+TTDClassButtonAction = res;
+RETURN;
+end;
+
+global
+procedure DeliveryEffDsm() //08.07.11 INAU - вызов отчета
+begin
+  integer wn,nwn;
+  record TTVc TTr;
+  record RcVc RepSpec;
+  
+  wn = CurWindow;
+  GetWindowRecord(wn, TTr);
+  ReportDefaults(RepSpec,"DeliveryEffRClass");    
+  RepSpec.repname = "DeliveryEffRn";
+  RepSpec.Media = mtScreen;
+  RepSpec.f3 = TTr.SerNr;
+  RepSpec.ArtMode = 1;
+  RepSpec.flags[0] = 1;
+  RunReport(RepSpec,0); 
+  Return;
+end;
+
+
+global
+procedure OpenTRFromTT()
+BEGIN
+  record TTVc TTr;
+  record TRVc TRr;
+  Boolean openf;
+  Integer nwn;
+
+  if (UserCanAction("OpenTRFromSpec", true)) then
+    begin
+    GetWindowRecord(CurWindow,TTr);
+    TRr.Number = TTr.SerNr;
+    TRr.IntYc = 888;
+    if (ReadFirstMain(TRr,2,true)) then
+      begin
+      nwn = OpenWindow("TRDClass", 1, 0, "", "", TRr);
+      end;
+    end
+  else
+    begin
+    Beep;
+    end;
+  RETURN;
+END;

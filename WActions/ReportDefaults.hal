@@ -1,0 +1,336 @@
+global
+procedure SHStatRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"SHStatRClass");
+  RepSpec.flags[1] = 1;
+  RepSpec.flags[2] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+end;
+
+//===============================================
+global
+procedure AR2RClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"AR2RClass");
+  RepSpec.ArtMode = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;
+
+//===============================================
+global
+procedure ActionBalRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"ActionBalRClass");
+  RepSpec.flags[0] = 1; //оплаченные
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure VPlanSalesVClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "VPlanSalesVClass");
+  RepSpec.ObjStr = GetYear(CurrentDate);
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure MyActPersRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "MyActPersRClass");
+RepSpec.f2 = CurrentUser;
+RepSpec.flags[1] = 0;
+RepSpec.flags[2] = 1;
+RepSpec.flags[3] = 1;
+RepSpec.flags[4] = 1;
+RepSpec.flags[5] = 1;
+RepSpec.flags[7] = 1;
+RepSpec.flags[8] = 1;
+RepSpec.flags[9] = 1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+//===============================================
+global
+procedure IRetOrdRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"IRetOrdRClass");
+  RepSpec.flags[1] = 1; //Утвержденные
+  RepSpec.flags[5] = 1; //Отгрузки/Возвраты
+  RepSpec.flags[6] = 1; //Перемещения/Перемещения
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure IPayOrderRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"IPayOrderRClass");
+  RepSpec.flags[0] = 1; //Утвержденные
+  RepSpec.flags[2] = 1; //Распечатанные
+  RepSpec.flags[3] = 1; //Нераспечатанные
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure ISelectVClassRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"ISelectVClassRClass");
+  RepSpec.flags[0] = 0;
+  RepSpec.flags[1] = 0;
+  RepSpec.flags[2] = 1; //Level
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure ApproveCostsRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"ApproveCostsRClass");
+  RepSpec.flags[0] = 1;
+  RepSpec.flags[1] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure ISHTTPlanExecTotalsRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "ISHTTPlanExecTotalsRClass");
+  RepSpec.Media = mtExcel;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure ITTFormalizeRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "ITTFormalizeRClass");
+  RepSpec.flags[1] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure ActOpRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"ActOpRClass");
+  RepSpec.flags[1] = 1;
+  RepSpec.flags[2] = 1;
+  RepSpec.flags[3] = 1;
+  RepSpec.flags[4] = 1;
+  RepSpec.flags[5] = 1;
+  RepSpec.flags[6] = 1;
+  RepSpec.flags[7] = 1;
+  RepSpec.flags[8] = 1; //---t+
+    RepSpec.flags[10] = 1; //TGOR 07-07-14
+    RepSpec.flags[11] = 1; //TGOR 07-07-14
+    RepSpec.flags[12] = 1; //TGOR 07-07-14
+  RepSpec.flags[20] = 1;
+  RepSpec.flags[21] = 1;
+  RepSpec.flags[22] = 1;
+  RepSpec.flags[23] = 1;
+  RepSpec.flags[24] = 1;
+  RepSpec.flags[25] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+end;
+
+//===============================================
+global
+procedure AR3RClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"AR3RClass");
+  RepSpec.ArtMode = 1;  //Сводный
+  RepSpec.flags[1] = 1; //по названию
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure ISalesQuotaRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "ISalesQuotaRClass");
+  RepSpec.flags[1] = 1; //MM
+  RepSpec.flags[2] = 1; //KS
+  RepSpec.flags[3] = 1; //EL
+  RepSpec.flags[4] = 1; //KR
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure ISHDeficitRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "ISHDeficitRClass");
+  RepSpec.f1 = RepSpec.Period2Str; //Второй период по умолчанию
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+global
+procedure VRHistCURClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "VRHistCURClass");
+  RepSpec.f2 = CurrentUser;
+  RepSpec.ArtMode = 0;
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;
+
+//===============================================
+global
+procedure CalcMotivRClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"DSver1RClass");
+  RepSpec.flags[1] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;
+
+//===============================================
+global
+procedure DSver1RClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"DSver1RClass");
+  RepSpec.ArtMode = 1;
+  RepSpec.flags[2] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;
+
+//===============================================
+global
+procedure OrderStockRClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"OrderStockRClass");
+  RepSpec.flags[0] = 1;
+  RepSpec.flags[2] = 1;
+  RepSpec.flags[3] = 1;
+  RepSpec.flags[4] = 1;
+  RepSpec.flags[5] = 1;
+  RepSpec.flags[10] = 0;
+  RepSpec.Comparison = 1;
+  RepSpec.OnlyUnprntd = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;
+
+//===============================================
+global
+procedure IMissedDocsTransRClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"IMissedDocsTransRClass");
+  RepSpec.flags[0] = 1;
+  RepSpec.flags[1] = 1;
+  RepSpec.flags[2] = 1;
+  RepSpec.flags[3] = 1;
+  RepSpec.flags[4] = 1;
+  RepSpec.flags[5] = 1;
+  RepSpec.flags[6] = 1;
+  RepSpec.flags[7] = 1;
+  RepSpec.flags[8] = 1;
+  RepSpec.flags[9] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;
+

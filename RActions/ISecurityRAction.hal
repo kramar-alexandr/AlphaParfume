@@ -1,0 +1,316 @@
+//===============================================
+//Средства защиты
+global
+function LongInt ISecProtectVcRecordCheck(var record ISecProtectVc Pr, record ISecProtectVc AS2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  res = 0;
+  SetLangMode(LangRussian, "RUS", 2);
+  if blank(Pr.Code) then
+    begin
+      RecordCheckError(1499, "Код средства защиты не может быть незаполненным", -1, "Code");
+      res = -1;
+    end;
+  ISecProtectVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function LongInt ISecProtectVcRecordDuplicate(var record ISecProtectVc Pr, record ISecProtectVc P2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  Pr.Code = blankval;
+  ISecProtectVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+//Угрозы безопасности
+global
+function LongInt ISecThreatVcRecordCheck(var record ISecThreatVc Tr, record ISecThreatVc T2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  res = 0;
+  SetLangMode(LangRussian, "RUS", 2);
+  if blank(Tr.Code) then
+    begin
+      RecordCheckError(1499, "Код угрозы не может быть незаполненным", -1, "Code");
+      res = -1;
+    end;
+  ISecThreatVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function LongInt ISecThreatVcRecordDuplicate(var record ISecThreatVc Tr, record ISecThreatVc T2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  Tr.Code = blankval;
+  ISecThreatVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+//Категории объектов защиты
+global
+function LongInt ISecObjCatVcRecordCheck(var record ISecObjCatVc OCr, record ISecObjCatVc OC2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  res = 0;
+  SetLangMode(LangRussian, "RUS", 2);
+  if blank(OCr.Code) then
+    begin
+      RecordCheckError(1499, "Код категории объекта защиты не может быть незаполненным", -1, "Code");
+      res = -1;
+    end;
+  ISecObjCatVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function LongInt ISecObjCatVcRecordDuplicate(var record ISecObjVc OCr, record ISecObjVc OC2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  OCr.Code = blankval;
+  ISecObjCatVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+//Объекты защиты
+global
+function LongInt ISecObjVcRecordCheck(var record ISecObjVc SOr, record ISecObjVc SO2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  res = 0;
+  SetLangMode(LangRussian, "RUS", 2);
+  if blank(SOr.Code) then
+    begin
+      RecordCheckError(1499, "Код объекта защиты не может быть незаполненным", -1, "Code");
+      res = -1;
+    end;
+  ISecObjVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function LongInt ISecObjVcRecordDuplicate(var record ISecObjVc SOr, record ISecObjVc SO2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  SOr.Code = blankval;
+  ISecObjVcRecordDuplicate = res;
+  Return;
+end;
+
+
+//===============================================
+//Отчет "Объекты защиты"
+// f1 - Объект защиты
+// f2 - Категория объекта защиты
+// f3 - Угроза безопасности
+// f4 - Средство защиты
+// ArtMode - 0:Сводный, 1:Подробный
+//===============================================
+function boolean ISecObjRnCheckProtect(record RcVc RepSpec, record ISecObjVc SOr) //Вхождение средства защиты в объект
+begin
+  record ISecThreatVc Tr;
+  row ISecObjVc SOrw;
+  boolean res;
+  integer i;
+
+  res = true;
+  for (i=0; (i<MatRowCnt(SOr)) and res; i=i+1)
+    begin
+      MatRowGet(SOr, i, SOrw);
+      Tr.Code = SOrw.ThreatCode;
+      res = ReadFirstKey("ProtectCode:" & RepSpec.f4, Tr, 1, false); //Вхождение средства защиты в угрозу (в составе объекта)
+    end;
+
+  ISecObjRnCheckProtect = res;
+  Return;
+end;
+
+//===============================================
+function boolean ISecObjRnCheckObj(record RcVc RepSpec, record ISecObjVc SOr)
+begin
+  record ISecObjVc tmpSOr;
+  boolean res;
+
+  res = (blank(RepSpec.f1) or (SOr.Code == RepSpec.f1)) and (blank(RepSpec.f2) or (SOr.ObjCat == RepSpec.f2)); //Код объекта, категория объекта
+
+  if res and nonblank(RepSpec.f3) then //Код угрозы
+    begin
+      tmpSOr.Code = SOr.Code;
+      res = ReadFirstKey("ThreatCode:" & RepSpec.f3, tmpSOr, 1, false); //Вхождение угрозы в объект
+    end;
+
+  if res and nonblank(RepSpec.f4) then //Код средства защиты
+    begin
+      res = ISecObjRnCheckProtect(RepSpec, SOr); //Вхождение средства защиты в объект
+    end;
+
+  ISecObjRnCheckObj = res;
+  Return;
+end;
+
+//===============================================
+procedure ISecObjRnOutThreat(record RcVc RepSpec, string ThreatCode)
+begin
+  record ISecThreatVc Tr;
+  row ISecThreatVc Trw;
+  integer i;
+
+  Tr.Code = ThreatCode;
+  ReadFirstMain(Tr, 1, true);
+  for (i=0; i<MatRowCnt(Tr); i=i+1)
+    begin
+      MatRowGet(Tr, i, Trw);
+      if (blank(RepSpec.f4) or (Trw.ProtectCode == RepSpec.f4)) then
+        begin
+          StartFormat(15);
+          OutString(32, "DblISecProtectVc", Trw.ProtectCode, false);
+          OutString(80, 0, Trw.ProtectName, false);
+          OutString(300, 0, Trw.ProtectComment, false);
+          EndFormat;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+procedure ISecObjRnOutObj(record RcVc RepSpec, record ISecObjVc SOr)
+begin
+  row ISecObjVc SOrw;
+  integer i;
+
+  StartFormat(15);
+  OutString(12, "DblISecObjVc", SOr.Code, false);
+  OutString(80, 0, SOr.Name, false);
+  OutString(300, 0, SOr.Comment, false);
+  EndFormat;
+  if (RepSpec.ArtMode == 1) then
+    begin
+      for (i=0; i<MatRowCnt(SOr); i=i+1)
+        begin
+          MatRowGet(SOr, i, SOrw);
+          if (blank(RepSpec.f3) or (SOrw.ThreatCode == RepSpec.f3)) then
+            begin
+              StartFormat(15);
+              OutString(22, "DblISecThreatVc", SOrw.ThreatCode, false);
+              OutString(80, 0, SOrw.ThreatName, false);
+              OutString(300, 0, SOrw.ThreatComment, false);
+              EndFormat;
+              ISecObjRnOutThreat(RepSpec, SOrw.ThreatCode);
+            end;
+        end;
+      Black_Divider(0, 1);
+    end;
+  Return;
+end;
+
+//===============================================
+procedure ISecObjRnPrintHeader(record RcVc RepSpec)
+begin
+  integer rw;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  rw = 2;
+  if nonblank(RepSpec.f1) then
+    begin
+      Header(rw, "Объект защиты: " & RepSpec.f1, 0);
+      rw = rw + 1;
+    end;
+
+  if nonblank(RepSpec.f2) then
+    begin
+      Header(rw, "Категория объекта защиты: " & RepSpec.f2, 0);
+      rw = rw + 1;
+    end;
+
+  if nonblank(RepSpec.f3) then
+    begin
+      Header(rw, "Угроза безопасности: " & RepSpec.f3, 0);
+      rw = rw + 1;
+    end;
+    
+  if nonblank(RepSpec.f4) then
+    begin
+      Header(rw, "Средство защиты: " & RepSpec.f4, 0);
+      rw = rw + 1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+global
+procedure ISecObjRn(record RcVc RepSpec)
+begin
+  record ISecObjVc SOr;
+  string 20 KeyStr;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  
+  StartReportJob("Объекты-угрозы-средства защиты");
+  ISecObjRnPrintHeader(RepSpec);
+  EndHeader;
+
+  if nonblank(RepSpec.f1) then
+    begin
+      SOr.Code = RepSpec.f1;
+      KeyStr = "Code";
+    end;
+
+  if blank(KeyStr) and nonblank(RepSpec.f2) then
+    begin
+      SOr.ObjCat = RepSpec.f2;
+      KeyStr = "ObjCat";
+    end;
+
+  if blank(KeyStr) and nonblank(RepSpec.f3) then
+    begin
+      KeyStr = "ThreatCode:" & RepSpec.f3;
+    end;
+
+  if blank(KeyStr) then
+    begin
+      KeyStr = "Code";
+    end;
+
+  StartFormat(15);
+  OutString(12, 0, "Код", false);
+  OutString(80, 0, "Наименование", false);
+  OutString(300, 0, "Примечание", false);
+  EndFormat;
+  Black_Divider(0, 1);
+  EndFormat;
+
+  cont = true;
+  while LoopKey(KeyStr, SOr, 1, cont)
+    begin
+      cont =  (blank(RepSpec.f1) or (SOr.Code == RepSpec.f1)) and
+              (blank(RepSpec.f2) or (SOr.ObjCat == RepSpec.f2));
+
+      if cont and ISecObjRnCheckObj(RepSpec, SOr) then
+        begin
+          ISecObjRnOutObj(RepSpec, SOr);
+        end;
+    end;
+
+  EndJob;
+  Return;
+end;

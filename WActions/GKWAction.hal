@@ -1,0 +1,971 @@
+external inner procedure TSERW_RUS();
+external procedure AddHelpButton(LongInt, LongInt);
+external procedure AddErrButton(LongInt, LongInt);
+external inner procedure ExtractObj(string, var Integer, var string);
+external function Boolean CloseWindowByName(string);
+
+event DefineWindows
+
+begin
+   real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+   string 255 label;
+   SetLangMode(LangRussian,"RUS",2);
+   
+///======================================================== операции
+WindowBegin("Операции",OperDClass,CGview,-);
+SetWRect(20,80,750,350);
+//  Sizeable(0,-1,0,0);
+UseView(OperVc);
+Tile(0,80,false,"",Code);
+vs = 20; h=100; h1=250; h2=420; vs2 = 30;
+EditField(h,v=6, 120, "Код",Normal,Code,false,0);
+EditField(h,v+=vs,-39,"Наименование",Normal,Name,false,0);
+TileButton(1,"Общая информация");
+TileButton(2," Документы и оборудование ");
+Tile(1,170,false,"1",ListCl);
+v=10;
+EditField(h2+50,v+=vs,-39, "Нормативное время выполнения операции, мин.",Normal,CostTime,false,0);
+EditField(h2+50,v+=vs,-39, "Нормативная стоимость выполнения операции, грн.",Normal,Cost,false,0);
+EditField(h,v+=vs2,-39, "Классификация", Normal, ListCl, false, WOClassSClass);
+ColourPushButton(-30, v - 2, -4, v + 18, "ListClInfo", "...", 3);
+ButtonFrame(h-80, v = v-55,123,2,"Статус");
+RadioButton(h-80, v,0,0,"подготовка",Status);
+RadioButton(h-80, v = v + 16, 1,0,"работа",Status);
+RadioButton(h-80, v = v + 16, 2,0,"архив",Status);
+Tile(2,170,false,"2",EquipCode);
+EditField(h,v=5,-39, "Оборудование",Normal,EquipCode,false,AT2UnitSClass);
+ColourPushButton(-30, v - 2, -4, v + 18, "EquipCodeInfo", "...", 3);
+EditField(h,v+=20,-39, "Формы документов",Normal,FDoc,false,DocSClass);
+ColourPushButton(-30, v - 2, -4, v + 18, "FDocInfo", "...", 3);
+StaticText(20,v+=30,"Виды документов необходимые для выполнения операции:",false); 
+MatrixBegin(20, v+=20, -30, -4,-,200);
+MatCol(1, 25, "Код", 0, DocCode, false, DocsSClass);
+MatCol(1, 145, "Наименование", 0, DocName, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Операции",OperLClass, CGmlist, -);
+SpawnClass(OperDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(OperVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Операции",OperSClass, CGslist, -);
+SpawnClass(OperDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(OperVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Кол-во рабочих дней, часов, минут в месяце", WTimeTClass, CGHbl, HBlRecType);
+SetBlid(WTimeBlock);
+SetWRect(64, 80, 550, 440);
+v = 10; vs = 20; h = 75; 
+MatrixBegin(4, 20, -31, -20, WTimeRowType, 99);
+MatColTL(1, h, "Месяц", 0, M4Str, Normal, 200, Name, false, 0);
+MatColTL(1, h += 50 , "Кол.дней", 0, M4Long, Normal, 20, tDays, false, 0);
+MatColTL(1, h += 50 , "Кол.часов", 0, M4Long, Normal, 20, tHours, false, 0);
+MatColTL(1, h += 50 , "Кол.мин", 0, M4Long, Normal, 20, tMins, false, 0);
+EndMatrix;
+EndWindow; 
+
+// WindowBegin("Оборудование для выполнения операции", WEquipTClass, CGHbl, HBlRecType);
+// SetBlid(WEquipBlock);
+// SetWRect(64, 80, 550, 440);
+// v = 10; vs = 20; h = 150; 
+// MatrixBegin(4, 20, -31, -20, WEquipRowType, 99);
+// MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, Code, false, 0);
+// MatColTL(1, h += 80, "Наименование", 0, M4Str, Normal, 200, Name, false, 0);
+// EndMatrix;
+// EndWindow; 
+
+WindowBegin("Типы классификаторов структуры", StTypeClDClass, CGview, 0);
+UseView(StTypeClVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Типы классификаторов структуры",StTypeClLClass, CGmlist, -);
+SpawnClass(StTypeClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(StTypeClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Типы классификаторов структуры",StTypeClSClass, CGslist, -);
+SpawnClass(StTypeClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(StTypeClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Классификации операций", WOClassDClass, CGview, 0);
+UseView(WOClassVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, TypeCl, false, StTypeClSClass);//
+EndWindow; 
+
+WindowBegin("Классификации операций",WOClassLClass, CGmlist, -);
+SpawnClass(WOClassDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(WOClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификации операций",WOClassSClass, CGslist, -);
+SpawnClass(WOClassDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(WOClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Отчет Журнал операций ГК", OperGKRClass, CGRcW, RcType);
+SetWRect(20,80,450,250);
+v = 6; vs = 20; h = 70; h1 = 150; h2 = 250; 
+EditFieldTL(h1, v += 20, 80, "Код операции", M4UStr, Normal, 21, f1, false, OperSClass);
+EditFieldTL(h1, v += 20, -39, "Классификаторы", M4UStr, Normal, 21, f2, false, WOClassSClass);
+
+CheckBox(h, v += 30 , 0, "Документы", flags[0]);
+CheckBox(h2, v , 0, "Оборудование", flags[1]);
+
+ButtonFrame(h, v += 40,123,2,"Статус");
+RadioButton(h, v,0,0,"подготовка",flags[2]);
+RadioButton(h, v = v + 16, 1,0,"работа",flags[2]);
+RadioButton(h, v = v + 16, 2,0,"архив",flags[2]);
+
+ButtonFrame(h2, v = v -30, 123, 2, "Функция");
+RadioButton(h2, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h2, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+//============================================================================ функции
+WindowBegin("Функции",FunDClass,CGview,-);
+SetWRect(20,80,750,350);
+//  Sizeable(0,-1,0,0);
+UseView(FunVc);
+Tile(0,80,false,"",Code);
+vs = 20; h=100; h1=250; h2=420; vs2 = 30;
+EditField(h,v=6, 120, "Код",Normal,Code,false,0);
+EditFieldTL(h, v += vs, -35, "Наименование", M4Str, Normal, 250, Name, false, 0);
+TileButton(1,"Общая информация");
+TileButton(2,"Операции и критерии");
+Tile(1,100,false,"1",ListCl);
+v=20;
+EditField(h1,v, 80, "Код бизнес-процесса",Normal,BPCode,false,0);
+EditField(h2,v,-35,"Наименование",Normal,BPName,false,0);
+EditField(h1,v+=vs, 80, "Код группы функций",Normal,GFCode,false,FunGrSClass);
+EditField(h2,v,-35,"Наименование",Normal,GFName,false,0);
+EditField(h,v+=30,-35, "Классификация", Normal, ListCl, false, FunClassSClass);
+ButtonFrame(h-80, v = v-52,70,2,"Статус");
+RadioButton(h-80, v,0,0,"подготовка",Status);
+RadioButton(h-80, v = v + 16, 1,0,"работа",Status);
+RadioButton(h-80, v = v + 16, 2,0,"архив",Status);
+Tile(2,170,false,"2",CostTime);
+v=6;
+EditField(h1+18,v,54, "Нормативное время выполнения функции, мин.",Normal,CostTime,false,0);
+EditField(h2+220,v,54, "Нормативное стоимость выполнения функции, грн.",Normal,Cost,false,0);
+EditField(h+33,v+=vs,-35, "Критерии мотивации",Normal,KrCode,false,VCrMotSClass);
+StaticText(20,v+=30,"Операции:",false); 
+MatrixBegin(20, v+=20, -39, -4,-,200);
+MatCol(1, 25, "Код", 0, OpCode, false, OperSClass);
+MatCol(1, 145, "Наименование", 0, OpName, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Функции",FunLClass, CGmlist, -);
+SpawnClass(FunDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(FunVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Группа функций", GFCode, false, GFCode);
+RlColKey(200, 200, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Функции",FunSClass, CGslist, -);
+SpawnClass(FunDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(FunVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Группа функций", GFCode, false, GFCode);
+RlColKey(200, 200, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Классификации функций", FunClassDClass, CGview, 0);
+UseView(FunClassVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, TypeCl, false, StTypeClSClass);//
+EndWindow; 
+
+WindowBegin("Классификации функций",FunClassLClass, CGmlist, -);
+SpawnClass(FunClassDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(FunClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификации функций",FunClassSClass, CGslist, -);
+SpawnClass(FunClassDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(FunClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Группы функций", FunGrDClass, CGview, 0);
+UseView(FunGrVc);
+SetWRect(64, 80, 550, 440);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 250, Name, false, 0);
+ButtonFrame(h, v+=40, 123, 4, "Учет времени");
+RadioButton(h, v, 0, 0, "Оперативное время", TimeType);
+RadioButton(h, v+=16, 1, 0,"Подготовительно-заключительное время", TimeType);
+RadioButton(h, v+=16, 2, 0,"Регламентированные перерывы", TimeType);
+RadioButton(h, v+=16, 3, 0,"Нерегламентированные перерывы", TimeType);
+EndWindow; 
+
+WindowBegin("Группы функций",FunGrLClass, CGmlist, -);
+SpawnClass(FunGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(FunGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Группы функций",FunGrSClass, CGslist, -);
+SpawnClass(FunGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(FunGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Отчет Журнал функций ГК", FunGKRClass, CGRcW, RcType);
+SetWRect(20,80,450,250);
+v = 6; vs = 20; h = 70; h1 = 150; h2 = 250; 
+EditFieldTL(h1, v += 20, 80, "Код функции", M4UStr, Normal, 21, f1, false, FunSClass);
+EditFieldTL(h1, v += 20, 80, "Код групп функций", M4UStr, Normal, 21, f3, false, FunGrSClass);
+EditFieldTL(h1, v += 20, -39, "Классификаторы", M4UStr, Normal, 21, f2, false, FunClassSClass);
+CheckBox(h-50, v += 30 , 0, "Документы", flags[0]);
+CheckBox(h1, v , 0, "Операции", flags[1]);
+CheckBox(h2+30, v , 0, "Критерии мотивации", flags[3]);
+ButtonFrame(h, v += 40,123,2,"Статус");
+RadioButton(h, v,0,0,"подготовка",flags[2]);
+RadioButton(h, v = v + 16, 1,0,"работа",flags[2]);
+RadioButton(h, v = v + 16, 2,0,"архив",flags[2]);
+ButtonFrame(h2, v = v -30, 123, 2, "Функция");
+RadioButton(h2, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h2, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+//================================================ Структурные подразделения
+WindowBegin("Структурное подразделение",StPodrDClass,CGview,-);
+SetWRect(20,80,750,350);
+//  Sizeable(0,-1,0,0);
+UseView(StPodrVc);
+FormName(PrintStPodrD);
+Tile(0,80,false,"",Code);
+vs = 20; h=100; h1=180; h2=350; vs2 = 30;
+EditField(h,v=6, 120, "Код",Normal,Code,false,0);
+EditField(h,v+=vs,-39,"Наименование",Normal,Name,false,0);
+TileButton(1,"Общая информация");
+TileButton(2,"Взаимодействие");
+Tile(1,170,false,"1",DirCode);
+v=20;
+EditField(h1,v, 80, "Код должности руководителя",Normal, DirCode,false,VPositionSClass); 
+EditField(h2,v,-39,"Наименование",Normal, DirName,false,0);
+EditField(h1,v+=vs, -39, "Коды должностей сотрудников",Normal, PostCode,false,VPositionSClass); 
+EditField(h1,v+=vs, -39, "Основные принципы работы",Normal, Principle,false,FragmSClass); 
+EditField(h,v+=vs, -39, "Основная цель",Normal, Purpose,false,FragmSClass); 
+EditField(h,v+=vs,-39, "Классификация", Normal, ListCl, false, PodrClassSClass);
+Tile(2,170,false,"2",NCoop);
+v=10;
+EditField(20,v,-39,"",Normal,NCoop,false,0);
+StaticText(20,v+=40,"Информация, получаемая от других подразделений и,  предоставляемая другим подразделениям",false); 
+MatrixBegin(20, v+=30, -39, -4,-,200);
+MatCol(1, 25, "Код ст.подр.", 0, StructCode, false, StPodrSClass);
+MatCol(1, 125, "Тип", 0, TypeDoc, false, TypeDocGKSClass);
+MatCol(1, 225, "Код вида док-та", 0, DocCode, false, DocsSClass);
+MatCol(1, 325, "Наименование вида документа", 0, DocName, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Структурные подразделения",StPodrLClass, CGmlist, -);
+SpawnClass(StPodrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(StPodrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Структурные подразделения",StPodrSClass, CGslist, -);
+SpawnClass(StPodrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(StPodrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Классификации подразделений", PodrClassDClass, CGview, 0);
+UseView(PodrClassVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 80, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, TypeCl, false, StTypeClSClass);//
+EndWindow; 
+
+WindowBegin("Классификации подразделений",PodrClassLClass, CGmlist, -);
+SpawnClass(PodrClassDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(PodrClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификации подразделений",PodrClassSClass, CGslist, -);
+SpawnClass(PodrClassDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(PodrClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Отчет Журнал структурных подразделений ГК", PodrGKRClass, CGRcW, RcType);
+SetWRect(20,80,450,250);
+v = 6; vs = 20; h = 70; h1 = 150; h2 = 250; 
+EditFieldTL(h1, v += 20, 80, "Код подразделения", M4UStr, Normal, 21, f1, false, StPodrSClass);
+EditFieldTL(h1, v += 20, -39, "Классификаторы", M4UStr, Normal, 21, f2, false, PodrClassSClass);
+CheckBox(h-50, v += 35 , 0, "Документы", flags[0]);
+CheckBox(h2-130, v , 0, "Критерии мотивации", flags[3]);
+CheckBox(h-50, v += 20, 0, "Операции", flags[1]);
+CheckBox(h2-130, v , 0, "Функции", flags[4]);
+CheckBox(h-50, v += 20 , 0, "Должности", flags[5]);
+// ButtonFrame(h, v += 40,123,2,"Статус");
+// RadioButton(h, v,0,0,"подготовка",flags[2]);
+// RadioButton(h, v = v + 16, 1,0,"работа",flags[2]);
+// RadioButton(h, v = v + 16, 2,0,"архив",flags[2]);
+ButtonFrame(h2+30, v = v - 15, 123, 2, "Функция");
+RadioButton(h2+30, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h2+30, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+WindowBegin("Документы",DocsSClass,CGslist,-)
+    SetWRect (20,80,750,210);
+    Sizeable (-1,-1,0,0);
+    v = 6; vs = 20; h = 100;
+	SpawnClass(DocsDClass);
+	UseView(DocsVc);	
+	RecordList(4,17,-21,-39);
+	RlColKey(4,4,"Код",Code,false,Code);
+	RlColKey(80,80,"Тип",DocType,false,DocType);
+	RlColKey(160,160,"Должн.",Post,False,Post);
+	RlColKey(240,240,"Вид.Д.",ActionType,false,ActionType);
+	RlColKey(320,320,"Наименование",Name,false,Name);
+	RlCol(620,620,"Дата посл.изм.",DateCh,false);
+	SearchField("Найти");
+EndWindow;
+
+WindowBegin("Отчет Журнал должностей ГК", PostGKRClass, CGRcW, RcType);
+SetWRect(20,80,450,250);
+v = 6; vs = 20; h = 70; h1 = 150; h2 = 250; 
+EditFieldTL(h1, v += 20, 80, "Код должности", M4UStr, Normal, 21, f1, false, VPositionSClass);
+EditFieldTL(h1, v += 20, -39, "Классификаторы", M4UStr, Normal, 21, f2, false, VClassPosSClass);
+EditFieldTL(h1, v += 20, -39, "Рабочие инстр.", M4UStr, Normal, 21, f3, false, IWorkEquipSClass);
+CheckBox(h, v += 35 , 0, "Документы", flags[0]);
+CheckBox(h, v += 20  , 0, "Критерии мотивации", flags[3]);
+CheckBox(h, v += 20 , 0, "Функции", flags[4]);
+CheckBox(h, v += 20 , 0, "Рабочие инстр.", flags[5]); //21.06.13 INAU
+ButtonFrame(h2, v = v - 20, 123, 2, "Функция");
+RadioButton(h2, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h2, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+WindowBegin("Фрагметы текста", FragmDClass, CGview, -);
+UseView(FragmVc);
+SetWRect(10, 80, 730, 400);
+Sizeable(-1, -1, 0, 0);
+vs = 20; h = 100; v = 30; 
+EditField(h+15, v, 80, "Код фрагмента", Normal, CodeFr, False, 0);
+EditField(h+15, v += vs, 80, "Код документа", Normal, CodeDoc, False, DocNameSClass);
+EditField(h+250, v , -30, "Наименование документа", Normal, NameDoc, False, 0);
+EnterSkip(Math);
+TextField(h-70, v += 30, -30, -30, Math, 0);
+EndWindow;
+
+WindowBegin("Фрагметы текста",FragmSClass,CGslist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(FragmDClass);
+UseView(FragmVc);	
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код фрагмента",CodeFr,false,CodeFr);
+RlColKey(100,100,"Код документа",CodeDoc,false,CodeDoc);
+RlColKey(200,200,"Наименование документа",NameDoc,false,NameDoc);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Фрагметы текста",FragmLClass,CGmlist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(FragmDClass);
+UseView(FragmVc);	
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код фрагмента",CodeFr,false,CodeFr);
+RlColKey(100,100,"Код документа",CodeDoc,false,CodeDoc);
+RlColKey(200,200,"Наименование документа",NameDoc,false,NameDoc);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Названия документов", DocNameTClass, CGHbl, HBlRecType);
+SetBlid(DocNameBlock);
+SetWRect(64, 80, 550, 440);
+v = 10; vs = 20; h = 30; 
+MatrixBegin(4, 20, -31, -20, DocNameRowType, 99);
+MatColTL(1, h, "Код", 0, M4Code, Normal, 200, Code, false, 0);
+MatColTL(1, h += 80 , "Наименование", 0, M4Str, Normal, 20, Name, false, 0);
+EndMatrix;
+EndWindow; 
+
+WindowBegin("Имена документов", DocNameSClass,CGother,-);
+SetWRect (20,80,450,300);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,209);
+EndWindow;
+
+WindowBegin("Имена документов", TypeDocGKSClass,CGother,-);
+SetWRect (20,80,450,300);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,209);
+EndWindow;
+
+WindowBegin("Образование", tEducationDClass, CGview, -);
+UseView(tEducationVc);
+SetWRect(10, 80, 730, 150);
+vs = 20; h = 100; v = 30; 
+EditField(h+15, v, 80, "Код", Normal, Code, False, 0);
+EditField(h+250, v , -30, "Наименование", Normal, Name, False, 0);
+EndWindow;
+
+WindowBegin("Образование",tEducationLClass,CGmlist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(tEducationDClass);
+UseView(tEducationVc);	
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код",Code,false,Code);
+RlColKey(100,100,"Наименование",Name,false,Name);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Образование",tEducationSClass,CGslist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(tEducationDClass);
+UseView(tEducationVc);	
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код",Code,false,Code);
+RlColKey(100,100,"Наименование",Name,false,Name);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Основные знания", tBasicKnowDClass, CGview, -);
+UseView(tBasicKnowVc);
+SetWRect(10, 80, 730, 150);
+vs = 20; h = 100; v = 30; 
+EditField(h+15, v, 80, "Код", Normal, Code, False, 0);
+EditField(h+250, v , -30, "Наименование", Normal, Name, False, 0);
+EndWindow;
+
+WindowBegin("Основные знания",tBasicKnowLClass,CGmlist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(tBasicKnowDClass);
+UseView(tBasicKnowVc);	
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код",Code,false,Code);
+RlColKey(100,100,"Наименование",Name,false,Name);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Основные знания",tBasicKnowSClass,CGslist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(tBasicKnowDClass);
+UseView(tBasicKnowVc);	
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код",Code,false,Code);
+RlColKey(100,100,"Наименование",Name,false,Name);
+SearchField("Найти");
+EndWindow;
+
+
+WindowBegin("Основные умения", BasicSkillDClass, CGview, -);
+UseView(BasicSkillVc);
+SetWRect(10, 80, 730, 150);
+vs = 20; h = 100; v = 30; 
+EditField(h+15, v, 80, "Код", Normal, Code, False, 0);
+EditField(h+250, v , -30, "Наименование", Normal, Name, False, 0);
+EndWindow;
+
+WindowBegin("Основные умения", BasicSkillLClass, CGmlist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(BasicSkillDClass);
+UseView(BasicSkillVc);
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код",Code,false,Code);
+RlColKey(100,100,"Наименование",Name,false,Name);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Основные умения", BasicSkillSClass, CGslist,-)
+SetWRect (20,80,750,210);
+Sizeable (-1,-1,0,0);
+v = 6; vs = 20; h = 100;
+SpawnClass(BasicSkillDClass);
+UseView(BasicSkillVc);
+RecordList(4,17,-21,-39);
+RlColKey(4,4,"Код",Code,false,Code);
+RlColKey(100,100,"Наименование",Name,false,Name);
+SearchField("Найти");
+EndWindow;
+
+ return;
+end;
+
+
+global
+function Boolean OperDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record OperVc Opr;
+row OperVc Oprw;
+record DocsVC Docr;
+Boolean res;
+
+if (changed <> 0) and (fieldname == "DocCode")then 
+	begin
+	GetWindowRecord(wn, Opr);
+	MatRowGet(Opr, rownr, Oprw);
+	Docr.Code = Oprw.DocCode;
+	if ReadFirstMain(Docr, 1, True) then
+		begin
+		Oprw.DocName = Docr.Comment; 
+		end;
+	MatRowPut(Opr, rownr, Oprw);
+	PutWindowRecord(wn, Opr);
+	end;
+OperDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+procedure OperGKRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "OperGKRClass");  
+//RepSpec.f1 = CurrentUser;
+RepSpec.flags[2] = -1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+global
+function Boolean FunDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record FunVc Fnr;
+row FunVc Fnrw;
+record OperVc Opr;
+record DocVC Docr;
+Boolean res;
+record FunGrVc FnGr;
+integer RwCnt;
+
+if (changed <> 0) and (fieldname == "GFCode")then 
+	begin
+	GetWindowRecord(wn, Fnr);
+	ResetLoop(FnGr);
+	while (LoopMain(FnGr, 1, true))
+		begin
+		if FnGr.Code == Fnr.GFCode then
+			begin
+			Fnr.GFName = FnGr.Name; 
+			end;
+		end;
+	PutWindowRecord(wn, Fnr);
+	end;	
+if (changed <> 0) and (fieldname == "OpCode")then 
+	begin
+	GetWindowRecord(wn, Fnr);
+	MatRowGet(Fnr, rownr, Fnrw);
+	Opr.Code = Fnrw.OpCode;
+	if ReadFirstMain(Opr, 1, True) then
+		begin
+		Fnrw.OpName = Opr.Name; 
+		end;
+	MatRowPut(Fnr, rownr, Fnrw);
+	PutWindowRecord(wn, Fnr);
+	end;
+	
+FunDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+procedure FunGKRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "FunGKRClass");  
+//RepSpec.f1 = CurrentUser;
+RepSpec.flags[2] = -1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+global
+function Boolean StPodrDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record StPodrVc SPr;
+row StPodrVc SPrw;
+record OperVc Opr;
+record DocsVC Docr;
+Boolean res;
+integer RwCnt;
+record VPositionVc VPr;
+
+
+if (changed <> 0) and (fieldname == "DirCode")then 
+	begin
+	GetWindowRecord(wn, SPr);
+	VPr.Code = SPr.DirCode;
+	if ReadFirstMain(VPr, 1, True) then
+		begin
+		SPr.DirName = VPr.Name; 
+		end;
+	PutWindowRecord(wn, SPr);
+	end;	
+if (changed <> 0) and (fieldname == "DocCode")then 
+	begin
+	GetWindowRecord(wn, SPr);
+	MatRowGet(SPr, rownr, SPrw);
+	Docr.Code = SPrw.DocCode;
+	if ReadFirstMain(Docr, 1, True) then
+		begin
+		SPrw.DocName = Docr.Comment; 
+		end;
+	MatRowPut(SPr, rownr, SPrw);
+	PutWindowRecord(wn, SPr);
+	end;
+	
+StPodrDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+function Boolean DocNameSClassOnOpenWindow(integer wn)
+begin
+record DocNameBlock SCb;
+row DocNameBlock SCbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(SCb);
+for (RwCnt = 0; RwCnt < MatRowCnt(SCb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(SCb, RwCnt, SCbr);
+  SetListString(wn, RwCnt, SCbr.Code & ":" & "   " & SCbr.Name, false);
+  end;
+DocNameSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean DocNameSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+DocNameSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean FragmDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record DocNameBlock DNb;
+row DocNameBlock DNbr;
+record FragmVc Fr;
+integer RwCnt;
+Boolean res;
+
+BlockLoad(DNb);
+if (changed <> 0) and (fieldname == "CodeDoc")then 
+	begin
+	GetWindowRecord(wn, Fr);
+	for (RwCnt = 0; RwCnt < MatRowCnt(DNb); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(DNb, RwCnt, DNbr);
+		if DNbr.Code == Fr.CodeDoc then
+			begin
+			Fr.NameDoc = DNbr.Name; 
+			end;
+		end;
+	PutWindowRecord(wn, Fr);	
+	end;
+FragmDClassAfterEditField = res;
+RETURN;
+END;
+
+
+global
+function Boolean TypeDocGKSClassOnOpenWindow(integer wn)
+begin
+Boolean res;
+SetListString(wn, 0, "PROVID: Предоставляемая информация" , false);
+SetListString(wn, 1, "RECEIV: Получаемая информация", false);
+TypeDocGKSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean TypeDocGKSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+TypeDocGKSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+procedure ListClInfo()
+begin
+record OperVc Opr;
+record WOClassVc WOr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Opr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Opr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Opr.ListCl, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	WOr.Code = ClassCode;
+	if ReadFirstMain(WOr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, WOr.Code & ": " & WOr.Name, false);
+		end;
+	ExtractObj(Opr.ListCl, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure EquipCodeInfo()
+begin
+record OperVc Opr;
+record AT2UnitVc ATr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Opr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Opr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Opr.EquipCode, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	ATr.InventoryNr = ClassCode;
+	if ReadFirstMain(ATr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, ATr.InventoryNr & ": " & ATr.Description, false);
+		end;
+	ExtractObj(Opr.EquipCode, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure FDocInfo()
+begin
+record OperVc Opr;
+record DocVc Dr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Opr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Opr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Opr.FDoc, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	Dr.Code = ClassCode;
+	if ReadFirstMain(Dr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, Dr.Code & ": " & Dr.Comment, false);
+		end;
+	ExtractObj(Opr.FDoc, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure tBasicKnowInfo()
+begin
+record VPositionVc VPr;
+record tBasicKnowVc BKr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.BasicKnow, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BKr.Code = ClassCode;
+	if ReadFirstMain(BKr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BKr.Code & ": " & BKr.Name, false);
+		end;
+	ExtractObj(VPr.BasicKnow, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure tEducationInfo()
+begin
+record VPositionVc VPr;
+record tEducationVc tEr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.Education, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	tEr.Code = ClassCode;
+	if ReadFirstMain(tEr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, tEr.Code & ": " & tEr.Name, false);
+		end;
+	ExtractObj(VPr.Education, pos, ClassCode);
+	end;
+RETURN;
+end;

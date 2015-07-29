@@ -1,0 +1,69 @@
+// 1000001:1000002
+/*global
+updating procedure ExportIVVcRn(record RcVc RepSpec)
+begin
+record IVVc IVr;
+	
+    if nonblank(RepSpec.f1) then 
+	begin
+	IVr.SerNr = (RepSpec.f1);
+	if ReadFirstMain(IVr, 1, True) then
+	    begin
+	    RecordDelete(IVr);
+	    end;
+	end;
+return;
+end;
+*/
+
+global
+procedure ExportIVVcRn(record RcVc RepSpec)
+begin
+	Record TRVc TRr;
+	Record IVVc IVr;
+	Boolean TrHs;
+	LongInt Nr;
+	Date d1,d2;
+	
+	ExportFormat;
+	TrHs = true;
+	switch (RepSpec.Stext)
+	begin
+	case "IVVc":
+		if nonblank(RepSpec.f1) then 
+		begin
+			IVr.SerNr = FirstInRange(RepSpec.f1,20);
+			Nr = LastInRange(RePSpec.f1,20);
+			end else begin
+			TrHs = false;
+		end;
+		while (LoopMain(IVr,1,TrHs)) 
+		begin
+			TrHs = (IVr.SerNr <= Nr);
+			if TrHs then 
+			begin
+				ExportRecord(IVr);
+				NewLine;
+			end;
+		end;
+	case "TRVc":
+		if nonblank(RepSpec.f5) then
+		begin
+			d1 = FirstInRange(RepSpec.f5,20);
+			d2 = LastInRange(RepSpec.f5,20);
+			//stopalert("1   " & d1 & "  " & d2);
+			TRr.TransDate = d1;
+			trhs = true;
+			while(LoopKey("TransDate",TRr,1,trhs))
+			begin
+				trhs = TRr.TransDate <= d2;
+				if TrHs then 
+				begin
+					ExportRecord(TRr);
+					NewLine;
+				end;
+			end;
+		end;
+	end;
+	return;
+end;

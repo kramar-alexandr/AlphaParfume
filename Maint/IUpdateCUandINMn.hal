@@ -1,0 +1,191 @@
+external function boolean ISetInSet(string, string);
+external function string 255 IAddToSet(string, string);
+
+//Обновляем поля CUVc
+//Формат импорта: Код, Прейскурант, Таблица скидок, Курс
+global
+updating procedure IUpdateCUIn()
+begin
+  string 60 Code, PLCode, RebCode, VECustID;
+  record CUVc CUr, oldCUr;
+
+  SetLangMode(LangRussian,"RUS",2);
+
+  while (not TestEOF)
+    begin
+      Code = ImportField;
+//      PLCode = ImportField;
+      RebCode = ImportField;
+//      VECustID = ImportField;
+
+      CUr.Code = Code;
+      if ReadFirstMain(CUr, 1, true) then
+        begin
+//          CUr.PLCode = PLCode;
+          CUr.RebCode = RebCode;
+//          CUr.VECustID = ""; //VECustID;
+          RecordCopy(oldCUr, CUr);
+          RecordUpdate(oldCUr, CUr, false);
+        end
+      else
+        begin
+          StopAlert(Code & " не найден");
+        end;
+
+      NextImportLine(true);
+    end;
+
+  Return;
+end;
+
+//Импортируем поле Name2 регистра CUVc
+//Формат импорта: Код, Имя
+global
+updating procedure IUpdateName2INIn()
+begin
+  string 60 Code, Name2;
+  record INVc INr, oldINr;
+
+  SetLangMode(LangRussian,"RUS",2);
+
+  while (not TestEOF)
+    begin
+      Code = ImportField;
+      Name2 = ImportField;
+
+      INr.Code = Code;
+      if ReadFirstMain(INr, 1, true) then
+        begin
+          INr.Name2 = Name2;
+          RecordCopy(oldINr, INr);
+          RecordUpdate(oldINr, INr, false);
+        end
+      else
+        begin
+          StopAlert(Code & " не найден");
+        end;
+
+      NextImportLine(true);
+    end;
+
+  Return;
+end;
+
+//Обновляем Группы в INVc
+function boolean NewINGroup(record INVc INr, var record INVc newINr, string DispGroups, string CodeRange, string NewGroup)
+begin
+  boolean res;
+
+  res = (nonblank(DispGroups) and SetInSet(DispGroups, INr.DispGroups)) or
+        (nonblank(CodeRange) and ISetInSet(INr.Code, CodeRange));
+
+  if (res) then
+    begin
+      newINr.Code = INr.Code;
+      ReadFirstMain(newINr, 1, true);
+      newINr.Group = NewGroup;
+    end;
+
+  NewINGroup = res;
+  Return;
+end;
+
+
+global
+updating procedure IUpdateINMn(record RcVc RepSpec)
+begin
+  record INVc INr, newINr;
+  boolean changed;
+
+  ResetLoop(INr);
+  while (LoopMain(INr, 1, true))
+    begin
+      changed = false;
+
+      if (INr.Terminated == 1) then
+        begin
+          newINr.Code = INr.Code;
+          ReadFirstMain(newINr, 1, true);
+          newINr.Group = "ZZZ";
+          changed = true;
+        end
+      else
+        begin
+          changed = changed or NewINGroup(INr, newINr, "MEALM", "", "ALM");
+          changed = changed or NewINGroup(INr, newINr, "MEARC", "", "ARC");
+          changed = changed or NewINGroup(INr, newINr, "KSART", "", "ART");
+          changed = changed or NewINGroup(INr, newINr, "MNBEL", "", "BEL");
+          changed = changed or NewINGroup(INr, newINr, "MEBLX", "", "BEL");
+          changed = changed or NewINGroup(INr, newINr, "BR", "", "BR");
+          changed = changed or NewINGroup(INr, newINr, "MNBEA", "", "BTM");
+          changed = changed or NewINGroup(INr, newINr, "MEBEX", "", "BTM");
+          changed = changed or NewINGroup(INr, newINr, "MECEP", "", "CEP");
+          changed = changed or NewINGroup(INr, newINr, "CO", "", "CO");
+          changed = changed or NewINGroup(INr, newINr, "MECOR", "", "COR");
+          changed = changed or NewINGroup(INr, newINr, "DP", "", "DP");
+          changed = changed or NewINGroup(INr, newINr, "EL", "", "EL");
+          changed = changed or NewINGroup(INr, newINr, "MEEMP", "", "EMP");
+          changed = changed or NewINGroup(INr, newINr, "MEETE", "", "ETE");
+          changed = changed or NewINGroup(INr, newINr, "MEFRF", "", "FRF");
+          changed = changed or NewINGroup(INr, newINr, "MEFRI", "", "FRI");
+          changed = changed or NewINGroup(INr, newINr, "MEGLO", "", "GLO");
+          changed = changed or NewINGroup(INr, newINr, "MEJEA", "", "JEA");
+          changed = changed or NewINGroup(INr, newINr, "MEKRS", "", "KRS");
+          changed = changed or NewINGroup(INr, newINr, "MELAR", "", "LAR");
+          changed = changed or NewINGroup(INr, newINr, "MELTV", "", "LTV");
+          changed = changed or NewINGroup(INr, newINr, "MEPAR", "", "PAR");
+          changed = changed or NewINGroup(INr, newINr, "PR", "", "PR");
+          changed = changed or NewINGroup(INr, newINr, "MEPRC", "", "PRC");
+          changed = changed or NewINGroup(INr, newINr, "MEPRF", "", "PRF");
+          changed = changed or NewINGroup(INr, newINr, "MEPRR", "", "PRR");
+          changed = changed or NewINGroup(INr, newINr, "MERAS", "", "RAS");
+          changed = changed or NewINGroup(INr, newINr, "MEREM", "", "REM");
+          changed = changed or NewINGroup(INr, newINr, "MEREN", "", "REN");
+          changed = changed or NewINGroup(INr, newINr, "MESAP", "", "SAP");
+          changed = changed or NewINGroup(INr, newINr, "MESAU", "", "SAU");
+          changed = changed or NewINGroup(INr, newINr, "MESHM", "", "SHM");
+          changed = changed or NewINGroup(INr, newINr, "TE", "", "TE");
+
+          changed = changed or NewINGroup(INr, newINr, "", "KS15010:KS15052", "AQS");
+          changed = changed or NewINGroup(INr, newINr, "", "MM33915:MM33914", "CHS");
+          changed = changed or NewINGroup(INr, newINr, "", "KS15390:KS15420", "CSL");
+          changed = changed or NewINGroup(INr, newINr, "", "KS15601:KS15631", "FLC");
+          changed = changed or NewINGroup(INr, newINr, "", "KS15481:KS15558", "GRS");
+          changed = changed or NewINGroup(INr, newINr, "", "KS18001:KS18708", "MDM");
+          changed = changed or NewINGroup(INr, newINr, "", "KS15150:KS15248", "SOL");
+          changed = changed or NewINGroup(INr, newINr, "", "KS15281:KS15348", "TRP");
+        end;
+
+      if (changed) then
+        begin
+          RecordUpdate(INr, newINr, false);
+        end;
+
+    end;
+  Return;
+end;
+
+//Code MMxxxxxx -> DispGroups MM
+global
+updating procedure IUpdateMMDispGroupsMn(record RcVc RepSpec)
+begin
+  record INVc INr, newINr;
+  boolean cont;
+
+  ResetLoop(INr);
+  INr.Code = "KS";
+  cont = true;
+  while (LoopMain(INr, 1, cont))
+    begin
+      cont = left(INr.Code, 2) == "KS";
+      if (cont) and (INr.Terminated <> 1) then
+        begin
+          newINr.Code = INr.Code;
+          ReadFirstMain(newINr, 1, true);
+          newINr.DispGroups = IAddToSet("KS", newINr.DispGroups);
+          RecordUpdate(INr, newINr, false);
+        end;
+    end;
+
+  Return;
+end;

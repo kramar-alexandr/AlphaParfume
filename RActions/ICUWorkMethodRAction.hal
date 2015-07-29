@@ -1,0 +1,326 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function string 255 IAddToSet(string, string);
+external procedure IOutStringLenWrap(integer, string, string, boolean, integer);
+
+//===============================================
+//Классификация методик работы с клиентами ГК
+//===============================================
+global
+function Boolean ICUWorkMethodClassVcRecordDuplicate(var record ICUWorkMethodClassVc CWMCr, record ICUWorkMethodClassVc CWMC2r, longint stat, longint check)
+begin
+  longint res;
+
+  CWMCr.Code = blankval;
+  ICUWorkMethodClassVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICUWorkMethodClassVcRecordCheck(var record ICUWorkMethodClassVc CWMCr, record ICUWorkMethodClassVc CWMC2r, longint stat, longint check)
+begin
+  record ICUWorkMethodClassVc parentCWMCr;
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(CWMCr.Code) then
+    begin
+      RecordCheckError(1499, "Укажите код класса!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(CWMCr.Desc) then
+    begin
+      RecordCheckError(1499, "Укажите наименование класса", -1, "Desc");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(CWMCr.Parent) then
+    begin
+      parentCWMCr.Code = CWMCr.Parent;
+      if not ReadFirstMain(parentCWMCr, 1, true) then
+        begin
+          RecordCheckError(1499, "Некорректная иерархия", -1, "Parent");
+          res = -1;
+        end;
+    end;
+
+  ICUWorkMethodClassVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+//Методики работы с клиентами ГК
+//===============================================
+global
+function Boolean ICUWorkMethodVcRecordDuplicate(var record ICUWorkMethodVc CWMr, record ICUWorkMethodVc CWM2r, longint stat, longint check)
+begin
+  longint res;
+
+  CWMr.Code = blankval;
+  ICUWorkMethodVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+//Проверка строки класификации методик
+function boolean ClassSetCheck(string ClassStr, var string ErrCode)
+begin
+  record ICUWorkMethodClassVc CWMCr;
+  integer i, cnt;
+  string 60 MClass;
+  boolean res;
+  
+  res = true;
+  ErrCode = blankval;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      MClass = IGetItemFromStr(ClassStr, i);
+      CWMCr.Code = MClass;
+      res = res and ReadFirstMain(CWMCr, 1, true);
+    end;
+
+  if not res then
+    begin
+      ErrCode = MClass;
+    end;
+
+  ClassSetCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICUWorkMethodVcRecordCheck(var record ICUWorkMethodVc CWMr, record ICUWorkMethodVc CWM2r, longint stat, longint check)
+begin
+  longint res;
+  string 60 ErrCode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(CWMr.Code) then
+    begin
+      RecordCheckError(1499, "Укажите код методики!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(CWMr.Name) then
+    begin
+      RecordCheckError(1499, "Укажите наименование методики", -1, "Name");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(CWMr.MethodClass) and not ClassSetCheck(CWMr.MethodClass, ErrCode) then
+    begin
+      RecordCheckError(1120, ErrCode, -1, "MethodClass");
+      res = -1;
+    end;
+
+  ICUWorkMethodVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+//Отчет "Методики работы с клиентами ГК"
+//===============================================
+function string 100 MethodClassName(string Code)
+begin
+  record ICUWorkMethodClassVc CWMCr;
+
+  CWMCr.Code = Code;
+  ReadFirstMain(CWMCr, 1, true);
+  MethodClassName = CWMCr.Desc;
+  Return;
+end;
+
+//===============================================
+function string 100 MethodParentName(string Code)
+begin
+  record ICUWorkMethodClassVc CWMCr, parentCWMCr;
+
+  CWMCr.Code = Code;
+  ReadFirstMain(CWMCr, 1, true);
+  parentCWMCr.Code = Code;
+  ReadFirstMain(parentCWMCr, 1, true);
+  MethodParentName = parentCWMCr.Desc;
+  Return;
+end;
+
+//===============================================
+function string 60 StatusName(integer Type)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (Type)
+    begin
+      case 0: StatusName = "Подготовка";
+      case 1: StatusName = "В работе";
+      case 2: StatusName = "Архив";
+    end;
+  Return;
+end;
+
+//===============================================
+procedure OutCriteria(string MethodClass)
+begin
+  integer i, cnt;
+  string 20 ClassName;
+  string 100 ClassCode, ParentName;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  StartFormat(15);
+  cnt = IItemCountInStr(MethodClass);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      ClassCode = IGetItemFromStr(MethodClass, i);
+      ClassName = MethodClassName(ClassCode);
+      ParentName = MethodParentName(ClassCode);
+      OutString(5, 0, ParentName, false);
+      OutString(6, "DblICUWorkMetClassVc", ClassCode, false);
+      OutString(7, 0, ClassName, false);
+      EndFormat;
+      Gray_Divider(0, 1);
+    end;
+  Return;
+end;
+  
+//===============================================
+procedure ICUWorkMethodRepTopLine(record RcVc RepSpec)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  StartFormat(15);
+  OutString(2, 0, "Код", false);
+  OutString(3, 0, "Наименование", false);
+  OutString(4, 0, "Класс. контакта", false);
+  EndFormat;
+  if (RepSpec.ArtMode == 1) then
+    begin
+    Gray_Divider(0, 1);
+    OutString(5, 0, "Наименование", false);
+    OutString(6, 0, "Код", false);
+    OutString(7, 0, "Описание", false);
+    EndFormat;
+    Black_Divider(0, 1);
+    end
+  else
+    begin
+    Black_Divider(0, 1);
+    end;
+  EndFormat;
+  Return;
+end;
+
+//===============================================
+procedure ICUWorkMethodRepHeader(record RcVc RepSpec)
+begin
+  integer rw;
+  string 255 tstr;
+
+  SetLangMode(LangRussian,"RUS", 2);
+  rw=2;
+  if nonblank(RepSpec.f1) then
+    begin
+    Header(rw, "Код методики: " & RepSpec.f1, 0);
+    rw = rw + 1;
+    end;
+
+  if nonblank(RepSpec.f2) then
+    begin
+    Header(rw, "Классификация методики: " & RepSpec.f2, 0);
+    rw = rw + 1;
+    end;
+
+  if nonblank(RepSpec.f3) then
+    begin
+    Header(rw, "Классификация контакта: " & RepSpec.f3, 0);
+    rw = rw + 1;
+    end;
+
+  if (RepSpec.ArtMode == 0) then
+    begin
+    tstr = "Сводный";
+    end
+  else
+    begin
+    tstr = "Подробный";
+    end;
+  tstr = IAddToSet(StatusName(RepSpec.flags[0]), tstr);
+  Header(rw, tstr, 0);
+  Return;
+end;
+
+//===============================================
+global
+procedure ICUWorkMethodRn(record RcVc RepSpec)
+begin
+  record  ICUWorkMethodVc CWMr;
+  boolean cont;
+  integer Cnt;
+  string 60 KeyStr;
+
+  SetLangMode(LangRussian,"RUS", 2);
+
+  StartReportJob("Методики работы с клиентами ГК");
+  ICUWorkMethodRepHeader(RepSpec);
+  EndHeader;
+
+  SetRepCol(2, 2);
+  SetRepCol(3, 80);
+  SetRepCol(4, 320);
+  SetRepCol(5, 40);
+  SetRepCol(6, 200);
+  SetRepCol(7, 260);
+  ICUWorkMethodRepTopLine(RepSpec);
+
+  if nonblank(RepSpec.f3)
+    begin
+    KeyStr = "CUClassification:" & IGetItemFromStr(RepSpec.f3, 0);
+    end
+  else
+    begin
+    KeyStr = "Code";
+    end;
+
+  Cnt = 0;
+  cont = true;
+  CWMr.Code = RepSpec.f1;
+  while LoopKey(KeyStr, CWMr, 1, cont)
+    begin
+      cont = blank(RepSpec.f1) or (CWMr.Code == RepSpec.f1);
+      if cont and (blank(RepSpec.f2) or SetInSet(RepSpec.f2, CWMr.MethodClass))
+              and (blank(RepSpec.f3) or SetInSet(CWMr.CUClassification, RepSpec.f3))
+              and (CWMr.Status == RepSpec.flags[0]) then
+        begin
+          Cnt = Cnt + 1;
+          StartFormat(15);
+          OutString(2, "DblICUWorkMethodVc", CWMr.Code, false);
+          OutString(3, 0, CWMr.Name, false);
+//          OutString(4, 0, StatusName(CWMr.Status), false);
+          OutString(4, 0, CWMr.CUClassification, false);
+          EndFormat;
+          if (RepSpec.ArtMode == 1) then
+            begin
+            OutCriteria(CWMr.MethodClass);
+            Black_Divider(0, 1);
+            end
+          else
+            begin
+            Gray_Divider(0, 1);
+            end;
+        end;
+    end;
+
+  StartFormat(15);
+  OutString(2, 0, "Всего:", false);
+  OutString(3, 0, Cnt, false);
+  EndFormat;
+
+  EndJob;
+  Return;
+end;

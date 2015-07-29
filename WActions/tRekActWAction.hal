@@ -1,0 +1,446 @@
+external function string 255 IGetDepName(string);
+
+event DefineWindows
+begin
+record tVTicketsVc TVr;
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+v = 6; h = 130;  vs = 20; h1 = 150;  h2 = 200; h4 = -250; 
+//=================================================================================== 
+WindowBegin("Рекламные мероприятия ГК",tRekActDClass,CGview,-);
+SetWRect(20,80,750,400);
+UseView(tRekActVc);
+Tile(0,80,false,"",Code);
+EditFieldTL(h, v = 15 , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, -30, "Наименование", M4Str, Normal, 250, Name, false, 0);
+TileButton(1,"Общая информация");
+TileButton(2,"План");
+TileButton(3,"Факт");
+Tile(1,470,false,"1",VECode);
+v = 10;
+EditFieldTL(h, v += vs, 80, "Код поставщика", M4Code, Normal, 20, VECode, false, VESClass);
+EditFieldTL(h2+30, v, -200, "", M4Str, Normal, 250, VEName, false, 0);
+EditFieldTL(h, v += vs, -200, "Классификация", M4UStr, Normal, 250, ListCl, false, tRekActClSClass);
+ButtonFrame(h3=-180, v=25, 100, 3, "Статус");
+RadioButton(h3, v, 0, 0, "Подготовка", Status);
+RadioButton(h3, v+=16, 1, 0, "Работа", Status);
+RadioButton(h3, v+=16, 2, 0, "Архив", Status);
+Tile(2,470,false,"2",DataStPl);
+v = 10;
+EditFieldTL(h2, v += vs, 80, "Дата начала проведения план", M4Date, Normal, 20, DataStPl, false, PasteCurDate);
+EditFieldTL(h4, v, 80, "Дата конца проведения план", M4Date, Normal, 20, DataFinPl, false, PasteCurDate);
+EditFieldTL(h2, v += vs, 80, "Планируемый объем выпуска", M4Val, Normal, 20, VolPl, false, 0);
+StaticText(20,v+=35,"Описание условий проведения",false);
+TextField(20, v += 10, -21, -30, Math, 0);
+Tile(3,470,false,"3",DataStF);
+v = 10;
+EditFieldTL(h2, v += vs, 80, "Дата начала проведения факт", M4Date, Normal, 20, DataStF, false, PasteCurDate);
+EditFieldTL(h4, v, 80, "Дата конца проведения факт", M4Date, Normal, 20, DataFinF, false, PasteCurDate);
+EditFieldTL(h2, v += vs, 80, "Фактический объем выпуска", M4Val, Normal, 20, VolF, false, 0);
+EditFieldTL(h2, v += vs, -30, "Описание результатов проведения", M4Str, Normal, 250, tStrF, false, 0);
+MatrixBegin(20, v += 40, -40, -20,-,200);
+MatCol(1, 25, "Филиал", 0, DepCode, false, DepSClass);
+MatCol(1, 125, "Наименование", 0, DepName, false, 0);
+MatCol(1, -120, "Кол-во", 0, KolPl, false, 0);
+//MatCol(1, -60, "Кол-во факт", 0, KolF, false, 0);
+EndMatrix;
+CheckBox(h2, -20 , 0, "Отметка об успешности проведения", OkFlag);
+EndWindow;
+
+WindowBegin("Рекламные мероприятия ГК",tRekActLClass, CGmlist, -);
+SpawnClass(tRekActDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRekActVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Рекламные мероприятия ГК",tRekActSClass, CGslist, -);
+SpawnClass(tRekActDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRekActVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Рекламные мероприятия ГК. Классификация", tRekActClDClass, CGview, 0);
+UseView(tRekActClVc);
+SetWRect(64, 80, 550, 300);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, tRekActGrSClass);
+// StaticText(25,v+=35,"Примечания",false);
+// TextField(25, v += 5, -21, -20, Math, 0);
+EndWindow; 
+
+WindowBegin("Рекламные мероприятия ГК. Классификация",tRekActClLClass, CGmlist, -);
+SpawnClass(tRekActClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRekActClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Рекламные мероприятия ГК. Классификация",tRekActClSClass, CGslist, -);
+SpawnClass(tRekActClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRekActClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Рекламные мероприятия ГК. Группы классификаций", tRekActGrDClass, CGview, 0);
+UseView(tRekActGrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Рекламные мероприятия ГК. Группы классификаций", tRekActGrLClass, CGmlist, -);
+SpawnClass(tRekActGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRekActGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Рекламные мероприятия ГК. Группы классификаций",tRekActGrSClass, CGslist, -);
+SpawnClass(tRekActGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRekActGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Рекламные мероприятия ГК", tRekActRClass,CGRcW,RcType);
+SetWRect(20,80,450,280);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+PeriodField(h1,v,"Период");
+EditFieldTL(h1, v += 20, 80, "Код мероприятия", M4UStr, Normal, 21, f1, false, tRekActSClass);
+EditFieldTL(h1, v += 20, 80, "Код поставщика", M4UStr, Normal, 21, f2, false, VESClass);
+EditFieldTL(h1, v += 20, 80, "Классификация", M4UStr, Normal, 21, f3, false, tRekActClSClass);
+ButtonFrame(h1, v += 40, 123, 2, "Функция");
+RadioButton(h1, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h1, v += 20, 1, 0, "Подробный",ArtMode);
+ButtonFrame(h1, v += 40, 100, 3, "Статус");
+RadioButton(h1, v, 0, 0, "Подготовка", flags[1]);
+RadioButton(h1, v += 16, 1, 0, "Работа", flags[1]);
+RadioButton(h1, v += 16, 2, 0, "Архив", flags[1]);
+EndWindow; 
+//===================================================================================
+v = 6; h = 180;  vs = 20; h1 = 250;  h2 = 400;
+//=================================================================================== 
+WindowBegin("Сегменты рынка",tMarkSegDClass,CGview,-);
+SetWRect(20,80,950,350);
+UseView(tMarkSegVc);
+Tile(0,100,false,"",Code);
+EditFieldTL(h, v = 15 , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, -30, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, -30, "Классификация", M4UStr, Normal, 250, ListCl, false, tMarkSegClSClass);
+TileButton(1,"Потребители");
+TileButton(2,"Конкуренты");
+TileButton(3,"Товары");
+TileButton(4,"Перспективы развития");
+Tile(1,470,false,"1",tStr1);
+v = 10;
+EditFieldTL(h2, v += vs, -30, "Описание покупателей, которые покупают регулярно", M4Str, Normal, 250, tStr1, false, 0);
+EditFieldTL(h2, v += vs, -30, "Описание покупателей, которые покупают товар ГК, но редко или могут брать товар конкурентов", M4Str, Normal, 250, tStr2, false, 0);
+EditFieldTL(h2, v += vs, -30, "Описание покупателей, которые никогда не покупают товар ГК", M4Str, Normal, 250, tStr3, false, 0);
+EditFieldTL(h2, v += vs, -30, "Описание покупателей конкурентов, чьи товары стоят дешевле товара ГК", M4Str, Normal, 250, tStr4, false, 0);
+EditFieldTL(h2, v += vs, -30, "Описание покупателей конкурентов, чьи товары стоят на одном уровне с товаром ГК", M4Str, Normal, 250, tStr5, false, 0);
+EditFieldTL(h2, v += vs, -30, "Описание покупателей конкурентов, которые покупают регулярно", M4Str, Normal, 250, tStr6, false, 0);
+Tile(2,470,false,"2",ICompetitor);
+v = 10;
+EditFieldTL(h2, v += vs, -30, "Основные конкуренты", M4Str, Normal, 250, ICompetitor, false, ICompetitorSClass);
+EditFieldTL(h2, v += vs, -30, "Преимущества товара ГК перед товаром конкурентов", M4Str, Normal, 250, tStr7, false, 0);
+EditFieldTL(h2, v += vs, -30, "Преимущества товара конкурентов перед товаром ГК", M4Str, Normal, 250, tStr8, false, 0);
+Tile(3,470,false,"3",tStr9);
+v = 10;
+EditFieldTL(h2, v += vs, -30, "Характеристики товара ГК, которые нравятся потребителям", M4Str, Normal, 250, tStr9, false, 0);
+EditFieldTL(h2, v += vs, -30, "Характеристики товара ГК, которые отсутствуют для потребителей", M4Str, Normal, 250, tStr10, false, 0);
+Tile(4,470,false,"4",tStr11);
+v = 10;
+EditFieldTL(h2, v += vs, -30, "Характеристики товара ГК, которые будут предложены потребителям", M4Str, Normal, 250, tStr11, false, 0);
+EditFieldTL(h2, v += vs, -30, "Предложения по повышению конкурентоспособности и качеству товара ГК", M4Str, Normal, 250, tStr12, false, 0);
+EditFieldTL(h2, v += vs, -30, "Рекламные мероприятия", M4Str, Normal, 250, tRek, false, tRekActSClass);
+EndWindow;
+
+WindowBegin("Сегменты рынка",tMarkSegLClass, CGmlist, -);
+SpawnClass(tMarkSegDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tMarkSegVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Сегменты рынка",tMarkSegSClass, CGslist, -);
+SpawnClass(tMarkSegDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tMarkSegVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Сегменты рынка. Классификация", tMarkSegClDClass, CGview, 0);
+UseView(tMarkSegClVc);
+SetWRect(64, 80, 550, 300);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, tMarkSegGrSClass);
+// StaticText(25,v+=35,"Примечания",false);
+// TextField(25, v += 5, -21, -20, Math, 0);
+EndWindow; 
+
+WindowBegin("Сегменты рынка. Классификация",tMarkSegClLClass, CGmlist, -);
+SpawnClass(tMarkSegClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tMarkSegClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Сегменты рынка. Классификация",tMarkSegClSClass, CGslist, -);
+SpawnClass(tMarkSegClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tMarkSegClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Сегменты рынка. Группы классификаций", tMarkSegGrDClass, CGview, 0);
+UseView(tMarkSegGrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Сегменты рынка. Группы классификаций", tMarkSegGrLClass, CGmlist, -);
+SpawnClass(tMarkSegGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tMarkSegGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Сегменты рынка. Группы классификаций",tMarkSegGrSClass, CGslist, -);
+SpawnClass(tMarkSegGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tMarkSegGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Сегменты рынка", tMarkSegRClass,CGRcW,RcType);
+SetWRect(20,80,450,280);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+EditFieldTL(h1, v += 20, 80, "Код сегмента", M4UStr, Normal, 21, f1, false, tMarkSegSClass);
+EditFieldTL(h1, v += 20, 80, "Код конкурента", M4UStr, Normal, 21, f2, false, ICompetitorSClass);
+EditFieldTL(h1, v += 20, 80, "Код рекл.мероприятия", M4UStr, Normal, 21, f3, false, tRekActSClass);
+EditFieldTL(h1, v += 20, 80, "Классификация", M4UStr, Normal, 21, f4, false, tMarkSegClSClass);
+ButtonFrame(h1, v = 170, 123, 2, "Функция");
+RadioButton(h1, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h1, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;    
+//=================================================================================== 
+v = 6; h = 150;  vs = 20; h1 = 150;  h2 = 200; h4 = -250; 
+//=================================================================================== 
+WindowBegin("Методики работы с товарами ГК",tINMetDClass,CGview,-);
+SetWRect(20,80,750,400);
+UseView(tINMetVc);
+EditFieldTL(h, v = 15 , 80, "Код методики", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, -200, "Наименование методики", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, -200, "Классификации товаров", M4UStr, Normal, 250, ListCl, false, DISClass);
+ButtonFrame(h3=-180, v=25, 100, 3, "Статус");
+RadioButton(h3, v, 0, 0, "Подготовка", Status);
+RadioButton(h3, v+=16, 1, 0, "Работа", Status);
+RadioButton(h3, v+=16, 2, 0, "Архив", Status);
+MatrixBegin(20, v += 40, -40, -20,-,200);
+MatCol(1, 25, "Код критерия", 0, KrCode, false, tINMetClSClass);
+MatCol(1, 125, "Наименование критерия", 0, KrName, false, 0);
+MatCol(1, -250, "Описание", 0, Descr, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Методики работы с товарами ГК",tINMetLClass, CGmlist, -);
+SpawnClass(tINMetDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tINMetVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Методики работы с товарами ГК",tINMetSClass, CGslist, -);
+SpawnClass(tINMetDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tINMetVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Методики работы с товарами ГК. Критерии", tINMetClDClass, CGview, 0);
+UseView(tINMetClVc);
+SetWRect(64, 80, 550, 150);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Методики работы с товарами ГК. Критерии",tINMetClLClass, CGmlist, -);
+SpawnClass(tINMetClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tINMetClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Методики работы с товарами ГК. Критерии",tINMetClSClass, CGslist, -);
+SpawnClass(tINMetClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tINMetClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Методики работы с товарами ГК", tINMetRClass,CGRcW,RcType);
+SetWRect(20,80,450,280);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+EditFieldTL(h1, v += 20, 80, "Код методики", M4UStr, Normal, 21, f1, false, tINMetSClass);
+EditFieldTL(h1, v += 20, 80, "Классификации товаров", M4UStr, Normal, 21, f3, false, DISClass);
+ButtonFrame(h1, v += 40, 123, 2, "Функция");
+RadioButton(h1, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h1, v += 20, 1, 0, "Подробный",ArtMode);
+ButtonFrame(h1, v += 40, 100, 3, "Статус");
+RadioButton(h1, v, 0, 0, "Подготовка", flags[1]);
+RadioButton(h1, v += 16, 1, 0, "Работа", flags[1]);
+RadioButton(h1, v += 16, 2, 0, "Архив", flags[1]);
+EndWindow; 
+// ==========================================================================
+return;
+end;
+
+global
+function Boolean tRekActDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record tRekActVc RAr;
+row tRekActVc RArw;
+record CUVc CUr;
+record DepVc Dr;
+Boolean res;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, RAr);
+	if (fieldname == "VECode") then  
+		begin
+		CUr.Code = RAr.VECode;
+		readFirstMain(CUr, 1, true);
+		RAr.VEName = CUr.Name;
+		end;
+	if (fieldname == "DepCode") then  
+		begin
+		matrowget(RAr, rownr, RArw);
+		RArw.DepName = IGetDepName(RArw.DepCode);
+		matrowput(RAr, rownr, RArw);
+		end;	
+		
+	PutWindowRecord(wn, RAr);
+	end;
+tRekActDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+function Boolean tINMetDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record tINMetVc INMr;
+row tINMetVc INMrw;
+record tINMetClVc INMCr;
+Boolean res;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, INMr);
+	if (fieldname == "KrCode") then  
+		begin
+		matrowget(INMr, rownr, INMrw);
+		INMCr.Code = INMrw.KrCode;
+		ReadFirstMain(INMCr, 1, true);
+		INMrw.KrName = INMCr.Name; 
+		matrowput(INMr, rownr, INMrw);
+		end;	
+		
+	PutWindowRecord(wn, INMr);
+	end;
+tINMetDClassAfterEditField = res;
+RETURN;
+END;

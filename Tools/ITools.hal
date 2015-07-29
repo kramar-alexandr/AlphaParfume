@@ -1,0 +1,1275 @@
+//Вспомогательные функции
+external inner procedure ExtractObj(string,var Integer,var string);
+external inner procedure NormalizeObjstr(var string);
+external inner function Boolean SetInSet2(string,string);
+external inner function LongInt DateDiff(Date,Date);
+external inner function LongInt MinutesToTime(LongInt,var Time);
+
+//===============================================
+//Объект по типу
+global
+function string 60 IGetObjByType(string ObjStr, string Type)
+begin
+  record ObjVc Objr;
+  integer pos;
+  string 60 obj, res;
+  
+  res = blankval;
+  pos = 0;
+  ExtractObj(ObjStr,pos,obj);
+  while nonblank(obj) and blank(res)
+    begin
+      Objr.Code = obj;
+      if ReadFirstMain(Objr, 1, True) and (Objr.OTCode==Type) then
+        begin
+          res = obj;
+        end;
+      ExtractObj(ObjStr,pos,obj);
+    end;
+  IGetObjByType = res;
+  Return;
+end;
+
+//===============================================
+//Тип объекта
+global
+function string 20 IGetObjType(string Obj)
+begin
+  record ObjVc Objr;
+
+  Objr.Code = Obj;
+  ReadFirstMain(Objr, 1, true);
+  IGetObjType = Objr.OTCode;
+  Return;
+end;
+
+//===============================================
+//Классификация товаров по типу
+global
+function string 60 IGetDispGroupByType(string DispGroups, string Type)
+begin
+  record DIVc DIr;
+  integer pos;
+  string 60 DispGroup, res;
+  
+  res = blankval;
+  pos = 0;
+  ExtractObj(DispGroups,pos,DispGroup);
+  while nonblank(DispGroup) and blank(res)
+    begin
+      DIr.Code = DispGroup;
+      if ReadFirstMain(DIr, 1, true) and (DIr.CType==Type) then
+        begin
+          res = DispGroup;
+        end;
+      ExtractObj(DispGroups,pos,DispGroup);
+    end;
+  IGetDispGroupByType = res;
+  Return;
+end;
+
+//===============================================
+//Классификация контактов по типу
+global
+function string 60 IGetCClassByType(string CClassStr, string Type)
+begin
+  record CClassVc CClassr;
+  integer pos;
+  string 60 CClassItem, res;
+  
+  res = blankval;
+  pos = 0;
+  ExtractObj(CClassStr, pos, CClassItem);
+  while nonblank(CClassItem) and blank(res)
+    begin
+      CClassr.Code = CClassItem;
+      if ReadFirstMain(CClassr, 1, true) and (CClassr.CType==Type) then
+        begin
+          res = CCLassItem;
+        end;
+      ExtractObj(CClassStr, pos, CClassItem);
+    end;
+  IGetCClassByType = res;
+  Return;
+end;
+
+//===============================================
+//Получаем объект клиента
+global
+function string 60 IGetCustObj(string CustCode)
+begin
+  record CUVc CUr;
+  
+  CUr.Code = CustCode;
+  ReadFirstMain(CUr,1,true);
+  IGetCustObj = IGetObjByType(CUr.Objects, "CONTR");
+  Return;
+end;
+
+//===============================================
+//Имя пользователя
+global
+function string 255 IGetUserName(string Code)
+begin
+  record UserVc Userr;
+  
+  Userr.Code = Code;
+  ReadFirstMain(Userr,1,true);
+  IGetUserName = Userr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование контакта
+global
+function string 255 IGetCUName(string Code)
+begin
+  record CUVc CUr;
+  
+  CUr.Code = Code;
+  ReadFirstMain(CUr,1,true);
+  IGetCUName = CUr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование категории контакта
+global
+function string 255 IGetCUCatName(string Code)
+begin
+  record CCatVc CCatr;
+  
+  CCatr.Code = Code;
+  ReadFirstMain(CCatr,1,true);
+  IGetCUCatName = CCatr.Comment;
+  Return;
+end;
+
+//===============================================
+//Наименование товара
+global
+function string 255 IGetArtName(string Code)
+begin
+  record INVc INr;
+  
+  INr.Code = Code;
+  ReadFirstMain(INr,1,true);
+  IGetArtName = INr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование группы товара
+global
+function string 255 IGetITName(string Code)
+begin
+  record ITVc ITr;
+  
+  ITr.Code = Code;
+  ReadFirstMain(ITr,1,true);
+  IGetITName = ITr.Comment;
+  Return;
+end;
+
+//===============================================
+//Наименование объекта
+global
+function string 255 IGetObjName(string Code)
+begin
+  record ObjVc Objr;
+  
+  Objr.Code = Code;
+  ReadFirstMain(Objr,1,true);
+  IGetObjName = Objr.Comment;
+  Return;
+end;
+
+//===============================================
+//Наименование склада
+global
+function string 255 IGetLocationName(string Code)
+begin
+  record LocationVc Locationr;
+  
+  Locationr.Code = Code;
+  ReadFirstMain(Locationr,1,true);
+  IGetLocationName = Locationr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование отдела
+global
+function string 255 IGetDepName(string Code)
+begin
+  record DepVc Depr;
+  
+  Depr.Code = Code;
+  ReadFirstMain(Depr,1,true);
+  IGetDepName = Depr.Description;
+  Return;
+end;
+
+//===============================================
+//Комментарий счета
+global
+function string 255 IGetAccName(string Acc)
+begin
+  record AccVc Accr;
+  
+  Accr.AccNumber = Acc;
+  ReadFirstMain(Accr,1,true);
+  IGetAccName = Accr.Comment;
+  Return;
+end;
+
+//===============================================
+//Наименование классификатора товара
+global
+function string 255 IGetDispGroupName(string DispGroup)
+begin
+  record DIVc DIr;
+  
+  DIr.Code = DispGroup;
+  ReadFirstMain(DIr,1,true);
+  IGetDispGroupName = DIr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование серии товара
+global
+function string 255 IGetVItemGroupName(string VItemGroup)
+begin
+  record VItemGroupVc VIGr;
+  
+  VIGr.Code = VItemGroup;
+  ReadFirstMain(VIGr,1,true);
+  IGetVItemGroupName = VIGr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование классификатора контакта
+global
+function string 255 IGetCClassName(string Code)
+begin
+  record CClassVc CClassr;
+  
+  CClassr.Code = Code;
+  ReadFirstMain(CClassr,1,true);
+  IGetCClassName = CClassr.Comment;
+  Return;
+end;
+
+//===============================================
+//Наименование группы продажи
+global
+function string 255 IGetSalesGroupName(string Code)
+begin
+  record SalesGroupVc SalesGroupr;
+  
+  SalesGroupr.SGroupCode = Code;
+  ReadFirstMain(SalesGroupr,1,true);
+  IGetSalesGroupName = SalesGroupr.SGroupName;
+  Return;
+end;
+
+//===============================================
+//Наименование PM
+global
+function string 255 IGetPMName(string Code)
+begin
+  record PMBlock PMb;
+  row PMBlock PMrw;
+  integer i;
+  boolean found;
+  
+  BlockLoad(PMb);
+  for (i=0; (i < MatRowCnt(PMb)) and not found; i=i+1)
+    begin
+      MatRowGet(PMb,i,PMrw);
+      found = (PMrw.Code == Code);
+    end;
+  if (found) then
+    begin
+      IGetPMName = PMrw.Comment;
+    end;
+  Return;
+end;
+
+//===============================================
+//Наименование должности
+global
+function string 100 IGetVPositionName(string Code)
+begin
+  record VPositionVc VPr;
+
+  VPr.Code = Code;
+  ReadFirstMain(VPr, 1, true);
+  IGetVPositionName = VPr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование структурного подразделения
+global
+function string 250 IGetStPodrName(string Code)
+begin
+  record StPodrVc SPr;
+
+  SPr.Code = Code;
+  ReadFirstMain(SPr, 1, true);
+  IGetStPodrName = SPr.Name;
+  Return;
+end;
+
+//===============================================
+//Конвертация String -> Val
+global
+function val IStringToVal(string Str)
+begin
+  val v;
+
+  v = StringToVal(Str, M4Val);
+  if blank(v) then
+    begin
+      v = 0;
+    end;
+  IStringToVal = v;
+  Return;
+end;
+
+//===============================================
+//Возвращаем позицию подстроки в строке
+global
+function integer IStrPos(string substr, string str)
+begin
+  integer  res, i;
+  
+  res = -1;
+  for (i=0; (i<len(str)) and (res<0); i=i+1)
+    begin
+      if mid(str,i,len(substr))==substr then
+        begin
+          res = i;
+        end;
+    end;
+  
+  IStrPos = res;
+  Return;
+end;
+
+//===============================================
+//Количество разделенных "," элементов
+global
+function integer IItemCountInStr(string str)
+begin
+  integer i, cnt, ln, fr, to;
+
+  cnt = 0;
+  fr = -1;
+  to = -1;
+  ln = len(str);
+  for (i=0; (i<=ln); i=i+1)
+    begin
+      if mid(str,i,1)=="," or (i==ln) then
+        begin
+          fr = to+1;
+          to = i;
+          cnt = cnt + 1;
+        end;
+    end;
+    
+  IItemCountInStr = cnt;
+  Return;
+end;
+
+//===============================================
+//Возвращаем один из разделенных "," элементов строки по индексу
+global
+function string 50 IGetItemFromStr(string str, integer pos)
+begin
+  integer i, fr, to, cnt, ln;
+  string 50 res;
+  
+  res = blankval;
+  cnt = -1;
+  fr = -1;
+  to = -1;
+  ln = len(str);
+  for (i=0; (i<=ln) and (cnt<pos); i=i+1)
+    begin
+      if mid(str,i,1)=="," or (i==ln) then
+        begin
+          fr = to+1;
+          to = i;
+          cnt = cnt + 1;
+        end;
+    end;
+  
+  if (cnt == pos) then
+    begin
+      res = mid(str, fr , to-fr);
+    end;
+    
+  IGetItemFromStr = res;
+  Return;
+end;
+
+//===============================================
+//Позиция элемента в множестве
+global
+function integer IItemPosInSet(string Item, string str)
+begin
+  integer i, cnt;
+  integer res;
+  string 200 CurItem;
+  boolean found;
+
+  res = -1;
+  cnt = IItemCountInStr(str);
+  for (i=0; (i < cnt) and not found; i=i+1)
+    begin
+      CurItem = IGetItemFromStr(str, i);
+      found = (CurItem == Item);
+      if found then
+        begin
+          res = i;
+        end;
+    end;
+  IItemPosInSet = res;
+  Return;
+end;
+    
+//===============================================
+//Проверка вхождения диапазона1 в диапазон2 (вспомогательная)
+function boolean IRangeInRange(string Range1, string Range2)
+begin
+  string 50 fr1, to1, fr2, to2;
+  
+  fr1 = FirstInRange(Range1,50);
+  to1 = LastInRange(Range1,50);
+  fr2 = FirstInRange(Range2,50);
+  to2 = LastInRange(Range2,50);
+
+  IRangeInRange = (fr1>=fr2) and (to1<=to2);
+  Return;
+end;
+
+//===============================================
+//Проверка вхождения множества1 в множество2. Оба множества могут содержать диапазоны
+global
+function boolean ISetInSet(string Set1, string Set2)
+begin
+  integer cnt1, cnt2, i, j;
+  boolean res, ItemInSet;
+  string 50 item1, item2;
+  
+  res = true;
+  cnt1 = IItemCountInStr(Set1);
+  cnt2 = IItemCountInStr(Set2);
+  
+  for (i=0; res and (i<cnt1); i=i+1)
+    begin
+      item1 = IGetItemFromStr(Set1, i);
+      ItemInSet = false;
+      for (j=0; (not ItemInSet) and (j<cnt2); j=j+1)
+        begin
+          item2 = IGetItemFromStr(Set2, j);
+          ItemInSet = IRangeInRange(item1, item2);
+        end;
+      res = res and ItemInSet;
+    end;
+  ISetInSet = res;
+  Return;
+end;
+
+//===============================================
+//Минимальный элемент множества
+global
+function string 50 IMinInSet(string Set1)
+begin
+  integer cnt, i;
+  string 50 res, item, fr;
+  
+  res = blankval;
+  cnt = IItemCountInStr(Set1);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      item = IGetItemFromStr(Set1, i);
+      fr = FirstInRange(Item,50);
+      if (fr < res) then
+        begin
+          res = fr;
+        end;
+    end;
+
+  IMinInSet = res;
+  Return;
+end;
+
+//===============================================
+//Максимальный элемент множества
+global
+function string 50 IMaxInSet(string Set1)
+begin
+  integer cnt, i;
+  string 50 res, item, to;
+  
+  res = blankval;
+  cnt = IItemCountInStr(Set1);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      item = IGetItemFromStr(Set1, i);
+      to = LastInRange(Item,50);
+      if (to > res) then
+        begin
+          res = to;
+        end;
+    end;
+
+  IMaxInSet = res;
+  Return;
+end;
+
+//===============================================
+//Пересекаются ли множества
+global
+function boolean ICheckIntersect(string set1, string set2)
+begin
+  integer cnt1, cnt2, i, j;
+  boolean res;
+  string 50 item1, item2, head1, head2;
+
+  res = false;
+  cnt1 = IItemCountInStr(Set1);
+  cnt2 = IItemCountInStr(Set2);
+  
+  for (i=0; (not res) and (i<cnt1); i=i+1)
+    begin
+      item1 = IGetItemFromStr(Set1, i);
+      head1 = FirstInRange(item1,50);
+      for (j=0; (not res) and (j<cnt2); j=j+1)
+        begin
+          item2 = IGetItemFromStr(Set2, j);
+          head2 = FirstInRange(item2,50);
+          res = IRangeInRange(head1, item2) or IRangeInRange(head2, item1);
+        end;
+    end;
+  ICheckIntersect = res;
+  Return;
+end;
+
+//===============================================
+//Проверка на равенство множеств. Оба множества могут содержать диапазоны
+global
+function boolean ISetsEqual(string Set1, string Set2)
+begin
+  ISetsEqual = ISetInSet(Set1, Set2) and ISetInSet(Set2, Set1);
+  Return;
+end;
+
+//===============================================
+//Режем строку. "Голова" - результат, "Хвост" - аргумент
+global
+function string 255 IGetAndTruncStr (var string s, integer qnt)
+begin
+  IGetAndTruncStr = left(s,qnt);
+  s = right(s, len(s)-qnt);
+  Return;
+end;
+
+//===============================================
+//Режем строку по словам. "Голова" - результат, "Хвост" - аргумент
+global
+function string 255 IGetAndTruncStrWrap(var string s, integer qnt)
+begin
+  string 1 c;
+  string 255 res;
+  integer i, pos;
+  boolean found;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  pos = IStrPos(chr(13), s);
+  if (Pos >= 0) and (Pos <= qnt) then
+    begin
+      res = left(s, pos);
+      s = right(s, len(s)-pos-1); //Исключаем символ chr(13) из строки вывода
+    end
+  else
+    begin
+      Pos = qnt;
+      if (len(s) > qnt) then
+        begin
+          found = false;
+          for (i = qnt; (i > 0) and not found; i=i-1)
+            begin
+              c = right(left(s, i), 1); //Последний символ "головы"
+              found = (c == " ") or (c == ".") or (c == ",") or (c == "-");
+              if found then
+                begin
+                  pos = i;
+                end;
+            end;
+        end;
+    
+      res = left(s, pos);
+      s = right(s, len(s)-pos);
+    end;
+
+  IGetAndTruncStrWrap = res;
+  Return;
+end;
+
+//===============================================
+//Вывод на форму с переносом строк
+global
+procedure IOutFormField(string FrmField, string tstr, integer FieldLen)
+begin
+  string 255 s;
+  
+  s = IGetAndTruncStr(tstr, FieldLen);
+  while (nonblank(s))
+    begin
+      OUTFORMFIELD(FrmField, s);
+      s = IGetAndTruncStr(tstr, FieldLen);
+      if nonblank(s) then
+        begin
+          EndFormRow;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Вызов OutString с возможностью выводить/не выводить пустые строки
+global
+function boolean IOutString(integer Pos, string Func, string PrintString, boolean Align, boolean PrintIfBlank)
+begin
+  boolean res;
+  
+  res = PrintIfBlank or NonBlank(PrintString);
+  if (res) then 
+    begin
+      OutString(Pos, Func, PrintString, Align);
+    end;
+  IOutString = res;
+  Return;
+end;
+
+//===============================================
+//OutString с переносом строк
+global
+procedure IOutStringLen(integer Pos, string Func, string PrintStr, boolean Align, integer StrLen)
+begin
+  string 255 s;
+  
+  s = IGetAndTruncStr(PrintStr, StrLen);
+  while (nonblank(s))
+    begin
+      OutString(Pos, Func, s, Align);
+      s = IGetAndTruncStr(PrintStr, StrLen);
+      if nonblank(s) then
+        begin
+          EndFormat;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//OutString с переносом строк по словам
+global
+procedure IOutStringLenWrap(integer Pos, string Func, string PrintStr, boolean Align, integer StrLen)
+begin
+  string 255 s;
+  integer i;
+
+  s = IGetAndTruncStrWrap(PrintStr, StrLen);
+  while (nonblank(s))
+    begin
+      OutString(Pos, Func, s, Align);
+      s = IGetAndTruncStrWrap(PrintStr, StrLen);
+      if nonblank(s) then
+        begin
+          EndFormat;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Проверяем обязательные типы объектов
+global
+function boolean ICheckObjs(string Objs, string Types)
+begin
+  record ObjVc Objr;
+  integer i, j, cnti, cntj;
+  string 60 obj, Type;
+  boolean res, ok;
+  
+  res = true;
+  cnti = IItemCountInStr(Types);
+  for (i=0; (i<cnti) and res; i=i+1)
+    begin
+      ok = false;
+      Type = IGetItemFromStr(Types, i);
+      cntj = IItemCountInStr(Objs);
+      for (j=0; (j<cntj) and not ok; j=j+1)
+        begin
+          Objr.Code = IGetItemFromStr(Objs, j);
+          ok = ReadFirstMain(Objr, 1, True) and (Objr.OTCode==Type);
+        end;
+      res = res and ok;
+    end;
+  ICheckObjs = res;
+  Return;
+end;
+
+//===============================================
+//Код товара по штрих-коду
+global
+function string 20 ArtCodeByBarcode(string Barcode)
+begin
+  record INVc INr;
+  record BarcodeVc Barcoder;
+  string 20 res;
+  
+  INr.BarCode = Barcode;
+  if ReadFirstKey("BarCode",INr,1,true) then
+    begin
+      res = INr.Code;
+    end
+  else
+    begin
+      Barcoder.Barcode = Barcode;
+      if ReadFirstMain(Barcoder,1,true) then 
+        begin
+          res = Barcoder.Itemcode;
+        end;
+    end;   
+  ArtCodeByBarcode = res;
+  Return;
+end;
+
+//===============================================
+//Объекты способа оплаты
+global
+function string 60 IGetPMObjs(string PayMode)
+begin
+  string 60 res;
+  integer i,rwcnt;
+  record PMBlock PMb;
+  row PMBlock PMrw;
+  boolean found;
+  
+  BlockLoad(PMb);
+  rwcnt = MatRowCnt(PMb);
+  found = false;
+  for (i=0; (i<rwcnt) and not found; i=i+1)
+    begin
+      MatRowGet(PMb,i,PMrw);
+      found = (PMrw.Code == PayMode);
+    end;
+  if (found) then
+    begin
+      res = PMrw.Objects;
+    end;
+  IGetPMObjs = res;
+  Return;
+end;
+
+//===============================================
+//Добаваить элемент в множество
+global
+function string 255 IAppendItemToSet(string Item, string Set)
+begin
+  if nonblank(Set) then
+    begin
+      IAppendItemToSet = Set & "," & Item;
+    end
+  else
+    begin
+      IAppendItemToSet = Item;
+    end;
+  Return;
+end;
+
+//===============================================
+//Добавляем элементы в множество без повторений
+global
+function string 255 IAddToSet(string Items, string Set)
+begin
+  string 255 res, Item;
+  integer i, cnt;
+  
+  res = Set;
+  cnt = IItemCountInStr(Items);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Item = IGetItemFromStr(Items, i);
+      if not SetInSet(Item, Set) then
+        begin
+          res = IAppendItemToSet(Item, res);
+        end;
+    end;
+  IAddToSet = res;
+  Return;
+end;
+
+//===============================================
+//Удаляем элементы из множества
+global
+function string 255 IDelFromSet(string Items, string Set)
+begin
+  string 255 res, Item;
+  integer i, cnt;
+
+  res = blankval;
+  cnt = IItemCountInStr(Set);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Item = IGetItemFromStr(Set, i);
+      if not SetInSet(Item, Items) then
+        begin
+          res = IAddToSet(Item, res);
+        end;
+    end;
+  IDelFromSet = res;
+  Return;
+end;
+
+//===============================================
+//Добавляем объекты или заменяем, если присутствуют того же типа
+global
+procedure IAddAndReplaceObjs(var string ObjStr, string NewObjStr)
+begin
+  string 20 OTCode;
+  string 200 OldObj, NewObj;
+  integer cnt, i;
+  
+  cnt = IItemCountInStr(NewObjStr);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      NewObj = IGetItemFromStr(NewObjStr, i);
+      OTCode = IGetObjType(NewObj);
+      OldObj = IGetObjByType(ObjStr, OTCode);
+      if nonblank(OldObj) then
+        begin
+          ObjStr = IDelFromSet(OldObj, ObjStr);
+        end;
+      ObjStr = IAddToSet(NewObj ,ObjStr);
+    end;
+  NormalizeObjstr(ObjStr);
+  Return;
+end;
+
+//===============================================
+//Порядковый номер открузки по номеру счета клиенту
+global
+function integer IGetSHIdx(longint SHNr)
+begin
+  integer idx;
+  record SHVc SHr;
+  boolean cont;
+  longint OrderNr;
+
+  idx = -1;
+
+  SHr.SerNr = SHNr;
+  cont = ReadFirstMain(SHr, 1, true);
+  OrderNr = SHr.OrderNr;
+
+  ResetLoop(SHr);
+  SHr.OrderNr = OrderNr;
+  while (LoopKey("OrderKey", SHr, 1, cont))
+    begin
+      cont = (SHr.OrderNr == OrderNr);
+      if (cont) then
+        begin
+          idx = idx + 1;
+          cont = (SHr.SerNr <> SHNr);
+        end;
+    end;
+
+  IGetSHIdx = idx;
+  Return;
+end;
+
+//===============================================
+//Номер Сч/ф по номеру счета клиенту и порядковому номеру
+global
+function longint IGetIVByIdx(longint OrderNr, integer idx)
+begin
+  longint IVNr;
+  record IVVc IVr;
+  boolean cont;
+  integer cnt;
+
+  IVNr = -1;
+  cnt = -1;
+  cont = true;
+  IVr.OrderNr = OrderNr;
+  while (LoopKey("OrderNr", IVr, 1, cont))
+    begin
+      cont = (IVr.OrderNr == OrderNr) and (cnt <= idx);
+      if (cont) and (IVr.InvType == 1) then
+        begin
+          cnt = cnt + 1;
+          if (cnt == idx) then
+            begin
+              IVNr = IVr.SerNr;
+            end;
+        end;
+    end;
+    
+  IGetIVByIdx = IVNr;
+  Return;
+end;
+
+//===============================================
+//Дата последней отгрузки для СЧ-Ф
+global
+function Date IGetShipDateIVVc(record IVVc IVp, Date DefaultDate)
+begin
+  record SHVc SHr;
+  Date res;
+  boolean cont;
+
+  res = DefaultDate;
+  cont = (IVp.InvType==1); //normal invoice
+  SHr.OrderNr = IVp.OrderNr;
+  while (LoopBackKey("OrderKey", SHr, 1, cont))
+    begin
+      cont = (SHr.OrderNr == IVp.OrderNr);
+      if cont and (SHr.OKFlag == 1) then
+        begin
+          res = SHr.ShipDate;
+          cont = false;
+        end;
+    end;
+  IGetShipDateIVVc = res;
+  Return;
+end;
+
+//===============================================
+//Возвращаем запись регистра оплат поставщику по номеру предоплаты
+global
+function boolean IGetOPByPrepaymentNr(var record OPVc OPr, longint PrepaymentNr)
+begin
+  boolean res;
+  record APPayHistVc APHistr;
+  
+  APHistr.FileName = "OPVc";
+  APHistr.VEPNr = PrepaymentNr;
+  res = ReadFirstMain(APHistr, 2, true);
+  OPr.SerNr = APHistr.SerNr;
+  IGetOPByPrepaymentNr = res and ReadFirstMain(OPr, 1, true);
+  Return;
+end;
+
+//===============================================
+//Код транзакции
+global
+function string 255 IToStrTRCode(integer IntYc, longint Number)
+begin
+  string 255 res;
+  
+  res = StrTRCode(IntYc);
+  if nonblank(res) then
+    begin
+      res = res & ".";
+    end;  
+  res = res & Number;
+  IToStrTRCode = res;
+  Return;
+end;
+
+//===============================================
+//Является ли пользователь директором
+global
+function boolean IUserIsBoss(string UserCode)
+begin
+  boolean res;
+  record VDepartmentBossBlock Bossr;
+  row VDepartmentBossBlock Bossrw;
+  integer i;
+
+  res = false;
+  BlockLoad(Bossr);
+  for (i=0; (i < MatRowCnt(Bossr)) and not res; i=i+1)
+    begin
+      MatRowGet(Bossr, i, Bossrw);
+      res = (Bossrw.Boss == UserCode);
+    end;
+
+  IUserIsBoss = res;
+  Return;
+end;
+
+//===============================================
+//Продавец объекта нормирования
+global
+function string 20 IGetPlanObjSalesMan(string Obj)
+begin
+  string 20 res;
+  record IObjSalesManBlock OSMb;
+  row IObjSalesManBlock OSMrw;
+  integer i;
+  boolean found;
+
+  res = "";
+  found = false;
+  BlockLoad(OSMb);
+  for (i=0; (i < MatRowCnt(OSMb)) and not found; i=i+1)
+    begin
+      MatRowGet(OSMb, i, OSMrw);
+      found = (OSMrw.Obj == Obj);
+      if found then
+        begin
+          res = OSMrw.SalesMan;
+        end;
+    end;
+
+  IGetPlanObjSalesMan = res;
+  Return;
+end;
+
+//===============================================
+//Кол-во минут между датами и временем
+global
+function longint IGetMinutesBetween(date d1, time t1, date d2, time t2)
+begin
+  Longint days, min1, min2;
+  
+  days = DateDiff(d2, d1);
+  min1 = GetHour(t1) * 60 + GetMinute(t1);
+  min2 = GetHour(t2) * 60 + GetMinute(t2);
+  
+  IGetMinutesBetween = days * 60 * 24.0 + min2 - min1;
+  Return;
+end;
+
+//===============================================
+//Кол-во часов между датами и временем
+global
+function val IGetHoursBetween(date d1, time t1, date d2, time t2)
+begin
+  Longint days;
+  val hours1, hours2, res;
+  
+  days = DateDiff(d2,d1);
+  hours1 = GetHour(t1) + GetMinute(t1) / 60.0;
+  hours2 = GetHour(t2) + GetMinute(t2) / 60.0;
+  
+  res = days * 24.0 + hours2 - hours1;
+  
+  IGetHoursBetween = res;
+  Return;
+end;
+
+//===============================================
+//Переводим минуты в формат H:MM
+global
+function string 20 IMinutesToHMM(Longint Minutes)
+begin
+  Longint mins, hh, mm;
+  string 1 prefix;
+
+  mins = Minutes;
+  if (mins < 0) then
+    begin
+    mins = -mins;
+    prefix = "-";
+    end;
+    
+  hh = mins / 60;
+  mm = mins - (hh * 60);  
+  IMinutesToHMM = prefix & hh & ":" & right(0 & mm, 2);
+  Return;
+end;
+
+//===============================================
+//Оборот по счету
+global
+procedure ITransAccTurnover(string AccStr, string ObjStr, date bd, date ed, integer BaseCurncy, var val DebVal, var val CredVal)
+begin
+  record MainVc Mainr;
+  record TRVc TRr;
+  row TRVc TRrw;
+  boolean cont;
+  integer i, cnt;
+  record ObjBalVc ObjBalr;
+  string 255 Obj;
+  
+  cont = true;
+  cnt = IItemCountInStr(ObjStr);
+  for (i=0; (i<cnt) and cont; i=i+1)
+    begin
+      Obj = IGetItemFromStr(ObjStr, i);
+      if not SetInSet(left(Obj, 1), "+,!,(,)") then
+        begin
+          ObjBalr.AccNumber = AccStr;
+          ObjBalr.Object = Obj;
+          cont = cont and ReadFirstMain(ObjBalr, 2, true);
+        end;
+    end;
+
+  Mainr.AccNumber = AccStr;
+  Mainr.TransDate = bd;
+  while (LoopMain(Mainr, 2, cont)) 
+    begin
+      cont = (Mainr.AccNumber == AccStr) and (Mainr.TransDate <= ed);
+      if (cont) and (Mainr.FileName=="TRVc") then
+        begin
+          TRr.Number = Mainr.TransNr;
+          TRr.IntYc = Mainr.IntYc;
+          if ReadFirstMain(TRr, 2, true) and (Mainr.TransDate == TRr.TransDate) then
+            begin
+              cnt = MatRowCnt(TRr);
+              for (i=0; i<cnt; i=i+1)
+                begin
+                  MatRowGet(TRr, i, TRrw);
+                  if (TRrw.stp == 1) and (TRrw.ovst == 0) and (TRrw.AccNumber == AccStr) and SetInSet2(ObjStr, TRrw.Objects) then
+                    begin
+                      if (BaseCurncy == 0) then
+                        begin
+                          DebVal = DebVal + TRrw.DebVal;
+                          CredVal = CredVal + TRrw.CredVal;
+                        end
+                      else
+                        begin
+                          DebVal = DebVal + TRrw.DebVal2;
+                          CredVal = CredVal + TRrw.CredVal2;
+                        end;
+                    end;
+                end;                   
+            end;
+        end;
+    end;
+      
+  Return;
+end;
+
+//===============================================
+//Возвращаем текущий остаток товара на складе
+global
+function val IGetCurStockQty(string ArtCode, string Location)
+begin
+  record ItemStatusVc ISr;
+  integer KeyNum;
+
+  ISr.Code = ArtCode;
+  if blank(Location) then
+    begin
+      KeyNum = 1;
+    end
+  else
+    begin
+      ISr.Location = Location;
+      KeyNum = 2;
+    end;
+
+  ReadFirstMain(ISr, KeyNum, true);
+
+  IGetCurStockQty = ISr.Instock; 
+  Return;
+end;
+
+//===============================================
+//Проверяем вхождение времени в список допустимых доставок
+global
+function boolean ICheckPlanDeliveryTime(time t)
+begin
+  record VSetSetBlock VSb;
+  time DeliveryTime;
+  integer i, cnt;
+  boolean found;
+
+  BlockLoad(VSb);
+  cnt = IItemCountInStr(VSb.DeliveryTimeList);
+  for (i=0; (i < cnt) and not found; i=i+1)
+    begin
+      DeliveryTime = StringToTime(IGetItemFromStr(VSb.DeliveryTimeList, i));
+      found = found or (t == DeliveryTime);
+    end;
+  ICheckPlanDeliveryTime = found;
+  Return;
+end;
+
+//===============================================
+//Возвращаем дату начала месяца
+global
+function date FirstDayOfMonth(date dt)
+begin
+  date res;
+
+  res = dt;
+  res.Day = 1;
+  FirstDayOfMonth = res;
+  Return;
+end;
+
+//===============================================
+//Возвращаем дату окончания месяца
+global
+function date LastDayOfMonth(date dt)
+begin
+  date res;
+
+  res = dt;
+  res.Day = DaysInMonth(res.Year, res.Month);
+  LastDayOfMonth = res;
+  Return;
+end;
+
+//===============================================
+//Классификация клиента по типу
+global
+function string 60 IGetCUClassByType(string ClassStr, string Type)
+begin
+  record CClassVc Cr;
+  integer pos;
+  string 60 CClass, res;
+
+  res = blankval;
+  pos = 0;
+  ExtractObj(ClassStr, pos, CClass);
+  while nonblank(CClass) and blank(res)
+    begin
+      Cr.Code = CCLass;
+      if ReadFirstMain(Cr, 1, true) and (Cr.CType == Type) then
+        begin
+          res = CClass;
+        end;
+      ExtractObj(ClassStr, pos, CClass);
+    end;
+  IGetCUClassByType = res;
+  Return;
+end;
+
+//===============================================
+//Переводим строку вида YYYYMMDD в дату
+global
+function date YYYYMMDD_ToDate(string s)
+begin
+  string 200 DateStr;
+
+  DateStr = right(s, 2) & "." & mid(s, 4, 2) & "." & left(s, 4);
+  YYYYMMDD_ToDate = StringToDate(DateStr);
+  Return;
+end;
+
+//===============================================
+//Возвращаем группу доступа заданного пользователя
+global
+function string 20 IGetUserAccessGroup(string UserCode)
+begin
+  record UserVc Usr;
+
+  Usr.Code = UserCode;
+  ReadFirstMain(Usr, 1,true);
+  IGetUserAccessGroup = Usr.AccessGroup;
+  Return;
+end;

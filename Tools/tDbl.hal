@@ -1,0 +1,500 @@
+external updating procedure tQuestionRn(record RcVc);
+external procedure tQuestResRn(record RcVc);
+remote updating procedure UpVr(record RcVc, string);
+remote updating procedure tResVr(string, record RcVc, var val );
+remote procedure tPrevQu(record RCVc);
+remote procedure tNextQu(record RcVc);
+remote procedure tRunRepRes(record RcVc, val);
+remote procedure tRunRepNext(record RcVc);
+
+global
+procedure DblVTicketVc(string dblstr,string l,Integer currepwn)
+begin
+record VTicketVc VTr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	VTr.SerNr = dblstr;
+	if ReadFirstKey("SerNr", VTr, 1, True) then
+		begin
+		wn = OpenWindow("VTicketDClass", 1, 0, "", "", VTr); 
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblQualRep(string dblstr, string l, integer currepwn)
+begin
+	record RcVc RepSpec;
+	integer IntYc;
+	longint Number;
+
+	RepSpec.repname = "QualRepRn";
+	RepSpec.Media = mtScreen;
+	RepSpec.sStartDate = dblstr;
+	RunReport(RepSpec, 0);
+	Return;
+end;
+global
+procedure DbltVTicketsVc(string dblstr,string l,Integer currepwn)//Регистр "Вопросы и Ответы"
+begin
+record tVTicketsVc VTr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	VTr.SerNr = dblstr;
+	if ReadFirstKey("SerNr", VTr, 1, True) then
+		begin
+		//wn = OpenWindow("tVTicketsDClass", 0, currepwn, "", "", VTr); 
+		wn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblUpCISVc(string dblstr,string l,Integer currepwn)
+begin
+record UpCISVc UCr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	UCr.SerNr = dblstr;
+	if ReadFirstKey("SerNr", UCr, 1, True) then
+		begin
+		//wn = OpenWindow("UpCISDClass", 1, currepwn, "", "", UCr); 
+		wn = OpenWindow("UpCISDClass",1,0,"","",UCr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblLocEquipVc(string dblstr,string l,Integer currepwn)
+begin
+record LocEquipVc LEr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	LEr.InventoryNr = dblstr;
+	if ReadFirstMain(LEr, 1, True) then
+		begin
+		wn = OpenWindow("LocEquipDClass", 1, 0, "", "", LEr); 
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblttPhysStockVc(string dblstr,string l,Integer currepwn)
+begin
+record ttPhysStockVc PLocr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	PLocr.Code = dblstr;
+	if ReadFirstMain(PLocr, 1, True) then
+		begin
+		wn = OpenWindow("ttPhysStockDClass", 1, 0, "", "", PLocr); 
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblInsightVc(string dblstr,string l,Integer currepwn)
+begin
+record InsightVc Ir;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	Ir.SerNr = dblstr;
+	if ReadFirstMain(Ir, 1, True) then
+		begin
+		wn = OpenWindow("InsightDClass", 1, 0, "", "", Ir); 
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblDocsVc(string dblstr,string l,Integer currepwn)
+begin
+record DocsVc Dr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	Dr.Code = dblstr;
+	if ReadFirstMain(Dr, 1, True) then
+		begin
+		wn = OpenWindow("DocsDClass", 1, 0, "", "", Dr); 
+		end;
+	end;
+RETURN;
+end;
+
+
+global
+procedure DblVoieVc(string dblstr,string l,Integer currepwn)
+begin
+record VoieVc Vr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	Vr.SerNr = dblstr;
+	if ReadFirstKey("SerNr", Vr, 1, True) then
+		begin
+		wn = OpenWindow("VoieDClass", 1, 0, "", "", Vr); 
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblPotCustVc(string dblstr,string l,Integer currepwn)
+begin
+record PotCustVc PCr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	PCr.Code = dblstr;
+	if ReadFirstKey("Code", PCr, 1, True) then
+		begin
+		wn = OpenWindow("PotCustDClass", 1, 0, "", "", PCr); 
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblStorCheck(string dblstr,string l,Integer currepwn)
+begin
+record StorCheckVc PCr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	PCr.SerNr = dblstr;
+	if ReadFirstKey("SerNr", PCr, 1, True) then
+		begin
+		wn = OpenWindow("StorCheckDClass", 1, 0, "", "", PCr); 
+		end;
+	end;
+RETURN;
+end;
+
+global
+updating
+procedure DblNextQ(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+
+GetWindowRecord(currepwn, RepSpec);
+UpVr(RepSpec, dblstr);
+tRunRepNext(RepSpec);
+CloseWindow(currepwn);	
+
+RETURN;
+end;
+
+global
+updating
+procedure DblResQ(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+val Pers;
+
+GetWindowRecord(currepwn, RepSpec);
+tResVr(l, RepSpec, Pers);
+tRunRepRes(RepSpec,  Pers);
+CloseWindow(currepwn);	
+
+RETURN;
+end;
+
+
+global
+procedure DblPrevQu(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+
+GetWindowRecord(currepwn, RepSpec);
+tPrevQu(RepSpec);
+CloseWindow(currepwn);	
+RETURN;
+end;
+
+global
+procedure DblNextQu(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+Integer wn;
+
+GetWindowRecord(currepwn, RepSpec);
+tNextQu(RepSpec);
+CloseWindow(currepwn);	
+
+RETURN;
+end;
+
+
+global
+procedure DblIStnrOrdVc(string dblstr,string l,Integer currepwn)
+begin
+record IStnrOrdVc ISOr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	ISOr.SerNr = dblstr;
+	if ReadFirstKey("SerNr", ISOr, 1, True) then
+		begin
+		//wn = OpenWindow("UpCISDClass", 1, currepwn, "", "", UCr); 
+		wn = OpenWindow("IStnrOrdDClass",1,0,"","",ISOr);
+		end;
+	end;
+RETURN;
+end;
+
+
+global
+procedure DbltTypeDocVc(string dblstr,string l,Integer currepwn)
+begin
+record tTypeDocVc TDr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	TDr.Code = dblstr;
+	if ReadFirstMain(TDr, 1, True) then
+		begin
+		wn = OpenWindow("tTypeDocDClass",1,0,"","",TDr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DbltBizProcVc(string dblstr,string l,Integer currepwn)
+begin
+record tBizProcVc BPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	BPr.Code = dblstr;
+	if ReadFirstMain(BPr, 1, True) then
+		begin
+		wn = OpenWindow("tBizProcDClass",1,0,"","",BPr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DbltINKVc(string dblstr,string l,Integer currepwn)
+begin
+record tINKVc INr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	INr.Code = dblstr;
+	if ReadFirstMain(INr, 1, True) then
+		begin
+		wn = OpenWindow("tINKDClass",1,0,"","",INr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblIStnrPlanVc(string dblstr,string l,Integer currepwn)
+begin
+record IStnrPlanVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.SerNr = dblstr;
+	if ReadFirstKey("SerNr", SPr, 1, True) then
+		begin
+		//wn = OpenWindow("UpCISDClass", 1, currepwn, "", "", UCr); 
+		wn = OpenWindow("IStnrPlanDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DbltParkingVc(string dblstr,string l,Integer currepwn)
+begin
+record tParkingVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.Code = dblstr;
+	if ReadFirstMain(SPr, 1, True) then
+		begin
+		wn = OpenWindow("tParkingDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DbltRequPosVc(string dblstr,string l,Integer currepwn)
+begin
+record tRequPosVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.CodeVPos = dblstr;
+	SPr.CodeUser = l;
+	if ReadFirstMain(SPr, 2, True) then
+		begin
+		wn = OpenWindow("tRequPosDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DbltRouteVc(string dblstr,string l,Integer currepwn)
+begin
+record tRouteVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.Code = dblstr;
+	if ReadFirstMain(SPr, 1, True) then
+		begin
+		wn = OpenWindow("tRouteDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DblDishEmp(string dblstr, string l, integer currepwn)
+begin
+	record RcVc RepSpec;
+	integer IntYc;
+	longint Number;
+
+	RepSpec.repname = "DishEmpRn";
+	RepSpec.Media = mtScreen;
+	RepSpec.f4 = l;
+	RepSpec.f2 = dblstr;
+	RunReport(RepSpec, 0);
+	Return;
+end;
+
+
+global
+procedure DbltRekActVc(string dblstr,string l,Integer currepwn)
+begin
+record tRekActVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.Code = dblstr;
+	if ReadFirstMain(SPr, 1, True) then
+		begin
+		wn = OpenWindow("tRekActDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+
+global
+procedure DbltMarkSegVc(string dblstr,string l,Integer currepwn)
+begin
+record tMarkSegVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.Code = dblstr;
+	if ReadFirstMain(SPr, 1, True) then
+		begin
+		wn = OpenWindow("tMarkSegDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+
+global
+procedure DbltINMetVc(string dblstr,string l,Integer currepwn)
+begin
+record tINMetVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.Code = dblstr;
+	if ReadFirstMain(SPr, 1, True) then
+		begin
+		wn = OpenWindow("tINMetDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+global
+procedure DbltCalcWageVc(string dblstr,string l,Integer currepwn)
+begin
+record tCalcWageVc SPr;
+Integer wn;
+
+if nonblank(dblstr) then
+	begin
+	SPr.SerNr = dblstr;
+	if ReadFirstMain(SPr, 1, True) then
+		begin
+		wn = OpenWindow("tCalcWageDClass",1,0,"","",SPr);
+		end;
+	end;
+RETURN;
+end;
+
+
+global
+procedure DblNewtCalcWageVc()
+begin
+record tCalcWageVc CWr;
+Integer wn;
+
+RecordNew(CWr);
+/*
+if (SingleUserMode) then
+	begin
+	CWr.SerNr = NextSerNr("tCalcWageVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	CWr.SerNr = -1;
+	end;*/
+
+	CWr.Motiv = 0;
+
+wn = OpenWindow("tCalcWageDClass", 1, 0, "", "", CWr);
+
+RETURN;
+end;

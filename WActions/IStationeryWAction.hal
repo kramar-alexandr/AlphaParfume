@@ -1,0 +1,1034 @@
+external function string 255 IGetArtName(string);
+external function string 255 IGetDepName(string);
+remote procedure IStnrPlanFill(var record IStnrPlanVc);
+external procedure AddHelpButton(LongInt, LongInt);
+//external function string 10 GetMonthNameRus(Integer);
+remote procedure IStnrOrdPlanFill(var record IStnrOrdVc);
+external inner function LongInt POVcRecordDefaults(var record POVc,record POVc,LongInt,LongInt);
+external inner function Boolean PODClassAfterEditField(Integer,string, Integer, Integer,Integer);
+external inner function Boolean PODClassVECodeEFAfter(Integer,Boolean);
+remote function Boolean MakePOFromISO(string, var record POVc);
+remote function val tSumF(record IStnrPlanVc, string);
+remote function val tSumFISO(record IStnrOrdVc);
+remote function Boolean tRePrice();
+remote function Boolean tRePriceISO();
+remote updating procedure tDelRowPOFromISO(LongInt, string);
+remote function val tSumK(record IStnrPlanVc, string);
+remote function Boolean tExcLim(record IStnrOrdVc);
+remote function Boolean tDelZak();
+remote function Boolean MakePZPFromISO(var record PZPVc);
+remote function Boolean MakeMovFromISO(var record StockMovVc, string, string);
+remote function Boolean CrStrVE(var string);
+external inner procedure ExtractObj(string,var Integer,var string);
+remote function Boolean MakeSDFromISO(LongInt, var record SDVc, date, date);
+remote function Boolean MakeSDFromISOLClass();
+remote updating procedure DeleteItemsISOr();
+remote function Boolean tCurRePrice();
+remote function Boolean tCurRePriceISO();
+remote function Boolean tReSumm();
+remote function Boolean MakeSDFromISOMn(record RcVc);
+
+function string 10 GetMonthNameRus(integer Month)
+begin
+  string 10 res;
+
+  SetLangMode(LangRussian,"RUS",2);
+  switch(Month)
+    begin
+      case 1: res = "Январь";
+      case 2: res = "Февраль";
+      case 3: res = "Март";
+      case 4: res = "Апрель";
+      case 5: res = "Май";
+      case 6: res = "Июнь";
+      case 7: res = "Июль";
+      case 8: res = "Август";
+      case 9: res = "Сентябрь";
+      case 10: res = "Октябрь";
+      case 11: res = "Ноябрь";
+      case 12: res = "Декабрь";
+    end;
+  GetMonthNameRus = res;
+  Return;
+end;
+
+//===============================================
+// event startup 
+// begin
+  // SetLangMode(LangRussian, "RUS", 2);
+  // Setting("Список канцтоваров", IStnrListTClass, modBORG);
+  // Setting("Канцтовары - планы", IStnrPlanLClass, modBORG);
+  // Register("Заказы канцтоваров", "Заказы канцтоваров", IStnrOrdLClass, modBORG);
+ // Return;
+// end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, h, h2, h3, h4, vs;
+  record UserVc USr;
+  integer Year;
+  record IStnrOrdVc ISOr;
+  date bd;
+
+  Year = GetYear(CurrentDate);
+  vs = 20;
+  
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Список канцтоваров", IStnrListTClass, CGHbl, -);
+  SetBlid(IStnrListBlock);
+  SetWRect(20, 80, 600, 357);
+  Sizeable(-1, -1, 0, 0);
+  MatrixBegin(4, 20, -31, -20, IStnrListRowType, 199);
+  MatCol(1, 32, "Код товара/диапазон", 0, ArtCode, false, INSclass);
+  MatCol(1, -180, "Начальная дата", 0, StartDate, false, PasteCurDate);
+  MatCol(1, -90, "Конечная дата", 0, EndDate, false, PasteCurDate);
+  EndMatrix;
+  EndWindow;
+
+
+  WindowBegin("Планы по канцтоварам", IStnrPlanLClass, CGmlist, -);
+  SpawnClass(IStnrPlanDClass);
+  SetWRect(64, 80, 691, 408);
+//  Sizeable(-1, -1, 0, 0);
+  UseView(IStnrPlanVc);
+  RecordList(60, 17, -21, -40);
+  RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+  RlColKey(50, 50, "Код", DepCode, false, DepCode);
+  RlColKey(130, 130, "Наименование", DepName, false, DepName);
+  RlColKey(-120, -120, "UZTR", ObjUZTR, false, ObjUZTR);
+  RlColKey(-70, -70, "Год", Year, false, Year);
+  HalPushButton(1, h=1 , 50, h+20, "IStnrPlanLClassLYBtn", Year-1);
+  HalPushButton(1, h+=24 , 50, h+20, "IStnrPlanLClassCYBtn", Year);
+  HalPushButton(1, h+=24 , 50, 60, "IStnrPlanLClassNYBtn", Year+1);
+  HalPushButton(1, h+=24 , 50, 60, "IStnrPlanLClassAllBtn", "Все");
+  SearchField("Найти");
+  SpecialMenu("Обновить цены в следующем месяце",'L',0,"tRePriceLsm");
+  SpecialMenu("Обновить цены в текущем месяце",'C',0,"tCurRePriceLsm");
+  SpecialMenu("Обновить сумму план в заявках",'S',0,"tReSummLsm");
+  EndWindow;
+
+
+  WindowBegin("План по канцтоварам", IStnrPlanDClass, CGview, -);
+  SetWRect(20, 80, 850, 600);
+  UseView(IStnrPlanVc);
+  AddHelpButton(5, 5);
+  EditField(h=100, v=6, 60, "Год", Normal, Year, False, 0);
+  EditField(h, v+=vs, 60, "Подразделение", Normal, DepCode, False, DepSCLass);
+  EnterSkip(ObjPODR);
+  EditField(250, v, -220, "Наименование", Normal, DepName, False, 0);
+  EditField(100, v+=vs, 60, "Объект PODR", Normal, ObjPODR, False, ObjSCLass);
+  EditField(250, v, 60, "Объект UZTR", Normal, ObjUZTR, False, ObjSCLass);
+  EditField(400, v, 60, "Объект TIP", Normal, ObjTIP, False, ObjSCLass);
+  EditField(550, v, 60, "Объект FN", Normal, ObjFN, False, ObjSCLass);  
+  StaticText(20, -175,"Количества:",false);
+  EditField(60, -165, 60, "Январь", ViewOnly, SummK1, False, 0);
+  EditField(190, -165, 60, "Февраль", ViewOnly, SummK2, False, 0);
+  EditField(325, -165, 60, "Март", ViewOnly, SummK3, False, 0);
+  EditField(-350, -165, 60, "Апрель", ViewOnly, SummK4, False, 0);
+  EditField(-230, -165, 60, "Май", ViewOnly, SummK5, False, 0);
+  EditField(-90, -165, 60, "Июнь", ViewOnly, SummK6, False, 0);
+  EditField(60, -145, 60, "Июль", ViewOnly, SummK7, False, 0);
+  EditField(190, -145, 60, "Август", ViewOnly, SummK8, False, 0);
+  EditField(325, -145, 60, "Сентябрь", ViewOnly, SummK9, False, 0);
+  EditField(-350, -145, 60, "Октябрь", ViewOnly, SummK10, False, 0);
+  EditField(-230, -145, 60, "Ноябрь", ViewOnly, SummK11, False, 0);
+  EditField(-90, -145, 60, "Декабрь", ViewOnly, SummK12, False, 0);
+  
+  StaticText(20, -105,"Суммы:",false);
+  EditField(60, -95, 60, "Январь Ф", ViewOnly, SummF1, False, 0);
+  EditField(190, -95, 60, "Февраль Ф", ViewOnly, SummF2, False, 0);
+  EditField(325, -95, 60, "Март Ф", ViewOnly, SummF3, False, 0);
+  EditField(-350, -95, 60, "Апрель Ф", ViewOnly, SummF4, False, 0);
+  EditField(-230, -95, 60, "Май Ф", ViewOnly, SummF5, False, 0);
+  EditField(-90, -95, 60, "Июнь Ф", ViewOnly, SummF6, False, 0);
+  EditField(60, -75, 60, "Январь П", Normal, Summ1, False, 0);
+  EditField(190, -75, 60, "Февраль П", Normal, Summ2, False, 0);
+  EditField(325, -75, 60, "Март П", Normal, Summ3, False, 0);
+  EditField(-350, -75, 60, "Апрель П", Normal, Summ4, False, 0);
+  EditField(-230, -75, 60, "Май П", Normal, Summ5, False, 0);
+  EditField(-90, -75, 60, "Июнь П", Normal, Summ6, False, 0);
+ 
+  EditField(60, -45, 60, "Июль Ф", ViewOnly, SummF7, False, 0);
+  EditField(190, -45, 60, "Август Ф", ViewOnly, SummF8, False, 0);
+  EditField(325, -45, 60, "Сентябрь Ф", ViewOnly, SummF9, False, 0);
+  EditField(-350, -45, 60, "Октябрь Ф", ViewOnly, SummF10, False, 0);
+  EditField(-230, -45, 60, "Ноябрь Ф", ViewOnly, SummF11, False, 0);
+  EditField(-90, -45, 60, "Декабрь Ф", ViewOnly, SummF12, False, 0);
+  EditField(60, -25, 60, "Июль П", Normal, Summ7, False, 0);
+  EditField(190, -25, 60, "Август П", Normal, Summ8, False, 0);
+  EditField(325, -25, 60, "Сентябрь П", Normal, Summ9, False, 0);
+  EditField(-350, -25, 60, "Октябрь П", Normal, Summ10, False, 0);
+  EditField(-230, -25, 60, "Ноябрь П", Normal, Summ11, False, 0);
+  EditField(-90, -25, 60, "Декабрь П", Normal, Summ12, False, 0);
+    
+  MatrixBegin(4, v+=40, -53, -185, IStnrRowType, 150);
+  Flip(0);
+  MatCol(1, 32, "Код", 0, ArtCode, false, INSClass);
+  MatColTL(1, 100, "Наименование", 0, M4Str, ViewOnly, 0, ArtName, false, 0);
+ // MatCol(1, -360, "Цена", 0, Price, false, 0);
+  EnterSkip("Plan01");
+  Flip(1);
+  MatCol(1, -420, "Январь", 0, Plan1, true, 0);
+  MatCol(1, -360, "Цена", 0, Price1, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode1, true, VESClass);
+  MatColTL(1, -120, "1 квартал", 0, M4Val, ViewOnly, 0,  PlanQ1, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(2);
+  MatCol(1, -420, "Февраль", 0, Plan2, true, 0);
+  MatCol(1, -360, "Цена", 0, Price2, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode2, true, VESClass);
+  MatColTL(1, -120, "1 квартал", 0, M4Val, ViewOnly, 0,  PlanQ1, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(3);
+  MatCol(1, -420, "Март", 0, Plan3, true, 0);
+  MatCol(1, -360, "Цена", 0, Price3, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode3, true, VESClass);
+  MatColTL(1, -120, "1 квартал", 0, M4Val, ViewOnly, 0,  PlanQ1, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(4);
+  MatCol(1, -420, "Апрель", 0, Plan4, true, 0);
+  MatCol(1, -360, "Цена", 0, Price4, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode4, true, VESClass);
+  MatColTL(1, -120, "2 квартал", 0, M4Val, ViewOnly, 0,  PlanQ2, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(5);
+  MatCol(1, -420, "Май", 0, Plan5, true, 0);
+  MatCol(1, -360, "Цена", 0, Price5, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode5, true, VESClass);
+  MatColTL(1, -120, "2 квартал", 0, M4Val, ViewOnly, 0,  PlanQ2, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(6);
+  MatCol(1, -420, "Июнь", 0, Plan6, true, 0);
+  MatCol(1, -360, "Цена", 0, Price6, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode6, true, VESClass);
+  MatColTL(1, -120, "2 квартал", 0, M4Val, ViewOnly, 0,  PlanQ2, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(7);
+  MatCol(1, -420, "Июль", 0, Plan7, true, 0);
+  MatCol(1, -360, "Цена", 0, Price7, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode7, true, VESClass);
+  MatColTL(1, -120, "3 квартал", 0, M4Val, ViewOnly, 0,  PlanQ3, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(8);
+  MatCol(1, -420, "Август", 0, Plan8, true, 0);
+  MatCol(1, -360, "Цена", 0, Price8, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode8, true, VESClass);
+  MatColTL(1, -120, "3 квартал", 0, M4Val, ViewOnly, 0,  PlanQ3, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(9);
+  MatCol(1, -420, "Сентябрь", 0, Plan9, true, 0);
+  MatCol(1, -360, "Цена", 0, Price9, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode9, true, VESClass);
+  MatColTL(1, -120, "3 квартал", 0, M4Val, ViewOnly, 0,  PlanQ3, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(10);
+  MatCol(1, -420, "Октябрь", 0, Plan10, true, 0);
+  MatCol(1, -360, "Цена", 0, Price10, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode10, true, VESClass);
+  MatColTL(1, -120, "4 квартал", 0, M4Val, ViewOnly, 0,  PlanQ4, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(11);
+  MatCol(1, -420, "Ноябрь", 0, Plan11, true, 0);
+  MatCol(1, -360, "Цена", 0, Price11, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode11, true, VESClass);
+  MatColTL(1, -120, "4 квартал", 0, M4Val, ViewOnly, 0,  PlanQ4, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  Flip(12);
+  MatCol(1, -420, "Декабрь", 0, Plan12, true, 0);
+  MatCol(1, -360, "Цена", 0, Price12, false, 0);
+  MatCol(1, -300, "Поставщик", 0, POCode12, true, VESClass);
+  MatColTL(1, -120, "4 квартал", 0, M4Val, ViewOnly, 0,  PlanQ4, true, 0);
+  MatColTL(1, -60, "Год", 0, M4Val, ViewOnly, 0, PlanY, true, 0);
+  EndMatrix;
+  VTab(-35, v, -16, v += vs, ToolFlip, 1, "Янв");
+  VTab(-35, v, -16, v += vs, ToolFlip, 2, "Фев");
+  VTab(-35, v, -16, v += vs, ToolFlip, 3, "Мрт");
+  VTab(-35, v, -16, v += vs, ToolFlip, 4, "Апр");
+  VTab(-35, v, -16, v += vs, ToolFlip, 5, "Май");
+  VTab(-35, v, -16, v += vs, ToolFlip, 6, "Июн");
+  VTab(-35, v, -16, v += vs, ToolFlip, 7, "Июл");
+  VTab(-35, v, -16, v += vs, ToolFlip, 8, "Авг");
+  VTab(-35, v, -16, v += vs, ToolFlip, 9, "Сен");
+  VTab(-35, v, -16, v += vs, ToolFlip, 10, "Окт");
+  VTab(-35, v, -16, v += vs, ToolFlip, 11, "Нбр");
+  VTab(-35, v, -16, v += vs, ToolFlip, 12, "Дек");
+  InsertRowTest;
+  DeleteRowTest;
+  EndWindow;
+  
+//=============================================== Заявки
+
+WindowBegin("Заявка на канцтовары", IStnrOrdDClass, CGview, -);
+DynamicWindow;
+SetWRect(10, 80, 700, 450);
+UseView(IStnrOrdVc);
+BrowseButtons(True);
+ActiveFieldOnNew("Code");
+vs = 20; h = 100; v = 30; h2 = 250; h3 = 400;  h4 = 550;
+AddHelpButton(5, 5);
+if (GetWindowClass(CurWindow) == "IStnrOrdDClass") then
+	begin
+	GetWindowRecord(CurWindow, ISOr);
+	end;
+if nonblank(ISOr.OrdPlanDate) then
+	begin
+	bd = ISOr.OrdPlanDate;
+	StaticText(h + 150, 15, "Заявка на " & GetMonthNameRus(bd.Month), false);
+	end
+else 
+	begin
+	bd = CurrentDate;
+	StaticText(h + 150, 15, "Заявка на " & GetMonthNameRus(bd.Month + 1), false);
+	end;
+EditField(h, v, 60, "Подразделение", Normal, DepCode, False, DepSClass);
+EnterSkip(ObjPODR);
+EditField(h2, v, 210, "Наменование", Normal, DepName, False, 0);
+EditField(550, v, 70, "Дата заявки", ViewOnly, OrdDate, False, 0);
+EditField(100, v+=vs, 60, "Объект PODR", Normal, ObjPODR, False, ObjSCLass);
+EditField(250, v, 60, "Объект UZTR", Normal, ObjUZTR, False, ObjSCLass);
+EditField(400, v, 60, "Объект TIP", Normal, ObjTIP, False, ObjSCLass);
+EditField(550, v, 70, "Объект FN2", Normal, ObjFN, False, ObjSCLass);
+//EditField(-100, v + vs, 80, "Дата план", ViewOnly, OrdPlanDate, False, 0);
+CheckBox(20, -30,0,"Заказано",OrderedFlag);
+//EditField(95, -30, 80, "", Normal, OrderedSign, False, 0);
+CheckBox(180, -30,0,"Утверждено",ConfirmedFlag);
+//EditField(310, -30, 80, "", Normal, ConfirmedSign, False, 0);
+CheckBox(350, -30,0,"Заказ поставщику",POFlag);
+//EditField(595, -30, 78, "", Normal, POSign, False, 0);
+CheckBox(500, -30,0,"Списано",SDFlag);
+EditField(-76, -30, 60, "Сп.№", ViewOnly, SDNr, False, 0);
+EditField(-180, -55, 60, "Сумма Факт", Normal, SummFM, False, 0);
+EditField(-76, -55, 60, "План", Normal, SummM, False, 0);
+MatrixBegin(4, 90, -30, -60,-,150);
+MatCol(1, 25, "Код", 0, ArtCode, false, 0);
+MatCol(1, 125, "Наименование", 0, ArtName, false, 0);
+MatCol(1, -170, "Цена", 0, Price, false, 0);
+MatCol(1, -120, "Заказ", 0, Qnt, false, 0);
+MatCol(1, -60, "План", 0,  Plan, false, 0);
+//MatCol(1, -30, "SerNr", 0,  Zak, false, 0);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+SpecialMenu("Создать списание",'M',0,"SDFromISODsm");
+EndWindow;
+
+WindowBegin("Заявки на канцтовары", IStnrOrdLClass, CGmlist, -);
+SpawnClass(IStnrOrdDClass);
+SetWRect(64, 80, 750, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(IStnrOrdVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(80, 80, "Подразделение", DepCode, false, DepCode);
+RlColKey(180, 180, "Наменование", DepName, false, DepCode);
+RlColKey(-220, -220, "Дата заявки", OrdDate, false, OrdDate);
+RlColKey(-140, -140, "Зак.фил.", OrderedFlag, false, OrderedFlag);
+RlColKey(-90, -90, "Утверждено", ConfirmedFlag, false, ConfirmedFlag); 
+RlColKey(-40, -40, "Зак.пост.", POFlag, false, POFlag); 
+SearchField("Поиск");
+SpecialMenu("Создать ПЗП",'Z',0,"PZPFromISOLsm");
+SpecialMenu("Создать Заказ поставщику",'P',0,"POFromISOLsm");
+SpecialMenu("Создать перемещения",'M',0,"MovFromISOLsm");
+//SpecialMenu("Создать Списания",'S',0,"SDFromISOLsm");
+BrowseSubsetButton(-40, -15);
+EndWindow;
+ 
+
+WindowBegin("Заказ канцтоваров", IStationeryRClass, CGRcW, RcType);
+SetWRect(20,80,430,150);
+
+EndWindow;  
+
+
+
+WindowBegin("Канцтовары в заказах поставщикам", tOrdersDClass, CGview, -);
+SetWRect(10, 80, 450, 450);
+UseView(tOrdersVc);
+BrowseButtons(True);
+vs = 20; h = 100; v = 30; h2 = 250; h3 = 600; 
+AddHelpButton(5, 5);
+EditField(h, v, 100, "SerNr", Normal, SerNr, False, 0);
+EditField(h, v+=vs, 100, "№ Заказа пост.", Normal, SerNrPO, False, 0);
+EditField(h, v+=vs, 100, "№ Заказа канц.", Normal, SerNrISO, False, 0);
+EndWindow;
+
+WindowBegin("Канцтовары в заказах поставщикам", tOrdersLClass, CGmlist, -);
+SpawnClass(tOrdersDClass);
+SetWRect(64, 80, 400, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tOrdersVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(100, 100, "№ Заказа пост.", SerNrPO, false, SerNrPO);
+RlColKey(250, 250, "№ Заказа канц.", SerNrISO, false, SerNrISO);
+SearchField("Поиск");
+EndWindow;
+ 
+WindowBegin("Превышение лимитов", IStnrExcLimRClass, CGRcW, RcType);
+SetWRect(20,80,430,150);
+EndWindow;  
+
+WindowBegin("Заказ канцтоваров 2", IStationery2RClass, CGRcW, RcType);
+SetWRect(20,80,430,350);
+AddHelpButton(5, 5);
+vs = 20; h = 150; v = 10; h2 = 250; h3 = 600; 
+EditFieldTL(h, v , 80, "№ документа", M4Long, Normal, 21, long1, false, IStnrOrdSClass);
+PeriodField(h, v+= 20,"Период");
+EditFieldTL(h, v += 20, 80, "Подразделение", M4UStr, Normal, 21, f1, false, DepSClass);
+EditFieldTL(h, v += 20, 80, "Объект", M4UStr, Normal, 21, f2, false, ObjSClass);
+EditFieldTL(h, v += 20, 80, "Товар", M4UStr, Normal, 21, f3, false, tINKSClass);
+ButtonFrame(h, v += 50, 123,2,"Статус");
+CheckBox(h, v, 0, "Заказано", flags[1]);
+CheckBox(h,v += 20, 0,"Утверждено", flags[2]);
+CheckBox(h, v += 20, 0, "Заказ поставщику", flags[3]);
+CheckBox(h,v += 20, 0,"Списано", flags[4]);
+ButtonFrame(h, v += 50, 123, 2, "Функция");
+RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;  
+
+ 
+WindowBegin("Счета в ПЗП из Канцтоваров", tAccPZPDClass, CGview, -);
+SetWRect(10, 80, 450, 250);
+UseView(tAccPZPVc);
+BrowseButtons(True);
+vs = 20; h = 100; v = 30; h2 = 250; h3 = 600; 
+AddHelpButton(5, 5);
+EditField(h, v, 60, "Счёт", Normal, CodeAcc, False, AccSClass);
+EditField(h, v+=vs, -30, "Обекты UZTR", Normal, SrtAcc, False, ObjSClass);
+EndWindow; 
+ 
+WindowBegin("Счета в ПЗП из Канцтоваров", tAccPZPLClass, CGmlist, -);
+SpawnClass(tAccPZPDClass);
+SetWRect(64, 80, 400, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tAccPZPVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Счёт", CodeAcc, false, CodeAcc);
+RlCol(100, 100, "Обекты UZTR", SrtAcc, false);
+SearchField("Поиск");
+EndWindow; 
+
+WindowBegin("Планы по канцтоварам", IStnrPlanRClass, CGRcW, RcType);
+SetWRect(20,80,430,300);
+AddHelpButton(5, 5);
+vs = 20; h = 150; v = 10; h2 = 250; h3 = 600; 
+EditFieldTL(h, v , 80, "№ документа", M4Long, Normal, 21, long1, false, IStnrPlanSClass);
+EditFieldTL(h, v += 20 , 80, "Месяц", M4Int, Normal, 21, frc, false, 0);
+EditFieldTL(h, v += 20, 80, "Квартал", M4Int, Normal, 21, toc, false, 0);
+EditFieldTL(h, v += 20, 80, "Год", M4Long, Normal, 21, long2, false, 0);
+EditFieldTL(h, v += 20, 80, "Подразделение", M4UStr, Normal, 21, f1, false, DepSClass);
+EditFieldTL(h, v += 20, 80, "Объект", M4UStr, Normal, 21, f2, false, ObjSClass);
+EditFieldTL(h, v += 20, 80, "Товар", M4UStr, Normal, 21, f3, false, tINKSClass);
+EditFieldTL(h, v += 20, 80, "Поставщик", M4UStr, Normal, 21, f4, false, VESClass);
+ButtonFrame(h, v += 50, 123, 2, "Функция");
+RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow; 
+
+
+WindowBegin("Заявки на канцтовары", IStnrOrdSClass, CGslist, -);
+SpawnClass(IStnrOrdDClass);
+SetWRect(64, 80, 750, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(IStnrOrdVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(80, 80, "Подразделение", DepCode, false, DepCode);
+RlColKey(180, 180, "Наменование", DepName, false, DepCode);
+RlColKey(-220, -220, "Дата заявки", OrdDate, false, OrdDate);
+RlColKey(-140, -140, "Зак.фил.", OrderedFlag, false, OrderedFlag);
+RlColKey(-90, -90, "Утверждено", ConfirmedFlag, false, ConfirmedFlag); 
+RlColKey(-40, -40, "Зак.пост.", POFlag, false, POFlag); 
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Планы по канцтоварам", IStnrPlanSClass, CGslist, -);
+SpawnClass(IStnrPlanDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(IStnrPlanVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(50, 50, "Код", DepCode, false, DepCode);
+RlColKey(130, 130, "Наименование", DepName, false, DepName);
+RlColKey(-120, -120, "UZTR", ObjUZTR, false, ObjUZTR);
+RlColKey(-70, -70, "Год", Year, false, Year);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Количество клиентов", tCUListRClass, CGRcW, RcType);
+SetWRect(20,80,430,150);
+EndWindow;  
+
+WindowBegin("Сводные планы по канцтоварам", IStnrPlan2RClass, CGRcW, RcType);
+SetWRect(20,80,430,300);
+AddHelpButton(5, 5);
+vs = 20; h = 150; v = 10; h2 = 250; h3 = 600; 
+//EditFieldTL(h, v , 80, "№ документа", M4Long, Normal, 21, long1, false, IStnrPlanSClass);
+EditFieldTL(h, v += 20 , 80, "Месяц", M4Int, Normal, 21, frc, false, 0);
+EditFieldTL(h, v += 20, 80, "Квартал", M4Int, Normal, 21, toc, false, 0);
+EditFieldTL(h, v += 20, 80, "Год", M4Long, Normal, 21, long2, false, 0);
+EditFieldTL(h, v += 20, 80, "Подразделение", M4UStr, Normal, 21, f1, false, DepSClass);
+EditFieldTL(h, v += 20, 80, "Объект", M4UStr, Normal, 21, f2, false, ObjSClass);
+EditFieldTL(h, v += 20, 80, "Товар", M4UStr, Normal, 21, f3, false, tINKSClass);
+EditFieldTL(h, v += 20, 80, "Поставщик", M4UStr, Normal, 21, f4, false, VESClass);
+// ButtonFrame(h, v += 50, 123, 2, "Функция");
+// RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+// RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow; 
+
+
+WindowBegin("Создать списания",MakeSDFromISOVClass,CGMnt,RcType);
+SetWRect(90,80,518,340);
+v = 6; vs = 20; h = 140;
+PeriodField(h,v,"Период");
+EndWindow;
+ 
+  Return;
+end;
+
+// //===============================================
+// global
+// updating procedure SDFromISOLsm()
+// BEGIN
+
+// if MakeSDFromISOLClass then
+	// begin
+	// messagebox(0, "Списания созданы");
+	// // nwn = OpenWindow("SDDClass",1,0,"","", SDr);
+	// // PutWindowRecord(nwn,SDr);  
+	// end;	
+
+// RETURN;
+// end;
+
+
+//===============================================
+global
+updating procedure SDFromISODsm()
+BEGIN
+record IStnrOrdVc ISOr, ISO2r;
+record SDVc SDr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, ISOr);
+
+if MakeSDFromISO(ISOr.SerNr, SDr, ISOr.OrdDate, ISOr.OrdDate) then
+	begin
+	nwn = OpenWindow("SDDClass",1,0,"","", SDr);
+	PutWindowRecord(nwn,SDr);  
+	end;	
+
+RETURN;
+end;
+
+//===============================================
+//Итоги по товару на квартал и на год
+procedure IStnrPlanRowSumUp(var row IStnrPlanVc SPrw)
+begin
+  SPrw.PlanQ1 = SPrw.Plan1 + SPrw.Plan2 + SPrw.Plan3; 
+  SPrw.PlanQ2 = SPrw.Plan4 + SPrw.Plan5 + SPrw.Plan6; 
+  SPrw.PlanQ3 = SPrw.Plan7 + SPrw.Plan8 + SPrw.Plan9; 
+  SPrw.PlanQ4 = SPrw.Plan10 + SPrw.Plan11 + SPrw.Plan12; 
+  SPrw.PlanY = SPrw.PlanQ1 + SPrw.PlanQ2 + SPrw.PlanQ3 + SPrw.PlanQ4; 
+  Return;
+end;
+
+//===============================================
+function boolean IStnrPlanDClassPlanEFAfter(integer wn, integer rownr, integer changed, string fieldname)
+begin
+  record IStnrPlanVc SPr;
+  row IStnrPlanVc SPrw;
+  val S;
+
+  if (changed <> 0) and (rownr >= 0) then
+    begin
+      GetWindowRecord(wn, SPr);
+      MatRowGet(SPr, rownr, SPrw);
+      IStnrPlanRowSumUp(SPrw);
+	  MatRowPut(SPr, rownr, SPrw);
+	  If (fieldname == "Plan10") or (fieldname == "Plan11") or (fieldname == "Plan12") then
+		  begin
+		  SetFieldValueByName(SPr, "SummF" & Right(fieldname, 2), tSumF(SPr, fieldname), -1);  
+		  SetFieldValueByName(SPr, "SummK" & Right(fieldname, 2), tSumK(SPr, fieldname), -1);  
+		  S = StringToVal(GetFieldValueByName(SPr, "Summ" & Right(fieldname, 2), -1), M4Val);
+		  end
+	  else
+		  begin
+		  SetFieldValueByName(SPr, "SummF" & Right(fieldname, 1), tSumF(SPr, fieldname), -1);  
+		  SetFieldValueByName(SPr, "SummK" & Right(fieldname, 1), tSumK(SPr, fieldname), -1);  
+		  S = StringToVal(GetFieldValueByName(SPr, "Summ" & Right(fieldname, 1), -1), M4Val);
+		  end;
+	  if (tSumF(SPr, fieldname) > S) and (S > 0) then
+		begin
+		messagebox(0,"Лимит превышен!");
+		end;
+      PutWindowRecord(wn, SPr);
+    end;
+  IStnrPlanDClassPlanEFAfter = true;
+  Return;
+end;
+
+//===============================================
+function boolean IStnrPlanDClassYearEFAfter(integer wn, integer changed)
+begin
+  record IStnrPlanVc SPr;
+
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, SPr);
+      IStnrPlanFill(SPr);
+      PutWindowRecord(wn, SPr);
+    end;
+  IStnrPlanDClassYearEFAfter = true;
+  Return;
+end;
+
+//===============================================
+function boolean IStnrPlanDClassDepCodeEFAfter(integer wn, integer changed)
+begin
+  record IStnrPlanVc SPr;
+
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, SPr);
+      SPr.DepName = IGetDepName(SPr.DepCode);
+      PutWindowRecord(wn, SPr);
+    end;
+  IStnrPlanDClassDepCodeEFAfter = true;
+  Return;
+end;
+
+//===============================================
+function boolean IStnrPlanDClassArtCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record IStnrPlanVc SPr;
+  row IStnrPlanVc SPrw;
+
+  if (changed <> 0) and (rownr >= 0) then
+    begin
+      GetWindowRecord(wn, SPr);
+      MatRowGet(SPr, rownr, SPrw);
+      SPrw.ArtName = IGetArtName(SPrw.ArtCode);
+      MatRowPut(SPr, rownr, SPrw);
+      PutWindowRecord(wn, SPr);
+    end;
+  IStnrPlanDClassArtCodeEFAfter = true;
+  Return;
+end;
+
+
+//===============================================
+global
+function boolean IStnrPlanDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+  record IStnrOrdVc ISOr;
+
+  if (left(fieldname, 4) == "Plan") then
+    begin
+    res = IStnrPlanDClassPlanEFAfter(wn, rownr, changed, fieldname);
+    end
+  else
+    begin
+      switch (fieldname)
+        begin
+          case "Year":  res = IStnrPlanDClassYearEFAfter(wn, changed);
+		  case "DepCode": res = IStnrPlanDClassDepCodeEFAfter(wn, changed);
+          case "ArtCode": res = IStnrPlanDClassArtCodeEFAfter(wn, rownr, changed);
+		end;
+    end;
+	
+  IStnrPlanDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+//LastYear
+global
+updating
+procedure IStnrPlanLClassLYBtn()
+begin
+  SetWindowSubset(CurWindow, GetYear(CurrentDate)-1);
+  UpdateBrowses("IStnrPlanVc");
+  Return;
+end;
+
+//===============================================
+//CurrentYear
+global
+procedure IStnrPlanLClassCYBtn()
+begin
+  SetWindowSubset(CurWindow, GetYear(CurrentDate));
+  UpdateBrowses("IStnrPlanVc");
+  Return;
+end;
+
+//===============================================
+//NextYear
+global
+procedure IStnrPlanLClassNYBtn()
+begin
+  SetWindowSubset(CurWindow, GetYear(CurrentDate)+1);
+  UpdateBrowses("IStnrPlanVc");
+  Return;
+end;
+
+//===============================================
+//SubsetOff
+global
+procedure IStnrPlanLClassAllBtn()
+begin
+  SetWindowSubset(CurWindow, "");
+  UpdateBrowses("IStnrPlanVc");
+  Return;
+end;
+
+//===============================================
+
+global
+procedure IStnrOrdDClassQntEFAfter(integer wn, integer rownr, integer changed)
+begin
+Boolean res;
+record IStnrOrdVc ISOr;
+row IStnrOrdVc ISOrw;
+
+GetWindowRecord(wn, ISOr);
+
+MatRowGet(ISOr, rownr, ISOrw);
+//if (ISOrw.Plan <= ISOrw.Qnt) and tExcLim(ISOr) then
+//	begin
+//	ISOrw.Qnt = ISOrw.Plan ;
+//	messagebox(0,"Лимит превышен!");
+//	end;
+MatRowPut(ISOr, rownr, ISOrw);
+
+ISOr.SummFM = tSumFISO(ISOr);  
+// if (ISOr.SummFM > ISOr.SummM) and (ISOr.SummM > 0) then
+//		begin
+//		messagebox(0,"Лимит превышен!");
+//		end;
+PutWindowRecord(wn, ISOr);
+
+Return;
+end;
+ 
+ 
+global
+procedure IStnrOrdDClassObjTIPEFAfter(integer wn, integer rownr, integer changed)
+begin
+record IStnrOrdVc ISOr;
+row IStnrOrdVc ISOrw;
+ 
+GetWindowRecord(wn, ISOr);
+IStnrOrdPlanFill(ISOr);
+
+PutWindowRecord(wn, ISOr);
+Return;
+end; 
+ 
+global
+procedure IStnrOrdDClassDepCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+record IStnrOrdVc ISOr;
+row IStnrOrdVc ISOrw;
+ 
+GetWindowRecord(wn, ISOr);
+ISOr.DepName = IGetDepName(ISOr.DepCode);
+
+PutWindowRecord(wn, ISOr);
+Return;
+end;
+
+//===============================================
+global
+function boolean IStnrOrdDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+record IStnrOrdVc ISOr;
+Boolean res;
+record UserVc USr;
+  
+GetWindowRecord(wn, ISOr);
+ res = true;
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+	      case "ArtCode": res = false;
+		  case "ArtName": res = false;
+		  case "Price": 
+				begin
+				USr.Code = CurrentUser;
+				ReadFirstMain(USr, 1, True);
+				if not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,OFMAN,OFFI")) then
+					begin
+					res = false; 
+					end;
+				end;	
+		  case "Plan": res = false;
+		  case "Qnt": res = true; 
+        end;
+    end;      
+IStnrOrdDClassActiveEditField = res;	
+  Return;
+end;
+
+
+
+
+//===============================================
+global
+function boolean IStnrOrdDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+  record IStnrOrdVc ISOr;
+  
+  GetWindowRecord(wn, ISOr);
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "DepCode": IStnrOrdDClassDepCodeEFAfter(wn, rownr, changed);		
+		  case "ObjTIP": IStnrOrdDClassObjTIPEFAfter(wn, rownr, changed);			  
+		  case "Qnt": IStnrOrdDClassQntEFAfter(wn, rownr, changed);
+        end;
+    end;                                                              
+
+  IStnrOrdDClassAfterEditField = res;
+  Return;
+end;
+
+global 
+function Boolean IStnrOrdDClassDeleteRowTest(Integer wn,Integer rownr)
+begin
+  IStnrOrdDClassDeleteRowTest = false;
+  return;
+end;
+
+//===============================================
+global
+updating procedure POFromISOLsm()
+BEGIN
+Boolean res;
+record POVc POr, PO2r;
+Integer wn, nwn, RwCnt, nr, pos;
+record TempVc Listr, List1r;
+row POVc POrw;
+row  TempVc Listrw, List1rw;
+string 250 VEs;
+String 20 VE;
+
+if (CrStrVE(VEs)) then
+	begin
+	pos = 0;
+	ExtractObj(VEs, pos, VE);
+	while nonblank(VE) 
+		begin
+		if MakePOFromISO(VE, POr) then
+			begin
+			nwn = OpenWindow("PODClass",1,0,"","", POr);
+			PutWindowRecord(nwn,POr);  
+			end;	
+		ExtractObj(VEs, pos, VE);
+		res = true;
+		end;	
+	end;
+		
+RETURN;
+end;
+
+//===============================================
+global
+function Boolean IStnrOrdLClassOnOpenWindow(Integer wn)
+begin
+
+record UserVc USr;
+string 20 subset;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,OFMAN,OFFI")) then
+	begin
+	subset = USr.Department;
+	SetWindowSubset(wn, subset);
+	UpdateBrowses("IStnrOrdLClass");
+	end;
+
+IStnrOrdLClassOnOpenWindow = True;
+RETURN;
+end;
+
+
+
+//===============================================
+global
+updating procedure tRePriceLsm()
+BEGIN
+
+
+ if  (tRePrice) then
+	begin
+	MessageBox(0, "Цены в планы занесены");
+	end;
+ if  (tRePriceISO) then
+	begin
+	MessageBox(0, "Цены в заявки занесены");
+	end;
+RETURN;
+end;
+//===============================================
+global
+updating procedure tCurRePriceLsm()
+BEGIN
+
+
+ if  (tCurRePrice) then
+	begin
+	MessageBox(0, "Цены в планы занесены");
+	end;
+ if  (tCurRePriceISO) then
+	begin
+	MessageBox(0, "Цены в заявки занесены");
+	end;
+RETURN;
+end;
+//===============================================
+global
+updating procedure tReSummLsm()
+BEGIN
+
+
+if  (tReSumm) then
+	begin
+	MessageBox(0, "Сумма план в заявках обновлена.");
+	end;
+ 
+RETURN;
+end;
+// global
+// updating procedure tRePriceISOLsm()
+// BEGIN
+
+ // if  (tRePriceISO) then
+	// begin
+	// MessageBox(0, "Цены занесены");
+	// end;
+  
+// RETURN;
+// end;
+
+
+// global 
+// updating
+// function Boolean PODClassDeleteRowTest(Integer wn,Integer rownr)
+// begin
+// record POVc POr, PO2r;
+// row POVc POrw, PO2rw;
+// Boolean res;
+// Integer updatemode;
+
+// GetWindowRecord(wn,POr);
+// GetPrevWindowRecord(wn,PO2r);
+// matrowget(PO2r, rownr, PO2rw);
+// tDelRowPOFromISO(POr.SerNr, PO2rw.ArtCode);
+
+// res = inner.PODClassDeleteRowTest(wn, rownr);
+// PODClassDeleteRowTest = res;
+// return;
+// end;
+
+
+
+//===============================================
+global
+updating procedure PZPFromISOLsm()
+BEGIN
+Boolean res;
+record IStnrOrdVc ISOr;
+record POVc POr, PO2r;
+Integer wn, nwn, RwCnt;
+record TempVc Listr;
+Integer fn;
+record tOrdersVc TOr;
+record PZPVc PZPr;
+
+if MakePZPFromISO(PZPr) then
+	begin
+	nwn = OpenWindow("PZPDClass",1,0,"","", PZPr);
+	PutWindowRecord(nwn,PZPr);  
+	end;	
+	
+RETURN;
+end;
+
+//================================================
+global
+procedure IStnrOrdDClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+record UserVc USr;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,OFMAN,OFFI")) then
+	begin
+	duplOK = false;
+	end;
+RETURN;
+end;
+//================================================
+global
+procedure IStnrOrdLClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+record UserVc USr;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,OFMAN,OFFI")) then
+	begin
+	duplOK = false;
+	end;
+RETURN;
+end;
+//================================================
+global
+updating procedure MovFromISOLsm()
+BEGIN
+Boolean res, TrHs;
+record IStnrOrdVc ISOr;
+record POVc POr, PO2r;
+Integer wn, nwn, RwCnt;
+record TempVc Listr;
+Integer fn;
+record tOrdersVc TOr;
+record StockMovVc SMr;
+string 20 ObjPODR, OTCode;
+record ObjVc OBjr;
+
+
+OTCode = "PODR";
+ResetLoop(OBjr);
+OBjr.OTCode = OTCode;
+TrHs = True;
+while LoopKey("OTCode", OBjr, 1, TrHs)
+	begin
+	TrHs = (OBjr.OTCode == OTCode);
+	if TrHs then
+		begin
+		if MakeMovFromISO(SMr, OBjr.Code, OBjr.Comment) then 
+			begin
+			nwn = OpenWindow("StockMovDClass",1,0,"","", SMr);
+			//PutWindowRecord(nwn,SMr);  
+			end;	
+		end;	
+	END;
+RETURN;
+end;
+

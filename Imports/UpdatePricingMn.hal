@@ -1,0 +1,81 @@
+global
+updating procedure NoOtherPricingMn()
+begin
+record PLVc PLr, PL2r;
+string 20 ArtCode;
+Boolean TrHs;
+
+while not TestEOF
+  begin
+  TrHs = True;
+  NextImportLine(False);
+  ArtCode = ImportField;
+  PLr.ArtCode = ArtCode;
+  ResetLoop(PLr);
+  while LoopKey("ArtCode", PLr, 1, TrHs)
+    begin
+    TrHs = (PLr.ArtCode == ArtCode);
+    if TrHs then
+      begin
+      PL2r.ArtCode = PLr.ArtCode;
+      PL2r.PLCode = PLr.PLCode;
+      ReadFirstMain(PL2r, 2, True);
+      if (PL2r.NoOtherPricing == 0) then
+        begin
+        PL2r.NoOtherPricing = 1;
+        end else
+        begin
+        PL2r.NoOtherPricing = 0;
+        end;
+      RecordUpdate(PLr, PL2r, False);
+      end;
+    end;
+  end;
+CloseFile;
+MessageBox(0, "Prices updated");
+RETURN;
+end;
+
+
+global
+updating procedure UpdatePricingMn()
+begin
+record PLVc PLr, PL2r;
+record INVc INr;
+string 20 ArtCode, Price, PLCode;
+Boolean Yes, TrHs;
+NextImportLine(False);
+PLCode = ImportField;
+//StopAlert(PLCode);
+while not TestEOF
+  begin
+  NextImportLine(True);
+  ArtCode = ImportField;
+  Price = ImportField;
+  PLr.ArtCode = ArtCode;
+  PLr.PLCode = PLCode;
+  if ReadFirstMain(PLr, 2, True) then
+    begin
+    PLr.ExVatPrice = StringToVal(Price, M423Val);
+    PL2r.ArtCode = PLr.ArtCode;
+    PL2r.PLCode = PLr.PLCode;
+    ReadFirstMain(PL2r, 2, True);
+    RecordUpdate(PL2r, PLr, True);
+    end
+else
+	begin
+	Inr.Code = ArtCode;
+	if ReadFirstMain(INr, 1, True) then
+		begin
+		PLr.ArtCode = ArtCode;
+		Plr.Comment = INr.Name;
+		PLr.PLCode = PLCode;
+		PLr.ExVatPrice = StringToVal(Price, M423Val);
+		RecordInsert(PLr,false);
+		end;
+	end;	
+  end;
+CloseFile;
+MessageBox(0, "Prices updated " & PLCode);
+RETURN;
+end;

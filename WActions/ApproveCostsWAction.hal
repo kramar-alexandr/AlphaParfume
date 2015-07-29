@@ -1,0 +1,1118 @@
+//Согласование затрат
+external function string 255 ReplaceSubstrFromStr(string, string, string);
+external inner function Integer PMCheckType(string,var string,var string);
+remote function Boolean CLOutACCExists(record ApproveCostsVc, Integer, var LongInt);
+external inner procedure GetFullCurncyRate (var string, Date, var val, var val, var val, var val, var val);
+remote function Boolean PPACCExists(record ApproveCostsVc);
+external inner procedure PPSumup(var record PPVc);
+external inner procedure CalcExpRow(var record ExpVc, Integer);
+external inner procedure ExpSumup(record ExpVc, var val);
+external inner procedure ExtractObj(string, var Integer, var string);
+remote function LongInt CLOutVcRecordCheck(var record CLOutVc, record CLOutVc, LongInt, LongInt);
+external procedure AddHelpButton(LongInt, LongInt);
+remote function Boolean MakeActFromAC(record ApproveCostsVc, var record ActVc);
+external function string 255 IGetPMName(string);
+external function string 255 IGetUserName(string);
+external inner procedure ValToText(val,Integer,string,string,var string);
+external function string 60 IGetObjByType(string, string);
+remote procedure CLOutVc_LogAction(var record CLOutVc, string); //18.03.13 INAU
+remote procedure PPVc_LogAction(var record PPVc, string); //18.03.13 INAU
+
+function Boolean ACDClass_InitiatorAfter(Integer wn, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+record UserVc USr;
+Boolean res;
+
+GetWindowRecord(wn, ACr);
+GetPrevWindowRecord(wn, AC2r);
+res = (MatRowCnt(ACr) == 0);
+if res then
+	begin
+	USr.Code = ACr.Initiator;
+	if ReadFirstMain(USr, 1, True) then
+		begin
+		ACr.InitiatorName = USr.Name;
+		PutWindowRecord(wn, ACr);
+		end else
+		begin
+		res = False;
+		PutWindowRecord(wn, Ac2r);
+		end;
+	end else
+	begin
+	PutWindowRecord(wn, Ac2r);
+	end;
+ACDClass_InitiatorAfter = res;
+RETURN;
+end;
+
+function Boolean ACDClass_PMAfter(Integer wn, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+record AccVc Ar;
+record PMBlock PMr;
+row PMBlock PMrw;
+Integer RwCnt;
+Boolean res, TrHs;
+
+GetWindowRecord(wn, ACr);
+GetPrevWindowRecord(wn, AC2r);
+res = (MatRowCnt(ACr) == 0);
+if res then
+	begin
+	BlockLoad(PMr);
+	for(RwCnt = 0; (RwCnt < MatRowCnt(PMr)) and (not TrHs); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(PMr, RwCnt, PMrw);
+		TrHs = (PMrw.Code == ACr.PM);
+		if TrHs then
+			begin
+			Ar.AccNumber = PMrw.AccNr;
+			if ReadFirstMain(Ar, 1, True) then
+				begin
+				ACr.CurncyCode = Ar.Curncy;
+				end else
+				begin
+				ACr.PM = blankval;
+				ACr.CurncyCode = blankval;
+				end;
+			end;
+		end;
+	if (not TrHs) then
+		begin
+		ACr.PM = AC2r.PM;
+		ACr.CurncyCode = AC2r.CurncyCode;
+		end;
+	PutWindowRecord(wn, ACr);
+	end else
+	begin
+	ACr.PM = AC2r.PM;
+	ACr.CurncyCode = AC2r.CurncyCode;
+	PutWindowRecord(wn, Acr);
+	end;
+ACDClass_PMAfter = res;
+RETURN;
+end;
+
+function Boolean ACDClass_PayDateAfter(Integer wn, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+record UserVc USr;
+Boolean res;
+
+GetWindowRecord(wn, ACr);
+GetPrevWindowRecord(wn, AC2r);
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+res = SetInSet("CAS", USr.Comment);
+if not res then
+	begin
+	ACr.PayDate = AC2r.PayDate;
+	PutWindowRecord(wn, ACr);
+	end;
+ACDClass_PayDateAfter = res;
+RETURN;
+end;
+
+procedure RecalcSumACC(var record ApproveCostsVc ACr)
+begin
+row ApproveCostsVc ACrw;
+Integer RwCnt;
+val Sum;
+
+Sum = 0;
+for(RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ACr, RwCnt, ACrw);
+	if (((ACr.OKFlag == 1) and nonblank(ACrw.FuncSign)) or (ACr.OKFlag == 0)) then
+		begin
+		Sum = Sum + ACrw.Sum;
+		end;
+	end;
+ACr.Summa = Sum;
+RETURN;
+end;
+
+function Boolean ACDClass_SumAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+row ApproveCostsVc ACrw, AC2rw;
+Boolean res;
+
+GetWindowRecord(wn, ACr);
+MatRowGet(ACr, rownr, ACrw);
+if (blank(ACrw.FuncSign) and blank(ACrw.SuperSign) and (ACr.OKFlag == 0)) then
+	begin
+	ACrw.Curncy = ACr.CurncyCode;
+	MatRowPut(ACr, rownr, ACrw);
+	end else
+	begin
+	GetPrevWindowRecord(wn, AC2r);
+	MatRowGet(AC2r, rownr, AC2rw);
+	MatRowPut(ACr, rownr, AC2rw);
+	end;
+RecalcSumACC(ACr);
+PutWindowRecord(wn, ACr);
+ACDClass_SumAfter = res;
+RETURN;
+end;
+
+function string 255 ChangeFNObjects(var string ObjectStr, string Obj)
+begin
+record ObjVc OBjr;
+string 20 OTCode;
+Boolean TrHs, Replaced;
+
+OBjr.Code = Obj;
+
+if ReadFirstMain(OBjr, 1, True) then
+	begin
+	OTCode = OBjr.OTCode;
+	ResetLoop(OBjr);
+	OBjr.OTCode = OTCode;
+	TrHs = True;
+	while LoopKey("OTCode", OBjr, 1, TrHs)
+		begin
+		TrHs = (OBjr.OTCode == OTCode);
+		if SetInSet(OBjr.Code, ObjectStr) then
+			begin
+			ObjectStr = ReplaceSubstrFromStr(ObjectStr, OBjr.Code, Obj);
+			TrHs = False;
+			Replaced = True;
+			end;
+		end;
+	end;
+if (not Replaced) then
+	begin
+	ChangeFNObjects = ObjectStr & "," & Obj;
+	end else
+	begin
+	ChangeFNObjects = ObjectStr;
+	end;
+RETURN;
+end;
+
+function Boolean ACDClass_FuncAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+row ApproveCostsVc ACrw, AC2rw;
+record ObjVc Objr;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, ACr);
+	MatRowGet(ACr, rownr, ACrw);
+	res = (blank(ACrw.FuncSign) and blank(ACrw.SuperSign) and (ACr.OKFlag == 0));
+	if res then
+		begin
+		if (not SetInSet(ACrw.Func, ACrw.Objects)) then
+			begin
+			Objr.Code = ACrw.Func;
+			if (not ReadFirstMain(OBjr, 1, True)) or (OBjr.OTCode <> "FN2") then
+				begin
+				GetPrevWindowRecord(wn, AC2r);
+				MatRowGet(AC2r, rownr, AC2rw);
+				MatRowPut(ACr, rownr, AC2rw);
+				end else
+				begin
+				ACrw.Objects = ChangeFNObjects(ACrw.Objects, ACrw.Func);
+				MatRowPut(ACr, rownr, ACrw);
+				end;
+			end;	
+		PutWindowRecord(wn, ACr);
+		end else
+		begin
+		GetPrevWindowRecord(wn, AC2r);
+		MatRowGet(AC2r, rownr, AC2rw);
+		MatRowPut(ACr, rownr, AC2rw);
+		PutWindowRecord(wn, ACr);
+		end;
+	end;
+ACDClass_FuncAfter = res;
+RETURN;
+end;
+
+function Boolean ACDClass_FuncSignAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+row ApproveCostsVc ACrw, AC2rw;
+record ObjVc Objr;
+record VUserBudVc VB;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, ACr);
+	MatRowGet(ACr, rownr, ACrw);
+	GetPrevWindowRecord(wn, AC2r);
+	MatRowGet(AC2r, rownr, AC2rw);
+	res = (blank(AC2rw.FuncSign) and nonblank(ACrw.SuperSign) and (ACr.OKFlag == 0));
+	if res then
+		begin
+		Objr.Code = ACrw.Func;
+		res = ReadFirstMain(OBjr, 1, True);
+		if res then
+			begin
+			VB.Code = CurrentUser;
+			res = ReadFirstMain(VB, 1, True);
+			if res then
+				begin
+				res = SetInSet(OBjr.AutoObjects, VB.Function1);
+				end;
+			end;
+		end else
+		begin
+		ACrw.FuncSign = AC2rw.FuncSign;
+		end;
+	if res then
+		begin
+		ACrw.FuncSign = CurrentUser;
+		end else
+		begin
+		ACrw.FuncSign = AC2rw.FuncSign;
+		end;
+	MatRowPut(ACr, rownr, ACrw);	
+	PutWindowRecord(wn, ACr);		
+	end;
+ACDClass_FuncSignAfter = res;
+RETURN;
+end;
+
+function Boolean ACDClass_SuperSignAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+row ApproveCostsVc ACrw, AC2rw;
+record ObjVc Objr;
+record VUserBudVc VB;
+record UserVc USr;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, ACr);
+	MatRowGet(ACr, rownr, ACrw);
+	GetPrevWindowRecord(wn, AC2r);
+	MatRowGet(AC2r, rownr, AC2rw);
+	res = (blank(AC2rw.SuperSign) and (ACr.OKFlag == 0) and blank(ACrw.FuncSign));
+	if res then
+		begin
+		USr.Code = ACr.Initiator;
+		ReadFirstMain(USr, 1, True);
+		res = ((USr.Supervisor == CurrentUser) or (USr.Code == CurrentUser));
+		end;
+	if res then
+		begin
+		ACrw.SuperSign = CurrentUser;
+		end else
+		begin
+		ACrw.SuperSign = AC2rw.SuperSign;
+		end;
+	MatRowPut(ACr, rownr, ACrw);	
+	PutWindowRecord(wn, ACr);		
+	end;
+ACDClass_SuperSignAfter = res;
+RETURN;
+end;
+
+function Boolean ACDClass_AccAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+row ApproveCostsVc ACrw, AC2rw;
+record AccVc Acc;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, ACr);
+	MatRowGet(ACr, rownr, ACrw);
+	GetPrevWindowRecord(wn, AC2r);
+	MatRowGet(AC2r, rownr, AC2rw);
+	res = (blank(ACrw.SuperSign) and blank(ACrw.FuncSign) and (ACr.OKFlag == 0));
+	if res then
+		begin
+		Acc.AccNumber = ACrw.Acc;
+		if ReadFirstMain(Acc, 1, True) then
+			begin
+			ACrw.Comment = Acc.Comment;
+			ACrw.Objects = blankval;
+			ACrw.Func = blankval;
+			end else
+			begin
+			ACrw.Acc = AC2rw.Acc;
+			end;
+		MatRowPut(ACr, rownr, ACrw);
+		end else
+		begin
+		MatRowPut(ACr, rownr, AC2rw);
+		end;
+	PutWindowRecord(wn, ACr);		
+	end;
+ACDClass_AccAfter = res;
+RETURN;
+end;
+
+
+function Boolean ACDClass_ObjectsAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record ApproveCostsVc ACr, AC2r;
+row ApproveCostsVc ACrw, AC2rw;
+record AccVc Acc;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, ACr);
+	MatRowGet(ACr, rownr, ACrw);
+	res = (blank(ACrw.SuperSign) and blank(ACrw.FuncSign) and (ACr.OKFlag == 0));
+	if res then
+		begin
+		if (ACr.DocType == 0) then
+			begin
+			if (nonblank(ACrw.Objects) and blank(IGetObjByType(ACrw.Objects, "EMP"))) then
+				begin
+				ACrw.Objects = ACrw.Objects & "," & ACr.Initiator;
+				end;
+			end;
+		MatRowPut(ACr, rownr, ACrw);
+		end;
+	PutWindowRecord(wn, ACr);		
+	end;
+ACDClass_ObjectsAfter = res;
+RETURN;
+end;
+
+global
+function Boolean ACDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	switch (fieldname)
+		begin
+		case "Initiator": res = ACDClass_InitiatorAfter(wn, changed);
+		case "PM": res = ACDClass_PMAfter(wn, changed);
+		case "PayDate": res = ACDClass_PayDateAfter(wn, changed);
+		case "Sum": res = ACDClass_SumAfter(wn, rownr, changed);
+		case "Func": res = ACDClass_FuncAfter(wn, rownr, changed);
+		case "FuncSign": res = ACDClass_FuncSignAfter(wn, rownr, changed);
+		case "SuperSign": res = ACDClass_SuperSignAfter(wn, rownr, changed);
+		case "Acc": res = ACDClass_AccAfter(wn, rownr, changed);
+		case "Objects": res = ACDClass_ObjectsAfter(wn, rownr, changed);
+		end;
+	end;
+ACDClassAfterEditField = res;
+RETURN;
+end;
+
+global 
+function Boolean ACDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record ApproveCostsVc ACr;
+row ApproveCostsVc ACrw;
+Boolean res;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetPrevWindowRecord(wn, ACr);    
+	res = (ACr.OKFlag == 0);
+	if res then
+		begin
+		MatRowGet(ACr, rownr, ACrw);
+		res = (((blank(ACrw.SuperSign) or (ACrw.SuperSign == CurrentUser)) and blank(ACrw.FuncSign)) or (UserCanAction("UnOKAll", False)));
+		end;
+	end;
+ACDClassDeleteRowTest = res;
+return;
+end;
+
+global 
+function Boolean ACDClassInsertRowTest(Integer wn, Integer rownr)
+begin
+record ApproveCostsVc ACr;
+row ApproveCostsVc ACrw;
+Boolean res;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetPrevWindowRecord(wn, ACr);    
+	res = (ACr.OKFlag == 0);
+	end;
+ACDClassInsertRowTest = res;
+return;
+end;
+
+global
+procedure ACDClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+global
+procedure ApproveCostLClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+global
+procedure ApproveCostSClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+
+
+global updating
+function Boolean CreateCLOutFromACC(record ApproveCostsVc ACr, var record CLOutVc CLr, Integer rownr, var LongInt CLOutSerNr)
+begin
+record UserVc USr;
+string 255 tstr;
+//record PMBlock PMr;
+record AccVc Acc;
+record CLOutVc CL2r;
+row ApproveCostsVc ACrw;
+row PMBlock PMrw;
+val frrate, to1, to2, br1, br2;
+Integer RwCnt;
+
+Boolean res;
+
+res = not CLOutACCExists(ACr, rownr, CLOutSerNr);
+
+if res then
+	begin		
+	CLr.TransDate = ACr.PayDate;
+	CLr.NetVal = blankval;
+	CLr.VATVal = blankval;
+	
+	CLr.PayMode = ACr.PM;
+	MatRowGet(ACr, rownr, ACrw);
+	if nonblank(ACrw.Sum) then
+		begin
+		// BlockLoad(PMBlock);
+		// for (RwCnt = 0; RwCnt < MatRowCnt(PMr); RwCnt = RwCnt + 1)
+			// begin
+			// MatRowGet(PMr, RwCnt, PMrw);
+			// if (PMrw.Code == ACr.PM) then
+				// begin
+				// CLr.CorspCode = PMrw.AccNr;
+				// end;
+			// end;
+    CLOutVc_LogAction(CLr, "New");
+		CLr.CorspCode = ACrw.Acc;
+		Acc.AccNumber = ACrw.Acc;
+		ReadFirstMain(Acc, 1, True);
+		CLr.CorspComment = Acc.Comment;
+		CLr.Person = ACr.Initiator;
+		CLr.CurncyCode = ACr.CurncyCode;
+		CLr.FileName = "ApproveCostsVc";
+		CLr.FSerNr = ACr.SerNr;  
+		CLr.TransDate = ACr.PayDate;
+		GetFullCurncyRate(CLr.CurncyCode, CLr.TransDate, frrate, to1, to2, br1, br2);
+		CLr.FrRate = frrate;
+		CLr.ToRateB1 = to1; 
+		CLr.ToRateB2 = to2;
+		CLr.BaseRate1 = br1;
+		CLr.BaseRate2 = br2;
+		CLr.Total = ACrw.Sum;
+		CLr.NetVal = ACrw.Sum;
+		CLr.ColFlag = 1; 
+		USr.Code = ACr.Initiator;
+		CLr.Objects = ACrw.Objects;
+		CLr.RefStr = "AC." & ACr.SerNr & "." & rownr;
+		CLr.Comment = ACrw.Comment;
+		CLr.SerNr = NextSerNr("CLOutVc", CLr.TransDate, -1, True, "");
+		CLr.OKFlag = 1;
+		if (CLr.SerNr > 0) then 
+			begin
+      CLOutVc_LogAction(CLr, "Save");
+			res = (CLOutVcRecordCheck(CLr, CL2r, 1, 0) == 0) and 
+					RecordStore(CLr, True);
+			end;
+		end;
+	end;
+CreateCLOutFromACC = res;
+RETURN;
+end;
+
+updating
+function Boolean CreatePPFromACC(record ApproveCostsVc ACr, var record PPVc Pr)
+begin
+row ApproveCostsVc ACrw;
+row PPVc Prw;
+Integer RwCnt, RowCnt;
+val frrate, to1, to2, br1, br2;
+Boolean res;
+
+for(RwCnt = 0; RwCnt < MatRowCnt(ACr) and (not res); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ACr, RwCnt, ACrw);
+	res = nonblank(ACrw.FuncSign);
+	end;
+res = (res and (not PPACCExists(ACr)));
+if res then
+	begin
+	RecordNew(Pr);
+  PPVc_LogAction(Pr, "New");
+	Pr.RegDate = CurrentDate;
+	Pr.PayDate = ACr.PayDate;
+	Pr.TransDate = ACr.PayDate;
+	Pr.SerNr = NextSerNr("PPVc", Pr.TransDate, -1, True, "");
+	Pr.PayMode = ACr.PM;
+	Pr.CurncyCode = ACr.CurncyCode;
+	GetFullCurncyRate(Pr.CurncyCode, Pr.TransDate, frrate, to1, to2, br1, br2);
+	Pr.FrRate = frrate;
+	Pr.ToRateB1 = to1; 
+	Pr.ToRateB2 = to2;
+	Pr.BaseRate1 = br1;
+	Pr.BaseRate2 = br2;
+	Pr.Sign = ACr.Initiator;
+	Pr.RefStr = "AC." & ACr.SerNr;
+	Pr.BankName = ACrw.FuncSign;
+	Pr.SentFlag = 1;
+	Pr.OrderedFlag = 1;
+	Pr.BankAcc = ACrw.FuncSign;
+	for (RwCnt = MatRowCnt(ACr) - 1; RwCnt >= 0 ; RwCnt = RwCnt - 1)
+		begin
+		MatRowGet(ACr, RwCnt, ACrw);
+		if nonblank(ACrw.FuncSign) then
+			begin
+			Prw.Person = ACr.Initiator;
+			Prw.Comment = ACrw.Comment;
+			Prw.PayVal = ACrw.Sum;
+			Prw.PayMode = Pr.PayMode;
+			Prw.Objects = ACrw.Objects;
+			MatRowInsert(Pr, 0, Prw);
+			end;
+		end;
+	PPSumup(Pr);
+  PPVc_LogAction(Pr, "Sent");
+  PPVc_LogAction(Pr, "Ordered");
+	res = RecordStore(Pr, False);
+	end;
+CreatePPFromACC = res;
+RETURN;
+end;
+
+
+
+updating
+function Boolean CreateExpFromACCF(record ApproveCostsVc Ar, var record ExpVc Er, string Func)
+begin
+row ApproveCostsVc Arw;
+row ExpVc Erw;
+Integer RwCnt, RowCnt, wn;
+val frrate, to1, to2, br1, br2;
+Boolean res;
+
+RecordNew(Er);
+Er.DocDate = CurrentDate;
+Er.TransDate = Ar.PayDate;
+Er.SerNr = NextSerNr("ExpVc", Er.TransDate, -1, True, "");
+Er.Person = Ar.Initiator;
+Er.Name = Ar.InitiatorName;
+Er.CurncyCode = Ar.CurncyCode;
+GetFullCurncyRate(Er.CurncyCode, Er.TransDate, frrate, to1, to2, br1, br2);
+Er.FrRate = frrate;
+Er.ToRateB1 = to1; 
+Er.ToRateB2 = to2;
+Er.BaseRate1 = br1;
+Er.BaseRate2 = br2;
+Er.Sign = Ar.Initiator;
+for (RwCnt = 0; RwCnt < MatRowCnt(Ar); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Ar, RwCnt, Arw);
+	if nonblank(Arw.FuncSign) then
+		begin
+		if (Arw.Func == Func) then
+			begin
+			Erw.AccNumber = Arw.Acc;
+			Erw.Comment = Arw.Comment;
+			Erw.Sum = Arw.Sum;
+			Erw.Objects = Arw.Objects;
+			Erw.VATCode = "2S";
+			MatRowInsert(Er, 0, Erw);
+			CalcExpRow(Er, 0);
+			end;
+		end;
+	end;
+res = RecordStore(Er, False);
+if res then
+	begin
+	CreateRecordLink(Ar, CurrentCompany, Er, CurrentCompany);
+	wn = OpenWindow("ExpDClass", 1, 0, "", "", Er);
+	end;
+CreateExpFromACCF = res;
+RETURN;
+end;
+
+updating
+function Boolean CreateExpFromACC(record ApproveCostsVc Ar, var record ExpVc Er)
+begin
+row ApproveCostsVc Arw;
+record TempVc Tmp;
+row TempVc Tmpr;
+string 255 FuncStr;
+string 20 Func;
+Integer RwCnt, RowCnt, pos;
+Boolean TrHs;
+
+for (RwCnt = MatRowCnt(Ar) - 1; RwCnt >= 0 ; RwCnt = RwCnt - 1)
+	begin
+	TrHs = False;
+	MatRowGet(Ar, RwCnt, Arw);
+	if (not SetInSet(Arw.Func, FuncStr)) then
+		begin
+		if blank(FuncStr) then
+			begin
+			FuncStr = Arw.Func;
+			end else
+			begin
+			FuncStr = FuncStr & "," & Arw.Func;
+			end;
+		end;
+	end;	
+pos = 0;
+ExtractObj(FuncStr, pos, Func);
+while nonblank(Func) 
+	begin
+	CreateExpFromACCF(Ar, Er, Func)
+	ExtractObj(FuncStr, pos, Func);
+	end;
+CreateExpFromACC = True;
+RETURN;
+end;
+
+global updating
+procedure CreateDocsFromACC()
+begin
+record ApproveCostsVc ACr;
+row ApproveCostsVc ACrw; 
+record PPVc Pr;
+record ExpVc Er;
+row ExpVc Erw;
+record UserVc USr;
+record CLOutVc CLr;
+string 60 ErrorMess;
+Integer wn, RwCnt;
+LongInt CLOutSerNr;
+Boolean TrHs;
+
+SetLangMode(LangRussian, "RUS", 2);
+GetWindowRecord(CurWindow, ACr);
+if (ACr.OKFlag == 1) then
+	begin
+	switch ACr.DocType
+		begin
+		case 0: begin
+				if CreatePPFromACC(ACr, Pr) then
+					begin
+					CreateRecordLink(ACr, CurrentCompany, Pr, CurrentCompany);
+					wn = OpenWindow("PPDClass", 1, 0, "", "", Pr);
+					end else
+					begin
+					MessageBox(0, "Авансовая выплата не создана!");
+					end;
+				// if CreateExpFromACC(ACr, Er) then
+					// begin
+					// // CreateRecordLink(ACr, CurrentCompany, Er, CurrentCompany);
+					// wn = OpenWindow("ExpDClass", 1, 0, "", "", Er);
+					// end else
+					// begin
+					MessageBox(0, "Не забудьте создать авансовый отчет!");
+					// end;
+				end;
+		case 1:	begin
+				for(RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+					begin
+					MatRowGet(ACr, RwCnt, ACrw);
+					if (nonblank(ACrw.FuncSign) and nonblank(ACrw.SuperSign)) then
+						begin
+						CLr.SerNr = -1;
+						CLOutSerNr = -1;
+						ErrorMess = blankval;
+						if CreateCLOutFromACC(ACr, CLr, RwCnt, CLOutSerNr) then
+							begin
+							CreateRecordLink(ACr, CurrentCompany, CLr, CurrentCompany);
+							wn = OpenWindow("CLOutDClass", 1, 0, "", "", CLr);
+							end else
+							begin
+							if (CLOutSerNr > 0) then
+								begin
+								ErrorMess = "Существует РКО № " & CLOutSerNr & "! ";
+								end;	
+							MessageBox(0, ErrorMess & "РКО не создан для строки " & RwCnt + 1);
+							end;
+						end;
+					end;
+				end;
+		end;
+	end;
+RETURN;
+end;
+
+global
+function Boolean ACDClassOKFlagButtonAction(Integer wn, Integer value)
+begin
+record ApproveCostsVc Ar;
+record UserVc USr;
+Boolean res;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+GetPrevWindowRecord(wn, Ar);
+ACDClassOKFlagButtonAction = (((Ar.OKFlag == 0) and (USr.AccessGroup == "UCHR")) or (UserCanAction("UnOKAll", True) and (Ar.OKFlag == 1)));
+RETURN;
+end;
+
+
+global
+function Boolean ACDClassOnOKWindow(Integer wn)
+begin
+record ApproveCostsVc Ar;
+row ApproveCostsVc Arw;
+Integer RwCnt;
+Boolean res;
+
+res = True;
+GetWindowRecord(wn, Ar);
+for(RwCnt = 0; RwCnt < MatRowCnt(Ar); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Ar, RwCnt, Arw);
+	if (blank(Arw.Func) and nonblank(Arw.Sum)) then
+		begin
+		res = false;
+		end;
+	end;
+if res then
+	begin
+	RecalcSumACC(Ar);
+	PutWindowRecord(wn, Ar);
+	end;
+ACDClassOnOKWindow = res;
+RETURN;
+end;
+
+global
+procedure BudRas2RnFromACC()
+begin
+record RcVc RepSpec;
+record ApproveCostsVc Ar;
+row ApproveCostsVc Arw;
+Integer RwCnt, wn;
+Boolean res;
+
+wn = CurWindow;
+RwCnt = GetWindowCurRow(wn);
+GetWindowRecord(wn, Ar);
+if (RwCnt >= 0) then
+	begin
+	MatRowGet(Ar, RwCnt, Arw);
+	end;
+ReportDefaults(RepSpec, "BudRas2Rn");  	
+if (nonblank(Arw.Func) and (RwCnt >= 0)) then
+	begin
+	RepSpec.f2 = Arw.Func;
+	end;
+RepSpec.ArtMode = 1;
+RepSpec.repname = "BudRas2Rn";
+RepSpec.Media = mtScreen;
+RunReport(RepSpec, 0);
+RETURN;
+end;
+
+global
+updating procedure NewActAcDsm()
+BEGIN
+record ApproveCostsVc Ar;
+record ActVc Actr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, Ar);
+RecordNew(Actr);
+if MakeActFromAC(Ar, Actr) then 
+	begin
+	nwn = OpenWindow("ActDClass", 1, 0, "", "", Actr);
+	WindowFieldGoto(wn, Actr, -1, "CCPersons", True);
+	CreateRecordLink(Actr, CurrentCompany, Ar, CurrentCompany);
+	CreateRecordLink(Ar, CurrentCompany, Actr, CurrentCompany);
+	end;
+RETURN;
+end;
+
+
+global updating
+function boolean ACDClassPrint(integer wn, boolean previewf)
+begin
+boolean res;
+record ApproveCostsVc Ar, A2r;
+integer normalmode;
+record RcVc RepSpec; //14.12.09 INAU
+
+res = true;
+normalmode = 0;//Rs_normal
+DeselectWindow(wn, false);
+GetWindowRecord(wn, Ar);
+if (WindowState(wn) == normalmode) then
+begin 
+	RepSpec.f1 = Ar.SerNr;
+	if previewf then
+		begin
+		RepSpec.Media = mtScreen;
+		RepSpec.f2 = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+		RepSpec.f3 = "П Р О С М О Т Р  *  П Р О С М О Т Р  *  П Р О С М О Т Р  *  П Р О С М О Т Р";
+		end
+		else
+		begin
+		A2r.SerNr = Ar.SerNr;
+		ReadFirstMain(A2r, 1, True);
+		if (A2r.Printed == 1) and (CurrentUser <> "DELPHI") then
+			begin
+			RepSpec.Media = mtScreen;
+			RepSpec.f2 = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+			RepSpec.f3 = "К О П И Я  *  К О П И Я  *  К О П И Я  *  К О П И Я  *  К О П И Я";
+			end else
+			begin
+			RepSpec.Media = mtPrinter;
+			A2r.Printed = 1;
+			RepSpec.f2 = "______________________________";
+			RepSpec.f3 = blankval;
+			RecordUpdate(Ar, A2r, false);
+			end;
+		end;
+	RepSpec.repname = "ApproveCostPrintRn";
+	RunReport(RepSpec, 0);
+	end; 
+ACDClassPrint = res;
+Return;
+end;
+
+global
+procedure ApproveCostPrintRn(record RcVc RepSpec)
+begin
+  record ApproveCostsVc Ar;
+  row ApproveCostsVc Arw;
+  integer i;
+  val Sum;
+  string 255 SumText;
+  
+  Ar.SerNr = RepSpec.f1;
+  ReadFirstMain(Ar, 1, true);
+
+  if (Ar.OKFlag == 1) then
+    begin
+      SetLangMode(LangRussian, "RUS", 2);
+      StartReportNoHeaderJob("Согласование затрат");
+     
+      Sum = 0;
+
+      
+	  
+	StartFormat(15);
+	OutString(120, 0, RepSpec.f3, false);
+	EndFormat;
+	
+	  StartFormat(15);
+      OutString(120, 0, "ДОКУМЕНТ СОГЛАСОВАНИЯ ЗАТРАТ №" & Ar.SerNr & " от " & Ar.DocDate, false);
+      EndFormat;
+      Black_Divider(100, 400);
+      EndFormat;
+      OutString(12, 0, "Тип:", false);
+      switch (Ar.DocType)
+        begin
+          case 0: OutString(80, 0, "Авансовая выплата", false);
+          case 1: OutString(80, 0, "Расч-касс. ордер", false);
+        end;
+      EndFormat;
+      OutString(12, 0, "Выдача из:", false);
+      OutString(80, 0, IGetPMName(Ar.PM) & " (" & Ar.CurncyCode & "), " & Ar.PayDate, false);
+      EndFormat;
+      OutString(12, 0, "Инициатор:", false);
+      OutString(80, 0, Ar.InitiatorName, false);
+      EndFormat;
+      OutString(12, 0, "Утверждено:", false);
+      OutString(80, 0, IGetUserName(Ar.SignOK), false);
+      EndFormat;
+      EndFormat;
+      
+      OutString(50, 0, "Сумма", true);      
+      OutString(55, 0, "Счет", false);      
+      OutString(100, 0, "Назначение", false);      
+      OutString(400, 0, "Директор", true);      
+      OutString(480, 0, "Функ.рук.", true);      
+      EndFormat;
+      Black_Divider(0, 1);
+      for (i=0; i < MatRowCnt(Ar); i=i+1)
+        begin
+          MatRowGet(Ar, i, Arw);
+          if nonblank(Arw.FuncSign) and nonblank(Arw.SuperSign) then
+            begin
+              OutString(50, 0, Arw.Sum, true);      
+              OutString(55, 0, Arw.Acc, false);      
+              OutString(100, 0, Arw.Comment, false);      
+              OutString(400, 0, Arw.SuperSign, true);      
+              OutString(480, 0, Arw.FuncSign, true);      
+              EndFormat;
+              Gray_Divider(0, 1);
+              Sum = Sum + Arw.Sum;
+            end;
+        end;
+
+      Black_Divider(0, 1);
+      OutString(50, 0, Sum, true);
+      EndFormat;
+      EndFormat;
+      OutString(12 ,0, "Сумму " & Sum & " " & Ar.CurncyCode, false);
+      EndFormat;
+      ValToText(Sum, M4Val, Ar.CurncyCode, "", SumText);
+      OutString(12 ,0, "(" & SumText & ")", false);
+      EndFormat;
+      EndFormat;
+      OutString(12 ,0, "получил " & RepSpec.f2, false);
+      EndFormat;
+      EndJob;
+    end;
+
+  Return;
+end;
+
+
+event DefineWindows
+begin
+real h, h1, h2, h3, h4, h5, v, vs;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+WindowBegin("Согласование затрат", ACDClass, CGview, -);
+SetWRect(20, 80, 800, 180);
+Sizeable(-1, -1, -1, 0);
+BrowseButtons(false);
+UseView(ApproveCostsVc);
+ActiveFieldOnNew(Initiator);
+AddHelpButton(-110, 10);
+v = 16; vs = 20; h = 100; h2 = 200; h3 = 300; h4 = 400;
+
+Tile(0, 64, false, "", SerNr);
+EditFieldTL(h, v, 80, "Номер", M4Long, ViewOnly, 20, SerNr, True, 0);
+EnterSkip(Initiator);
+EditFieldTL(h3, v, 80, "Дата док-та", M4Date, ViewOnly, 20, DocDate, False, PasteCurDate);
+EditFieldTL(h4 + 50, v, 80, "Создал", M4Code, ViewOnly, 20, User, False, UserSClass);
+
+TileButton(1,"Документ");
+TileButton(2,"История"); //26.11.09 INAU
+Tile(1, 120, true, "1", Initiator);
+EditFieldTL(h, v = 16, 80, "Инициатор", M4Code, Normal, 20, Initiator, False, UserSClass);
+EnterSkip(PM);
+EditFieldTL(h2, v, -40, "", M4Str, ViewOnly, 20, InitiatorName, False, 0);
+EditFieldTL(h, v += vs, 80, "Выдача из", M4Code, Normal, 5, PM, False, PMSClass);
+EnterSkip(PayDate);
+EditFieldTL(h2, v, 80, "", M4Code, ViewOnly, 5, CurncyCode, False, 0);
+RadioButton(h4, v, 0, 0, "Авансовая выплата", DocType);
+EditFieldTL(h, v += vs, 80, "Дата выдачи", M4Date, Normal, 20, PayDate, False, PasteCurDate);
+EnterSkip(Math);
+RadioButton(h4, v, 1, 1, "Расч-касс. ордер", DocType);
+MatrixBegin(4, 120, -31, -30, ApproveCostsRowType, 99);
+MatColTL(1, h = 24, "Сумма", 0, M4Val, Normal, 20, Sum, True, 0);
+EnterSkip(Acc);
+//MatColTL(1, h += 80, "Валюта", 0, M4Code, Normal, 10, Curncy, false, CurncyCodeSClass);
+MatColTL(1, h += 70, "Счет", 0, M4Code, Normal, 10, Acc, True, AccSClass);
+MatColTL(1, h += 60, "Объекты", 0, M4UStr, Normal, 100, Objects, false, ObjSClass);
+MatColTL(1, h += 160, "Функция", 0, M4Code, Normal, 20, Func, false, ObjSClass);
+EnterSkip(Comment);
+//MatColTL(1, h += 60, "Остаток", 0, M4Val, ViewOnly, 20, BudRest, false, 0);
+MatColTL(1, h += 60, "Назначение", 0, M4Str, Normal, 100, Comment, false, 0);
+EnterSkip(Sum);
+MatColTL(1, -160, "Директор", 0, M4Code, Normal, 100, SuperSign, false, UserSClass);
+MatColTL(1, -80, "Функ.рук.", 0, M4Code, Normal, 100, FuncSign, false, UserSClass);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+CheckBox(20, -20, 0, "Утверждено", OKFlag);
+EditFieldTL(120, -20, 80, "", M4Code, ViewOnly, 20, SignOK, False, 0);
+EditFieldTL(-100, -20, 80, "ИТОГО", M4Val, ViewOnly, 20, Summa, True, 0);
+
+//18.03.13 INAU
+Tile(2, 120, true, "", LogNewUser);
+EditField(h=130, v=16, 70, "Создал", ViewOnly, LogNewUser, false, 0);
+EditField(h+=80, v,70, "", ViewOnly, LogNewDate, false, 0);
+EditField(h+=80, v,50, "", ViewOnly, LogNewTime, false, 0);
+EditField(h=130, v+=vs, 70, "Сохранил", ViewOnly, LogSaveUser, false, 0);
+EditField(h+=80, v,70, "", ViewOnly, LogSaveDate, false, 0);
+EditField(h+=80, v,50, "", ViewOnly, LogSaveTime, false, 0);
+EditField(h=130, v+=vs, 70, "Утвердил", ViewOnly, LogOKUser, false, 0);
+EditField(h+=80, v,70, "", ViewOnly, LogOKDate, false, 0);
+EditField(h+=80, v,50, "", ViewOnly, LogOKTime, false, 0);
+//
+SpecialMenu("Создать документы",' ', 1, "CreateDocsFromACC");
+SpecialMenu("(-",' ',6,"");
+//SpecialMenu("Создать деятельность",'B', 3, "NewActAcDsm");
+SpecialMenu("Создать задачу",'D', 4, "NewQADsm");
+SpecialMenu("(-",' ',6,"");
+SpecialMenu("Учет и финансы",'E', 2, "BudRas2RnFromACC");
+EndWindow;
+
+WindowBegin("Согласование затрат", ApproveCostsLClass, CGmlist, -);
+SpawnClass(ACDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(ApproveCostsVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "№", SerNr, True, SerNr);
+RlColKey(120, 120, "Дата", DocDate, false, DocDate);
+RlColKey(200, 200, "Утв.", OKFlag, false, OKFlag);
+RlColKey(220, 220, "Тип", DocType, false, DocType);
+RlColKey(240, 240, "Сп/Опл", PM, false, PM);
+RlColKey(300, 300, "Дата выд.", PayDate, false, PayDate);
+RlColKey(380, 380, "Сотрудник", Initiator, false, Initiator);
+RlCol(480, 480, "Сумма", Summa, True);
+RlCol(580, 580, "Валюта", CurncyCode, False);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Согласование затрат", ApproveCostsSClass, CGSlist, -);
+SpawnClass(ACDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(ApproveCostsVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "№", SerNr, True, SerNr);
+RlColKey(120, 120, "Дата", DocDate, false, DocDate);
+RlColKey(200, 200, "Утв.", OKFlag, false, OKFlag);
+RlColKey(210, 210, "", OKFlag, false, OKFlag);
+RlColKey(220, 220, "Сп/Опл", PM, false, PM);
+RlColKey(300, 300, "Дата выд.", PayDate, false, PayDate);
+RlColKey(380, 380, "Сотрудник", Initiator, false, Initiator);
+RlColKey(480, 480, "Тип", DocType, false, DocType);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Cерии номеров - Согласование затрат", ACBlockTClass, CGHbl, HBlRecType);
+SetBlid(ApproveCostsBlock);
+SetWRect(20, 80, 532, 357);
+Sizeable(-1, -1, 0, 0);
+h = 8; v = 60;
+h1 = 24; h2 = h1 + 60; h3 = h2 + 60; h4 = h3 + 85; h5 = h4 + 85;
+StaticText(h + h1 + 5, v - 23, "Серии номеров", false);
+StaticText(h + h3 + 5, v - 23,"Период",false);
+MatrixBegin(h, v, -31, -20, ACBlockRowType, 99);
+MatCol(1, h1, "С номера", 0, TSerStart, false, 0);
+MatCol(1, h2, "По номер", 0, TSerEnd, false, 0);
+MatCol(1, h3, "С даты", 0, StartDate, false, 0);
+MatCol(1, h4, "По дату", 0, EndDate, false, 0);
+MatCol(1, h5, "Коммент.", 0, TSerCom, false, 0);
+MatCol(1, -70, "Финансы", 0, DonotGenTrans, false, SetSClass);
+EndMatrix;
+EndWindow;
+
+RETURN;
+end;

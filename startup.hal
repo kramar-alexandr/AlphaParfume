@@ -1,0 +1,723 @@
+/* startup.hal */
+
+event startup
+
+begin
+
+SetLangMode(LangRussian, "RUS", 2);
+
+Register("Мои записки", "Мои записки", VUserNotesLClass, modUserSet);
+Setting("Настройка соответствия",IMappingTClass,modDBMain);
+Export("Экспорт записей ""Alpha""",ExpRecEClass,ExportIVVcRn,modDBMain);
+
+Module("Расчеты с подотчетными лицами", "", 794, modPAY);
+Module("Служебный", "", 730, modSRV);
+Module("PERFUME", "", 730, modHALE);
+//Module("-------УК--------", "", 0, -1);
+Module("Служба построения", "", 791, modSTR);
+Module("Служба ИТ", "", 790, modIT);
+Module("Служба юридическая", "", 782, modLAW);
+Module("Служба безопасности", "", 793, modSECUR);
+Module("Служба пож. безопасности", "", 781, modXOZ);
+Module("Служба персонала", "", 795, modEmp);
+Module("Служба маркетинга и продаж", "", 760, modVPlan);
+Module("Служба финансов", "", 740, modBUF);
+//Module("---ФИЛИАЛЫ----", "", -1, -1);
+Module("Коммерческие агенты", "", 790, modComA);
+Module("Логистика", "", 750, modVLog);
+Module("Коммерческие", "", 760, modFilK);
+Module("Финансовые", "", 770, modFilF);
+Module("Организация", "", 780, modBORG);
+
+Register("Планы прибыли компании","План прибыли компании",ICompProfitPlanLClass,modHALE);
+Setting("Настройка - Прибыль компании - критерии", ICompProfitValBlockTClass, modHALE);
+Setting("Настройка - Прибыль компании - содержание", ICompProfitPlanResLClass, modHALE);
+Import("создание уцененных товаров, 20%",DArticuls20In,DArticuls20In,modHALE);
+Import("создание уцененных товаров, 10%",DArticuls10In,DArticuls10In,modHALE);
+Import("создание уцененных товаров, TE",DArticulsTestIn,DArticulsTestIn,modHALE);
+Report("Зарезервированные товары",DItemRezRClass,DItemRezRn,0,modHALE);
+Report("Прибыль и убытки (F)",VResRClass,ResRn,UserDefRepDClass,modHALE);
+Report("Дебиторская задолженность",AR3RClass,AR3Rn,0,modHALE);
+Report("Сравнение Акта сверки и Оборот. сальд. ведомости",CompareARrSaldoRClass,CompareARrSaldoRn,0,modHALE);
+Report("История платежей по продавцам", DIPSalesMan1RClass,IPSalesMan1Rn,0,modHALE);
+Report("Кто купил/не купил",NoSalesRClass,NoSalesRn,0,modHALE);
+Report("Печатная форма Перемещения",DStockMovJRClass,DStockMovJRn,0,modHALE);
+Report("Журнал перемещений",TransfJourRClass,TransfJourRn,0,modHALE);
+Report("Финансовые показатели",KeyRClass,KeyRn,KeyTClass,modHALE);
+Report("Журнал  расчетов с ПЛ",PersPerRClass,PersPerRn,0,modHALE);
+Report("Печать стикеров",DItemStikRnRClass,DItemStikRn,0,modHALE);
+Report("Отчет по измененным датам оплаты",DINvDateRnRClass,DINvDateRn,0,modHALE);
+Report("Курсы валют за период",DCurValRClass,DCurValRn,0,modHALE);
+Report("Расчет суммы скидок по сч-ф",SkidkaRClass,SkidkaRn,0,modHALE);
+Report("Отчет по несвязным счет-фактурам",NesvyazSchetFakturRClass,NesvyazSchetFakturRn,0,modHALE);
+Report("Отчет по несвязным счет-фактурам",NesvyazSchetFakturRClass,NesvyazSchetFakturRn,0,modNL);
+Report("Oтчет по пользователям",VUserRightsRClass,VUserRightsRn,0,modHALE);
+Report("Oтчет по сотрудникам",tVUserListRClass,VUserListRn,0,modHALE);
+Report("История редактирования контактов",VRHistCURClass,VRHistCURn,0,modHALE);
+Report("Выполнение плана прибыли компании",ICompProfitRClass,ICompProfitRn,0,modHALE);
+
+// =============================================================================================================
+
+Register("Авансовые отчеты","Авансовые отчеты",ExpVc,modPAY);
+Register("Bыплаты под отчет","Выплаты",PPVc,modPAY);
+//Register("Путевые листы","Путевые листы",WayListVc,modPAY);
+
+Report("Журнал авансовых отчетов",ExpJRClass,ExpRn,0,modPAY);
+Report("Журнал  расчетов с ПЛ",PersPerRClass,PersPerRn,0,modPAY);
+Report("Журнал выплат",PPJRClass,PPRn,0,modPAY);
+Report("Статистика НДС по аванс. отчетам",ExpVATRClass,ExpVATRn,0,modPAY);
+//Report("Журнал путевых листов",WLJRClass,WLJRn,0,modPAY);
+Report("Журнал выплат ПЛ", PPJ1RClass, PP1Rn, 0, modPAY);
+Report("Отчет по счетам подотчетных лиц",tMBARClass,tMBARn,0,modPAY);
+
+//Setting("Машины",WLCarLClass,modPAY);
+//Setting("Расстояния",WLDistLClass,modPAY);
+Setting("Настройка авансовых отчетов",ExpTClass,modPAY);
+//Setting("Типы горючего",WLPetroilTClass,modPAY);
+Setting("Серии номеров - Авансовые отчеты",ExpSerTClass,modPAY);
+Setting("Серии номеров - Выплаты",PPersSerTClass,modPAY);
+//Setting("Серии номеров - Путевые листы",WayListSerTClass,modPAY);
+//Setting("Цели поездок",WLPurposeLClass,modPAY);
+//Setting("Настройки путевых листов",WLSettingsWClass,modPAY);
+
+Document("Авансовые отчеты",ExpRClass,ExpForm,ExpFClass,modPAY);
+Document("Выплаты ПЛ",PPRClass,PersPayForm,PPDFClass,modPAY);  
+Document("Путевые листы",WayListRClass,WayListForm,WayListFClass,modPAY);
+
+
+// =============================================================================================================
+
+Register("Мотивация", "Мотивация", VMotivLClass, modSRV);
+Register("Список неоплаченных сч/ф", "Список неоплаченных сч/ф", ARLClass, modSRV);
+Register("Вопросы аттестации", "Вопросы аттестации", tQuestionsVc, modSRV);
+Register("Договорной срок оплаты - История", "Договорной срок оплаты - История", IVPlanPayHistLClass, modSRV);
+Register("Канцтовары в заказах поставщикам", "Канцтовары в заказах поставщикам", tOrdersLClass, modSRV);
+Register("Предоплаты клиентов", "Предоплаты клиентов", I_ARPayLClass, modSRV);
+Register("Предоплаты поставщикам", "Предоплаты поставщикам", I_APPayHistLClass, modSRV);
+Register("Открытые предоплаты", "Открытые предоплаты", I_OPPLClass, modSRV);
+Register("Почтовые ящики", "Почтовые ящики", ConferenceWClass, modSRV);
+
+
+Setting("Свободны от оповещений", FreeAlarmLClass, modSRV);
+Setting("Название теста", QTypeLClass, modSRV);
+Setting("Доступ к документам клиентов", tCUAccessTClass, modSRV);
+Setting("Нормализованные телефонные номера",NormPhoneNumLClass,modSRV);
+
+
+// ===================================Серийные номера
+Setting("Доступ к тесту", tTestAcLClass, modSRV);
+Setting("Доставка - Cерийные номера", TTSerTClass, modSRV);
+Setting("Заявки на возврат - Серии номеров",IRetOrdSerTClass,modSRV);
+Setting("Серии номеров - цен топлива", tFuelSerTClass, modSRV);
+Setting("Цепь поставок - Серийные номера", ORHistSerTClass, modSRV);
+
+Setting("Планы продаж - Cерийные номера", VPlanSerTClass, modSRV);
+
+Setting("Cерии номеров - Согласование затрат", ACBlockTClass,modSRV);
+
+Setting("Серии номеров - Форум", VConfSerTClass, modSRV);
+Setting("Серии номеров - Задачи", tVTicketSerTClass, modSRV);
+Setting("Серии номеров - ПЗП", PZPSerTClass, modSRV);
+
+Setting("Mотивация - Cерийные номера", VMotivSerTClass, modSRV);
+Setting("Выполнение бюджета - Серийные номера", IBudgetDiffSerTClass, modSRV);
+
+Setting("Заказы на перемещения - Серийные номера", RegMovSerTClass, modSRV);
+//======================================================= из исходных халов
+Setting("Серии номеров - Приход",CLInSerTClass,modSRV);
+Setting("Серии номеров - Расход",CLOutSerTClass,modSRV);
+Setting("Серии номеров - Отгрузки",SHSerTClass,modSRV); 
+Setting("Серии номеров - Поступления",PUSerTClass,modSRV);
+Setting("Серии номеров - Возвраты товаров",RetSerTClass,modSRV);
+Setting("Серии номеров - Возвраты товаров поставщикам",RetPUSerTClass,modSRV);
+Setting("Серии номеров - Списания со склада",SDSerTClass,modSRV);
+Setting("Серии номеров - Перемещения товаров",StockMovSerTClass,modSRV);
+Setting("Серии номеров - Переоценка склада",SRSerTClass,modSRV);
+Setting("Серии номеров - Инвентаризации",StockTakeSerTClass,modSRV);
+Setting("Серии номеров - Авансовые отчеты",ExpSerTClass,modSRV);
+Setting("Серии номеров - Выплаты",PPersSerTClass,modSRV);
+Setting("Серии номеров - Путевые листы",WayListSerTClass,modSRV);
+
+Setting("Серии номеров - Внутренние заказы",IntORSerTClass,modSRV);
+Setting("Серии номеров - Процессы по заказам поставщиков",POCQStatSerTClass,modSRV);
+Setting("Серии номеров - Предложения по заказам поставщиков",POQTSerTClass,modSRV);
+Setting("Серии номеров - Заказы поставщикам",POSerTClass,modSRV);
+Setting("Серии номеров - Счета клиентам",ORSerTClass,modSRV);
+Setting("Серии номеров - Сч/ф",IVSerTClass,modSRV);
+Setting("Серии номеров - Платежи клиентов",IPSerTClass,modSRV);
+Setting("Серии номеров - Симуляции",SMSerTClass,modSRV);
+Setting("Серии номеров - Записи операций",TRSerTClass,modSRV);
+Setting("Серии номеров - Платежи поставщикам",OPSerTClass,modSRV);
+Setting("Серии номеров - Сч/ф поставщиков",VISerTClass,modSRV);
+
+// ====================================
+
+Maintenance("Задачи. OK + RecordStore", ItVTicketOKStoreVRClass, ItVTicketOKStoreMn, modSRV);
+Maintenance("""Выполнение бюджета"" - Удаление записей", DelFromIBudgetDiffVClass, DelFromIBudgetDiffMn, modSRV);
+
+Maintenance("Изменить имя почтового ящика",ChMaiboxNameVClass,ChMaiboxNameMn,modEmail);
+Maintenance("Очистить регистры почты",CleanMailVClass,CleanMailMn,modEmail);
+Maintenance("Очистить почту без адресата",CleanOrpanedEmailsVClass,CleanOrpanedEmailsMn,modEmail);
+Maintenance("Очистить почтовый ящик",MailboxCleanVClass,MailboxCleanMn,modEmail);
+Maintenance("Переместить e-mails",MoveEmailVClass,MoveEmailMn,modEmail);
+
+Report("Дев-Т перемещения", tRetMovRClass,tRetMovRn,0,modSRV);
+Report("Несоответствия неопл. Сч/ф", ICheckARVcRClass, ICheckARVcRn, 0, modSRV);
+Report("Экспорт товаров в eAgent", IExportItems2eAgentRClass, IExportItems2eAgentRn, 0, modSRV);
+Report("Экспорт групп в eAgent", IExportGroups2eAgentRClass, IExportGroups2eAgentRn, 0, modSRV);
+Report("Экспорт контактов в eAgent", IExportCustomers2eAgentRClass, IExportCustomers2eAgentRn, 0, modSRV);
+Maintenance("Добавление классификатора EL",tITUpdateVClass,tITUpdateMn,modSRV);
+Maintenance("Добавление Группы продажи в CLInVc",ICommonVClass,ISetSaleGroupInCLInMn,modSRV);
+Maintenance("Добавление Группы продажи в CLOutVc",ICommonVClass,ISetSaleGroupInCLOutMn,modSRV);
+Maintenance("Сбросить флаг возможности фактурирования в ORVc...",ICommonVClass,IUnsetOSFlagInORMn,modSRV);
+Maintenance("!!! Удаление записей выбранного регистра !!!", IRemoveRecordsVClass, IRemoveRecordsMn, modSRV);
+Maintenance("Замена классификатора в товарах",tChangeClassINVClass,tChangeClassINMn,modSRV);
+//Maintenance("Удаление записей регистра Табели.Неделя", tRemoveRecordsVClass, tRemoveRecordsMn, modSRV);
+Maintenance("Перестр. регистра распознав. номеров",NormPhoneNumVClass,NormPhoneNumMn,modSRV);
+Maintenance("Замена руководителя",tChangeSupVClass,tChangeSupMn,modSRV); //VAddClassItVClass,VITUpdateMn
+Export("Экспорт сч.кл.", tExpORRClass, tExpORRn,modSRV);
+
+
+Register("Бюджет (F)","Бюджет (F)",VBudgetVc,modBUF);
+
+Register("Планы прибыли компании","План прибыли компании",ICompProfitPlanLClass,modBUF);
+Register("Штатное расписание","Штатное расписание",StateVc,modBUF);
+Register("Документы","Документы",DocsVc,modBUF);
+Register("Выполнение бюджета", "Выполнение бюджета", IBudgetDiffVc, modBUF);
+Register("Налоги","Налоги",tTaxesVc,modBUF);
+Register("Финансовые схемы","Финансовые схемы",tFinSchVc,modBUF);
+Register("Предприятия ГК","Предприятия ГК",tEntPrVc,modBUF);
+Register("Должности сотрудников","Должности сотрудников", tPostUserLClass,modBUF);
+Register("Расчет ЗП","Расчет ЗП", tCalcWageLClass,modBUF);
+Register("Скорректированная маржинальная прибыль","Скорректированная маржинальная прибыль", tMarginLClass,modBUF);
+Register("Займы","Займы", tLoanLClass,modBUF);
+Register("Расходы ГК", "Расходы ГК", tCostsLClass,modBUF);
+Register("Соответствие недель", "Соответствие недель", tComplWeeksLClass, modBUF);
+
+
+Setting("Номера недель", tWeekDaysLClass,modBUF);
+Setting("Коэффициенты состояний статистики", tStCooefLClass,modBUF);
+Setting("ФОТ по службам", tWageRateLClass,modBUF);
+Setting("Подразделения для ЗП", tDepartLClass,modBUF);
+Setting("Службы NEW", tDepartNewLClass,modBUF);
+Setting("Статистики", tStatLClass,modBUF);
+
+Setting("Настройка - Прибыль компании - критерии", ICompProfitValBlockTClass, modBUF);
+Setting("Настройка - Прибыль компании - содержание", ICompProfitPlanResLClass, modBUF);
+Setting("Критерии мотивации", VCrMotLClass, modBUF);
+Setting("Настройка мотиваций по должностям", VCrMotStateLClass, modBUF);
+Setting("Параметры мотивации", VMotivAutoTClass, modBUF);
+Setting("Закрепление функций",VUserBudLClass,modBUF);
+Setting("Выполнение бюджета - Директора и Управляющие", IObjDirectorTClass, modBUF);
+
+Setting("Налоги. Классификация",tTaxesClLClass,modBUF);
+Setting("Налоги. Группы классификаций", tTaxesGrLClass,modBUF);
+Setting("Финансовые схемы. Классификация",tFinSchClLClass,modBUF);
+Setting("Финансовые схемы. Группы классификаций", tFinSchGrLClass,modBUF);
+Setting("Предприятия ГК. Классификация",tEntPrClLClass,modBUF);
+Setting("Предприятия ГК. Группы классификаций", tEntPrGrLClass,modBUF);
+Setting("Подразделения для Предприятий ГК",tStPodrLClass,modBUF);
+Setting("Регионы для Предприятий ГК",tRegionLClass,modBUF);
+Setting("Настройка контроля платежей", tIPCtrlSetLClass,modBUF);
+Setting("История контроля платежей", tIPCtrlHistLClass,modBUF);
+
+Report("Отчет по контролю платежей", tIPCtrlHistRClass, tIPCtrlHistRn,0,modBUF);
+Report("Учет и финансы",BudRasRClass,BudRas2Rn,0,modBUF);
+Report("Журнал документов ЗП", tWages1RClass,tWages1Rn,0,modBUF);
+Report("ЗП сотрудников", tWages2RClass,tWages2Rn,0,modBUF);
+Report("Расчетная ведомость NEW", tDRPV1RClass, tDRPV1Rn, 0, modBUF);
+Report("Займы в ФОТ", tDepartLoan1RClass,tDepartLoan1Rn,0,modBUF);
+Report("Выполнение плана прибыли компании",ICompProfitRClass,ICompProfitRn,0,modBUF);
+//Report("Расчет мотивации работников",CalcMotivRClass,CalcMotivRn,0,modBUF);
+Report("Расчет мотивации сотрудников",tCalcMotivRClass,tCalcMotivRn,0,modBUF);
+Report("Журнал выполнения бюджета",  IBudgetDiffJrnRClass, IBudgetDiffJrnRn, 0, modBUF);
+Report("Качество бюджетирования (NEW)", IBudgetQualityRClass, IBudgetQualityNewRn, 0, modBUF);
+Report("Учет и финансы (NEW)", IBudgetExpRClass, IBudgetExpRn, 0, modBUF);
+Report("Бюджет - ответственные сотрудники", IBudgetExpUserRClass, IBudgetExpUserRn, 0, modBUF);
+Report("Выполнение бюджета месяца",tButExe1RClass, tBudExe1Rn, 0, modBUF);
+Report("Выполнение бюджета недели",tButExe3RClass, tBudExe3Rn, 0, modBUF);
+Report("Док-ты Расходы ГК(Excel)",tButExe2RClass, tBudExe2Rn, 0, modBUF);
+Report("Отчет по отклонениям от бюджета",tButExe4RClass, tBudExe4Rn, 0, modBUF);
+Register("Заказы на перемещения", "Заказы на перемещения", RegMovVc, modSO);
+
+
+Register("Настройка запрета зап.операции", "Настройка запрета зап.операции", tBanOperLClass, modSY);
+Setting("Особые настройки", VSetTClass, modSY);
+Setting("Настройка - Разрешения контактов", CUCardControlTClass, modSY);
+Setting("Ограничения для клиентов", tLimForClSetTClass, modSY);
+Setting("E-Mail сотрудника", tEMailTClass, modSY);
+Report("Записи операций - объекты одного типа",ITestObjsTRRClass,ITestObjsTRRn,0,modSY);
+
+Setting("Сч/ф - настройки печати", LangToSalesTClass, modSY);
+Setting("Клиенты - настройки контроля", CUControlTClass, modSY);
+Setting("Импорт новых товаров", ImportINExcelTClass, modPO);
+Setting("Премии",BonusDefLClass,modFilF);
+Setting("Руководители отделов", VDepartmentBossTClass, modSY);
+Setting("Виды ТЗ", VObjectiveTypeTClass, modSY);
+//
+Import("Обновить карточки клиентов", IUpdateCUIn, IUpdateCUIn, modSY);
+Import("Импортировать Name2 в карточки товаров", IUpdateName2INIn, IUpdateName2INIn, modSY);
+Maintenance("Обновить Группы в карточках товаров", ILangToOffiSellerVClass, IUpdateINMn, modSY);
+Maintenance("Добавить MM в классификацию товаров MMxxxxx", ILangToOffiSellerVClass, IUpdateMMDispGroupsMn, modSY);
+Maintenance("Разблокировать печать платежа", IPDPrintBlockVClass, IPDPrintChangeMn, modSY);
+//
+Register("Счета клиентам","Счета клиентам",ORVc,modComA);
+Report("Статус отчета",MyStatusRClass,StatusRn,0,modComA);
+Report("Журнал счетов клиентам",ORJRClass,OrdRn,0,modComA);
+Report("Статус счета клиенту",ORInfoRClass,ORInfoRn,0,modComA);
+Report("Дебиторская задолженность",AR3RClass,AR3Rn,0,modComA);
+Report("Акт сверки",CuPer3RClass,DSverRn,0,modComA);
+Report("Прайс-лист компании",ICompPriceListRClass,ICompPriceListRn,0,modComA);
+Report("Отчет по запланированным продажам", VPlanCommon2RClass, VPlanCommon2Rn, 0, modComA);
+Report("Реализация. План - Факт", IVPlanRClass, IVPlanRn, 0, modComA);
+Report("Прибыль по сч/ф (новый)", tIVGPRClass,IVGP1Rn,0,modComA);
+Report("Товарная статистика",VArtSTRClass,VArtSTRn,0,modComA);
+Report("Статистика по клиенту",CustSTRClass,CustSTRn,0,modComA);
+
+
+Register("Отгрузки","Отгрузки",SHVc,modVLog);
+Register("Поступления","Поступления",PUVc,modVLog);
+Register("Списания","Списания",SDVc,modVLog);
+Register("Перемещения товаров","Перемещения",StockMovVc,modVLog);
+Register("Заявки на возврат","Заявки на возврат",IRetOrdLClass,modVLog);
+Register("Возвраты товаров","Возвраты",RetVc,modVLog);
+Register("Инвентаризация","Инвентариза- ция",StockTakeVc,modVLog);
+Register("Доставка", "Доставка", TTLClass, modVLog);
+Register("Заказы поставщикам","Заказы поставщикам",POVc,modVLog);
+Register("Счета-фактуры поставщиков", "Счета-фактуры поставщиков", VIVc, modVLog);
+Register("Товары поставщиков","Товары пост.",PIVc,modVLog);
+Register("Физические склады","Физические склады", ttPhysStockLClass, modVLog);
+Register("Складское оборудование","Складское оборудование",LocEquipLClass, modVLog);
+//Register("Остатки по ГТД","Остатки по ГТД", ICCDeclarationLClass, modVLog);
+Register("Оценка сотрудников", "Оценка сотрудников", EmpRatingLClass, modVLog);
+Register("Маршруты доставки", "Маршруты доставки", tRouteLClass, modVLog);
+Setting("Товары в инвосе", tInvoiceLClass, modVLog);
+Setting("Переоценка склада",SRLClass,modVLog);
+Setting("Товарные стикеры",IStickerLClass,modVLog);
+Setting("Остатки по ГТД", ICCDeclarationLClass, modVLog);
+Setting("Объекты/Склад", ObjLocTClass, modVLog);
+Setting("Планирование перемещений", tMovPlanLClass, modVLog);
+Setting("Новинки", NewArtLClass, modVLog);
+Setting("Недели планирования", tWeekPlanLClass, modVLog);
+Setting("План продаж по б/н",BNPlanLClass, modVLog);
+Setting("Цена на топливо",tFuelLClass,modVLog);
+Setting("План/день на филиалы", LogPlanDLClass,modVLog);
+Setting("План/неделя на филиалы", LogPlWLClass,modVLog);
+Setting("День отгрузки на филиалах", ShipDayLClass,modVLog);
+Setting("Процент отгрузки с Максана", PercentLClass, modVLog);
+Setting("Hедоставленные сч/ф", IVTTLClass, modVLog);
+Setting("Доставка - Настройки записей", VSetTTClass, modVLog);
+Setting("Заявки на возврат - Типы возврата",IRetOrdTypesLClass,modVLog);
+Setting("Заявки на возврат - Закрепление функций",VUserRetOrdLClass,modVLog);
+Setting("Список транспортных средств", IVehicleLClass, modVLog);
+Setting("Штрих-коды",BarcodeLClass,modVLog);
+Setting("Стоянки",tParkingLClass,modVLog);
+Setting("Страны", tCountryLClass,modVLog);
+Setting("Города", tCityLClass,modVLog);
+
+Setting("Классы товаров (классификаторы)", VClassLClass, modVLog);
+Setting("Настройка - Печать наименований", VSetClassLClass, modVLog);
+Setting("Типы горючего",WLPetroilTClass, modVLog);
+Setting("Зоны склада", AreasTClass, modVLog);
+Setting("Группы классификаторов склада", StockClassGrTClass, modVLog);
+Setting("Классификаторы склада", StockClassTClass, modVLog);
+Setting("Cклады", LocationLClass, modVLog);
+Setting("Группы классификаторов оборудования склада", LocEqClassGrTClass, modVLog);
+Setting("Классификаторы оборудования склада", LocEqClassTClass, modVLog);
+Setting("Язык документа", LnSupTClass, modVLog);
+Setting("Группы складов", IStockGroupTClass, modVLog);
+Setting("Длительности складского перемещения", DurationLClass, modVLog);
+Setting("Классификация поставщиков",SupClLClass,modVLog);
+Setting("Группы классификаторов", SupGrClLClass,modVLog);
+
+Maintenance("Заполнить план по филиалам", LogPlanDVclass, LogPlanDMn, modVLog);
+Maintenance("Запланировать перемещение", MovPlanVclass, MovPlanMn, modVLog);
+Maintenance("Установить связь Сч/ф -> ТТН", IIVVcToTTVcVClass, IIVVcToTTVcMn, modVLog);
+Maintenance("Изменить параметры стикеров", IStickerSetParamsVClass, IStickerSetParamsMn, modVLog);
+
+Maintenance("Cоздать записи инвентаризации",GenSTVClass,GenSTMn,modVLog);
+Maintenance("Cравнение инвентаризации",STCompVClass,STCompMn,modVLog);
+Maintenance("""Недоставленные Сч/ф"" - Удаление записей", DelFromIVTTVClass, DelFromIVTTMn, modVLog);
+Maintenance("Временный склад - Распределить товары", ITempLocDispItemsVClass, ITempLocDispItemsMn, modVLog);
+Report("Количество непредоставленных товаров. Элита", tISHDeficitRClass, tISHDeficitRn,0,modVLog);
+Report("Статус отчета",MyStatusRClass,StatusRn,0,modVLog);
+Report("Генератор штрих-кодов",BarcodeGenRClass,BarcodeGenRn,0,modVLog);
+Report("Расчет мотивации сотрудников",tCalcMotivRClass,tCalcMotivRn,0,modVLog);
+Report("Отчёт по физическому складу",PhLocRClass,PhLocRn,0,modVLog);
+Report("Отчёт по складскому оборудованию",LocEqRClass,LocEquipRn,0,modVLog);
+
+Report("Неотгруженные счета клиентам", VOrdNoSHRClass, VOrdNoSHRn, 0, modVLog);
+Report("Журнал отгрузки",SHJRClass,ShipRn,0,modVLog);
+Report("Oтчет по отгрузкам",SHListRClass,ShipListRn,0,modVLog);
+Report("Заявки на возврат",IRetOrdRClass,IRetOrdRn,0,modVLog);
+Report("Журнал возвратов на склад",RetJRClass,RetGoodsJRn,0,modVLog);
+Report("История отгрузок/возвратов",ItemHistoryRClass,ItemHistoryRn,0,modVLog);
+Report("Отчет по реализации", IRealizationRClass,IRealizationRn,0,modVLog);
+Report("Журнал поступлений",PUJRClass,PUJRn,0,modVLog);
+Report("Журнал списаний со склада",SDJRClass,StockDepRn,0,modVLog);
+Report("Журнал перемещения товаров",StockMovJRClass,StockMovJRn,0,modVLog);
+Report("Журнал отсутствия товаров",StockJOutRClass,StockOutRn,0,modVLog);
+Report("Сравнение инвентаризации",STCompRClass,STCompRn,0,modVLog);
+Report("Перечень инвентаризации",StockTakeRClass,StockTakeRn,0,modVLog);
+Report("Журнал инвентаризации",StTakeJRClass,StTakeJRn,0,modVLog);
+Report("Инвентаризация",StockTakeRClass,StockTakeRn,0,modVLog);
+Report("Своевременность оформления ТТН", ITTFormalizeRClass, ITTFormalizeRn, 0, modVLog);
+Report("Журнал заказов поставщикам",PurOrdJRClass,PurOrdJRn,0,modVLog);
+Report("Журнал по складу",StockJInRClass,StockInRn,0,modVLog);
+Report("Отчет по складу",INRClass,InvValRn,0,modVLog);
+Report("Отчет по остаткам на конец периода",DStockRep1RClass,DStockRepRn2,0,modVLog);
+Report("Отчет по складам - Остатки+Реализация",DStockRepRClass,DStockRep1Rn,0,modVLog);
+Report("Остатки + Реализация (Excel)", IRestsNSalesRClass, IRestsNSalesRn, 0, modVLog);
+Report("История товаров",INrsRClass,INrsRn,0,modVLog);
+Report("Цепь поставок",VDeliveryChainRClass,DeliveryChainRn,0,modVLog);
+Report("Кол-во ассорт. позиций",SHbyCURClass,SHbyCURn,0,modVLog);
+Report("Кол-во расчетных паллетомест",PaletoMestRClass,PaletoMestRn,0,modVLog);
+Report("Статистика сканирования",IsItScanedRClass,IsItScanedRn,0,modVLog);
+Report("Статистика отгрузок",VShipHistRClass,VShipHistRn,0,modVLog);
+Report("Движение документов", VDocsMoveRClass, VDocsMoveRn, 0, modVLog);
+Report("Расчеты с перевозчиками", ITransportPaymentsRClass, ITransportPaymentsRn, 0, modVLog);
+Report("Штрих-коды группы товаров",INVcRClass,INVcRn,0,modVLog);
+Report("Список классификаторов",ISelectVClassRClass,ISelectVClassRn,0,modVLog);
+Report("Несоответствие отгрузки счетам",OverShippedRClass,DOverShippedRn,0,modVLog);
+Report("Отчет Заказано - Не отгружено",DOrderRClass,DOrderRn,0,modVLog);
+Report("Дефицит отгрузки",ISHDeficitRClass,ISHDeficitRn,0,modVLog);
+Report("Неотгруженные товары",tNotShipItemsRClass,tNotShipItemsRn,0,modVLog);
+Report("Расчёт Сигмы",LogPlanRClass,LogPlanRn,0,modVLog);
+
+Report("Невыполненная отгрузка по счетам",ShipableRClass,ShipableRn,0,modVLog);
+Report("Список запланированной отгрузки",DeliveryRClass,DeliveryRn,0,modVLog);
+Report("Отчет по неотгруженным счетам",DOrderLocRClass,DOrderLocRn,0,modVLog);
+Report("Отчет по счетам/отгрузкам",VOrderLocRClass,VOrderLocRn,0,modVLog);
+Report("Отчет по счетам клиентам",OrderStockRClass,OrderStockRn,0,modVLog);
+Report("Отчет по планам продаж", VPlanCommonRClass, VPlanCommonRn, 0, modVLog);
+Report("Отчет по заказам поставщикам",POOrdStockRClass,POOrdStockRn,0,modVLog);
+Report("Статистика продаж по товарам", ItemSalesRClass, ItemSalesRn, 0, modVLog);
+Report("Активность операторов", ActOpRClass, ActOpRn, 0, modVLog);
+Report("Учет и финансы",BudRasRClass,BudRas2Rn,0,modVLog);
+Report("Сверка с поставщиком",ISplVerificationRClass,ISplVerificationRn,0,modVLog);
+Report("Затраты логистики",ILogisticsExpRClass,ILogisticsExpRn,0,modVLog);
+Report("Отчёт по километражу", MileageRClass,MileageRn,0,modVLog);
+Report("Выполнение планов отгрузки и доставки", ISHTTPlanExecRClass, ISHTTPlanExecRn, 0, modVLog);
+Report("Итоги выполнения плана отгрузки и доставки", ISHTTPlanExecTotalsRClass, ISHTTPlanExecTotalsRn, 0, modVLog);
+Report("Весогабаритные данные товаров (Excel)", IArtWeightSizeRClass, IArtWeightSizeRn, 0, modVLog);
+
+Report("Hедоставленные сч/ф",ListIVTTRClass,ListIVTTRn,0,modVLog);
+Report("Рентабельность доставки",DeliveryEffRClass,DeliveryEffRn,0,modVLog);
+Report("Упаковочный лист",IPackingListRClass,tPackingListRn,0,modVLog);
+Report("Отчёт по маршруту доставки", tRouteRClass, tRouteRn,0,modVLog);
+Report("Время доставки План-Факт", IDeliveryTimeDiffRClass, IDeliveryTimeDiffRn,0,modVLog);
+Report("Клиент - время доставки", ICUDelivPlanTimeRClass, ICUDelivPlanTimeRn, 0, modVLog);
+Report("Журнал возвратов на склады", RetJ1RClass, RetGoodsJ1Rn, 0, modVLog);
+
+Register("Серии товаров", "Серии товаров", VItemGroupVc, modDI);
+
+Register("Возвраты поставщикам", "Возвраты поставщикам", RetPUVc, modPL);
+
+Register("Утвержденные планы продаж", "Утвержденные планы продаж", VPlanSpecVc, modVPlan);
+Register("Сегменты рынка","Сегменты рынка",tMarkSegVc,modVPlan);
+Register("Рекламные мероприятия ГК","Рекламные мероприятия ГК",tRekActVc,modVPlan);
+Register("Методики работы с товарами ГК","Методики работы с товарами ГК",tINMetLClass,modVPlan);
+Setting("Сегменты рынка. Классификация",tMarkSegClLClass,modVPlan);
+Setting("Сегменты рынка. Группы классификаций", tMarkSegGrLClass,modVPlan);
+Setting("Рекламные мероприятия ГК. Классификация",tRekActClLClass,modVPlan);
+Setting("Рекламные мероприятия ГК. Группы классификаций", tRekActGrLClass,modVPlan);
+Setting("Методики работы с товарами ГК. Критерии",tINMetClLClass,modVPlan);
+Setting("Планы - Статистика", IVPlanStatTClass, modVPlan);
+Setting("Планы - Товары", VPlanINTClass, modVPlan);
+//Setting("Настройка - Категории", VPlanCCTClass, modVPlan);
+Setting("Планы - Группы продажи", VPlanSGLClass, modVPlan);
+Setting("Планы - Объекты", VPlanObjLClass, modVPlan);
+Report("Отчет о настройках объектов нормирования", IVPlanAvgPercentRClass, IVPlanAvgPercentRn, 0, modVPlan);
+Report("Сегменты рынка",tMarkSegRClass, tMarkSegRn, 0, modVPlan);
+Report("Рекламные мероприятия ГК",tRekActRClass, tRekActRn, 0, modVPlan);
+Report("Методики работы с товарами ГК", tINMetRClass, tINMetRn, 0, modVPlan);
+Register("Счета клиентам","Счета клиентам",ORVc,modFilK);
+Register("Контакты","Контакты",CUVc,modFilK);
+Register("Репутация","Репутация",VCUNoteVc,modFilK);
+Register("Товары","Товары",INVc,modFilK);
+//Register("Цены","Цены",PLVc,modFilK);
+Register("Cчета-фактуры","Cчета- фактуры",IVVc,modFilK);
+Register("Утвержденные планы продаж", "Утвержденные планы продаж", VPlanSpecVc, modFilK);
+Register("Реализация по остаткам","Реализация по остаткам",AutoInvLClass,modFilK);
+Register("Маршруты торговых","Маршруты торговых", VoieLClass,modFilK);
+Register("Стор-чеки","Стор-чеки", StorCheckLClass,modFilK);
+Register("Потенциальные клиенты","Потенциальные клиенты", PotCustLClass,modFilK);
+//Register("’овары","’овары",INVc,modFilK);
+Register("Группы товаров","Группы товаров",ITVc,modFilK);
+//Register("Формулы товаров","Формулы товаров",CPMVc,modFilK);
+Register("Таблицы скидок","Таблицы скидок",RebVc,modFilK);
+//Register("–ены","–ены",PLVc,modFilK);
+Register("Прейскуранты","Прейскуранты",PLDefVc,modFilK);
+//Register("Формулы цен","Формулы цен",PFormVc,modFilK);
+Register("Скидки от количества","Скидки от кол-ва",StaffVc,modFilK);
+
+Setting("Импорт новых товаров", tImportINLClass, modFilK);
+Setting("Акции - Баллы", VsetPriseBallTClass,modFilK);
+Setting("Акции - Бонусные предложения", IBonusToBallTClass, modFilK);
+Setting("Реклама по группам товара", tTermsITLClass, modFilK);
+Setting("Реклама по сумме", tTermsTClass, modFilK);
+
+Setting("Клиенты/Склад", CustLocTClass,modFilK);
+Setting("Настройка - Экспорт товаров и цен",IItemsExportTClass,modFilK);
+Setting("Эффективность контрагента",CAgentGrLClass, modFilK);
+
+Setting("Планы продаж - Товары", VPlanINTClass, modFilK);
+Setting("Классы товаров (классификаторы)", VClassLClass, modFilK);
+Setting("Настройка - Печать наименований", VSetClassLClass, modFilK);
+Setting("Настройка Классы - Объекты", VCUHierarchyObjTClass, modFilK);
+Setting("Настройка скидок по суммам", IDiscountBySumTClass, modFilK);
+Setting("Категории клиентов", CCatLClass, modFilK);
+Setting("Классификации контактов",CClassLClass,modFilK);
+Setting("Настройка - Объект нормирования<->Продавец", IObjSalesManTClass, modFilK);
+Setting("Клиенты - настройки контроля", CUControlTClass, modFilK);
+Setting("Конкуренты", RivalLClass, modFilK);
+Setting("Цены со скидкой",PLQLClass,modFilK);
+
+Export("Экспорт совмещенных отгрузок",DExpOtgrRClass,DExpOtgrRn,modFilK);
+Export("История цен",DPriceHistRClass,DPriceHistRn,modFilK);
+Export("Выгрузка в 1С счетов фактур",DInvJornRClass,DInvJornRn,modFilK);
+Export("Выгрузка в 1С объединенных счетов-фактур", VInvJornRClass, VInvJornRn, modFilK);
+Import("Импорт заказов КПК",ImportKPK,ImportKPK,modFilK);
+Import("Импорт планов продаж", VPlanImportVIn, VPlanImportVIn, modFilK);
+Import("Импорт спецпредложений", NoOtherPricingMn, NoOtherPricingMn, modFilK);
+Import("Импорт цен товаров",INDanIn,INDanIn,modFilK);
+Import("Обновление стоимости",INPrUpdIn,INPrUpdIn,modFilK);
+
+Maintenance("Рассчитать прейскурант",CalcPricesVClass,CalcPriceListsMn,modFilK);
+Maintenance("Удалить цены",DelPriceListVClass,DelPriceLMn,modFilK);
+Maintenance("Обновить отпускные цены товаров",ItemPricesVClass,ItemPricesMn,modFilK);
+Maintenance("Обновить стоимость товаров",ItemCostPricesVClass,INCostPriceMn,modFilK);
+Report("Коды товаров",tListINRClass,tListINRn,0,modFilK);
+Report("Статус отчета",MyStatusRClass,StatusRn,0,modFilK);
+Report("Статистика по клиенту",CustSTRClass,CustSTRn,0,modFilK);
+Report("Список клиентов",CURClass,CustRn,0,modFilK);
+Report("Каталог клиентов",CuListRClass,CustListRn,0,modFilK);
+Report("Справка по клиентам",CustPSRClass,CustPSRn,0,modFilK);
+Report("Эффективность контрагента",CAgentEffRClass,CAgentEffRn,0,modFilK);
+Report("Oтчет по контрагентам",VCuListRClass,VCuListRn,0,modFilK);
+Report("Активность клиентов", ICustActRClass,ICustActRn,0,modFilK);
+Report("Новые клиенты",VClientStatusRClass,VClientStatusRn,0,modFilK);
+Report("Лимит кредита",CreditLimitRClass,CreditLimitRn,0,modFilK);
+Report("Лимит кредита новый",tLimCURClass,tLimCURn,0,modFilK);
+Report("Клиенты в маршрутах торговых", ExistVoieRClass, ExistVoieRn, 0, modFilK);
+Report("Отчёт по маршрутам торговых", VoieRClass, VoieRn, 0, modFilK);
+Report("Маршруты торговых в Excel", tSelRouteRClass, tSelRouteRn, 0, modFilK);
+
+Report("Задачи из стор-чеков", SCTaskRClass, SCTaskRn, 0, modFilK);
+Report("Ассортимент из стор-чеков", SCAssortRClass, SCAssortRn, 0, modFilK);
+Report("Количество клиентов", tCUListRClass,tCUListRn,0,modFilK);
+Report("Репутация клиентов", tReputRClass, tReputRn, 0, modFilK);
+Report("Статистика товар-клиент (новая)",DItemSalesRClass,DItemSalesRn,0,modFilK); 
+Report("Статистика клиент-товар",VCuArtSTRClass,VCuArtSTRn,0,modFilK);
+Report("Рейтинг клиентов", ICUByRatingRClass, ICUByRatingRn, 0, modFilK);
+Report("Товарная статистика",VArtSTRClass,VArtSTRn,0,modFilK);
+Report("История товарооборота",VItemTurnRClass,VItemTurnRn,0,modFilK);
+Report("Убыточная продажа товаров",TestPrimePriceRClass,ITestPrimePriceRn,0,modFilK);
+Report("Расчет суммы скидок по сч-ф",SkidkaRClass,SkidkaRn,0,modFilK);
+Report("Соотношение тестер/товар",OtnosTestTovarRClass,OtnosTestTovarRn,0,modFilK);
+Report("Cписок товаров для экспорта",ArtExpRClass,ArtExpRn,0,modFilK);
+Report("Список групп товаров",ITListRClass,ITListRn,0,modFilK);
+Report("Список классификаторов",ISelectVClassRClass,ISelectVClassRn,0,modFilK);
+Report("Отчет по стикерам", StickersRClass, StickersRn, 0, modFilK);
+Report("Отчет по стикерам", StickersRClass, StickersRn, 0, modVLog);
+Report("Продажи за год", VFactSellRClass, CountFactSellsRn, 0, modFilK);
+Report("Отчет по запланированным продажам", VPlanCommon2RClass, VPlanCommon2Rn, 0, modFilK);
+Report("Чистые продажи", INetSalesRClass, INetSalesRn, 0, modFilK);
+//Report("Акции - баллы", ActionBalRClass, ActionBalRn,0,modFilK);
+Report("Акция ""Корзина """, VActionBalRClass, IVVcBallRn,0,modFilK);
+Report("Доля в продаже", IStakeSalesRClass, IStakeSalesRn, 0, modFilK);
+Report("Реализация. План - Факт", IVPlanRClass, IVPlanRn, 0, modFilK);
+Report("Журнал счетов клиентам",ORJRClass,OrdRn,0,modFilK);
+Report("Статус счета клиенту",ORInfoRClass,ORInfoRn,0,modFilK);
+Report("Отчет по счетам клиентам",OrderStockRClass,OrderStockRn,0,modFilK);
+Report("Журнал сч/ф",IVJRClass,InvoiceRn,0,modFilK);
+Report("Cтатус счетов-фактур",VIVInfoRClass,VIVAllInfoRn,0,modFilK);
+Report("Возможность фактурирования",InvableRClass,tInvableRn,0,modFilK);
+Report("История продаж по клиентам по месяцам",MonthSalesHistCURClass,MonthSalesHistCURn,0,modFilK);
+Report("История по продавцам по месяцам",MonthSalesHistSMRClass,MonthSalesHistSMRn,0,modFilK);
+Report("Прайс-лист",ArtExp1RClass,ArtExp1Rn,0,modFilK);
+Report("Прейскуранты",PriceRClass,PriceRn,0,modFilK);
+Report("Прайс-лист компании",ICompPriceListRClass,ICompPriceListRn,0,modFilK); 
+Report("Прайс-лист компании по Элите", ICompPriceListELRClass, ICompPriceListELRn, 0, modFilK);
+Report("Список таблиц скидок",RebListRClass,RebListRn,0,modFilK);
+Report("Статистика скидок",Cust2STRClass,Cust2STRn,0,modFilK);
+Report("Список товаров",ArtRClass,ArtRn,0,modFilK);
+//Report("Прейскуранты",PriceRClass,PriceRn,0,modFilK);
+Report("Контроль цены продажи",SalesPriceCheckRClass,SalesPriceCheckRn,0,modFilK);
+Report("Экспорт в Excel сч/ф", IVVcToExcelRClass, IVVcToExcelRn, 0, modFilK);
+Maintenance("Удалить галку в ценах",tDelFlagInPriceVClass,tDelFlagInPriceMn,modFilK);
+
+
+Setting("Настройка контроля платежей", tIPCtrlSetLClass,modFilF);
+Report("Отчет по контролю платежей", tIPCtrlHistRClass, tIPCtrlHistRn,0,modFilF);
+Report("Деб.зад. по лимиту", tDebZadLimRClass, tDebZadLimRn,0,modFilF);
+
+Register("Согласование затрат", "Согласование затрат", ApproveCostsVc, modFilF);
+Register("Касса приход", "Касса приход", CLInVc, modFilF);
+Register("Касса расход", "Касса расход", CLOutVc, modFilF);
+Register("Платежи клиентов", "Платежи клиентов", IPVc, modFilF);
+Register("Платежи поставщикам", "Платежи поставщикам", OPVc, modFilF);
+Register("Bыплаты под отчет", "Выплаты ПЛ", PPVc, modFilF);
+Register("Авансовые отчеты", "Авансовые отчеты", ExpVc, modFilF);
+Register("Записи операций", "Операции", TRVc, modFilF);
+Register("Симуляции","Симуляции",SMVc,modFilF);
+Register("Объекты", "Объекты", ObjVc, modFilF);
+//Register("Бюджет", "Бюджет", VBudgetVc, modFilF);
+Register("Сотрудники","Сотрудники",UserVc,modFilF);
+Register("Сверка 1С и Hansa", "Сверка 1С и Hansa", tVerifVc, modFilF);
+Register("План МП", "План МП", IPlanMarginGPVc, modFilF);
+//Register("Измения в клиентах", "Измения в клиентах", tCUHistLClass, modFilF);
+Setting("Курсы основных валют",BaseERLClass,modFilF);
+Setting("Настройка запрета зап.операции", tBanOperLClass, modFilF);
+Setting("Настройка - Стоимость логистики за единицу", ILogCostSGTClass, modFilF);
+Setting("Акционный курс", tBaseRate2ORLClass, modFilF);
+Setting("Акционный прайс", tChPrInORLClass, modFilF);
+
+Report("Отчет по измениям в клиентах", tHistCURClass, tHistCURn, 0, modFilF);
+Report("Выполнение бюджета месяца",tButExe1RClass, tBudExe1Rn, 0, modFilF);
+Report("Выполнение бюджета недели",tButExe3RClass, tBudExe3Rn, 0, modFilF);
+Report("Статус отчета",MyStatusRClass,StatusRn,0,modFilF);
+Report("Журнал документов ЗП", tWages1RClass,tWages1Rn,0,modFilF);
+Report("Курсы валют за период",DCurValRClass,DCurValRn,0,modFilF);
+Report("Дебиторская задолженность",AR3RClass,AR3Rn,0,modFilF);
+Report("Контроль деб. задолженности (Excel)", IARCheckRClass, IARCheckRn, 0, modFilF);
+Report("Договорный срок оплаты", IVPlanPayHistRClass, IVPlanPayHistRn, 0, modFilF);
+Report("Акт сверки",CuPer3RClass,DSverRn,0,modFilF);
+Report("Ведомость расчетов с клиентами",CuPer2RClass,CuPerRn,0,modFilF);
+Report("Прибыль по сч/ф (новый)",tIVGPRClass,IVGP1Rn,0,modFilF);
+Report("Журнал неоплаченных сч/ф",ARS2RClass,ARS2Rn,0,modFilF);
+Report("История предоплат клиентов",PerPayHisSLRClass,PerPayHisSLRn,0,modFilF);
+Report("Журнал платежей клиентов2",IP2RClass,IP2Rn,0,modFilF);
+Report("История платежей клиентов",CUPayHistoryRClass,CUPayHistoryRn,0,modFilF);
+Report("Отчет по ПКО",IPayOrderRClass,IPayOrderRn,0,modFilF);
+Report("Маржинальная прибыль", IMarginGPRClass, IMarginGPRn, 0, modFilF);
+Report("Маржинальная прибыль NEW", tIMarginGPRClass, tIMarginGPRn, 0, modFilF);
+Report("Отчёт по сверке 1С и Hansa", tVerifRClass, tVerifRn, 0, modFilF); 
+Report("Кредиторская задолженность", APRClass, APRn, 0, modFilF);
+Report("Ведомость расчетов с поставщиками",VePerRClass,VePerRn,0,modFilF);
+Report("Журнал платежей",OPJRClass,OPJRn,0,modFilF);
+Report("Отчет по кассе подробный", DKassaRClass,DKassaRn,0,modFilF);
+Report("Журнал авансовых отчетов",ExpJRClass,ExpRn,0,modFilF);
+Report("Журнал выплат ПЛ", PPJ1RClass, PP1Rn, 0, modFilF);
+Report("Журнал  расчетов с ПЛ",PersPerRClass,PersPerRn,0,modFilF);
+Report("Журнал согласования затрат", ApproveCostsRClass, ApproveCostsRn, 0, modFilF);
+Report("Прибыль и убытки",ResRClass,ResRn,UserDefRepDClass,modFilF);
+//Report("Корректировки к МП",BalRClass, BalRn, UserDefRepDClass, modFilF);
+Report("Расчеты с сотрудниками",t2MBARClass,t2MBARn,0,modFilF);
+
+Report("Отчет по счетам подотчетных лиц",tMBARClass,tMBARn,0,modFilF);
+Report("Оборотно-сальдовая ведомость",MBARClass,MBARn,0,modFilF);
+Report("Главная книга", MainRClass, MainRn, 0, modFilF);
+Report("Состояние актива на дату",AssetAtTimeRClass,AssetAtTimeRn,0,modFilF);
+Report("Учет и финансы",BudRasRClass,BudRas2Rn,0,modFilF);
+Report("Качество бюджетирования", IBudgetQualityRClass, IBudgetQualityRn, 0, modFilF);
+Report("Выполнение плана прибыли компании",ICompProfitRClass,ICompProfitRn,0,modFilF);
+Report("Список ОС", AT2ListRClass, AT2ListRn, 0, modFilF);
+Report("Журнал выполнения бюджета",  IBudgetDiffJrnRClass, IBudgetDiffJrnRn, 0, modFilF);
+Report("Качество бюджетирования (NEW)", IBudgetQualityRClass, IBudgetQualityNewRn, 0, modFilF);
+Report("Учет и финансы (NEW)", IBudgetExpRClass, IBudgetExpRn, 0, modFilF);
+Report("Бюджет - ответственные сотрудники", IBudgetExpUserRClass, IBudgetExpUserRn, 0, modFilF);
+
+Report("Список сотрудников", UserRClass, UserRn, 0, modFilF);
+Report("Расчет бонусов продавцам",DIPSalesMan2RClass,DIPSalesMan2Rn,0,modFilF);
+Report("Мотивация (Отгр) торговых представителей", IMotivSalesManRClass, IMotivSalesManRn, 0, modFilF);
+Report("Мотивация (Сч/ф) торговых представителей", IMotivSalesManRClass, IMotivSalesMan2Rn, 0, modFilF);
+Report("Эффективность ТП (Excel)", ISalesManEffRClass, ISalesManEffRn, 0, modFilF);
+Report("Эффективность ТП (подробный)", ISalesManEffExRClass, ISalesManEffExRn, 0, modFilF);
+Report("Выполнение квоты продаж", ISalesQuotaRClass, ISalesQuotaRn, 0, modFilF);
+
+Report("Сумма оплаты первой Сч/ф", IFirstIVPayRClass, IFirstIVPayRn, 0, modFilF);
+Report("Премии продавцам", BonusRClass, BonusRn, 0, modFilF);
+Report("Расчёт бонусов по Элите",tIPRClass,tIPRn,0,modFilF);
+Report("Расчетная ведомость", DRPV1RClass, DRPV1Rn, 0, modFilF);
+Report("Деятельность по сотрудникам",ActPersRClass,ActPersRn,0,modFilF);
+Report("Движение документов", VDocsMoveRClass, VDocsMoveRn, 0, modFilF);
+Report("История документов",VDocsHRClass,FromORvcToIPVcRn,0,modFilF);
+Report("Проводки отсутствующих документов",IMissedDocsTransRClass,IMissedDocsTransRn,0,modFilF);
+Report("Планирование маржинальной прибыли",IPlanMarginGPRClass,IPlanMarginGPRn,0,modFilF);
+Report("МП по продажам по факту",IFactMarginGPRClass,IFactMarginGPRn,0,modFilF);
+Import("Импорт файлов из 1С", tVerifIn, tVerifIn, modFilF);
+
+Register("Задачи", "Задачи", tVTicketsLClass, modBORG);
+Register("Штатное расписание", "Штатное расписание", StateVc,modBORG);
+Register("Документы","Документы", DocsVc, modBORG);
+Register("Мои записки", "Мои записки", VUserNotesLClass, modBORG);
+Register("Дневник сотрудника","Дневник сотрудника",InsightVc,modBORG);
+//Register("Технические задания","Технические задания",VObjectiveVc,modBORG);
+Register("Контакты", "Контакты", CUVc, modBORG);
+Register("Аттестация", "Аттестация", ValidVc, modBORG);
+Register("Заказ обедов", "Заказ обедов", tDinnerEmpLClass, modBORG);
+Register("Заказы канцтоваров", "Заказы канцтоваров", IStnrOrdLClass, modBORG);
+Report("Рейтинг клиентов", ICUByRatingRClass, ICUByRatingRn, 0, modBORG);
+
+Setting("Типы документов",DocTypeLClass,modBORG);
+Setting("Настройка - Типы извещений", RSSTypeClassLClass, modBORG);
+Setting("Настройка - Подписка на оповещения", RSSTClass, modBORG);
+Setting("Типы задач", VTicketTypeTClass, modBORG);
+Setting("Способ информирования", tVarOfInfTClass, modBORG);
+Setting("Тикет внутри отдела",tVTicketSetTClass,modBORG);
+Setting("Тип ТЗ",VObjectiveTypeTClass,modBORG);
+Setting("Настройка. Задачи - кому",tORVcSetTClass,modBORG);
+
+Report("ЗП сотрудников", tWages2RClass,tWages2Rn,0,modBORG);
+Report("Заказы обедов",tDinnerRClass,tDinnerRn,0,modBORG);
+Report("Расчет мотивации сотрудников",tCalcMotivRClass,tCalcMotivRn,0,modBORG);
+Report("Мои деятельности",MyActPersRClass, MyActPersRn, 0, modBORG);
+Report("Деятельность по сотрудникам",ActPersRClass,ActPersRn,0, modBORG);
+Report("Учет и финансы",BudRasRClass,BudRas2Rn,0,modBORG);
+Report("Лист фиксации ПО из ТЗ", tQAPORClass, tQAPORn, 0, modBORG);
+Report("К-во счетов-фактур", VDocCountRClass, VDocCountRn, 0, modBORG);
+Report("Наличие документов клиента", tListDocRClass, tListDocRn, 0, modBORG);
+Report("Клиенты с неутверждёнными док.", CustListDocRClass, CustListDocRn, 0, modBORG);
+Report("Статистика работы с док. кл.", LogCheckDocRClass, LogCheckDocRn, 0, modBORG);
+Report("Мои задачи", ttMyTicketRClass, ttMyTicketRn, 0, modBORG);
+//Report("Рейтинг сотрудников", tRatingRClass, tRatingRn, 0, modBORG);
+Report("Характеристика сотрудников", CNoteRClass, ConfidentNoteRn, 0, modBORG);
+Report("Наличие характеристики", CNoteExistsRClass, CNoteExistsRn, 0, modBORG);
+Report("Качество выполнения задач", tQualityRClass, tQualityRn, 0, modBORG);
+Report("Отчёт по дневнику сотрудника", InsightRClass, InsightRn, 0, modBORG);
+Report("Результаты аттестации", tResValidRClass, tResValidRn, 0, modBORG);
+Report("Статистика по аттестации", tStValidRClass, tStValidRn, 0, modBORG);
+//Maintenance("Очистить недельные табели",tCleartEmpWSVcVClass,tCleartEmpWSVcMn,modBORG);
+
+Setting("Акционный курс", tBaseRate2ORLClass, modDI);
+Setting("Акционный прайс", tChPrInORLClass, modDI);
+
+
+//Мусор
+//Register("Счета- фактуры", "Счета- фактуры", IVLClass, modVLog);
+// Setting("Штрих-коды",BarcodeLClass,modIN);
+Report("Oбороты по товарам",AlfTurnoverRClass,AlfTurnoverRn,0,modSL);
+Report("Cписок товаров для экспорта",ArtExpRClass,ArtExpRn,0,modSL);
+Report("VItemHistRn", VItemHistRClass, VItemHistRn, 0, modDBMain);
+Report("VSellsRn", VFactSellRClass, CountFactSellsRn, 0, modDBMain);
+Report("Журнал выплат ПЛ", PPJ1RClass, PP1Rn, 0, modExp);
+Report("Дебиторская задолженность",AR3RClass,AR3Rn,0,modSL);
+Report("Дебиторская задолженность 2",AR2RClass,AR2Rn,0,modSL);
+Report("Отчет по остаткам (экспортный)",DStockRep1RClass,DStockRepRn3,0,modIN);
+Report("изменение галочки Не переасчитывать",DPriceChangeRClass,DPriceChangeMn,0,modDBMain);
+Report("изменение кода валюты клиента",DCustUpdateRClass,DCustUpdateMn,0,modDBMain);
+Report("Редактирование карточек клиентов",DCustUpdateRClass,VCustUpdateMnALL,0,modDBMain);
+Report("Редактирование карточек товаров",VITUpdateRClass,VITUpdateRn,0,modDBMain);
+Report("изменение курса валюты",DCustUpdate1RClass,DCustUpdate1Rn,0,modDBMain);
+Report("изменение объекта счета",DAccUpdateRClass,DACCUpdateRn,0,modDBMain);
+Report("изменение цены добавочных товаров",DCostChangeRClass,DCostChangeMn,0,modDBMain);
+Report("Добавление в товары классификаторов бонусных групп",SDispAddRClass,SDispAddMn,0,modDBMain);
+Report("Cтатистика расчетов с контрагентами",VSLStatRClass,VCUHistRn,0,modSL);
+Report("Счета-фактуры, оформленные вперед", NoLegalIVRClass, NoLegalIVRn, 0, modCRM);
+Report("Лимит кредита",CreditLimitRClass,CreditLimitRn,0,modSL);
+Report("Статистика продаж по товарам",ItemSalesRClass,ItemSalesRn,0,modSL);
+Report("Статистика по товарам",ArtSTRClass,ArtST1Rn,0,modSL);
+Report("Статистика товар-клиент (новая)",DItemSalesRClass,DItemSalesRn,0,modSL);
+Report("Статистика продаж по клиентам",CustSalesRClass,CustSalesRn,0,modSL);
+Report("Статистика клиент-товар",VCuArtSTRClass,VCuArtSTRn,0,modSL);
+Report("Отчет по объектам",MyObjRClass,TSortObjRn,0,modSY);
+Maintenance("Добавление классификатора в товары",VAddClassItVClass,VITUpdateMn,modDBMain);
+Maintenance("Пересчитать сч-ф",DIVUpdateVClass,RecountIVVC,modDBMain);
+Maintenance("Добавить objects", VOC2RClass, CUVcAddObject2, modDBMain);
+Maintenance("Очистка планов продаж КА", VPlanClearVClass, ClearPlanMn, modDBMain);
+Maintenance("Коррекция планов продаж КА", VPlanCorrectVClass, CorrectPlanRecordsMn, modDBMain);
+Maintenance("Копировать LangCode в OffiSeller",ILangToOffiSellerVClass,ILangToOffiSellerMn,modDBMain);
+
+return;
+end;

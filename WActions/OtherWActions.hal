@@ -1,0 +1,1340 @@
+remote function string 200 ConcateArtName(string, string, string);
+remote function Integer CanViewConfidentNote(string);
+external procedure GetUserDRPV(var string ,var date ,var date , var string ,var val );
+remote function string 10 DReturnVal();
+remote procedure MailLogPasswd(string, string);
+
+
+global
+procedure SwitchToDiscuss()
+begin
+record VObjectiveVc VOBr;
+Integer wn, newn;
+
+wn = CurWindow;
+GetWindowRecord(wn, VOBr);
+newn = OpenWindow("Comment2DClass", 0, wn, "", "", VOBr);
+
+RETURN;
+end;
+
+
+//===============================================
+//tStockMovSClass
+global
+function Boolean tStockMovSClassOnOpenWindow(integer wn)
+begin
+record StockMovVc SMr;
+// record TTVc TTr;
+integer i;
+boolean SMb;
+date DateSMfr,DateSMto;
+
+// GetWindowRecord(wn, TTr);
+// stopalert("TTr.Stock="&TTr.SerNr);
+
+DateSMfr = addday( CurrentDate, -31);
+DateSMto = addday( CurrentDate, 31);
+
+ResetLoop(SMr);
+i = 0;
+SMb = true;
+SMr.SentTransDate = DateSMfr;
+while LoopKey("SentTransDate", SMr, 1, SMb)
+  begin
+  SMb = (SMr.SentTransDate <= DateSMto);
+  if (SMr.OKFlag == 0) and (SMr.OrdFlag == 1) and (SMr.SentOKFlag == 1) and  (SMr.TTCode == -1) and ((SMr.SentTransDate >= DateSMfr) and (SMr.SentTransDate <= DateSMto))  then //and (SMr.FrLocation == TTr.Stock) and blank(SMr.ThrouLocation)
+    begin
+    SetListString(wn, i, SMr.SerNr & ": " & SMr.SentTransDate & " c " & SMr.FrLocation & " на " & SMr.ToLocation & " Комм. " & SMr.Comment , false);
+    i = i + 1;
+    end;
+  end;
+
+tStockMovSClassOnOpenWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean tStockMovSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+tStockMovSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VObjectiveUsrSClassOnOpenWindow(integer wn)
+begin
+SetListString(wn, 0, "ALL:     Все", false);
+SetListString(wn, 1, "ADMINS:  Администраторы", false);
+SetListString(wn, 2, "DIRFIN:  Дирекция по финансам", false);
+SetListString(wn, 3, "BUHG:    Бухгалтерия", false);
+SetListString(wn, 4, "DIRKOM:  Дирекция по коммерции   ", false);
+SetListString(wn, 5, "OTSTOCK: Отдел складской логистики", false);
+SetListString(wn, 6, "OTTRANS: Отдел транспортной логистики", false);
+SetListString(wn, 7, "DIRLOG:  Дирекция по логистике", false);
+SetListString(wn, 8, "DIRLAW:  Дирекция по праву   ", false);
+SetListString(wn, 9, "DIRPER:  Дирекция по персоналу  ", false);
+SetListString(wn, 10, "DIRSEC:  Дирекция по безопасности", false);
+SetListString(wn, 11, "DIRECO:  Дирекция по хозяйству", false);
+SetListString(wn, 12, "DIRSTR:  Дирекция по структуре", false);
+SetListString(wn, 13, "DIRMARK: Дирекция по маркетингу", false);
+SetListString(wn, 14, "BRANCH:  Филиалы   ", false);
+SetListString(wn, 15, "SALES:   Торговые представители  ", false);
+VObjectiveUsrSClassOnOpenWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VObjectiveUsrSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+VObjectiveUsrSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VObjectiveParamSClassOnOpenWindow(integer wn)
+begin
+
+SetListString(wn, 0, "ВХОД", false);
+SetListString(wn, 1, "ВЫХОД", false);
+SetListString(wn, 2, "ИСПДАН", false);
+SetListString(wn, 3, "ТИПВЫВ", false);
+SetListString(wn, 4, "ЧАСТ", false);
+VObjectiveParamSClassOnOpenWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VObjectiveParamSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+VObjectiveParamSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VObjectiveTypeSClassOnOpenWindow(integer wn)
+begin
+record VObjectiveTypeBlock VOTb;
+row VObjectiveTypeBlock VOTr;
+Integer RwCnt;
+
+BlockLoad(VOTb);
+for (RwCnt = 0; RwCnt < MatRowCnt(VOTb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(VOTb, RwCnt, VOTr);
+  SetListString(wn, RwCnt, VOTr.OType & ":" & "   " & VOTr.Comment, false);
+  end;
+VObjectiveTypeSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean VObjectiveTypeSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+VObjectiveTypeSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean NotificationTypeSClassOnOpenWindow(integer wn)
+begin
+
+SetListString(wn, 0, "MAIL:     Отправить e-mail", false);
+SetListString(wn, 1, "SMS:      Отправить sms", false);
+SetListString(wn, 2, "HWMAIL:   Внутренняя почта HansaWorld", false);
+
+NotificationTypeSClassOnOpenWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean NotificationTypeSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+NotificationTypeSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VSetClassDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record VSetClassVc VSCr, VSc2r;
+row VSetClassVc VSCrw, VSC2rw;
+Boolean res;
+
+if (rownr > -1) and (changed <> 0)then
+  begin
+  GetWindowRecord(wn, VSCr);
+  //GetPrevWindowRecord(wn, VSC2r);
+  MatRowGet(VSCr, rownr, VSCrw);
+  //MatRowGet(VSC2r, rownr, VSC2rw);
+  switch(fieldname)
+    begin
+    case "ClassType": VSCrw.ClassForm = "";
+    case "ClassForm": VSCrw.ClassType = "";
+    end;
+  MatRowPut(VSCr, rownr, VSCrw);
+  PutWindowRecord(wn, VSCr);
+  end;
+VSetClassDClassAfterEditField = res;
+RETURN;
+END;
+
+
+//===============================================
+global
+function Boolean RSSTClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record RSSBlock RSSb;
+row RSSBlock RSSr;
+record RSSTypeVc RSTr;
+record UserVc USr;
+Boolean res;
+
+if (changed <> 0) then
+  begin
+  GetWindowRecord(wn, RSSb);
+  MatRowGet(RSSb, rownr, RSSr);
+  switch(fieldname)
+    begin
+    case "RSSCode":   begin
+              RSTr.RSSCode = RSSr.RSSCode;
+              if ReadFirstMain(RSTr, 1, True) then
+                begin
+                RSSr.Comment = RSTr.RSSName;
+                end else
+                begin
+                RSSr.RSSCode = "";
+                end;
+              end;
+    case "UserCode":  begin
+              USr.Code = RSSr.UserCode;
+              if ReadFirstMain(USr, 1, True) and (USr.Closed == 0) then
+                begin
+                RSSr.UserName = USr.Name;
+                end else
+                begin
+                RSSr.UserCode = "";
+                end;
+              end;
+    case "NotificationType":  begin
+                  if blank(RSSr.UserCode) then
+                    begin
+                    RSSr.NotificationType = "";
+                    end;
+                  end;
+    case "NotificationAddress": begin
+                  if blank(RSSr.UserCode) then
+                    begin
+                    RSSr.NotificationAddress = "";
+                    end;
+                  end;
+    end;
+  MatRowPut(RSSb, rownr, RSSr);
+  PutWindowRecord(wn, RSSb);
+  end;
+RSSTClassAfterEditField = res;
+RETURN;
+END;
+
+
+//===============================================
+global
+function Boolean VClassDClassOnOKWindow(Integer wn)
+begin
+record VClassVc VCr, VC2r;
+boolean res;
+
+GetWindowRecord(wn, VCr);
+ResetLoop(VC2r);
+VC2r.OldClass = VCr.OldClass;
+res = (ReadFirstKey("OldClass", VC2r, 1, True) and (VC2r.NewClass == VCr.OldClass)) or (not ReadFirstKey("OldClass", VC2r, 1, True));
+if (not res) then
+  begin
+  MessageBox(0, "Kлассификатор уже зарегистрирован!");
+  end;
+VClassDClassOnOKWindow = res;
+RETURN;
+end;
+
+
+//===============================================
+global
+procedure ViewConcatName()
+begin
+Integer wn, i;
+record INVc INr;
+
+wn = CurWindow;
+GetWindowRecord(wn, INr);
+MessageBox(0, ConcateArtName(INr.Code, "ORVC", ""));
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VTicketTypeSClassOnOpenWindow(integer wn)
+begin
+record VTicketTypeblock VTb;
+row VTicketTypeblock VTbr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+BlockLoad(VTb);
+for (RwCnt = 0; RwCnt < MatRowCnt(VTb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(VTb, RwCnt, VTbr);
+  if (VTbr.Department == USr.Department) then
+    begin
+    SetListString(wn, RwCnt, VTbr.Code & ":" & "   " & VTbr.Name, false);
+    end;
+  end;
+VTicketTypeSClassOnOpenWindow = res;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean VTicketTypeSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+VTicketTypeSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean MyActPersRClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+Boolean res;
+record RcVc RepSpec;
+record UserVc USr, US2r;
+
+if fieldname == "f2" then
+  begin
+  GetWindowRecord(wn, RepSpec);
+  USr.Code = RepSpec.f2;
+  US2r.Code = CurrentUser;
+  ReadFirstMain(US2r, 1, True);
+  if (US2r.AccessGroup <> "ADMIN") and (US2r.AccessGroup <> "UCHR") and (RepSpec.f2 <> CurrentUser) then
+    begin
+    if ReadFirstMain(USr, 1, True) then
+      begin
+      if (USr.Supervisor <> CurrentUser) then
+        begin
+        RepSpec.f2 = CurrentUser;
+        end;
+      end else
+      begin
+      RepSpec.f2 = CurrentUser;
+      end;
+    PutWindowRecord(wn, RepSpec);
+    end;
+  end;
+MyActPersRClassAfterEditField = res;
+RETURN;
+END;
+
+
+//===============================================
+global
+function Boolean INDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+Boolean res;
+record INVc INr;
+record VItemGroupVc IGr;
+
+if fieldname == "VItemGroupCode" then
+  begin
+  GetWindowRecord(wn, INr);
+  IGr.Code = INr.VItemGroupCode;
+  if ReadFirstMain(IGr, 1, True) then
+    begin
+    INr.VItemGroupName = IGr.Name;
+    end else
+    begin
+    INr.VItemGroupCode = blankval;
+    end;
+  PutWindowRecord(wn, INr);
+  end;
+res = inner.INDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+
+INDClassAfterEditField = res;
+RETURN;
+END;
+
+
+//===============================================
+global
+procedure VItemGroupDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record VItemGroupVc IGr;
+record VItemGroupVc IPGr;
+
+if fieldname == "ParentCode" then
+  begin
+  GetWindowRecord(wn, IGr);
+  IPGr.Code = IGr.ParentCode;
+  if ReadFirstMain(IPGr, 1, True) then
+    begin
+    IGr.ParentName = IPGr.Name;
+    end else
+    begin
+    IGr.ParentCode = blankval;
+    end;
+  PutWindowRecord(wn, IGr);
+  end;
+
+RETURN;
+end;
+
+
+//===============================================
+global
+function Boolean DRPV1RClassAfterEditField(Integer wn,string fieldname,Integer fn,Integer rownr,Integer changed)
+BEGIN
+  Boolean res;
+  record RcVc RepSpec;
+
+  res = false;
+  switch (fieldname) begin
+    case "f5":
+      GetWindowRecord(wn,RepSpec);
+      RepSpec.Media = 20;//DELPHI в Excel!!!
+    RepSpec.f2 = "UAH";
+      PutWindowRecord(wn,RepSpec);
+  end;
+  DRPV1RClassAfterEditField = res;
+  RETURN;
+END;
+
+
+//===============================================
+global
+function Boolean TRDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+  boolean res;
+
+  if (fieldname == "TransDate") then
+    begin
+      TRDClassActiveEditField = true;
+      Return;
+    end;
+
+  res = inner.TRDClassActiveEditField(wn, fieldname, fn, wnst, rownr, changed);
+
+  TRDClassActiveEditField = res;
+  RETURN;
+END;
+
+
+//===============================================
+global
+function string 40 IStakeSalesRClassSpecPasteName(Integer wn,string defpsname)
+begin
+  record RcVc RepSpec;
+  string 40 psname;
+
+  psname = defpsname;
+  switch (WindowActiveField(wn))
+    begin
+      case "f2":
+        begin
+          GetWindowRecord(wn, RepSpec);
+          switch (RepSpec.flags[0])
+            begin
+              case 1: psname = "CTypeSClass";
+              case 2: psname = "OTSClass";
+            end;
+        end;
+    end;
+
+  IStakeSalesRClassSpecPasteName = psname;
+  Return;
+end;
+
+
+//===============================================
+global
+function boolean CanUserChangeField(string FieldName)
+begin
+record CUCardControlBlock CCb;
+row CUCardControlBlock CCbr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res, Found;
+
+BlockLoad(CCb);
+if (MatRowCnt(CCb) > 0) then
+  begin
+  USr.Code = CurrentUser;
+  ReadFirstMain(USr, 1, True);
+  for (RwCnt = 0; (RwCnt < MatRowCnt(CCb)) and (not Found); RwCnt = RwCnt + 1)
+    begin
+    MatRowGet(CCb, RwCnt, CCbr);
+    Found = (CCbr.FieldName == FieldName);
+    if Found then
+      begin
+      res = (SetInSet(USr.AccessGroup, CCbr.AccessGroup) or SetInSet(CurrentUser, CCbr.AccessGroup));
+      end;
+    end;
+  end;
+CanUserChangeField = res;
+RETURN;
+end;
+
+
+//===============================================
+global
+function Integer CanUserChangeFieldInt(string FieldName)
+begin
+record CUCardControlBlock CCb;
+row CUCardControlBlock CCbr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res, Found;
+integer result;
+
+result = 3;
+BlockLoad(CCb);
+if (MatRowCnt(CCb) > 0) then
+  begin
+  USr.Code = CurrentUser;
+  ReadFirstMain(USr, 1, True);
+  for (RwCnt = 0; (RwCnt < MatRowCnt(CCb)) and (not Found); RwCnt = RwCnt + 1)
+    begin
+    MatRowGet(CCb, RwCnt, CCbr);
+    Found = (CCbr.FieldName == FieldName);
+    if Found then
+      begin
+      res = (SetInSet(USr.AccessGroup, CCbr.AccessGroup) or SetInSet(CurrentUser, CCbr.AccessGroup));
+      if not res then
+        begin
+        result = 0;
+        end;
+      end;
+    end;
+  end;
+CanUserChangeFieldInt = result;
+RETURN;
+end;
+
+
+//===============================================
+global
+procedure MakeVCUNote()
+begin
+record CUVc CUr;
+record VCUNoteVc Note;
+Integer wn, wn1;
+
+wn = CurWindow;
+GetWindowRecord(wn, CUr);
+RecordNew(Note);
+Note.CustCode = CUr.Code;
+wn1 = OpenWindow("VCUNoteDClass", 1, wn, "", "", Note);
+WindowFieldGoto(wn1, Note, -1, "Comment", true);
+RETURN;
+end;
+
+
+//=============================================== UserVc
+global
+procedure ViewConfidentNote()
+begin
+record UserVc USr;
+record CDataVc CDr;
+record RcVc RepSpec;
+Integer res, wn, nwn;
+
+
+wn = CurWindow;
+GetWindowRecord(wn, USr);
+res = CanViewConfidentNote(USr.Code);
+WindowDeactivateField(wn);
+ActivateTile(wn, 7);
+switch res
+  begin
+  case 1: begin
+      RepSpec.f1 = USr.Code;
+      RepSpec.Media = mtScreen;
+      RepSpec.repname = "ConfidentNoteRn";
+      RunReport(RepSpec, 0);
+      end;
+  case 9: begin
+      CDr.Code = USr.Code;
+      if not ReadFirstMain(CDr, 1, True) then
+        begin
+        RecordNew(CDr);
+        CDr.Code = USr.Code;
+        CDr.Superior = USr.Supervisor;
+        CDr.User = CurrentUser;
+        end;
+      nwn = OpenWindow("CDataDClass", 0, 0, "", "", CDr);
+      end;
+  end;
+RETURN;
+end;
+
+
+//=============================================== ORVc
+global
+function boolean IfShowRemainsInOrder()
+begin
+record VSetSetBlock VSet;
+
+BlockLoad(VSet);
+IfShowRemainsInOrder = (VSet.StockQuantControl == 1);
+RETURN;
+end;
+
+
+global
+function Boolean IsCommAgent()
+begin
+record UserVc USr;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+
+IsCommAgent = USr.limitedAccess == 1;
+//IsCommAgent = False;
+RETURN;
+end;
+
+
+//===============================================
+global
+Function Boolean MasterWClassOnOpenWindow(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  SetWindowSubset(wn,CurrentUser);
+
+  MasterWClassOnOpenWindow = false;
+  return;
+end;
+
+
+//===============================================
+global
+procedure FirstTRDsm()
+begin
+record BaseERVc Brr;
+record TRVc TRr;
+record UserVc Usr,Usr1;
+record ObjVc Objr;
+record AccVc Acr;
+row TrVc trrw;
+integer i,l,m,n;
+val f,j, CourseNow;
+string 255 tstr,tstr_1;
+boolean testf,trhs;
+SetLangMode(LangRussian,"RUS",1);
+BRr.Date = currentdate;
+TrHs = True;
+if (loopkey("MainKey",Brr,1,TrHs)) then
+  begin
+  CourseNow = Brr.Rate2;
+  TrHs = False;
+  end;
+
+GetWindowRecord(CurWindow,TRr);
+
+if (nonblank(Trr.TransDate)) then
+  begin
+  Objr.Code = firstinrange(Trr.Comment,10);
+  if (readfirstmain(Objr,1,true)) then
+    begin
+    if (Objr.OTCode=="Podr") then
+      begin
+      trhs=true;
+      Trr.Comment = Trr.Comment & ", расчет по з.п за первую половину месяца " ;
+      switch (Objr.Code)
+        begin
+        case "10": tstr ="66101"; tstr_1="30101";
+        case "11": tstr ="66103"; //tstr_1="301";
+        case "12": tstr ="66104"; //tstr_1="301";
+        case "13": tstr ="66109"; //tstr_1="301";
+        case "14": tstr ="66102"; //tstr_1="301";
+        case "15": tstr ="66106"; //tstr_1="301";
+        case "16": tstr ="66107"; //tstr_1="301";
+        case "17": tstr ="66105"; //tstr_1="301";
+        case "18": tstr ="66109"; //tstr_1="301";
+        case "40": tstr ="66110"; tstr_1="30101";
+        case "81": tstr ="66101"; tstr_1="30101";
+        case "82": tstr ="66101"; tstr_1="30101";
+        case "83": tstr ="66101"; tstr_1="30101";
+        case "99": tstr ="66190"; tstr_1="30101";
+        end;
+
+      i=0;
+      SetLoopPosition(Usr1, 0);
+      while loopmain(Usr1, 1, True)
+        begin
+        testf=true;
+        if (Left(Usr1.Department, 2) != Objr.Code) then
+          begin
+          testf = False;
+          end;
+        if (testf) then
+          begin
+          if (Usr1.Closed == 0) then
+            begin
+            trrw.VATCode="";
+            trrw.SerNr=0;
+            trrw.CompCode="";
+            trrw.Curncy="UAH";
+            trrw.BaseRate1=1;
+            trrw.BaseRate2=CourseNow;
+            trrw.Objects = Objr.Code & "," & Usr1.PersObjx;
+            trrw.AccNumber = tstr;
+            Acr.AccNumber = trrw.AccNumber;
+            readfirstmain(Acr,1,true);
+            trrw.Comment = Acr.Comment;
+            trrw.DebVal = stringtoval(Usr1.BankAcc,M4Val)/(2*CourseNow);
+            trrw.DebVal2 = stringtoval(Usr1.BankAcc,M4Val)/2;
+            trr.DSum=trr.DSum+trrw.DebVal;
+            trr.DSum2=trr.DSum2+trrw.DebVal2;
+            f=trr.DSum;
+            j=trr.DSum2;
+            trrw.CredVal=0;
+            trrw.CredVal2=0;
+            trrw.SerNr = "";
+            if (nonblank(Usr1.BankAcc)) then
+              begin
+              matrowput(trr,i,trrw);
+              i=i+1;
+              end;
+            end;
+          end;//testf
+        end;//while по объектам
+
+      trrw.Objects = Objr.Code & "," & CurrentUser;
+      trrw.AccNumber = tstr_1;
+      Acr.AccNumber = trrw.AccNumber;
+      readfirstmain(Acr,1,true);
+      trrw.Comment = Acr.Comment;
+      trrw.DebVal = 0;
+      trrw.DebVal2 = 0;
+      trrw.CredVal = f;
+      trrw.CredVal2 = j;
+      trrw.SerNr = "";
+      matrowput(trr,i,trrw);
+      trr.CSum=0-f;
+      trr.CSum2=0-j;
+      i=i+1;
+      end;//если объект подразделение
+    end;//если есть такой объект
+  end;//если не пустая дата
+PutWindowRecord(CurWindow,TRr);
+return;
+end;
+
+
+global
+procedure SecondTRDsm()
+begin
+record BaseERVc Brr;
+record TRVc TRr;
+record UserVc Usr,Usr1;
+record ObjVc Objr,Objr1;
+record AccVc Acr;
+row TrVc trrw;
+integer i,l,m,n;
+val f,j,temp1, CourseNow;
+date d1,d2;
+string 255 tstr,tstr_1,user,objstr;
+boolean testf,trhs;
+SetLangMode(LangRussian,"RUS",1);
+BRr.Date = currentdate;
+TrHs = True;
+if (loopkey("MainKey",Brr,1,TrHs)) then
+  begin
+  CourseNow = Brr.Rate2;
+  TrHs = False;
+  end;
+GetWindowRecord(CurWindow,TRr);
+
+if (nonblank(Trr.TransDate)) then
+  begin
+  Objr.Code = firstinrange(Trr.Comment,10);
+  if (readfirstmain(Objr,1,true)) then
+    begin
+    if (Objr.OTCode=="Podr") then
+      begin
+      trhs=true;
+      Trr.Comment = Trr.Comment & ", начисление по з.п  " ;
+      switch (Objr.Code)
+        begin
+        case "10": tstr ="66101"; tstr_1="9211";
+        case "11": tstr ="66103"; //tstr_1="301";
+        case "12": tstr ="66104"; //tstr_1="301";
+        case "13": tstr ="66109"; //tstr_1="301";
+        case "14": tstr ="66102"; //tstr_1="301";
+        case "15": tstr ="66106"; //tstr_1="301";
+        case "16": tstr ="66107"; //tstr_1="301";
+        case "17": tstr ="66105"; //tstr_1="301";
+        case "18": tstr ="66109"; //tstr_1="301";
+        case "40": tstr ="66110"; tstr_1="811";
+        case "81": tstr ="66101"; tstr_1="9111";
+        case "82": tstr ="66101"; tstr_1="9211";
+        case "83": tstr ="66101"; tstr_1="9211";
+        case "99": tstr ="66190"; tstr_1="9211";
+        end;
+      i=0;
+      SetLoopPosition(Usr1, 0);
+      while loopmain(Usr1, 1, True)
+        begin
+        testf=true;
+        if (Left(Usr1.Department, 2) != Objr.Code) then
+          begin
+          testf = False;
+          end;
+
+        if (testf) then
+          begin
+          if (Usr1.Closed == 0) then
+            begin
+            trrw.VATCode="";
+            trrw.SerNr=-1;
+            trrw.CompCode="";
+            trrw.Curncy="UAH";
+            trrw.BaseRate1=1;
+            trrw.BaseRate2=CourseNow;
+            trrw.Objects = Objr.Code & "," & Usr1.PersObjx;
+            trrw.AccNumber = tstr;
+            Acr.AccNumber = trrw.AccNumber;
+            readfirstmain(Acr,1,true);
+            trrw.Comment = Acr.Comment;
+            trrw.CredVal = stringtoval(Usr1.BankAcc,M4Val)/CourseNow;
+            trrw.CredVal2 = stringtoval(Usr1.BankAcc,M4Val);
+            trr.CSum=trr.CSum+trrw.CredVal;
+            trr.CSum2=trr.CSum2+trrw.CredVal2;
+            f=trr.CSum;
+            j=trr.CSum2;
+            trrw.DebVal = 0;
+            trrw.DebVal2 = 0;
+            trrw.SerNr = "";
+            if (nonblank(Usr1.BankAcc)) then
+              begin
+              matrowput(trr,i,trrw); i=i+1;
+              end;
+            trrw.VATCode="";
+            trrw.SerNr=-1;
+            trrw.CompCode="";
+            trrw.Curncy="UAH";
+            trrw.BaseRate1=1;
+            trrw.BaseRate2=CourseNow;
+            trrw.Objects = Objr.Code & "," & Usr1.PersObjx & "," & "MM";
+            trrw.AccNumber = tstr_1;
+            Acr.AccNumber = trrw.AccNumber;
+            readfirstmain(Acr,1,true);
+            trrw.Comment = Acr.Comment;
+            trrw.DebVal = stringtoval(Usr1.BankAcc,M4Val)/CourseNow;
+            trrw.DebVal2 = stringtoval(Usr1.BankAcc,M4Val);
+            trr.DSum=trr.DSum+trrw.DebVal;
+            trr.DSum2=trr.DSum2+trrw.DebVal2;
+            f=trr.CSum;
+            j=trr.CSum2;
+            trrw.CredVal = 0;
+            trrw.CredVal2 = 0;
+            trrw.SerNr = "";
+            if (nonblank(Usr1.BankAcc)) then
+              begin
+              matrowput(trr,i,trrw); i=i+1;
+              end;
+            end;//testf
+          end;
+        end;//while по объектам
+
+      trr.CSum=0-f;
+      trr.CSum2=0-j;
+      end;//если объект подразделение
+    end;//если есть такой объект
+  end;//если не пустая дата
+PutWindowRecord(CurWindow,TRr);
+return;
+end;
+
+
+global
+procedure ThirdTRDsm()
+begin
+record BaseERVc Brr;
+record TRVc TRr;
+record UserVc Usr,Usr1;
+record ObjVc Objr;
+record AccVc Acr;
+row TrVc trrw;
+integer i,l,m,n;
+val f,j,temp1, CourseNow;
+string 255 tstr,tstr_1;
+date d1,d2;
+string 255 user,objstr;
+boolean testf,trhs;
+SetLangMode(LangRussian,"RUS",1);
+BRr.Date = currentdate;
+TrHs = True;
+if (loopkey("MainKey",Brr,1,TrHs)) then
+  begin
+  CourseNow = Brr.Rate2;
+  TrHs = False;
+  end;
+
+GetWindowRecord(CurWindow,TRr);
+d2=currentdate;
+d1=d2;
+d1.day=1;
+if (nonblank(Trr.TransDate)) then
+  begin
+  Objr.Code = firstinrange(Trr.Comment,10);
+  if (readfirstmain(Objr,1,true)) then
+    begin
+    if (Objr.OTCode=="Podr") then
+      begin
+      trhs=true;
+      Trr.Comment = Trr.Comment & ", расчет по з.п конец месяца " ;
+      switch (Objr.Code)
+        begin
+        case "10": tstr ="66101"; tstr_1="30101";
+        case "11": tstr ="66103"; //tstr_1="301";
+        case "12": tstr ="66104"; //tstr_1="301";
+        case "13": tstr ="66109"; //tstr_1="301";
+        case "14": tstr ="66102"; //tstr_1="301";
+        case "15": tstr ="66106"; //tstr_1="301";
+        case "16": tstr ="66107"; //tstr_1="301";
+        case "17": tstr ="66105"; //tstr_1="301";
+        case "18": tstr ="66109"; //tstr_1="301";
+        case "40": tstr ="66110"; tstr_1="30101";
+        case "81": tstr ="66101"; tstr_1="30101";
+        case "82": tstr ="66101"; tstr_1="30101";
+        case "83": tstr ="66101"; tstr_1="30101";
+        case "99": tstr ="66190"; tstr_1="30101";
+        end;
+
+      i=0;
+      SetLoopPosition(Usr1, 0);
+      while loopmain(Usr1, 1, True)
+        begin
+        testf=true;
+        if (Left(Usr1.Department, 2) != Objr.Code) then
+          begin
+          testf = False;
+          end;
+        if testf then
+          begin
+          if (Usr1.Closed == 0) then
+            begin
+            trrw.VATCode="";
+            trrw.SerNr=0;
+            trrw.CompCode="";
+            trrw.Curncy="UAH";
+            trrw.BaseRate1=1;
+            trrw.BaseRate2=CourseNow;
+            trrw.Objects = Objr.Code & "," & Usr1.PersObjx;
+            trrw.AccNumber = tstr;
+            Acr.AccNumber = trrw.AccNumber;
+            readfirstmain(Acr,1,true);
+            trrw.Comment = Acr.Comment;
+            user = Usr1.Code;
+            objstr = Objr.Code;
+            temp1=0;
+            GetUserDRPV(User,d1,d2, objstr,temp1);
+            temp1=-temp1;
+            trrw.DebVal = temp1/CourseNow;
+            trrw.DebVal2 = temp1;
+
+            trr.DSum=trr.DSum+trrw.DebVal;
+            trr.DSum2=trr.DSum2+trrw.DebVal2;
+            f=trr.DSum;
+            j=trr.DSum2;
+            trrw.CredVal=0;
+            trrw.CredVal2=0;
+            trrw.SerNr = "";
+            //====
+            if (nonblank(Usr1.BankAcc)) then
+              begin
+              matrowput(trr,i,trrw);
+              i=i+1;
+              end;
+
+            end;//testf
+          end;
+        end;//while по объектам
+
+      trrw.Objects = Objr.Code & "," & CurrentUser;
+      trrw.AccNumber = tstr_1;
+      Acr.AccNumber = trrw.AccNumber;
+      readfirstmain(Acr,1,true);
+      trrw.Comment = Acr.Comment;
+      trrw.DebVal = 0;
+      trrw.DebVal2 = 0;
+      trrw.CredVal = f;
+      trrw.CredVal2 = j;
+      trrw.SerNr = "";
+      matrowput(trr,i,trrw);
+      trr.CSum=0-f;
+      trr.CSum2=0-j;
+      i=i+1;
+      end;//если объект подразделение
+    end;//если есть такой объект
+  end;//если не пустая дата
+PutWindowRecord(CurWindow,TRr);
+return;
+end;
+
+
+//===============================================
+global
+function Boolean ChngePasswordNoOldClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record RcVc RepSpec;
+
+GetWindowRecord(wn, RepSpec);
+if (fieldname == "LastAcc") then
+	begin
+	SetLangMode(LangRussian, "RUS", 1);
+	MailLogPasswd(CurrentUser, RepSpec.ObjStr);
+	end;
+ChngePasswordNoOldClassAfterEditField = false;
+RETURN;
+end;
+
+
+//===============================================
+function string 255 GetField(var string instr)
+begin
+string 255 res;
+res = FirstInRange(instr,20);
+instr = Right(instr,len(instr)-len(res)-1);
+GetField=res;
+return
+end;
+
+
+//===============================================
+global
+updating procedure DRemoveMenu()
+begin
+  record StockMovVc StockMovr,oldStockMovr;
+  Integer i,j;
+  row StockMovVc StockMovrw;
+
+  GetWindowRecord(CurWindow,StockMovr);
+  RecordCopy(oldStockMovr,StockMovr);
+  j=0;
+  for (i=0;i<MatRowCnt(StockMovr);i=i+1) begin
+    MatRowGet(StockMovr,i,StockMovrw);
+	StockMovrw.Quant = StockMovrw.SentQuant;
+	j=StockMovrw.SentQuant+j;
+	MatRowPut(StockMovr,i,StockMovrw)
+  end;
+  StockMovr.TotQty = j;
+if (RecordUpdate(oldStockMovr,StockMovr,false)==0) then begin end;
+return;
+end;
+
+
+//===============================================
+global
+procedure DOstMenu()
+begin
+  record StockMovVc StockMovr,oldStockMovr;
+  record RcVc RepSpec;
+
+  GetWindowRecord(CurWindow,StockMovr);
+  RepSpec.f6 = StockMovr.SerNr;
+  RepSpec.f1 = 1;
+  RepSpec.Media = mtScreen;
+  RepSpec.repname = "DStockMovJRn";
+  RunReport(RepSpec,0);
+
+return;
+end;
+
+
+//===============================================
+global
+procedure DOtgrMenu()
+begin
+  record SHVc SHp;
+  record RcVc RepSpec;
+
+  GetWindowRecord(CurWindow,SHp);
+  RepSpec.f6 = SHp.SerNr;
+  RepSpec.flags[4] = 1;
+  RepSpec.Media = mtScreen;
+  RepSpec.repname = "ShipRn";
+  RunReport(RepSpec,0);
+
+return;
+end;
+
+
+//===============================================
+global
+procedure DBarCodeOtgrMenu()
+begin
+  record RcVc RepSpec;
+  record SHVc SHp;
+
+  GetWindowRecord(CurWindow,SHp);
+  RepSpec.f6 = SHp.SerNr;
+  RepSpec.flags[4] = 2;
+  RepSpec.Media = mtFile;
+  RepSpec.repname = "DBarCodeRn";
+  RunReport(RepSpec,0);
+return;
+end;
+
+
+//===============================================
+global
+procedure DBarCodeMovMenu()
+begin
+  record StockMovVc StockMovr;
+  record RcVc RepSpec;
+  GetWindowRecord(CurWindow,StockMovr);
+  RepSpec.f6 = StockMovr.SerNr;
+  RepSpec.flags[4] = 1;
+  RepSpec.Media = mtFile;
+  RepSpec.repname = "DBarCodeRn";
+  RunReport(RepSpec,0);
+return;
+end;
+
+
+//===============================================
+global
+updating procedure DImpMovMenu()
+begin
+  record StockMovVc StockMovr,oldStockMovr;
+  Integer i,j,k;
+  row StockMovVc StockMovrw;
+  string 255 tstr,Name;
+  string 7 ArtCode,Price,Count;
+  Boolean testf,trhs,testf2;
+
+  GetWindowRecord(CurWindow,StockMovr);
+  RecordCopy(oldStockMovr,StockMovr);
+  for (i=0;i<MatRowCnt(StockMovr);i=i+1) begin
+    MatRowGet(StockMovr,i,StockMovrw);
+	testf=true; testf2 = true;
+	openfile("out.txt");
+	while (testf)  and (testf2) begin
+     tstr = ImportField;
+     if (nonblank(tstr)) then begin ArtCode=GetField(tstr); end;
+     tstr = ImportField;
+     if (nonblank(tstr)) then begin Count=GetField(tstr);  end;
+	 if (ArtCode==StockMovrw.ArtCode) then begin
+	 StockMovrw.SentQuant=StringToVal(Count,M4Val); testf2=false;
+	 end;
+	 testf = NextImportLine(false);
+	end;
+	closefile;
+	j=StockMovrw.SentQuant+j;
+	MatRowPut(StockMovr,i,StockMovrw)
+  end;
+  StockMovr.TotSentQty = j;
+if (RecordUpdate(oldStockMovr,StockMovr,false)==0) then begin end;
+return;
+end;
+
+
+//===============================================
+global
+updating procedure DImpOtgrMenu()
+begin
+
+  record SHVc SHr,oldSHr;
+  Integer i,j,k;
+
+  row SHVc SHrw;
+  string 255 tstr,Name;
+  string 7 ArtCode,Price,Count;
+  Boolean testf,trhs,testf2;
+
+  GetWindowRecord(CurWindow,SHr);
+  RecordCopy(oldSHr,SHr);
+  for (i=0;i<MatRowCnt(SHr);i=i+1) begin
+    MatRowGet(SHr,i,SHrw);
+	testf=true; testf2 = true;
+	openfile("out.txt");
+	while (testf)  and (testf2) begin
+     tstr = ImportField;
+     if (nonblank(tstr)) then begin ArtCode=GetField(tstr); end;
+     tstr = ImportField;
+     if (nonblank(tstr)) then begin Count=GetField(tstr);  end;
+	 if (ArtCode==SHrw.ArtCode) then begin
+	 SHrw.Ship=StringToVal(Count,M4Val); testf2=false;
+	 end;
+	 testf = NextImportLine(false);
+	end;
+	closefile;
+	j=j+SHrw.Ship;
+	MatRowPut(SHr,i,SHrw)
+  end;
+  SHr.TotQty = j;
+if (RecordUpdate(oldSHr,SHr,false)==0) then begin end;
+return;
+end;
+
+
+//===============================================
+global
+procedure DPriceHistMenu()
+begin
+  record IVVc IVr;
+  record RcVc RepSpec;
+  GetWindowRecord(CurWindow,IVr);
+  RepSpec.f6 = IVr.SerNr;
+  RepSpec.flags[4] = 1;
+  RepSpec.Media = mtFile;
+  RepSpec.d1=IVr.InvDate;
+  RepSpec.repname = "DPriceHistRn";
+  RunReport(RepSpec,0);
+return;
+end;
+
+
+//===============================================
+global
+procedure DDItemStikMenu()
+begin
+  record SHVc SHr;
+  record RcVc RepSpec;
+  GetWindowRecord(CurWindow,SHr);
+  RepSpec.f1 = SHr.SerNr;
+  RepSpec.Media = mtScreen;
+  RepSpec.repname = "DItemStikRn";
+  RunReport(RepSpec,0);
+return;
+end;
+
+
+//===============================================
+global
+procedure VQuantRn()
+begin
+record ORVc ORr;
+record RcVc RepSpec;
+
+SetLangMode(LangRussian,"RUS",2);
+GetWindowRecord(CurWindow,ORr);
+if nonblank(ORr.SerNr) then
+  begin
+  RepSpec.f1 = ORr.SerNr;
+  RepSpec.LastAcc = ORr.Location;
+  RepSpec.Media = mtScreen;
+  RepSpec.repname = "VORItStRn";
+  RunReport(RepSpec,0);
+  end else
+  begin
+  MessageBox(0, "Сначала сохраните документ!");
+  end;
+RETURN;
+end;
+
+
+//===============================================
+//Экспериментируем с периодическим событием
+global
+updating procedure IInactivityTimeOutTask(string arg)
+begin
+  record RcVc RepSpec;
+
+  if (arg == "startup") then
+    begin
+    NewPeriodicTask("IInactivityTimeOutTask", "IInactivityTimeOutTask", "IInactivityTimeOutTask", CurrentUser, 600, "idle");
+    end
+  else
+    begin
+    RepSpec.repname = "IDummyEn";
+    RepSpec.f1 = arg;
+    RepSpec.Media = mtFile;
+    RunExport(RepSpec, false);
+    LogText(10, arg & " dummy activity during idle !");
+    end;
+  Return;
+end;
+
+global
+updating function boolean OnLogin()
+begin
+  record UserVc Usr;
+  boolean res;
+
+  res = inner.OnLogin;
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  if (Usr.TypeOfUser == kTypeOfUserNamed) then //Отключаем AutoLogOff для именованных пользователей
+    begin
+    IInactivityTimeOutTask("startup");
+    end;
+  OnLogin = res;
+  Return;
+end;

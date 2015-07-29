@@ -1,0 +1,516 @@
+external inner procedure ExtractObj(string,var Integer,var string);
+external function boolean ActCUControlField(var record CUVc, record CUVc);
+external updating procedure CreateLog(string, string, string);
+external function boolean ICheckPlanDeliveryTime(time); //10.02.14 INAU
+
+procedure CUVc_LogAction(var record CUVc CUr, string ActionName)
+begin
+  if blank(GetFieldValueByName(CUr, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(CUr, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(CUr, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(CUr, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+
+global
+function Boolean CUControlOnSave(record CUVc CUr, record CUVc CU2r, boolean new)
+begin
+record CUControlBlock CUc;
+row CUControlBlock CUb;
+record VSetSetBlock VSet;
+record ARVc ARr;
+Integer RwCnt;
+Boolean res;
+
+if 	(CUr.SalesGroup <> CU2r.SalesGroup) or
+  (CUr.PayDeal <> CU2r.PayDeal) or
+  (CUr.PLCode <> CU2r.PLCode) or
+  (CUr.CurncyCode <> CU2r.CurncyCode) or
+  (CUr.RebCode <> CU2r.RebCode) or
+  (CUr.Classification <> CU2r.Classification) or
+  (CUr.SearchKey <> CU2r.SearchKey) or
+  blank(CUr.SalesGroup) or
+  blank(CUr.PayDeal) or
+  blank(CUr.PLCode) or
+  blank(CUr.CurncyCode) or
+  blank(CUr.RebCode) or
+  blank(CUr.SearchKey) then
+  begin
+  StopAlert("!");
+  BlockLoad(VSet);
+
+  res = SetInSet(CurrentUser, VSet.AllowedUser);
+  if (VSet.CUControl <> 0) and (not res) then
+    begin
+    BlockLoad(CUc);
+
+    for (RwCnt = 0; (RwCnt < MatRowCnt(CUc)) and (not res); RwCnt = RwCnt + 1)
+      begin
+      MatRowGet(CUc, RwCnt, CUb);
+      res = 	((CUr.SalesGroup == CUb.SalesGroup) or blank(CUb.SalesGroup)) and ((CUr.PayDeal == CUb.PayDeal) or blank(CUb.PayDeal)) and
+          ((CUr.PLCode == CUb.PLCode) or blank(CUb.PLCode)) and
+          ((CUr.RebCode == CUb.RebCode) or blank(CUb.RebCode) or (CUr.RebCode == CU2r.RebCode )) and
+          ((CUr.CurncyCode == CUb.CurncyCode) or blank(CUb.CurncyCode)) and
+          ((SetInSet(CUb.Classification, CUr.Classification) and nonblank(CUb.Classification)) or blank(CUb.Classification));
+      end;
+    if res  and new then
+      begin
+      StopAlert("HERE!");
+      CUr.RebCode = CUb.RebCode;
+      //res = (CUr.RebCode == CUb.RebCode);
+      end;
+    if not res then
+      begin
+      MessageBox(31014, "");
+      end;
+    if res and (CUr.CurncyCode <> CU2r.CurncyCode) then
+      begin
+      ARr.CustCode = CUr.Code;
+      if ReadFirstKey("CustCode", ARr, 1, True) then
+        begin
+        MessageBox(31015, "");
+        res = False;
+        end;
+      end;
+    if res and (VSet.BlockPrices <> 0) and (CUr.PLCode <> CU2r.PLCode) and nonblank(CU2r.PLCode) then
+      begin
+      res = (not SetInSet(CU2r.PLCode, VSet.BlockedPriceList));
+      if not res then
+        begin
+        MessageBox(31016, CU2r.PLCode);
+        end;
+      end;
+    end else
+    begin
+    res = True;
+    end;
+  end else
+  begin
+  res = True;
+  end;
+CUControlOnSave = res;
+RETURN;
+end;
+
+
+global
+function string 255 ReplaceSubstrFromStr(string Instr, string OldClass, string NewClass)
+begin
+Integer pos;
+string 20 TmpClass;
+string 255 Res;
+
+if (nonblank(Instr) and nonblank(OldClass)) then
+	begin
+	pos = 0;
+	ExtractObj(Instr, pos, TmpClass);
+	while nonblank(TmpClass)
+		begin
+		if (TmpClass <> OldClass) then
+			begin
+			if blank(Res) then
+				begin
+				Res = TmpClass;
+				end else
+				begin
+				Res = Res & "," & TmpClass;
+				end;
+			end;
+		ExtractObj(Instr, pos, TmpClass);
+		end;
+	end;
+if nonblank(NewClass) then
+	begin
+	ReplaceSubstrFromStr = Res & "," & NewClass;
+	end else
+	begin
+	ReplaceSubstrFromStr = Res;
+	end;
+RETURN;
+end;
+
+
+global
+function LongInt CUVcRecordDefaults(var record CUVc CUr,record CUVc CU2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.CUVcRecordDefaults(CUr, CU2r, stat, long4);
+  CUr.CreditLimit = blankval;
+  CUr.tCreditLimit = blankval;
+  CUVc_LogAction(CUr, "New"); //12.03.13 INAU
+  CUVcRecordDefaults = res;
+  Return;
+end;
+
+
+global
+function LongInt CUVcRecordDuplicate(var record CUVc CUr,record CUVc CU2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.CUVcRecordDuplicate(CUr, CU2r, stat, long4);
+  CUr.CreditLimit = blankval;
+  CUr.tCreditLimit = blankval;
+  CUr.LogNewUser = CurrentUser;
+  CUr.LogNewDate = CurrentDate;
+  CUr.LogNewTime = CurrentTime;
+  CUr.LogSaveUser = blankval;
+  CUr.LogSaveDate = "";
+  CUr.LogSaveTime = "";
+  CUVcRecordDuplicate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt CUVcRecordSave(var record CUVc CUr,record CUVc CU2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.CUVcRecordSave(CUr, CU2r, stat, long4);
+  CUVc_LogAction(CUr, "Save"); //12.03.13 INAU
+  CUVcRecordSave = res;
+  Return;
+end;
+
+
+updating procedure AutoAddCONTRHierarchy(record CUVc CUr)
+begin
+  record VCUHierarchyObjBlock VCHb;
+  row VCUHierarchyObjBlock VCHbr;
+  record ObjVc Objr, Obj2r;
+  integer Cnt;
+
+  BlockLoad(VCHb);
+  for(Cnt = 0; Cnt < MatRowCnt(VCHb); Cnt = Cnt + 1)
+    begin
+    MatRowGet(VCHb, Cnt, VCHbr);
+    if SetInSet(VCHbr.Classification, CUr.Classification) then
+      begin
+      Objr.Code = CUr.Code;
+      ReadFirstMain(Objr, 1, True);
+      Obj2r.Code = CUr.Code;
+      ReadFirstMain(Obj2r, 1, True);
+      if (not SetInSet(VCHbr.ObjStr, Objr.AutoObjects)) then
+        begin
+        // if blank(Objr.AutoObjects) then
+          begin
+          Objr.AutoObjects = VCHbr.ObjStr;
+          // end else
+          // begin
+          // Objr.AutoObjects = "," & VCHbr.ObjStr;
+          end;
+        RecordUpdate(Obj2r, Objr, false);
+        end;
+      end;
+    end;
+
+  Return;
+end;
+
+
+global
+updating function LongInt CUVcRecordSaveAfter(var record CUVc CUr,record CUVc CU2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.CUVcRecordSaveAfter(CUr, CU2r, stat, long4);
+  AutoAddCONTRHierarchy(CUr);
+  CUVcRecordSaveAfter = res;
+  Return;
+end;
+
+
+global
+updating function LongInt CUVcRecordUpdateAfter(var record CUVc CUr,record CUVc CU2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.CUVcRecordUpdateAfter(CUr, CU2r, stat, long4);
+  AutoAddCONTRHierarchy(CUr);
+  CUVcRecordUpdateAfter = res;
+  Return;
+end;
+
+
+global
+updating function LongInt CUVcRecordUpdate(var record CUVc CUr,record CUVc CU2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.CUVcRecordUpdateAfter(CUr, CU2r, stat, long4);
+  ActCUControlField(CUr, CU2r);
+  CUVcRecordUpdate = res;
+  Return;
+end;
+
+
+updating
+function boolean AutoCreateCUObj(var record CUVc CUr, record CUVc CU2r)
+begin
+record ObjVc Objr, Obj2r;
+record VSetSetBlock VSet;
+
+AutoCreateCUObj = True;
+BlockLoad(VSet);
+if (VSet.AutoCreateCUObjects == 1) then
+  begin
+  if (CUr.CUType == 1) then
+    begin
+    Objr.Code = CUr.Code;
+    if (not ReadFirstMain(Objr, 1, True)) then
+      begin
+      Objr.Code = Cur.Code;
+      Objr.Comment = Cur.Name;
+      Objr.OTCode = VSet.AutoCreateCUObjOTCode;
+      Objr.TerminateFlag = 0;
+      Objr.AutoObjects = blankval;
+      AutoCreateCUObj = RecordStore(Objr, True);
+      CUr.Objects = CUr.Code & "," & CUr.CustCat;
+      end else
+      begin
+      Obj2r.Code = Objr.Code;
+      ReadFirstMain(Obj2r, 1, True);
+      Objr.Comment = Cur.Name;
+      Objr.OTCode = VSet.AutoCreateCUObjOTCode;
+      Objr.TerminateFlag = 0;
+      //Objr.TerminateFlag = CUr.blockedFlag;
+      AutoCreateCUObj = True;
+      RecordUpdate(Obj2r, Objr, True);
+      end;
+    end;
+  end;
+RETURN;
+end;
+
+
+procedure CUVcRecordCheck_ObjStr(var record CUVc CUr)
+begin
+record VCUHierarchyObjBlock VCHb;
+row VCUHierarchyObjBlock VCHbr;
+record ObjVc Objr, Obj2r;
+string 60 TempStr;
+Integer Cnt;
+
+BlockLoad(VCHb);
+TempStr = CUr.Objects;
+for(Cnt = 0; Cnt < MatRowCnt(VCHb); Cnt = Cnt + 1)
+  begin
+  MatRowGet(VCHb, Cnt, VCHbr);
+  if (SetInSet(VCHbr.ObjStr, TempStr) and nonblank(VCHbr.ObjStr)) then
+    begin
+    CUr.Objects = ReplaceSubstrFromStr(TempStr, VCHbr.ObjStr, blankval);
+    end;
+  end;
+RETURN;
+end;
+
+
+procedure CUVc_CheckDocs(var record CUVc CUr, record CUVc CU2r)
+begin
+  if CUr.Passp <> CU2r.Passp then
+    begin
+    CUr.ValPas = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.RefINN <> CU2r.RefINN then
+    begin
+    CUr.ValRefINN = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.EGRPOU <> CU2r.EGRPOU then
+    begin
+    CUr.ValEGRPOU = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.RefSingle <> CU2r.RefSingle then
+    begin
+    CUr.ValRefSingle = 0;
+      CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.RefOPP <> CU2r.RefOPP then
+    begin
+    CUr.ValRefOPP = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.AssigDir <> CU2r.AssigDir then
+    begin
+    CUr.ValAssigDir = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.Excerpt <> CU2r.Excerpt then
+    begin
+    CUr.ValExcerpt = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.RefNDS <> CU2r.RefNDS then
+    begin
+    CUr.ValRefNDS = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.Person <> CU2r.Person then
+    begin
+    CUr.ValTrust = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  if CUr.ContractDate <> CU2r.ContractDate then
+    begin
+    CUr.ValTerm = 0;
+    CUr.DocChDate = CurrentDate;
+    CUr.DocChTime = CurrentTime;
+    CUr.LowPrew = "";
+    end;
+
+  Return;
+end;
+
+
+updating function longint CUVc_CheckLAW(var record CUVc CUr, record CUVc CU2r)
+begin
+  record UserVc Usr;
+  record tCUAccessBlock CUAb;
+  row tCUAccessBlock CUAbr;
+  record VSetSetBlock VSSb;
+  longint res;
+
+  res = 0;
+
+  BlockLoad(VSSb);
+  BlockLoad(CUAb);
+  MatRowGet(CUAb, 0, CUAbr);
+  Usr.Code = CurrentUser;
+  ReadFirstMain(USr,1,true);
+  if (((CUr.ValStatus <> CU2r.ValStatus) and (CUr.ValStatus == 1)) or ((CUr.ValTerm <> CU2r.ValTerm) and (CUr.ValTerm == 1))
+    or ((CUr.ValPas <> CU2r.ValPas) and (CUr.ValPas == 1)) or ((CUr.ValRefINN <> CU2r.ValRefINN) and (CUr.ValRefINN == 1))
+    or ((CUr.ValEGRPOU <> CU2r.ValEGRPOU) and (CUr.ValEGRPOU == 1)) or ((CUr.ValRefNDS <> CU2r.ValRefNDS) and (CUr.ValRefNDS == 1))
+    or ((CUr.ValRefOPP <> CU2r.ValRefOPP) and (CUr.ValRefOPP == 1)) or ((CUr.ValTrust <> CU2r.ValTrust) and (CUr.ValTrust == 1))
+    or ((CUr.ValRefSingle <> CU2r.ValRefSingle) and (CUr.ValRefSingle == 1)) or ((CUr.ValAssigDir <> CU2r.ValAssigDir) and (CUr.ValAssigDir == 1))
+    or ((CUr.ValExcerpt <> CU2r.ValExcerpt) and (CUr.ValExcerpt == 1 ))) then
+      begin
+      if setinset(CurrentUser,"NSKI,EKOX") then // (Usr.AccessGroup <> CUAbr.AccessGrCode) and not(setinset(Usr.Code, VSSb.AllowedUser))
+        begin
+        CreateLog(CUr.Code, CUr.CustCat, CUr.Name);
+        end
+      else
+        begin
+        res = -1;
+        end;
+      end;
+
+  CUVc_CheckLAW = res;
+  Return;
+end;
+
+
+global
+updating function LongInt CUVcRecordCheck(var record CUVc CUr, record CUVc CU2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+  integer insertmode, updatemode;
+  boolean new;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  res = inner.CUVcRecordCheck(CUr, CU2r, stat, long4);
+
+  insertmode = 1;
+  updatemode = 2;
+
+  new = blank(CUr.Code) or (stat==insertmode);
+
+  if (stat == insertmode) then
+    begin
+    if blank(CUr.CreditLimit) then
+      begin
+      if (CUr.CurncyCode == "USD") then
+        begin
+        CUr.CreditLimit = 150;
+        end
+      else
+        begin
+        CUr.CreditLimit = 1200;
+        end;
+      end;
+    end;
+
+  if (stat == updatemode) then
+    begin
+    if ((CUr.CreditLimit == 150) or (CUr.CreditLimit == 1200)) then
+      begin
+      if (CUr.CurncyCode == "USD") then
+        begin
+        CUr.CreditLimit = 150;
+        end
+      else
+        begin
+        CUr.CreditLimit = 1200;
+        end;
+      end;
+    end;
+
+  if (res == 0) and NonBlankTime(CUr.PlanDeliveryTime) and not ICheckPlanDeliveryTime(CUr.PlanDeliveryTime) then //10.02.14 INAU
+    begin
+    RecordCheckError(1499, "Время доставки план не входит в список допустимых", -1, "PlanDeliveryTime");
+    res = -1;
+    end;
+
+  if (res == 0) and not CUControlOnSave(CUr, CU2r, new) and (CUr.CUType == 1) then
+    begin
+    res = -1;
+    end;
+
+  if (res == 0) and not AutoCreateCUObj(CUr, CU2r) then
+    begin
+    res = -1;
+    end;
+
+  if (res == 0) and (CUr.Status <> CU2r.Status) and (CUr.ValStatus <> 0)	then
+    begin
+    res = -1;
+    end;
+
+  if (res == 0) then
+    begin
+    CUVcRecordCheck_ObjStr(CUr);
+    end;
+
+  if (res == 0) then
+    begin
+      CUVc_CheckDocs(CUr, CU2r);
+      res = CUVc_CheckLAW(CUr, CU2r);
+    end;
+
+  CUVcRecordCheck = res;
+  Return;
+end;

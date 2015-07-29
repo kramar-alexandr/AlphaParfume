@@ -1,0 +1,262 @@
+global
+procedure ICustToItemStatRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "ICustToItemStatRClass");
+  RepSpec.Media = mtFile;
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+end;
+
+global
+procedure ISellerToItemStatRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "ISellerToItemStatRClass");
+  RepSpec.Media = mtFile;
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+end;
+
+global
+procedure IGroupToItemStatRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "IGroupToItemStatRClass");
+  RepSpec.Media = mtFile;
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+end;
+
+global
+procedure ICustToMonthStatRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "ICustToMonthStatRClass");
+  RepSpec.Media = mtFile;
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+end;
+
+//===============================================
+event startup
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  Register("Статистика Продавец - Товар", "Статистика Продавец - Товар", ISellerToItemStatVc, modSRV);
+  Register("Статистика Группа продажи - Товар", "Статистика Группа продажи - Товар", IGroupToItemStatVc, modSRV);
+  Register("Статистика Клиент - Товар", "Статистика Клиент - Товар", ICustToItemStatVc, modSRV);
+  Register("Персонификация продаж", "Персонификация продаж", ICustToMonthStatVc, modSRV);
+  Maintenance("Создать статистику Продавец - Товар", ISellerToItemStatVClass, ISellerToItemStatMn, modSRV);
+  Maintenance("Создать статистику Группа продажи - Товар", IGroupToItemStatVClass, IGroupToItemStatMn, modSRV);
+  Maintenance("Создать статистику Клиент - Товар", ICustToItemStatVClass, ICustToItemStatMn, modSRV);
+  Maintenance("Создать персонификацию продаж", ICustToMonthStatVClass, ICustToMonthStatMn, modSRV);
+  Report("Стат. Клиент - Товар", ICustToItemStatRClass, ICustToItemStatRn, 0, modFilK);
+  Report("Стат. Продавец - Товар", ISellerToItemStatRClass, ISellerToItemStatRn, 0, modFilK);
+  Report("Стат. Группа продажи - Товар", IGroupToItemStatRClass, IGroupToItemStatRn, 0, modFilK);
+  Report("Персонификация продаж", ICustToMonthStatRClass, ICustToMonthStatRn, 0, modFilK);
+
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Статистика Продавец - Товар", ISellerToItemStatLClass, CGmlist, -);
+  SetWRect (20, 80, 850, 410);
+  SpawnClass(ISellerToItemStatDClass);
+  UseView(ISellerToItemStatVc);
+  Sizeable(-1, -1, 0, 0);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Номер", SerNr, false, SerNr);
+  RlColKey(81, 81, "Дата", DT, false, DateSeller);
+  RlColKey(160, 160, "Продавец", Seller, false, Seller);
+  RlColKey(260, 260, "Товар", Item, false, Item);
+  RlCol(460, 460, "Кол-во", Qty, true);
+  RlCol(560, 560, "Сумма", Sum, true);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Статистика Продавец - Товар", ISellerToItemStatDClass, CGview, -);
+  SetWRect(20, 80, 820, 660);
+  UseView(ISellerToItemStatVc);
+  EditField(h=100, v=6, 100, "Номер", ViewOnly, SerNr, False, 0);
+  EditField(h, v+=vs, 100, "Дата", Normal, DT, False, 0);
+  EditField(h, v+=vs, 100, "Продавец", Normal, Seller, False, 0);
+  EditField(h, v+=vs, 100, "Товар", Normal, Item, False, 0);
+  EditField(h, v+=vs, 100, "Кол-во", Normal, Qty, False, 0);
+  EditField(h, v+=vs, 100, "Сумма", Normal, Sum, False, 0);
+  EndWindow;
+
+  WindowBegin("Создать статистику Продавец - Товар", ISellerToItemStatVClass, CGMnt, RcType);
+  SetWRect(20 ,80, 350, 150);
+  PeriodField(h=100,v=6,"Период");
+  EndWindow;
+
+
+  WindowBegin("Статистика Группа продажи - Товар", IGroupToItemStatLClass, CGmlist, -);
+  SetWRect (20, 80, 850, 410);
+  SpawnClass(IGroupToItemStatDClass);
+  UseView(IGroupToItemStatVc);
+  Sizeable(-1, -1, 0, 0);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Номер", SerNr, false, SerNr);
+  RlColKey(81, 81, "Дата", DT, false, DateGroup);
+  RlColKey(160, 160, "Группа продажи", SalesGroup, false, SalesGroup);
+  RlColKey(260, 260, "Товар", Item, false, Item);
+  RlCol(460, 460, "Кол-во", Qty, true);
+  RlCol(560, 560, "Сумма", Sum, true);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Статистика Группа продажи - Товар", IGroupToItemStatDClass, CGview, -);
+  SetWRect(20, 80, 820, 660);
+  UseView(IGroupToItemStatVc);
+  EditField(h=100, v=6, 100, "Номер", ViewOnly, SerNr, False, 0);
+  EditField(h, v+=vs, 100, "Дата", Normal, DT, False, 0);
+  EditField(h, v+=vs, 100, "Группа продажи", Normal, SalesGroup, False, 0);
+  EditField(h, v+=vs, 100, "Товар", Normal, Item, False, 0);
+  EditField(h, v+=vs, 100, "Кол-во", Normal, Qty, False, 0);
+  EditField(h, v+=vs, 100, "Сумма", Normal, Sum, False, 0);
+  EndWindow;
+
+  WindowBegin("Создать статистику Группа продажи - Товар", IGroupToItemStatVClass, CGMnt, RcType);
+  SetWRect(20 ,80, 350, 150);
+  PeriodField(h=100,v=6,"Период");
+  EndWindow;
+
+
+  WindowBegin("Статистика Клиент - Товар", ICustToItemStatLClass, CGmlist, -);
+  SetWRect (20, 80, 850, 410);
+  SpawnClass(ICustToItemStatDClass);
+  UseView(ICustToItemStatVc);
+  Sizeable(-1, -1, 0, 0);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Номер", SerNr, false, SerNr);
+  RlColKey(81, 81, "Дата", DT, false, DateCust);
+  RlColKey(160, 160, "Клиент", CustCode, false, CustCode);
+  RlColKey(260, 260, "Товар", Item, false, Item);
+  RlCol(460, 460, "Кол-во", Qty, true);
+  RlCol(560, 560, "Сумма", Sum, true);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Статистика Клиент - Товар", ICustToItemStatDClass, CGview, -);
+  SetWRect(20, 80, 820, 660);
+  UseView(ICustToItemStatVc);
+  EditField(h=100, v=6, 100, "Номер", ViewOnly, SerNr, False, 0);
+  EditField(h, v+=vs, 100, "Дата", Normal, DT, False, 0);
+  EditField(h, v+=vs, 100, "Клиент", Normal, CustCode, False, 0);
+  EditField(h, v+=vs, 100, "Товар", Normal, Item, False, 0);
+  EditField(h, v+=vs, 100, "Кол-во", Normal, Qty, False, 0);
+  EditField(h, v+=vs, 100, "Сумма", Normal, Sum, False, 0);
+  EndWindow;
+
+  WindowBegin("Создать статистику Клиент - Товар", ICustToItemStatVClass, CGMnt, RcType);
+  SetWRect(20 ,80, 350, 150);
+  PeriodField(h=100,v=6,"Период");
+  EndWindow;
+
+
+  WindowBegin("Персонификация продаж", ICustToMonthStatLClass, CGmlist, -);
+  SetWRect (20, 80, 850, 410);
+  SpawnClass(ICustToMonthStatDClass);
+  UseView(ICustToMonthStatVc);
+  Sizeable(-1, -1, 0, 0);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Номер", SerNr, false, SerNr);
+  RlColKey(81, 81, "Дата", DT, false, DateCust);
+  RlColKey(160, 160, "Клиент", CustCode, false, CustCode);
+  RlCol(260, 260, "Кол-во", Qty, false);
+  RlCol(360, 360, "USD", USD, false);
+  RlCol(460, 460, "UAH", UAH, false);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Персонификация продаж", ICustToMonthStatDClass, CGview, -);
+  SetWRect(20, 80, 820, 660);
+  UseView(ICustToMonthStatVc);
+  EditField(h=100, v=6, 100, "Номер", ViewOnly, SerNr, False, 0);
+  EditField(h, v+=vs, 100, "Дата", Normal, DT, False, 0);
+  EditField(h, v+=vs, 100, "Клиент", Normal, CustCode, False, 0);
+  EditField(h, v+=vs, 100, "Кол-во", Normal, Qty, True, 0);
+  EditField(h, v+=vs, 100, "USD", Normal, USD, True, 0);
+  EditField(h, v+=vs, 100, "UAH", Normal, UAH, True, 0);
+  EndWindow;
+
+  WindowBegin("Создать персонификацию продаж", ICustToMonthStatVClass, CGMnt, RcType);
+  SetWRect(20 ,80, 350, 150);
+  PeriodField(h=100,v=6,"Период");
+  EndWindow;
+
+
+//Отчет "Статистика Клиент - Товар"
+  WindowBegin("Статистика Клиент - Товар",ICustToItemStatRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  PeriodField(h=150, v=6, "Период");
+  EditFieldTL(h, v+=vs, 100, "Клиент", M4Code, Normal, 100, f1, false, CUSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификация клиента", M4UStr, Normal, 200, f2, false, CClassSClass);
+  EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 100, f3, false, CUSClass);
+  EditFieldTL(h, v+=vs, 100, "Группа продажи", M4Code, Normal, 100, f4, false, SalesGroupSClass);
+  EditFieldTL(h, v+=vs, 100, "Товар", M4UStr, Normal, 100, f5, false, INSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификация товара", M4UStr, Normal, 200, f6, false, DISClass);
+  ButtonFrame(h, v+=40, 123, 2, "Статистика:");
+  RadioButton(h, v, 0, 0, "Количество", flags[0]);
+  RadioButton(h, v+=16, 1, 0,"Сумма", flags[0]);
+  EndWindow;
+
+//Отчет "Статистика Продавец - Товар"
+  WindowBegin("Статистика Продавец - Товар",ISellerToItemStatRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  PeriodField(h=150, v=6, "Период");
+  EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 100, f3, false, CUSClass);
+  EditFieldTL(h, v+=vs, 100, "Группа продажи", M4Code, Normal, 100, f4, false, SalesGroupSClass);
+  EditFieldTL(h, v+=vs, 100, "Товар", M4UStr, Normal, 100, f5, false, INSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификация товара", M4UStr, Normal, 200, f6, false, DISClass);
+  ButtonFrame(h, v+=40, 123, 2, "Статистика:");
+  RadioButton(h, v, 0, 0, "Количество", flags[0]);
+  RadioButton(h, v+=16, 1, 0,"Сумма", flags[0]);
+  EndWindow;
+
+//Отчет "Статистика Группа продажи - Товар"
+  WindowBegin("Статистика Группа продажи - Товар",IGroupToItemStatRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  PeriodField(h=150, v=6, "Период");
+  EditFieldTL(h, v+=vs, 100, "Группа продажи", M4Code, Normal, 100, f4, false, SalesGroupSClass);
+  EditFieldTL(h, v+=vs, 100, "Товар", M4UStr, Normal, 100, f5, false, INSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификация товара", M4UStr, Normal, 200, f6, false, DISClass);
+  ButtonFrame(h, v+=40, 123, 2, "Статистика:");
+  RadioButton(h, v, 0, 0, "Количество", flags[0]);
+  RadioButton(h, v+=16, 1, 0,"Сумма", flags[0]);
+  EndWindow;
+
+//Отчет "Ежемесячная статистика по клиентам"
+  WindowBegin("Персонификация продаж",ICustToMonthStatRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  PeriodField(h=150, v=6, "Период");
+  EditFieldTL(h, v+=vs, 100, "Клиент", M4Code, Normal, 100, f1, false, CUSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификация клиента", M4UStr, Normal, 200, f2, false, CClassSClass);
+  EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 100, f3, false, CUSClass);
+  EditFieldTL(h, v+=vs, 100, "Группа продажи", M4Code, Normal, 100, f4, false, SalesGroupSClass);
+  EndWindow;
+
+  Return;
+end;
+

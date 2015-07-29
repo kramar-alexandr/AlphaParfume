@@ -1,0 +1,34 @@
+global
+function LongInt VCUNoteVcRecordDefaults(var record VCUNoteVc CNr, record VCUNoteVc CNr2,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+  longint newnr;
+  record UserVc Usr;
+
+  newnr = -1;
+  CNr.Date = CurrentDate;
+  CNr.SerNr = NextSerNr("VCUNoteVc",CNr.Date,newnr,false,"");
+  CNr.SalesMan = CurrentUser;
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+  CNr.UserName = Usr.Name;
+
+  VCUNoteVcRecordDefaults = res;
+  RETURN;
+END;
+
+
+global
+updating function LongInt VCUNoteVcRecordRemoveTest(var record VCUNoteVc CNr, record VCUNoteVc CNr2, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+VCUNoteVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (CNr.SalesMan <> CurrentUser) then
+  begin
+  VCUNoteVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;

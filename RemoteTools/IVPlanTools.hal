@@ -1,0 +1,438 @@
+external function string 60 IGetObjByType(string, string);
+external function string 5 GetMonthName(Integer);
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external function Boolean INInPlan(string, Integer);
+
+//===============================================
+//Возвращаем период сбора статистики для заданного года планирования
+global
+procedure GetIVPlanStatPeriod(integer Year, var date bd, var date ed)
+begin
+  record IVPlanStatBlock VSb;
+  row IVPlanStatBlock VSbrw;
+  integer i;
+  boolean found;
+
+  BlockLoad(VSb);
+  found = false;
+  bd = "";
+  ed = "";
+  for (i=0; (i < MatRowCnt(VSb)) and not found; i=i+1)
+    begin
+      MatRowGet(VSb, i, VSbrw);
+      found = (VSbrw.Year == Year);
+    end;
+
+  if (found) then
+    begin
+      bd = FirstInRange(VSbrw.StatPeriod, 10);
+      ed = LastInRange(VSbrw.StatPeriod, 10);
+    end;
+  Return;
+end;
+
+//===============================================
+//Заполняем планируемые товары объекта
+procedure IVPlanObjFillMatrix(var record IVPlanSetObjVc VSOr)
+begin
+	record INVc INr;
+  row IVPlanSetObjVc VSOrw;
+  boolean cont;
+  integer i;
+
+  while (MatRowCnt(VSOr) > 0) //Очищаем матрицу
+    begin
+      MatRowDelete(VSOr, 0);
+    end;
+
+	ResetLoop(INr);
+  cont = true;
+	INr.Terminated = 0;
+	while (LoopKey("ActCode", INr, 2, cont))
+		begin
+      cont = (INr.Terminated == 0);
+      if (cont) and INInPlan(INr.Code, VSOr.Year) then
+        begin
+          VSOrw.ArtCode = INr.Code;
+          VSOrw.ArtName = INr.Name;
+          VSOrw.StatQnt = 0;
+          VSOrw.Percent = 0;
+          MatRowPut(VSOr, MatRowCnt(VSOr), VSOrw);
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Накапливаем статистику объекта по заданному товару
+procedure IVPlanObjAddQnt(var record IVPlanSetObjVc VSOr, record CUVc CUr, string ArtCode, val Qnt)
+begin
+  row IVPlanSetObjVc VSOrw;
+  integer Pos, lPos, rPos;
+  boolean found;
+
+  if (VSOr.SalesGroup == CUr.SalesGroup) and (Qnt <> 0) then
+    begin
+      Pos = 0;
+      lPos = 0; 
+      rPos = MatRowCnt(VSOr);
+      found = false;
+  
+      while  (lPos < rPos) and (not found)
+        begin
+          Pos = (lPos + rPos) / 2;
+          MatRowGet(VSOr, Pos, VSOrw);
+          found = (VSOrw.ArtCode == ArtCode);
+          if (ArtCode > VSOrw.ArtCode) then
+            begin
+              lPos = Pos + 1;
+            end
+          else
+            begin
+              rPos = Pos;
+            end;
+        end;
+
+      if (found) then
+        begin
+          VSOrw.TotStatQnt = VSOrw.TotStatQnt + Qnt;
+          if SetInSet(VSOr.Obj, CUr.Objects) then
+            begin
+              VSOrw.StatQnt = VSOrw.StatQnt + Qnt;
+            end;
+          VSOrw.Percent = VSOrw.StatQnt * 100.0 / VSOrw.TotStatQnt;
+          MatRowPut(VSOr, Pos, VSOrw);
+       end;
+    end;
+  Return;
+end;
+
+
+//===============================================
+//Продажи объекта по товарам
+procedure IVPlanObjMakeStat(var record IVPlanSetObjVc VSOr, date bd, date ed)
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+  record CUVc CUr;
+  boolean cont;
+  integer i, coeff;
+
+  IVr.InvDate = bd;
+  cont = nonblank(VSOr.SalesGroup) and nonblank(VSOr.Obj);
+  while (LoopKey("InvDate", IVr, 1, cont))
+    begin
+      cont = DateInRange(IVr.InvDate, bd, ed);
+      if cont and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and ((IVr.InvType == 1) or (IVr.InvType == 3)) then
+        begin
+          CUr.Code = IVr.CustCode;
+          ReadFirstMain(CUr, 1, true);
+          
+          if (IVr.InvType == 3) then
+            begin
+              coeff = 0; //-1; //Cred
+            end
+          else
+            begin
+              coeff = 1; //Normal
+            end;
+
+          for (i=0; i < MatRowCnt(IVr); i=i+1)
+            begin
+              MatRowGet(IVr, i, IVrw);
+              if (IVrw.stp == 1) then
+                begin
+                  IVPlanObjAddQnt(VSOr, CUr, IVrw.ArtCode, (coeff * IVrw.Quant));
+                end;
+            end;
+        end;
+    end;
+
+  Return;
+end;
+
+
+//===============================================
+//Заполняем план по данному "объекту нормирования"
+global
+procedure IFillVPlanObj(var record IVPlanSetObjVc VSOr)
+begin
+  record TempVc Listr;
+  date bd, ed;
+
+  GetIVPlanStatPeriod(VSOr.Year, bd, ed);
+  IVPlanObjFillMatrix(VSOr);
+  IVPlanObjMakeStat(VSOr, bd, ed);
+  Return;
+end;
+
+
+
+//===============================================
+//Создаем структуру групп продажи в матрице
+procedure IVPlanSGFillMatrix(var record IVPlanSetSGVc VSSGr)
+begin
+  record SalesGroupVc SGr;
+  row IVPlanSetSGVc VSSGrw;
+  
+  while (MatRowCnt(VSSGr) > 0) //Очищаем матрицу
+    begin
+      MatRowDelete(VSSGr, 0);
+    end;
+
+  ResetLoop(SGr);
+  while (LoopMain(SGr, 1, true))
+    begin
+//      if (SGr.Closed == 0) and not SetInSet(SGr.SGroupCode, "001,100") then //Исключаем ЦО и Элиту
+      if (SGr.Closed == 0) and not SetInSet(SGr.SGroupCode, "100") then //Исключаем Элиту
+        begin
+          VSSGrw.SalesGroup = SGr.SGroupCode;
+          VSSGrw.StatQnt = 0;
+          VSSGrw.Percent = 0;
+          MatRowPut(VSSGr, MatRowCnt(VSSGr), VSSGrw);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Создаем структуру записей
+updating procedure IVPlanSGCreate(integer Year)
+begin
+	record INVc INr;
+  record IVPlanSetSGVc VSSGr, oldVSSGr;
+  boolean cont;
+  Boolean NewRec;
+
+	ResetLoop(INr);
+  cont = true;
+	INr.Terminated = 0;
+	while (LoopKey("ActCode", INr, 2, cont))
+		begin
+      cont = (INr.Terminated == 0);
+      if (cont) and INInPlan(INr.Code, Year) then
+        begin
+          VSSGr.ArtCode = INr.Code;
+          VSSGr.Year = Year;
+          NewRec = not ReadFirstMain(VSSGr, 2, true);
+          if (NewRec) then
+            begin
+              RecordNew(VSSGr);
+              VSSGr.ArtCode = INr.Code;
+              VSSGr.ArtName = INr.Name;
+              VSSGr.Year = Year;
+            end;
+           
+          VSSGr.TotStatQnt = 0;
+          IVPlanSGFillMatrix(VSSGr);
+          
+          if (NewRec) then
+            begin
+              RecordStore(VSSGr, false);
+            end
+          else
+            begin
+              RecordCopy(oldVSSGr, VSSGr);
+              RecordUpdate(oldVSSGr, VSSGr, false);
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Накапливаем статистику групп продаж по заданному товару
+updating procedure IVPlanSGAddQnt(string ArtCode, val Qnt, integer Year, string SalesGroup)
+begin
+  record IVPlanSetSGVc VSSGr, oldVSSGr;
+  row IVPlanSetSGVc VSSGrw;
+  integer i;
+  
+  if (Qnt <> 0) then
+    begin
+      VSSGr.ArtCode = ArtCode;
+      VSSGr.Year = Year;
+      if ReadFirstMain(VSSGr, 2, true) then
+        begin
+          VSSGr.TotStatQnt = VSSGr.TotStatQnt + Qnt;
+          for (i=0; i < MatRowCnt(VSSGr); i=i+1)
+            begin
+              MatRowGet(VSSGr, i, VSSGrw);
+              if (VSSGrw.SalesGroup == SalesGroup) then
+                begin
+                  VSSGrw.StatQnt = VSSGrw.StatQnt + Qnt;
+                end;
+              VSSGrw.Percent = VSSGrw.StatQnt * 100.0 / VSSGr.TotStatQnt;
+              MatRowPut(VSSGr, i, VSSGrw);
+            end;
+          RecordCopy(oldVSSGr, VSSGr);
+          RecordUpdate(oldVSSGr, VSSGr, false);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Статистика по товарам
+updating procedure IVPlanSGMakeStat(integer Year, date bd, date ed)
+begin
+  record IVVC IVr;
+  row IVVC IVrw;
+  boolean cont;
+  integer i, coeff;
+  record CUVc CUr;
+
+  IVr.InvDate = bd;
+  cont = true;
+  while (LoopKey("InvDate", IVr, 1, cont))
+    begin
+      cont = DateInRange(IVr.InvDate, bd, ed);
+      if cont and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and ((IVr.InvType == 1) or (IVr.InvType == 3)) then
+        begin
+          //Актуальные группа продажи и объект - из карточки клиента, а не СЧ/Ф
+          CUr.Code = IVr.CustCode;
+          ReadFirstMain(CUr, 1, true);
+//          if not SetInSet(CUr.SalesGroup, "001,100") then //Исключаем ЦО и Элиту
+          if not SetInSet(CUr.SalesGroup, "100") then //Исключаем Элиту
+            begin
+              if (IVr.InvType == 3) then
+                begin
+                  coeff = 0; //-1; //Cred
+                end
+              else
+                begin
+                  coeff = 1; //Normal
+                end;
+
+              for (i=0; i < MatRowCnt(IVr); i=i+1)
+                begin
+                  MatRowGet(IVr, i, IVrw);
+                  if (IVrw.stp == 1) then
+                    begin
+                      IVPlanSGAddQnt(IVrw.ArtCode, (coeff * IVrw.Quant), Year, CUr.SalesGroup);
+                    end;
+                end;
+            end;
+        end;
+    end;
+   
+  Return;
+end;
+
+//===============================================
+//Заполняем коэффициенты по группам продажи
+global
+updating procedure IFillVPlanSG(integer Year, date bd, date ed)
+begin
+  IVPlanSGCreate(Year);
+  IVPlanSGMakeStat(Year, bd, ed);
+  Return;
+end;
+
+//===============================================
+//Удаляем записи коэффициентов по группам продажи
+global
+updating procedure IRemoveVPlanSG(integer Year)
+begin
+  record IVPlanSetSGVc VSSGr;
+  boolean cont;
+  
+  VSSGr.Year = Year;
+  cont = true;
+  while (LoopKey("Year", VSSGr, 1, cont))
+    begin
+      cont = (VSSGr.Year == Year);
+      if (cont) then
+        begin
+          RecordRemove(VSSGr);
+          StepBack(VSSGr);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Факт из строки Сч-Ф
+function boolean UpdateFactByIVrow(var record VPlanSpecVc VPr, record IVVc IVr, row IVVc IVrw)
+begin
+  integer i;
+  integer coeff;
+  boolean found;
+  string 60 FieldName;
+  val t;
+
+  found = false;
+  for (i = 0; (i < MatRowCnt(VPr)) and (not found); i = i + 1)
+    begin
+      found = (GetFieldValueByName(VPr, "ArtCode", i) == IVrw.ArtCode);
+      if (found) then
+        begin
+          if (IVr.InvType == 3) then
+            begin
+              coeff = -1;
+            end
+          else
+            begin
+              coeff = 1;
+            end;
+
+          FieldName = GetMonthName(GetMonth(IVr.InvDate)) & "P";
+          t = StringToVal(GetFieldValueByName(VPr, FieldName, i), M4Val);
+          t = t + coeff * IVrw.Quant;
+          SetFieldValueByName(VPr, FieldName, t, i);
+
+          FieldName = GetMonthName(GetMonth(IVr.InvDate)) & "PM";
+          t = StringToVal(GetFieldValueByName(VPr, FieldName, i), M4Val);
+          t = t + coeff * IVrw.Quant * MulRateToBase1(IVr.CurncyCode, IVrw.Sum, IVr.FrRate, IVr.ToRateB1, IVr.ToRateB2, IVr.BaseRate1, IVr.BaseRate2, DefaultCurRoundOff);
+          SetFieldValueByName(VPr, FieldName, t, i);
+        end;
+    end;
+  UpdateFactByIVrow = found;
+  Return;
+end;
+
+//===============================================
+global
+updating procedure IFactFromIV(record IVVc IVr)
+begin
+  record VPlanSpecVc VPr, VP2r;
+  row IVVc IVrw;
+  integer rwcnt, i, Year;
+  boolean cont, found, NeedUpdate;
+  string 60 Objects;
+  longint SerNr;
+
+  NeedUpdate = false;
+  Year = GetYear(IVr.InvDate);
+  Objects = IGetObjByType(IVr.Objects, "NORM");
+  VPr.Objects = Objects;
+  cont = true;
+  while (LoopKey("Objects", VPr, 1, cont))
+    begin
+      cont = (VPr.Objects == Objects);
+      if (cont) and (VPr.Year == Year) then
+        begin
+          SerNr = VPr.SerNr;
+          cont = false;
+        end;
+    end;
+
+  VPr.SerNr = SerNr;
+  if ReadFirstMain(VPr, 1, true)
+    begin
+      for (i = 0; i < MatRowCnt(IVr); i = i + 1)
+        begin
+          MatRowGet(IVr, i, IVrw);
+          NeedUpdate = NeedUpdate or UpdateFactByIVrow(VPr, IVr, IVrw);
+        end;
+    end;
+
+  if (NeedUpdate) then
+    begin
+      RecordCopy(VP2r, VPr);
+      RecordUpdate(VP2r, VPr, false);
+    end;
+
+  Return;
+end;

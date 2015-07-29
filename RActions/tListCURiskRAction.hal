@@ -1,0 +1,42 @@
+//===============================================
+global
+function val tIVSumByCU (string CUrCode, date bd, date ed)
+begin
+record IVVc IVr;
+row IVVc IVrw;
+record CUVc CUr;
+boolean cont;
+integer i, coeff;
+val v, sum;
+
+sum = 0;
+IVr.InvDate = bd;
+IVr.CustCode = CUrCode;
+cont = true;
+while (LoopKey("CustCode", IVr, 1, cont))
+	begin
+	cont = (IVr.CustCode == CUrCode);
+	if cont and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and ((IVr.InvType == 1) or (IVr.InvType == 3)) and (IVr.CustCode == CUrCode) 
+	  and DateInRange(IVr.InvDate, bd, ed) then
+		begin
+		CUr.Code = IVr.CustCode;
+		ReadFirstMain(CUr, 1, true);
+
+		if (IVr.InvType == 3) then
+			begin
+			  coeff = -1; //Cred
+			end
+		else
+			begin
+			  coeff = 1; //Normal
+			end;
+			
+		v = IVr.BaseSum4;
+		
+		sum = sum + coeff * v;
+		end;
+	end;
+	
+tIVSumByCU = sum;
+  Return;
+end;

@@ -1,0 +1,214 @@
+external inner procedure GetItemVATCode(string,Integer,var string,Boolean);
+external inner function val MulWithRateToBase2(var string,Date,val,roundmode);
+external inner function val FindVAT(string,val,Integer,Integer);
+external inner function val GetStockQty(string,string,Date,Boolean);
+external inner procedure GetItemVATCode(string,Integer,var string,Boolean);
+external inner procedure Base1ToBase2(var val,Date,var val);
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external inner function Time TimeDiff(Time,Time);
+external inner function Time ExactTimeDiff(Time, Time, Time);
+external procedure ExportCuVcRn(string, string);
+
+//Получаем настройки складов и файла экспорта
+function boolean GetSettings(string SalesGroup, var string Locations, var string Path, var boolean AllItems)
+begin
+	record IItemsExportBlock IEBr;
+	row IItemsExportBlock IEBrw;
+	integer i, cnt;
+	boolean res;
+	
+	res = false;
+	Locations = "";
+	Path = "";
+	AllItems = false;
+	BlockLoad(IEBr);
+	cnt = MatRowCnt(IEBr);
+	for (i=0; (i<cnt) and not res; i=i+1)
+		begin
+			MatRowGet(IEBr, i, IEBrw);
+			res = (IEBrw.SalesGroup == SalesGroup);
+			if (res) then
+				begin
+					Locations = IEBrw.Locations;
+					Path = IEBrw.Path;
+					AllItems = (IEBrw.AllItems==1);
+				end;
+		end;
+	GetSettings = res and nonblank(Locations) and nonblank(Path);
+  Return;
+end;
+
+//Строка наименования полей/прейскурантов
+procedure ExportHeader
+begin
+  record PLDefVc PLDr;
+  integer i,cnt;
+
+	ExportString ("ArtCode");
+	ExportString ("ArtName");
+	ExportString ("Group");
+	ExportString ("Location");
+	ExportString ("Qnt1");
+	ExportString ("QntTotal");
+//Prices
+	ResetLoop(PLDr);
+  PLDr.Code=""; 
+	cnt = CountRecords("PLDefVc");
+	for (i=0; i<cnt; i=i+1)
+	  begin
+		  LoopMain(PLDr,1,true);
+		  ExportString(PLDr.Code);
+		end;
+	NewLine;
+	NewLine;
+  Return;
+end;
+
+//Цена указанного товара по указанному прайсу
+function val GetItemPrice(record INVc INr, string PriceCode)
+begin
+  val res;
+  record PLVc PLr;  
+  record PLDefVc PLDr;
+  record AccBlock Accb;
+	string 10 curncycode;
+  string 5 vatc, vatflag;
+				
+	PLDr.Code = PriceCode;
+  if (ReadFirstMain(PLDr,1,true)) then
+  	begin
+      vatflag = PLDr.InclVAT;
+      curncycode = PLDr.CurncyCode;
+    end  
+  else
+  	begin
+      BlockLoad(accb);
+      vatflag = accb.BasePriceInclVAT;
+    end;
+
+	Base1ToBase2(INr.UPrice1, CurrentDate, res);
+	
+  GetItemVATCode(INr.Code,0,vatc,false);
+		
+	PLr.PLCode = PriceCode;
+	PLr.ArtCode = INr.Code;
+  if ReadFirstMain(PLr,2,true) then
+	  begin 
+      res = MulWithRateToBase2(curncycode,CurrentDate,PLr.ExVatPrice,DefaultCurRoundOff);
+      if (vatflag=="0") then
+				begin
+					res = res + FindVAT(vatc,res,0,0);
+				end 
+			else
+  			begin
+					res = res - FindVAT(vatc,res,1,0);
+        end;
+		end;		
+	
+	GetItemPrice = res;
+  Return;
+end;
+
+//Экспорт цен товара по всем прайсам
+procedure ExportItemPrices(record INVc INr)
+begin
+  record PLDefVc PLDr;
+  integer i,cnt;
+
+	ResetLoop(PLDr);
+  PLDr.Code=""; 
+	cnt = CountRecords("PLDefVc");
+	for (i=0; i<cnt; i=i+1)
+	  begin
+		  LoopMain(PLDr,1,true);
+		  ExportString (GetItemPrice(INr, PLDr.Code));
+		end;
+  Return;
+end;
+
+//Передаем код товара и строку складов, разделенную запятыми
+//Возвращаем количество по первому и по всем указанным складам
+procedure GetItemQty(string ArtCode, string Stocks, var val Qty1, var val QtyTotal)
+begin
+  integer cnt, i;
+	string 20 Location;
+	
+	Qty1 = 0;
+	QtyTotal = 0;
+
+	cnt = IItemCountInStr(Stocks);
+	Location = IGetItemFromStr(Stocks,0);
+	if nonblank(Location) then
+		begin
+			Qty1 = GetStockQty(ArtCode,Location,CurrentDate,false);
+			QtyTotal = Qty1;
+			for (i=1; i<cnt; i=i+1)
+				begin
+					Location = IGetItemFromStr(Stocks,i);
+					if nonblank(Location) then
+						begin
+							QtyTotal = QtyTotal + GetStockQty(ArtCode,Location,CurrentDate,false);
+						end;
+				end;
+		end;
+  return;
+end;
+
+//===========================================================================
+global
+procedure IItemsExport()
+begin
+  record INVc INr;
+	record UserVc Usr;
+	val Qty1, QtyTotal;
+	string 50 FileName;
+	string 200 Locations;
+	boolean AllItems; //Экспортировать ли товары с нулевыми остатками
+
+	
+	SetLangMode(LangRussian, "RUS", 2);
+
+	
+	Usr.Code = CurrentUser;
+	if ReadFirstMain(Usr,1,true) and GetSettings(Usr.SalesGroup, Locations, FileName, AllItems) then
+		begin
+			//FileName = FileName & "-" & CurrentDate & ".txt";
+			ExportCuVcRn (USr.SalesGroup, FileName);
+			FileName = FileName & "\Items.txt";
+		  CreateFile(FileName);
+			OpenFile(FileName);
+			//SetExportCodePage("CP1251"); 
+
+			ExportHeader;
+			AllItems = False;
+			INr.Code = "";
+			while (LoopMain(INr,1,true)) 
+				begin
+					if (INr.Terminated==0) and (INr.NotForSales==0) and nonblank(INr.VItemGroupCode) and Len(INr.VItemGroupCode) > 1 then
+						begin
+							GetItemQty(INr.Code, Locations, Qty1, QtyTotal);
+							if (QtyTotal>0) or AllItems
+								begin
+									QtyTotal = 1;
+									ExportString(INr.Code);
+									ExportString(INr.Code & "." & INr.Name);
+									ExportString(INr.VItemGroupCode);
+									ExportString(IGetItemFromStr(Locations,0)); //Склад
+									ExportString(Qty1);
+									ExportString(QtyTotal);
+									ExportItemPrices(INr);
+									ExportString(INr.Unittext);
+									NewLine;
+								end;
+						end;
+				end;
+			CloseFile;
+			EndJob;
+		
+		MessageBox(0, "Экспорт завершен. Файл " & FileName);
+		end;
+		
+Return;
+end;
+

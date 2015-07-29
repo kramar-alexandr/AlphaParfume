@@ -1,0 +1,284 @@
+/*
+global
+updating procedure ReadImportTagship1()
+begin
+  record SHVc SHr;
+  row SHVc SHrw;
+  integer i;
+
+  logtext(0, "SHVc end");
+  Return;
+end;
+
+global
+updating procedure ReadImportTagstockmov1()
+begin
+  record StockMovVc SMr;
+  row StockMovVc SMrw;
+  integer i;
+
+  logtext(0, "StockMovVc end");
+  Return;
+end;
+
+global
+updating procedure ReadImportTagItemHistVc2()
+begin
+
+  logtext(0, "ItemHistVc end");
+  Return;
+end;
+
+global
+updating procedure ReadImportTagTRVc1()
+begin
+
+  logtext(0, "TRVc end");
+  Return;
+end;
+
+
+global
+updating procedure ReadImportTagIVVc3()
+begin
+
+  logtext(0, "IVVc end");
+  Return;
+end;
+
+global
+updating procedure ReadImportTagORVc2()
+begin
+
+  logtext(0, "ORVc end");
+  Return;
+end;
+*/
+
+
+//===============================================
+global
+updating procedure ReadImportTagartikel5()
+begin
+  record INVc INr;
+  row INVc INrw;
+  integer i;
+
+  stopalert("INVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(INr);
+        ImportField; // NewAutosyncRegister
+        ImportField; // NewAutosyncRegister
+        ImportField; // NewAutosyncRegister
+      INr.Code = ImportField;
+      INr.Name = ImportField;
+      INr.Unittext = ImportField;
+      INr.MinLevel = StringToVal(ImportField, M4Val);
+      INr.Objects = ImportField;
+      INr.SalesAcc = ImportField;
+      INr.UPrice1 = StringToVal(ImportField, M4Val);
+      INr.ItemType = StringToInt(ImportField);
+      INr.Group = ImportField;
+
+      //INr.x1 = ImportField;
+      //INr.x2 = ImportField;
+      ImportField;
+      ImportField;
+
+      INr.InPrice = StringToVal(ImportField, M4Val);
+      INr.InvCode = ImportField;
+      INr.ExtraCost = StringToVal(ImportField, M4Val);
+      INr.SerNrf = StringToInt(ImportField);
+      INr.Department = ImportField;
+      INr.Weight = StringToVal(ImportField, M4Val);
+      INr.Volume = StringToVal(ImportField, M4Val);
+      INr.EUCodex = ImportField;
+      INr.InCurncyCode = ImportField;
+      INr.Bonus = StringToVal(ImportField, M4Val);
+      INr.Recepy = ImportField;
+      INr.Markup = StringToVal(ImportField, M4Val);
+
+      //INr.x3 = ImportField;
+      ImportField;
+
+      INr.BarCode = ImportField;
+      INr.UpdateCost = StringToInt(ImportField);
+      INr.LastPriceChange = ImportField;
+      INr.CalcPrice = ImportField;
+      INr.VATCode = ImportField;
+      INr.PriceFactor = StringToVal(ImportField, M4Val);
+      INr.Terminated = StringToInt(ImportField);
+      INr.AvgMarkup = StringToVal(ImportField, M4Val);
+      INr.LastPurchPrice = StringToVal(ImportField, M4Val);
+      INr.LastPurchCurncyCode = ImportField;
+      INr.WeighedAvPrice = StringToVal(ImportField, M4Val);
+      INr.Conversion1 = StringToVal(ImportField, M4Val);
+      INr.Conversion2 = StringToVal(ImportField, M4Val);
+      INr.WarrantyLength = StringToVal(ImportField, M4Val);
+      INr.InvRecepy = ImportField;
+      INr.EUSalesAcc = ImportField;
+      INr.ExpSalesAcc = ImportField;
+      INr.VATCodeEU = ImportField;
+      INr.VATCodeExp = ImportField;
+      INr.ChangePrice = StringToInt(ImportField);
+      INr.RebCode = ImportField;
+      INr.ExplodeRec = StringToInt(ImportField);
+      INr.Unittext2 = ImportField;
+      INr.UnitCoefficient = StringToVal(ImportField, M4Val);
+      INr.WarnText1 = ImportField;
+      INr.VARList = ImportField;
+      INr.ItemMaterial = StringToInt(ImportField);
+      INr.AlcPrc = StringToVal(ImportField, M4Val);
+      INr.DefaultSource = ImportField;
+      INr.AlternativeCode = ImportField;
+      INr.CostAcc = ImportField;
+      INr.DefLocation = ImportField;
+      INr.LastBasePriceChange = ImportField;
+      INr.MaxLevel = StringToVal(ImportField, M4Val);
+      INr.LastPurchPrice2 = StringToVal(ImportField, M4Val);
+      INr.Width = StringToVal(ImportField, M4Val);
+      INr.Height = StringToVal(ImportField, M4Val);
+      INr.Depth = StringToVal(ImportField, M4Val);
+      INr.ContractItem = ImportField;
+      INr.Internal = StringToInt(ImportField);
+      INr.InclItemFreight = StringToInt(ImportField);
+      INr.FixedFreight = StringToVal(ImportField, M4Val);
+      INr.DispGroups = ImportField;
+      INr.HazLevCode = ImportField;
+      INr.Density = StringToVal(ImportField, M4Val);
+      INr.xClassification = ImportField;
+      INr.CredSalesAcc = ImportField;
+      INr.CredEUSalesAcc = ImportField;
+      INr.CredExpSalesAcc = ImportField;
+      INr.CredVATCode = ImportField;
+      INr.CredVATCodeEU = ImportField;
+      INr.CredVATCodeExp = ImportField;
+      INr.RentalItem = ImportField;
+      INr.CompUsage = ImportField;
+      INr.colnr = StringToInt(ImportField);
+      INr.VARMask = ImportField;
+      INr.VARRepOrder = ImportField;
+      INr.VARSubsets = ImportField;
+      INr.LocArea = ImportField;
+      INr.EKNCode = ImportField;
+      INr.DefPalletItem = ImportField;
+      INr.QtyonPallet = StringToVal(ImportField, M4Val);
+      INr.PalletWidth = StringToVal(ImportField, M4Val);
+      INr.PalletHeight = StringToVal(ImportField, M4Val);
+      INr.PalletDepth = StringToVal(ImportField, M4Val);
+      INr.Brand = ImportField;
+      INr.BrandType = ImportField;
+      INr.PickArea = ImportField;
+      INr.SWWCode = ImportField;
+      INr.RepaPricePerWeight = StringToVal(ImportField, M4Val);
+      INr.PalletsInPickArea = StringToVal(ImportField, M4Val);
+      INr.DefPosWidth = StringToVal(ImportField, M4Val);
+      INr.DefPosHeight = StringToVal(ImportField, M4Val);
+      INr.DefPosDepth = StringToVal(ImportField, M4Val);
+      INr.InPriceB2 = StringToVal(ImportField, M4Val);
+      INr.WeighedAvPriceB2 = StringToVal(ImportField, M4Val);
+      INr.EUCostAcc = ImportField;
+      INr.ExpCostAcc = ImportField;
+      INr.PalletLayers = StringToVal(ImportField, M4Val);
+      INr.QtyonPalletLayer = StringToVal(ImportField, M4Val);
+      INr.UserStr1 = ImportField;
+      INr.UserStr2 = ImportField;
+      INr.UserStr3 = ImportField;
+      INr.UserStr4 = ImportField;
+      INr.UserStr5 = ImportField;
+      INr.UserVal1 = StringToVal(ImportField, M4Val);
+      INr.UserVal2 = StringToVal(ImportField, M4Val);
+      INr.UserVal3 = StringToVal(ImportField, M4Val);
+      INr.UserDate1 = ImportField;
+      INr.UserDate2 = ImportField;
+      INr.UserDate3 = ImportField;
+      INr.RentGroup = ImportField;
+      INr.FAGroup = ImportField;
+      INr.NetWeight = StringToVal(ImportField, M4Val);
+      INr.PrimaryCostModel = StringToInt(ImportField);
+      INr.QueuedCostModel = StringToInt(ImportField);
+      INr.CostPerc = StringToVal(ImportField, M4Val);
+      INr.FIFOPerSerialNr = StringToInt(ImportField);
+      INr.FIFOPerLocation = StringToInt(ImportField);
+      INr.WAPerLocation = StringToInt(ImportField);
+      INr.CostPricePerLocation = StringToInt(ImportField);
+      INr.NotForSales = StringToInt(ImportField);
+      INr.SRUpdateCost = StringToInt(ImportField);
+      //
+      //=== 7.2
+      INr.SuppSerialNr = ImportField;
+      INr.MajStoneDet = ImportField;
+      INr.Colour = ImportField;
+      INr.Clarity = ImportField;
+      INr.Cert = ImportField;
+      INr.MinStoneDet = ImportField;
+      INr.Metal = ImportField;
+      INr.RowWeight = ImportField;
+      INr.Size = ImportField;
+      INr.Length = ImportField;
+      INr.WatchBrand = ImportField;
+      INr.StyleName = ImportField;
+      INr.WatchMetal = ImportField;
+      INr.Movement = ImportField;
+      INr.BrcStr = ImportField;
+      INr.Gender = ImportField;
+      INr.Other = ImportField;
+      INr.Other2 = ImportField;
+      INr.Reference = ImportField;
+      INr.Perceptions = StringToInt(ImportField);
+      INr.Withholdings = StringToInt(ImportField);
+      INr.TaxTemplateCode = ImportField;
+      INr.TaxTemplateCodeEU = ImportField;
+      INr.TaxTemplateCodeExp = ImportField;
+      INr.DonotRequireBatchNrOnIVCash = StringToInt(ImportField);
+      INr.HotelWIPAcc = ImportField;
+      INr.CPSCode = ImportField;
+      INr.SVOInvbleSalesAcc = ImportField;
+      INr.SVOWarrantySalesAcc = ImportField;
+      INr.SVOContractSalesAcc = ImportField;
+      INr.SVOGoodwillSalesAcc = ImportField;
+      INr.SVOInvbleCostAcc = ImportField;
+      INr.SVOWarrantyCostAcc = ImportField;
+      INr.SVOContractCostAcc = ImportField;
+      INr.SVOGoodwillCostAcc = ImportField;
+      INr.HasExcise = StringToInt(ImportField);
+      INr.ProjMaterialsUsageAcc = ImportField;
+      INr.DefOrderType = StringToInt(ImportField);
+      // наши поля
+      INr.BarCode2 = ImportField;
+      INr.AlphaBet = ImportField;
+      INr.VItemGroupCode = ImportField;
+      INr.VItemGroupName = ImportField;
+      INr.StartDate = ImportField;
+      INr.OrigItem = ImportField;
+      INr.SubstItems = ImportField;
+      INr.BaseName = ImportField;
+      INr.DispGroupsNew = ImportField;
+      INr.Name2 = ImportField;
+      INr.MultiShip = StringToInt(ImportField);
+      INr.BoxVol = StringToVal(ImportField, M4Val);
+      INr.tTesterCode = ImportField;
+      INr.tKolSKU = StringToInt(ImportField);
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(INr, INrw, 1);
+          INrw.LangCode = ImportField;
+          INrw.Text = ImportField;
+          MatRowPut(INr, i, INrw);
+          i = i + 1;
+        end;
+
+     ReadRecordTextField(INr,"Math2");
+
+     if nonblank(INr.Name) then
+      begin
+      RecordImportStore(INr, false);
+      logtext(0, INr.Code & "    " & INr.Name);
+      end;
+    end;
+  stopalert("INVc end");
+  Return;
+end;

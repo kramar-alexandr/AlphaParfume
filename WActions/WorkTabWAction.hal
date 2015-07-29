@@ -1,0 +1,813 @@
+remote function val CountSWPercent(var record EmpWSVc);
+external inner function string 255 MonthName(Date);
+
+function Boolean IsUserUCHR()
+begin
+record USerVc USr;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+IsUserUCHR = (USr.AccessGroup == "UCHR");
+RETURN;
+end;
+
+event startup 
+begin
+SetLangMode(LangRussian,"RUS",2);
+Setting("Типы дня", DayTypeSWTClass, modEmp);
+Setting("Графики работы", OperShedTClass, modEmp);
+//Setting("Графики работы сотрудников", OperShedEmpTClass, modEmp);
+Setting("Рабочие дни", OperSWDaysLClass, modEmp); 
+Setting("Инспекторы ОК", HRInspectorLClass, modEmp); 
+Setting("Классы сотрудников ГК", IClassIEmployeeLClass, modEmp); 
+Setting("Список канцтоваров", IStnrListTClass, modEmp);
+Setting("Канцтовары - планы", IStnrPlanLClass, modEmp);
+Setting("Счета в ПЗП из Канцтоваров", tAccPZPLClass, modEmp);
+//Setting("Канцтовары - планы NEW", tIStnrPlanLClass, modEmp);
+Setting("Поставщики обедов", tVEDinLClass, modEmp);
+Setting("Цены на обед", tDinPriceLClass", modEmp);
+Setting("Меню на каждый день", tDinEvrDayLClass", modEmp);
+Register("Табели сотрудников", "Табели сотрудников", EmpWSVc, modEmp);
+Register("Сотрудники ГК", "Сотрудники ГК", IEmployeeVc, modEmp);
+Register("Заказы канцтоваров", "Заказы канцтоваров", IStnrOrdLClass, modEmp);
+//Register("Товары","Товары",INVc,modEmp);
+Register("Контакты","Контакты",CUVc,modEmp);
+Register("Заказы поставщикам","Заказы поставщикам",POVc,modEmp);
+Register("Список канцтоваров","Список канцтоваров", tINKLClass,modEmp);
+Register("Обеды", "Обеды", tDinnerLClass, modEmp);
+Register("Заказ обедов", "Заказ обедов", tDinnerEmpLClass, modEmp);
+Report("Табель рабочего времени", EmpWSRClass, EmpWSRn, 0, modEmp);
+Report("Сотрудники ГК", IEmployeeRClass, IEmployeeRn, 0, modEmp);
+// Report("Заказ канцтоваров", IStationeryRClass, IStationeryRn, 0, modEmp);
+// Report("Превышение лимитов", IStnrExcLimRClass, IStnrExcLimRn, 0, modEmp);
+Report("Заказ канцтоваров", IStationery2RClass, IStationery2Rn, 0, modEmp);
+Report("Планы по канцтоварам", IStnrPlanRClass, IStnrPlanRn, 0, modEmp);
+Report("Сводные планы по канцтоварам", IStnrPlan2RClass, IStnrPlan2Rn, 0, modEmp);
+Report("Заказы обедов",tDinnerRClass,tDinnerRn,0,modEmp);
+Setting("Классы рабочих инструментов ГК", IWorkEquipClassLClass, modEmp);
+Register("Рабочие инструменты ГК", "Рабочие инструменты ГК", IWorkEquipLClass, modEmp);
+Report("Журнал рабочих инструментов ГК", IWorkEquipJrnRClass, IWorkEquipJrnRn, 0, modEmp);
+
+Register("Требования - соответствие", "Требования - соответствие", tRequPosLClass, modEmp);
+Setting("Классификации треб-соотв",tRequPosClLClass, modEmp);
+Setting("Типы классификаторов треб-соотв",tRequPosTypeClLClass, modEmp);
+Report("Требования к должности - соответствия", tRequPosRClass, tRequPosRn, 0, modEmp);
+Maintenance("Создать списания",MakeSDFromISOVClass,MakeSDFromISOMn,modEmp);
+Maintenance("Создать Запись операций из Обедов",MakeAOFromDinVClass,MakeTrFromDin,modEmp);
+//Maintenance("Создать АО из Обедов за неделю",MakeAOFromDinVClass,MakeAOFromDinMn,modEmp);
+
+RETURN;
+end;
+
+event DefineWindows
+begin
+real v, h, t;
+record UserVc USr; 
+
+  
+SetLangMode(LangRussian, "RUS", 2); 
+ 
+WindowBegin("Графики работы", OperShedTClass, CGHbl, HBlRecType);
+SetWRect(20, 80, 532, 357);
+Sizeable(-1, -1, 0, 0);
+SetBlid(OperShedBlock);
+MatrixBegin(20, 20, -31, -20, OperShedBlockRowType, 20);
+MatColTL(1, 24, "Начало", 0, M4Time, Normal, 8, TimeStart, False, 0);
+MatColTL(1, 84, "Конец", 0, M4Time, Normal, 8, TimeEnd, False, 0);
+EnterSkip(Comment);
+MatColTL(1, 144, "Часов", 0, M4Int, ViewOnly, 3, Hours, True, 0);
+MatColTL(1, 184, "Минут", 0, M4Int, ViewOnly, 3, Minutes, True, 0);
+MatCol(1, 224, "Коммент.", 0, Comment, False, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Рабочие дни",  OperSWDaysDClass, CGview,-);
+SetWRect(20, 80, 380, 260);
+UseView(OperSWDaysVc);
+v = 6;
+EditFieldTL(100, v, 80, "Год", M4Int, Normal, 4, CYear, True, 0);
+EditFieldTL(100, v += 24, 80, "Месяц", M4Int, Normal, 2, CMonth, True, 0);
+EditFieldTL(100, v += 24, 80, "Рабочих дней", M4Int, Normal, 2, CDay, True, 0);
+EndWindow;
+
+WindowBegin("Рабочие дни", OperSWDaysLClass, CGmlist, -);
+SpawnClass(OperSWDaysDClass);
+SetWRect(64, 80, 791, 308);
+Sizeable(-1, -1, 0, 0);
+UseView(OperSWDaysVc);
+RecordList(4, 17, -21, -40);
+RlColKey(4, 4, "Год", CYear, False, YearMonth);
+RlColKey(61, 61, "Месяц", CMonth, False, YearMonth);
+RlCol(120, 120, "Дней", CDay, False);
+RlCol(180, 180, " Название месяца", Comment, False);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Графики работы", OperShedSClass, CGother, HBlRecType);
+SetWRect (20, 80, 450, 300);
+Modality(1);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Типы дня", DayTypeSWTClass, CGHbl, HBlRecType);
+SetWRect(20, 80, 532, 357);
+Sizeable(-1, -1, 0, 0);
+SetBlid(DayTypeSWBlock);
+MatrixBegin(20, 20, -31, -20, OperShedBlockRowType, 20);
+MatColTL(1, 24, "Код", 0, M4Code, Normal, 1, Type, False, 0);
+MatCol(1, 84, "Комментарий", 0, Comment, False, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Тип дня", DayTypeSWSClass, CGother, HBlRecType);
+SetWRect (20, 80, 450, 300);
+Modality(1);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Графики работы сотрудников", OperShedEmpTClass, CGHbl, HBlRecType);
+SetWRect(20, 80, 532, 357);
+Sizeable(-1, -1, 0, 0);
+SetBlid(OperShedEmpBlock);
+MatrixBegin(20, 20, -31, -20, OperShedEmpBlockRowType, 999);
+MatColTL(1, 24, "Код", 0, M4Code, Normal, 20, EmpCode, False, UserSClass);
+EnterSkip(Comment);
+MatColTL(1, 84, "Ф.И.О.", 0, M4Str, ViewOnly, 100, EmpName, False, 0);
+MatColTL(1, 344, "График работы", 0, M4Str, Normal, 60, Comment, False, OperShedSClass);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Табель сотрудника", EmpWSDClass, CGview,-);
+DynamicWindow;
+SetWRect(20, 80, 860, 660);
+Sizeable(-1, -1, 0, 0);
+BrowseButtons(False);
+UseView(EmpWSVc);
+v = 6;
+Tile(0, 130, false, "", EmpCode);
+EditFieldTL(100, v, 80, "Код", M4Code, Normal, 20, EmpCode, False, UserSClass);
+EditField(200, v, -80, "", ViewOnly, EmpName, False, 0);
+EditFieldTL(100, v += 24, 50, "Месяц", M4Int, Normal, 2, WorkMonth, True, 0);
+EditFieldTL(200, v, 50, "Год", M4Int, Normal, 4, WorkYear, True, 0);
+EnterSkip(OperShed);
+EditFieldTL(300, v, 80, "Отдел", M4Code, Normal, 20, Department, False, DepSClass);
+EditField(480, v, 80, "Руководитель", ViewOnly, Superior, False, 0);
+EditField(680, v, -80, "Группа", ViewOnly, SalesGroup, False, 0);
+EditFieldTL(100, v += 24, 100, "График работы", M4Str, Normal, 60, OperShed, False, OperShedSClass);
+EnterSkip(Comment);
+EditField(300, v, 80, "Раб.дней/мес", Normal, WDays, True, 0);
+EnterSkip(Comment);
+EditField(480, v, 80, "Раб.час/мес", Normal, WHours, True, 0);
+EnterSkip(Comment);
+EditField(680, v, -80, "Раб.мин/мес", Normal, WMinutes, True, 0);
+EditField(100, v += 24, -80, "Комментарий", Normal, Comment, False, 0);
+EditField(100, v += 24, 60, "Факт дней", ViewOnly, FDays, True, 0);
+EditField(300, v, 60, "Факт часов", ViewOnly, FHours, True, 0);
+EditField(500, v, 60, "Факт минут", ViewOnly, FMinutes, True, 0);
+EditField(700, v, -80, "% выработки", ViewOnly, Percent, True, 0);
+Tile(1, 660 - 128, False, "1", Math);
+MatrixBegin(20, 6, -50, -40, EmpWStRowType, 199);
+MatColTL(t = 1, 30, "Дата", 0, M4Date, Normal, 20, cDate, False, PasteCurDate);
+MatText(t = 2, 30,"Оправдание", True);
+MatColTL(t, 190, "Часов", 0, M4Int, Normal, 2,  aHours, True, 0);
+MatColTL(t, 240, "Минут", 0, M4Int, Normal, 2,  aMinutes, True, 0);
+MatColTL(t, 290, "Тип", 0, M4UStr, Normal, 1,  TimeType, False, DayTypeSWSClass);
+MatColTL(t, 320, "Комментарий", 0, M4Str, Normal, 60,  aComment, False, 0);
+MatColTL(t = 1, 110, "Р.время", 0, M4Time, Normal, 20,  cTime, False, 0);
+EnterSkip(cDate);
+MatColTL(t, 190, "Часов", 0, M4Int, ViewOnly, 2,  cHours, True, 0);
+MatColTL(t, 240, "Минут", 0, M4Int, ViewOnly, 2,  cMinutes, True, 0);
+MatColTL(t, 290, "Комментарий", 0, M4Str, Normal, 60,  aComment, False, 0);
+EndMatrix;
+MatTypedRow(stp);
+MatOverStrike(ovst);
+InsertRowTest;
+DeleteRowTest;
+CheckBox(20, -20, 0, "Руководитель", SuperiorFlag);
+//CheckBox(220, -20, 0, "Инспектор ОК", OKFlag);
+CheckBox(220, -20, 0, "Ответственный", DirFlag);
+SpecialMenu("Добавить строку оправдания", 'I', 0, "InsertSuperiorSignSWDsm");
+EndWindow;
+
+WindowBegin("Табели сотрудников", EmpWSLClass, CGmlist, -);
+DynamicWindow;
+SpawnClass(EmpWSDClass);
+SetWRect(20,80,650,298);
+Sizeable(-1, -1, 0, 0);
+UseView(EmpWSVc);
+RecordList(4, 17, -21, -40);
+RlColKey(4, 2, "Код", EmpCode, False, Code);
+RlColKey(61, 56, "Год", WorkYear, False, Code);
+RlColKey(120, 120, "Месяц", WorkMonth, False, Code);
+if IsUserUCHR then
+	begin
+	RlColKey(180, 180, "Оф.", SuperiorFlag, False, SuperiorFlag);
+	RlColKey(200, 200, "Утв.", DirFlag, False, DirFlag);
+	end else
+	begin
+	RlColKey(180, 180, "Оф.", SuperiorFlag, False, SupDep);
+	RlColKey(200, 200, "Утв.", DirFlag, False, SupDep);
+	end;
+RlCol(220, 220,"Имя", EmpName, False);
+RlCol(400, 400,"Комментарий", Comment, False);
+//BrowseSubsetButton(140, -15);
+SearchField("Найти");
+EndWindow;
+
+
+WindowBegin("Инспектор ОК",  HRInspectorDClass, CGview,-);
+SetWRect(20, 80, 380, 260);
+UseView(HRInspectorVc);
+v = 6;
+EditFieldTL(100, v, 80, "Код", M4Code, Normal, 20, Code, False, UserSClass);
+EditFieldTL(100, v += 24, -20, "Отдел", M4UStr, Normal, 200, Department, False, tDepartNewSClass);
+EndWindow;
+
+WindowBegin("Инспекторы ОК", HRInspectorLClass, CGmlist, -);
+SpawnClass(HRInspectorDClass);
+SetWRect(64, 80, 791, 308);
+Sizeable(-1, -1, 0, 0);
+UseView(HRInspectorVc);
+RecordList(4, 17, -21, -40);
+RlColKey(4, 4, "Код", Code, False, Code);
+RlCol(120, 120, "Отделы", Department, False);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Табель рабочего времени", EmpWSRClass, CGRcW, RcType);
+SetWRect(20,80,400,250);
+PeriodField(150, v = 6, "Период");
+EditFieldTL(150,v += 30, 80, "Отдел", M4Code, Normal, 30, f1, false, DepSClass);
+ButtonFrame(150, v += 60, 100, 2, "Тип");
+RadioButton(150, v += 16, 0, 0, "Сводный", flags[0]);
+RadioButton(150, v += 16, 1, 0, "Подробный", flags[0]);
+ButtonFrame(150, v += 30, 100, 2, "Статус");
+RadioButton(150, v += 16, 0, 0, "Неутвержденные", flags[1]);
+RadioButton(150, v += 16, 1, 0, "Утвержденные", flags[1]);
+
+EndWindow;
+
+RETURN;
+end;
+
+global
+function Boolean OperShedSClassOnOpenWindow(Integer wn)
+begin
+record OperShedBlock OSb;
+row OperShedBlock OSbr;
+Integer Cnt;
+
+BlockLoad(OSb);
+for (Cnt = 0; Cnt < MatRowCnt(OSb); Cnt = Cnt + 1)
+	begin
+	MatRowGet(OSb, Cnt, OSbr);
+	SetListString(wn, Cnt, OSbr.Comment, false); 
+	end;
+UpdateBrowses("OperShedSClass");
+OperShedSClassOnOpenWindow = False;
+RETURN;
+end;
+
+global
+function Boolean OperShedSClassOnOKWindow(Integer wn)
+begin
+Integer mwn;
+string 60 SClassStr;
+
+mwn = MotherWindow(wn);
+SClassStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, SClassStr);
+OperShedSClassOnOKWindow = True;
+RETURN;
+end;
+
+global
+function Boolean DayTypeSWSClassOnOpenWindow(Integer wn)
+begin
+record DayTypeSWBlock DTb;
+row DayTypeSWBlock DTbr;
+Integer Cnt;
+
+BlockLoad(DTb);
+for (Cnt = 0; Cnt < MatRowCnt(DTb); Cnt = Cnt + 1)
+	begin
+	MatRowGet(DTb, Cnt, DTbr);
+	SetListString(wn, Cnt, DTbr.Type, false); 
+	end;
+UpdateBrowses("DayTypeSWSClass");
+DayTypeSWSClassOnOpenWindow = False;
+RETURN;
+end;
+
+global
+function Boolean DayTypeSWSClassOnOKWindow(Integer wn)
+begin
+Integer mwn;
+string 60 SClassStr;
+
+mwn = MotherWindow(wn);
+SClassStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, SClassStr);
+DayTypeSWSClassOnOKWindow = True;
+RETURN;
+end;
+
+function Boolean EmpWSDClassCode_EAfter(Integer wn)
+begin
+record EmpWSVc Er, E2r;
+record UserVc USr;
+record HRInspectorVc Hr;
+Boolean res;
+Integer RwCnt;
+Boolean TrHs;
+
+Hr.Code = CurrentUser;
+TrHs = ReadFirstMain(Hr, 1, True);	
+GetWindowRecord(wn, Er);
+USr.Code = Er.EmpCode;
+if ReadFirstMain(USr, 1, True) then
+	begin
+	if (USr.Supervisor == CurrentUser) or ((USr.Code == CurrentUser) and TrHs) then
+		begin
+		Er.EmpName = USr.Name;
+		Er.Department = USr.Department;
+		Er.SalesGroup = USr.SalesGroup;
+		Er.Superior = CurrentUser;
+		if (nonblank(Er.WorkMonth) and nonblank(Er.WorkYear)) then
+			begin
+			
+			end;
+		end else
+		begin
+		Er.EmpCode = blankval;
+		end;
+	end else
+	begin
+	Er.EmpCode = blankval;
+	end;
+PutWindowRecord(wn, Er);	
+EmpWSDClassCode_EAfter = res;
+RETURN;
+end;
+
+function Boolean EmpWSDClassOperShed_EAfter(Integer wn)
+begin
+record EmpWSVc Er;
+record OperShedBlock OSb;
+row OperShedBlock OSbr;
+record OperSWDaysVc OSDr;
+Boolean res;
+Integer RwCnt;
+Boolean TrHs;
+
+GetWindowRecord(wn, Er);
+if (nonblank(Er.WorkYear) and nonblank(Er.WorkMonth)) then
+	begin
+	Er.Comment = MonthName(StringToDate("01:" & Er.WorkMonth & ":" & Er.WorkYear)) & " " & Er.WorkYear;
+	OSDr.CYear = Er.WorkYear;
+	OSDr.CMonth = Er.WorkMonth;
+	if ReadFirstMain(OSDr, 2, True) then
+		begin
+		Er.WDays = OSDr.CDay;		
+		BlockLoad(OSb);
+		for(RwCnt = 0; (RwCnt < MatRowCnt(OSb) and (not TrHs)); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(OSb, RwCnt, OSbr);
+			TrHs = (OSbr.Comment == Er.OperShed);
+			end;
+		if TrHs then
+			begin
+			Er.WHours = OSbr.Hours * Er.WDays;
+			Er.WMinutes = OSbr.Minutes * Er.WDays;
+			end else
+			begin
+			Er.OperShed = blankval;
+			Er.WHours = 0;
+			Er.WMinutes = 0;
+			end;
+		PutWindowRecord(wn, Er);
+		end;
+	end;
+EmpWSDClassOperShed_EAfter = False;	
+RETURN;
+end;
+
+function Boolean EmpWSDClassTimeType_EAfter(Integer wn, Integer rownr)
+begin
+record EmpWSVc Er;
+row EmpWSVc Erw;
+record DayTypeSWBlock DTb;
+row DayTypeSWBlock DTbr;
+Integer RwCnt;
+Boolean TrHs;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if nonblank(Erw.TimeType) then
+	begin
+	BlockLoad(DTb);
+	for(RwCnt = 0; (RwCnt < MatRowCnt(DTb)) and (not TrHs); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(DTb, RwCnt, DTbr);
+		TrHs = (DTbr.Type == Erw.TimeType);
+		end;
+	if TrHs then
+		begin
+		Erw.aComment = DTbr.Comment;
+		end else
+		begin
+		Erw.TimeType = blankval;
+		end;
+	MatRowPut(Er, rownr, Erw);	
+	end else
+	begin
+	MatRowDelete(Er, rownr);
+	end;
+PutWindowRecord(wn, Er);
+EmpWSDClassTimeType_EAfter = False;	
+RETURN;
+end;
+
+function Boolean EmpWSDClasscTime_EAfter(Integer wn, Integer rownr)
+begin
+record EmpWSVc Er;
+row EmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if (GetSecond(Erw.cTime) >= 30) then
+	begin
+	Erw.cTime = AddMinutes(Erw.cTime, 1);
+	end;
+Erw.cTime = AddSeconds(Erw.cTime, - GetSecond(Erw.cTime));	
+Erw.cHours = GetHour(Erw.cTime);
+Erw.cMinutes = GetMinute(Erw.cTime);
+MatRowPut(Er, rownr, Erw);	
+CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+EmpWSDClasscTime_EAfter = False;	
+RETURN;
+end;
+
+function Boolean EmpWSDClasscaHours_EAfter(Integer wn, Integer rownr)
+begin
+record EmpWSVc Er;
+row EmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if (Erw.aHours > 24) then
+	begin
+	Erw.aHours = 0;
+	end;
+MatRowPut(Er, rownr, Erw);	
+CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+EmpWSDClasscaHours_EAfter = False;	
+RETURN;
+end;
+
+function Boolean EmpWSDClasscaMinutes_EAfter(Integer wn, Integer rownr)
+begin
+record EmpWSVc Er;
+row EmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if (Erw.aMinutes >= 60) then
+	begin
+	Erw.aHours = Erw.aHours + 1;
+	Erw.aMinutes = Erw.aMinutes - 60;
+	end;
+if (Erw.aHours > 24) then
+	begin
+	Erw.aHours = 0;
+	Erw.aMinutes = 0;
+	end;
+MatRowPut(Er, rownr, Erw);	
+CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+EmpWSDClasscaMinutes_EAfter = False;	
+RETURN;
+end;
+
+function Boolean EmpWSDClasscWDays_EAfter(Integer wn)
+begin
+record EmpWSVc Er;
+
+GetWindowRecord(wn, Er);
+if nonblank(Er.WorkMonth) and nonblank(Er.WorkYear) and (Er.SuperiorFlag <> 1) then	
+	begin
+	Er.WHours = Er.WDays * 9;
+	Er.WMinutes = Er.WDays * 9 * 60;
+	CountSWPercent(Er);
+	PutWindowRecord(wn, Er);
+	end;
+EmpWSDClasscWDays_EAfter = False;	
+RETURN;
+end;
+
+function Boolean EmpWSDClasscWHours_EAfter(Integer wn)
+begin
+record EmpWSVc Er;
+
+GetWindowRecord(wn, Er);
+if nonblank(Er.WorkMonth) and nonblank(Er.WorkYear) and (Er.SuperiorFlag <> 1) then	
+	begin
+	Er.WMinutes = Er.WHours * 60;
+	CountSWPercent(Er);
+	PutWindowRecord(wn, Er);
+	end;
+EmpWSDClasscWHours_EAfter = False;	
+RETURN;
+end;
+
+function Boolean EmpWSDClasscWMinutes_EAfter(Integer wn)
+begin
+record EmpWSVc Er;
+
+GetWindowRecord(wn, Er);
+if nonblank(Er.WorkMonth) and nonblank(Er.WorkYear) and (Er.SuperiorFlag <> 1) then	
+	begin
+	Er.WHours = Er.WMinutes / 60;
+	CountSWPercent(Er);
+	PutWindowRecord(wn, Er);
+	end;
+EmpWSDClasscWMinutes_EAfter = False;	
+RETURN;
+end;
+
+global
+function Boolean EmpWSDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record EmpWSVc Er;
+row EmpWSVc Erw;
+Integer RwCnt;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	switch fieldname
+		begin
+		case "EmpCode": res = EmpWSDClassCode_EAfter(wn);
+		case "OperShed": res = EmpWSDClassOperShed_EAfter(wn);
+		case "TimeType": res = EmpWSDClassTimeType_EAfter(wn, rownr);
+		case "cTime": res = EmpWSDClasscTime_EAfter(wn, rownr);
+		case "aHours": res = EmpWSDClasscaHours_EAfter(wn, rownr);
+		case "aMinutes": res = EmpWSDClasscaMinutes_EAfter(wn, rownr);
+		case "WDays" : res = EmpWSDClasscWDays_EAfter(wn); 
+		case "WHours" : res = EmpWSDClasscWHours_EAfter(wn); 
+		case "WMinutes" : res = EmpWSDClasscWMinutes_EAfter(wn); 
+		end;
+	end;
+EmpWSDClassAfterEditField = False;
+RETURN;
+end;
+
+global
+function Boolean OperShedEmpTClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record UserVc USr;
+record OperShedEmpBlock OSEb, OSE2b;
+row OperShedEmpBlock OSEbr;
+record OperShedBlock OSb, OS2b;
+row OperShedBlock OSbr;
+Boolean TrHs;
+Integer RwCnt;
+
+if (fieldname == "EmpCode") then
+	begin
+	GetWindowRecord(wn, OSEb);
+	MatRowGet(OSEb, rownr, OSEbr);
+	USr.Code = OSEbr.EmpCode;
+	if ReadFirstMain(USr, 1, True) then
+		begin
+		OSEBr.EmpName = USr.Name;
+		end else
+		begin
+		BlockLoad(OSE2b);
+		MatRowGet(OSE2b, rownr, OSEbr);
+		end;
+	MatRowPut(OSEb, rownr, OSEbr);
+	end;
+PutWindowRecord(wn, OSEb);
+
+if (fieldname == "Comment") then
+	begin
+	GetWindowRecord(wn, OSEb);
+	MatRowGet(OSEb, rownr, OSEbr);
+	BlockLoad(OSb);
+	for(RwCnt = 0; (RwCnt < MatRowCnt(OSb)) and (not TrHs); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(OSb, RwCnt, OSbr);
+		TrHs = (OSbr.Comment == OSEbr.Comment) and nonblank(OSBr.TimeStart);
+		end;
+	if (not TrHs) then
+		begin
+		BlockLoad(OSE2b);
+		MatRowGet(OSE2b, rownr, OSEbr);
+		MatRowPut(OSEb, rownr, OSEbr);
+		PutWindowRecord(wn, OSEb);
+		end;
+	end;
+OperShedEmpTClassAfterEditField = False;
+RETURN;
+end;
+
+
+global 
+function Boolean EmpWSDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record EmpWSVc Er, E2r;
+row EmpWSVc Erw, E2rw, E3rw;
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res;
+Boolean TrHs;
+
+if (WindowState(wn) == 2) then 
+	begin
+	GetWindowRecord(wn, Er);
+	USr.Code = Er.EmpCode;
+	ReadFirstMain(USr, 1, True);
+	Hr.Code = CurrentUser;
+	TrHs = ReadFirstMain(Hr, 1, True);
+	res = ((USr.Supervisor == CurrentUser) or ((Er.EmpCode == CurrentUser) and TrHs)) and (Er.SuperiorFlag <> 1);
+	end;
+EmpWSDClassDeleteRowTest = res;
+RETURN;
+end;
+
+global
+function Boolean EmpWSDClassOnOverStrike(Integer wn, Integer rownr)
+BEGIN
+record EmpWSVc Er;
+row EmpWSVc Erw;
+record UserVc USr;
+Boolean res;
+
+if (rownr >= 0) then 
+	begin
+	GetWindowRecord(wn, Er);  
+	MatRowGet(Er, rownr, Erw);
+	USr.Code = CurrentUser;
+	ReadFirstMain(USr, 1, True);
+	res = (USr.AccessGroup == "UCHR") and (Er.SuperiorFlag == 1) and (Erw.stp <> 1);
+	end;
+if (not res) then
+	begin
+	Erw.ovst = 0;
+	MatRowPut(Er, rownr, Erw);
+	end;
+CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+EmpWSDClassOnOverStrike = res;
+RETURN;
+end;
+
+global
+function Boolean EmpWSDClassSuperiorFlagButtonAction(Integer wn, Integer value)
+BEGIN
+record EmpWSVc Er;
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res;
+Boolean TrHs;
+
+GetWindowRecord(wn, Er);
+USr.Code = Er.EmpCode;
+ReadFirstMain(USr, 1, True);
+Hr.Code = CurrentUser;
+TrHs = ReadFirstMain(Hr, 1, True);
+res = ((USr.Supervisor == CurrentUser) or ((Er.EmpCode == CurrentUser) and TrHs)) and (MatRowCnt(Er) > 0);
+EmpWSDClassSuperiorFlagButtonAction = res;
+RETURN;
+end;
+
+// global
+// function Boolean EmpWSDClassOKFlagButtonAction(Integer wn, Integer value)
+// BEGIN
+// record EmpWSVc Er;
+// Boolean res;
+
+// GetWindowRecord(wn, Er);
+// res = (Er.SuperiorFlag == 1) and (Er.DirFlag <> 1);
+// EmpWSDClassOKFlagButtonAction = res;
+// RETURN;
+// end;
+
+global
+function Boolean EmpWSDClassDirFlagButtonAction(Integer wn, Integer value)
+BEGIN
+record EmpWSVc Er, E2r;
+record UserVc USr;
+Boolean res, TrHs;
+
+GetWindowRecord(wn, Er);
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+E2r.EmpCode = Er.EmpCode;
+E2r.WorkMonth = Er.WorkMonth + 1;
+E2r.WorkYear = Er.WorkYear;
+TrHs = (not ReadFirstMain(E2r, 3, True));
+res = (Er.SuperiorFlag == 1) and ((USr.Code == "AOCHER") or (USr.Code == "DKREM") or (USr.AccessGroup == "UCHR"));// and (TrHs and (E2r.SuperiorFlag <> 1));
+EmpWSDClassDirFlagButtonAction = res;
+RETURN;
+end;
+
+global
+function Boolean EmpWSLClassOnOpenWindow(Integer wn)
+begin
+record UserVc USr;
+string 20 subset;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (USr.AccessGroup <> "UCHR") then
+	begin
+	subset = CurrentUser;
+	SetWindowSubset(wn, subset);
+	UpdateBrowses("EmpWSLClass");
+	end;
+EmpWSLClassOnOpenWindow = True;
+RETURN;
+end;
+
+global
+procedure InsertSuperiorSignSWDsm()
+begin
+record EmpWSVc Er;
+row EmpWSVc Erw;
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Integer wn;
+Boolean TrHs;
+
+Hr.Code = CurrentUser;
+TrHs = ReadFirstMain(Hr, 1, True);	
+GetWindowRecord(CurWindow, Er);
+USr.Code = Er.EmpCode;
+ReadFirstMain(USr, 1, True);
+if (USr.Supervisor == CurrentUser) or ((USr.Code == CurrentUser) and TrHs) then
+	begin
+	Erw.stp = 2;
+	MatRowInsert(Er, WindowActiveRow(CurWindow) + 1, Erw);
+	PutWindowRecord(CurWindow, Er);
+	end;
+RETURN;
+end;
+
+global
+procedure DblEmpWSVc(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+record EmpWSVc Er;
+Integer wn;
+
+GetWindowRecord(currepwn, RepSpec);
+Er.WorkMonth = GetMonth(RepSpec.sStartDate);
+Er.WorkYear = GetYear(RepSpec.sStartDate);
+Er.EmpCode = l;
+if ReadFirstMain(Er, 3, True) then
+	begin
+	wn = OpenWindow("EmpWSDClass", 1, currepwn, "", "", Er); 
+	end;
+RETURN;
+end;
+
+global updating
+procedure DblSignEmpWSVc(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+record EmpWSVc Er, E2r;
+
+GetWindowRecord(currepwn, RepSpec);
+ResetLoop(Er);
+Er.WorkMonth = GetMonth(RepSpec.sStartDate);
+Er.WorkYear = GetYear(RepSpec.sStartDate);
+Er.EmpCode = blankval;
+
+while LoopMain(Er, 3, True)
+	begin
+	if (Er.Department == RepSpec.f1) and (Er.WorkYear == GetYear(RepSpec.sStartDate)) 
+			and (Er.WorkMonth == GetMonth(RepSpec.sStartDate))	and (Er.DirFlag <> 1) 
+				and (Er.SuperiorFlag == 1) then
+		begin
+		E2r.WorkMonth = Er.WorkMonth;
+		E2r.WorkYear =Er.WorkYear;
+		E2r.EmpCode = Er.EmpCode;
+		ReadFirstMain(E2r, 3, True);
+		Er.DirFlag = 1;
+		RecordUpdate(E2r, Er, False);
+		end;
+	end;
+CloseWindow(currepwn);
+RETURN;
+end;

@@ -1,0 +1,445 @@
+external function date tGetFirstDayofWN(integer);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+external function string 255 IGetUserName(string);
+remote inner procedure CalcExpRow(var record ExpVc, Integer);
+remote inner procedure GetFullCurncyRate (var string, Date, var val, var val, var val, var val, var val);
+//external procedure tListDinner7(var record TempVc, record RcVc);
+remote procedure tOpenExp(longint);
+
+//==================
+external inner function Integer GetIntYc(Date);
+external inner procedure TRUpdateDebRows(var row TrVc, Date); 
+external inner procedure TRUpdateCredRows(var row TrVc, Date);
+external inner procedure AutoObj(var string);
+external inner procedure NormalizeObjstr(string);
+external function string 255 ReplaceSubstrFromStr(string, string, string);
+external inner procedure ExtractObj(string, var Integer, var string);
+external inner function longint MonthDiff(Date, Date);
+external function string 255 IAddToSet(string, string);
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function string 60 IGetObjByType(string, string);
+external function string 20 IGetObjType(string);
+external inner function LongInt TRVcRecordCheck(record TRVc, record TRVc, LongInt, LongInt);
+external function string 255 IGetAccName(string);
+external inner function Integer CheckObjs(string,string,var string);
+
+//==================
+
+
+updating
+procedure tListDinner7(var record TempVc Listr, record RcVc RepSpec, longInt TRrNumber, integer TRrIntYc)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record tDinnerEmpVc DEr, DE2r ;
+row tDinnerEmpVc  DErw;
+date d1, dfw, tdate;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+resetLoop(Usr);	
+while (LoopMain(Usr, 1, true))
+	begin
+	if Usr.TerminatedFlag <> 1 then
+		begin
+		DEr.NrWeek = RepSpec.AccSpec;
+		DEr.VECode = RepSpec.f1;
+		DEr.User = Usr.Code;
+		if ReadFirstKey("NoMain", DEr, 3, True) and (DEr.OKFlag == 1) and (DEr.AOFlag == 0) then //
+			begin	
+			ii = MatRowCnt(Listr); 
+			Listrw.f2 = Usr.Code;
+			MatRowInsert(Listr, ii, Listrw);
+			//=== day i
+			for(i = 0; i <= 7; i = i + 1)
+				begin
+				k = ii + 1;
+				d1 = addday(dfw, i);
+				for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+					begin
+					SetFieldValueByName(Listr, "f" & 3 + i, -1, k);  
+					k = k + 1;
+					end;	
+				end;
+			for(i = 0; i <= 7; i = i + 1)
+				begin
+				k = ii + 1;
+				d1 = addday(dfw, i);
+				for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+					begin
+					MatRowGet(DEr, RwCnt, DErw);
+					if DErw.Date == d1 and DErw.DPrice >= 0 then
+						begin
+						SetFieldValueByName(Listr, "f" & 3 + i, DErw.DPrice, k);  
+						k = k + 1;
+						end;
+					end;	
+				end;
+			MatRowGet(DEr, 0, DErw);	
+			tdate = DErw.Date;	
+			DE2r.SerNr = DEr.SerNr;
+			//DE2r.VECode = RepSpec.f1;
+			//DE2r.User = Usr.Code;
+			if readfirstmain(DE2r, 1, true) then
+				begin
+				DEr.AOFlag = 1;
+				DEr.AONr = getyear(tdate) & "." & TRrNumber;
+				RecordUpdate(DE2r, DEr, true);		
+				end;
+			//======
+			end;
+		end;
+	end;
+
+return;	
+end;
+//==================================================
+
+global
+function string 250 tSetObjToAO(string UsrCode)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+record ObjVc Objr; 
+string 250 ObjStr, ObjStr1, ObjStr2, ObjStr3;
+record IEmployeeVc IEr;
+
+/*
+Objr.Code = UsrCode;
+readfirstmain(Objr, 1 , true);
+ObjStr1 = Objr.AutoObjects;
+	
+Objr.Code = ObjStr1;
+readfirstmain(Objr, 1 , true);
+ObjStr2 = Objr.AutoObjects;
+
+Objr.Code = ObjStr2;
+readfirstmain(Objr, 1 , true);
+ObjStr3 = Objr.AutoObjects;
+
+if ObjStr1 <> "" then
+	begin
+	ObjStr1 =  ObjStr1  & "," ;
+	end;
+if ObjStr2 <> "" then
+	begin
+	ObjStr2 =  ObjStr2 & ",";
+	end;	
+if ObjStr3 <> "" then
+	begin
+	ObjStr3 =  ObjStr3 & ",";
+	end;		
+	
+ObjStr =  ObjStr3 & ObjStr2  & ObjStr1 & UsrCode & "," &  "NOT" & "," & "O2" & "," & "ZADM" ; // & "," & "" */
+
+IEr.Code = UsrCode;
+readfirstmain(IEr, 1 , true);
+ObjStr = IEr.tObj & ",O2";
+
+
+tSetObjToAO = ObjStr;
+Return;
+end;
+
+//==================================================
+global
+updating
+procedure tAddRowToTr(record TempVc Listr, integer i, var val sum, String UsrCode, var record TRVc TRr,
+					var integer d1, var integer d2, var integer d3, var integer d4, var integer d5, var integer d6, var integer d7)
+begin
+row TempVc Listrw;
+record IEmployeeVc IEr;
+integer d;
+val sumK, sumU;
+string 250 ObjStr;
+row TrVc TRrw;
+record BaseERVc BRr;
+val debval, baserate;
+longint res;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+MatRowGet(Listr, i + 1, Listrw);
+if blank(Listrw.f3) and  blank(Listrw.f4) and blank(Listrw.f5)
+    and blank(Listrw.f6) and blank(Listrw.f7) and  blank(Listrw.f8) and  blank(Listrw.f9) then
+	begin
+	d = d1 + d2 + d3 + d4 + d5 + d6 + d7;
+	SumK = d*20;
+	SumU = Sum - SumK;
+	IEr.Code = UsrCode;
+	ReadFirstMain(IEr, 1, true);
+	//=======================================================
+	TRrw.VATCode = "";
+	TRrw.CompCode = "";
+	TRrw.SerNr = 0;
+	TRrw.Curncy = "USD";
+	TRrw.BaseRate1 = 1;
+	BRr.Date = CurrentDate;
+	ReadLastMain(BRr, 1, False);
+	TRrw.BaseRate2 = BRr.Rate2;
+	ObjStr = tSetObjToAO(UsrCode);
+	AutoObj(ObjStr);
+	TRrw.Objects = ObjStr;
+	TRrw.SerNr = "";
+	TRrw.DebVal2 = SumK;
+	debval = TRrw.DebVal2;
+	TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+	TRrw.AccNumber = IEr.FoodAcc;
+	TRrw.Comment = IGetAccName(TRrw.AccNumber);
+	TRrw.CredVal = blankval;
+	TRrw.CredVal2 = blankval;
+	TRUpdateDebRows(TRrw, TRr.TransDate);
+	TRr.DSum =  TRr.DSum + TRrw.DebVal;
+	TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+	MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+	TRrw.Objects = "";
+	TRrw.AccNumber = "37274";
+	TRrw.Comment = IGetAccName(TRrw.AccNumber);
+	TRrw.DebVal = blankval;
+	TRrw.DebVal2 = blankval;
+	TRrw.CredVal2 = debval;
+	TRrw.CredVal = debval / TRrw.BaseRate2;
+	TRUpdateCredRows(TRrw, TRr.TransDate);
+	TRr.CSum =  TRr.CSum - TRrw.CredVal;
+	TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+	MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+	TRr.DiffVal = TRr.DSum + TRr.CSum;
+	TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+	
+	//=======================================================	
+	if  Sum > SumK then
+		begin
+		//
+		TRrw.VATCode = "";
+		TRrw.CompCode = "";
+		TRrw.SerNr = 0;
+		TRrw.Curncy = "USD";
+		TRrw.BaseRate1 = 1;
+		BRr.Date = CurrentDate;
+		ReadLastMain(BRr, 1, False);
+		TRrw.BaseRate2 = BRr.Rate2;
+		ObjStr = UsrCode;
+		AutoObj(ObjStr);
+		TRrw.Objects = ObjStr;
+		TRrw.SerNr = "";
+		TRrw.DebVal2 = Sum - SumK;
+		TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+		debval = TRrw.DebVal2;
+		TRrw.AccNumber = IEr.MotiveCredAcc;
+		TRrw.Comment = IGetAccName(TRrw.AccNumber);
+		TRrw.CredVal = blankval;
+		TRrw.CredVal2 = blankval;
+		TRUpdateDebRows(TRrw, TRr.TransDate);
+		TRr.DSum =  TRr.DSum + TRrw.DebVal;
+		TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+		MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+		TRrw.Objects = "";
+		TRrw.AccNumber = "37274";
+		TRrw.Comment = IGetAccName(TRrw.AccNumber);
+		TRrw.DebVal = blankval;
+		TRrw.DebVal2 = blankval;
+		TRrw.CredVal2 = debval;
+		TRrw.CredVal = debval / TRrw.BaseRate2;
+		TRUpdateCredRows(TRrw, TRr.TransDate);
+		TRr.CSum =  TRr.CSum - TRrw.CredVal;
+		TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+		MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+		TRr.DiffVal = TRr.DSum + TRr.CSum;
+		TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+		//
+		end;
+	if Sum < SumK then
+		begin
+		//
+		TRrw.VATCode = "";
+		TRrw.CompCode = "";
+		TRrw.SerNr = 0;
+		TRrw.Curncy = "USD";
+		TRrw.BaseRate1 = 1;
+		BRr.Date = CurrentDate;
+		ReadLastMain(BRr, 1, False);
+		TRrw.BaseRate2 = BRr.Rate2;
+		TRrw.Objects = "";
+		TRrw.SerNr = "";
+		TRrw.DebVal2 = SumK - Sum;
+		debval = TRrw.DebVal2;
+		TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+		TRrw.AccNumber = "37274";
+		TRrw.Comment = IGetAccName(TRrw.AccNumber);
+		TRrw.CredVal = blankval;
+		TRrw.CredVal2 = blankval;
+		TRUpdateDebRows(TRrw, TRr.TransDate);
+		TRr.DSum =  TRr.DSum + TRrw.DebVal;
+		TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+		MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+		ObjStr = UsrCode;
+		AutoObj(ObjStr);
+		TRrw.Objects = ObjStr;
+		TRrw.AccNumber = IEr.MotiveCredAcc;
+		TRrw.Comment = IGetAccName(TRrw.AccNumber);
+		TRrw.DebVal = blankval;
+		TRrw.DebVal2 = blankval;
+		TRrw.CredVal2 = debval;
+		TRrw.CredVal = debval / TRrw.BaseRate2;
+		TRUpdateCredRows(TRrw, TRr.TransDate);
+		TRr.CSum =  TRr.CSum - TRrw.CredVal;
+		TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+		MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+		TRr.DiffVal = TRr.DSum + TRr.CSum;
+		TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+		//
+		end;	
+	sum = 0;
+	d1 = 0;
+	d2 = 0;
+	d3 = 0;
+	d4 = 0;
+	d5 = 0;
+	d6 = 0;
+	d7 = 0;
+	end;
+RETURN;
+end;
+
+
+
+//===============================================
+//запись операции из "Обедов"
+global
+updating function Longint MakeTrFromDin(record RcVc RepSpec)
+begin
+record TRVc TRr, TR2r;
+record BaseERVc BRr;
+record tDinnerEmpVc DEr;
+row TrVc TRrw;
+val debval, baserate;
+string 60 ObjStr, UsrCode;
+longint res;
+record TempVc Listr;
+row TempVc Listrw;
+val sum;
+integer i, k, rwcnt, ii;
+integer d, d1, d2, d3, d4, d5, d6, d7;
+
+SetLangMode(LangRussian,"RUS",2);
+RecordNew(TRr);
+TRr.RegDate = CurrentDate;
+TRr.TransDate = CurrentDate;
+TRr.Comment = "Расчеты по питанию за " & RepSpec.AccSpec & " неделю" ;
+TRr.Number = NextSerNr("TRVc", CurrentDate, -1, false, "");
+TRr.IntYc = GetIntYc(TRr.TransDate);
+TRr.RegTime = CurrentTime;
+TRr.LastChangeDate = CurrentDate;
+
+
+tListDinner7(Listr, RepSpec, TRr.Number, TRr.IntYc);
+
+if (TRr.Number > 0) and (MatRowCnt(Listr) > 0) then
+	begin
+	//RecordStore(TRr, false);
+	sum = 0;
+	for (RwCnt = 0; RwCnt < MatRowCnt(Listr); RwCnt = RwCnt + 1)
+		begin
+		StartFormat(15);
+		MatRowGet(Listr, RwCnt, Listrw);
+		if nonblank(Listrw.f2) then
+			begin
+			UsrCode = Listrw.f2;
+			end;
+		if blank(Listrw.f2) then
+			begin
+			// sum = sum + StringToVal(Listrw.f3, M4Val)+ StringToVal(Listrw.f4, M4Val) 
+						// + StringToVal(Listrw.f5, M4Val) + StringToVal(Listrw.f6, M4Val)
+						// + StringToVal(Listrw.f7, M4Val) + StringToVal(Listrw.f8, M4Val);
+			//==========			
+			if 	StringToVal(Listrw.f3, M4Val) > 0 then
+				begin
+				sum = sum + StringToVal(Listrw.f3, M4Val);
+				end;
+			if 	StringToVal(Listrw.f4, M4Val) > 0 then
+				begin
+				sum = sum + StringToVal(Listrw.f4, M4Val);
+				end;	
+			if 	StringToVal(Listrw.f5, M4Val) > 0 then
+				begin
+				sum = sum + StringToVal(Listrw.f5, M4Val);
+				end;		
+			if 	StringToVal(Listrw.f6, M4Val) > 0 then
+				begin
+				sum = sum + StringToVal(Listrw.f6, M4Val);
+				end;
+			if 	StringToVal(Listrw.f7, M4Val) > 0 then
+				begin
+				sum = sum + StringToVal(Listrw.f7, M4Val);
+				end;	
+			if 	StringToVal(Listrw.f8, M4Val) > 0 then
+				begin
+				sum = sum + StringToVal(Listrw.f8, M4Val);
+				end;
+			if 	StringToVal(Listrw.f9, M4Val) > 0 then
+				begin
+				sum = sum + StringToVal(Listrw.f9, M4Val);
+				end;
+			//==========			
+						
+			if 	StringToVal(Listrw.f3, M4Val) >= 0 then
+				begin
+				d1 = 1;
+				end;
+			if 	StringToVal(Listrw.f4, M4Val) >= 0 then
+				begin
+				d2 = 1;
+				end;	
+			if 	StringToVal(Listrw.f5, M4Val) >= 0 then
+				begin
+				d3 = 1;
+				end;		
+			if 	StringToVal(Listrw.f6, M4Val) >= 0 then
+				begin
+				d4 = 1;
+				end;
+			if 	StringToVal(Listrw.f7, M4Val) >= 0 then
+				begin
+				d5 = 1;
+				end;	
+			if 	StringToVal(Listrw.f8, M4Val) >= 0 then
+				begin
+				d6 = 1;
+				end;
+      if 	StringToVal(Listrw.f9, M4Val) >= 0 then
+        begin
+        d7 = 1;
+        end;
+			end;
+		tAddRowToTr(Listr, RwCnt, sum, UsrCode, TRr, d1, d2, d3, d4, d5, d6, d7);
+		end;
+	  
+	//SetRecordCheckVc("TRVc");
+	//res = TRVcRecordCheck(TRr, TR2r, 1, 1);
+	//if (res == 0) then
+	if RecordStore(TRr, false) then
+		begin
+		//TR2r.IntYc = TRr.IntYc;	
+		//TR2r.Number = TRr.Number;
+		//ReadFirstMain(TR2r, 2, true);// IntYc
+		//RecordUpdate(TR2r, TRr, false);
+		messagebox(0, "Запись операции создана!");
+		end
+	else
+		begin
+		stopalert("Запись операции НЕ сохранена");
+		end;
+	end
+else
+	begin
+	messagebox(0, "Запись операции НЕ создана");
+	end;
+
+MakeTrFromDin = res;
+
+//OpenWindow("TRDClass", 1, 0, "", "", TRr);
+Return;
+end;

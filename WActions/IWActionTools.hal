@@ -1,0 +1,601 @@
+remote inner procedure M4PadString(string,Integer,string,Boolean,var string);
+remote inner procedure StripEndingSpaces(var string);
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external procedure BaseRateMail(val);
+
+//===============================================
+//Документ из записи операции
+global
+procedure IOpenVcFromTR(record TRVc TRp)
+begin
+  record ActVc Actr;
+  record AT2WrofVc AT2Wrofr;
+  record CheckVc Checkr;
+  record ChqDepVc ChqDepr;
+  record CLInVc CLInr;
+  record CLOutVc CLOutr;
+  record ExpVc Expr;
+  record IPVc IPr;
+  record IVVc IVr;
+  record OPVc OPr;
+  record OwnCheckVc OwnCheckr;
+  record PPVc PPr;
+  record ProdVc Prodr;
+  record PUVc PUr;
+  record POSBalanceVc POSBalancer;
+  record RetVc Retr;
+  record RetPUVc RetPUr;
+  record SDVc SDr;
+  record SRVc SRr;
+  record SHVc SHr;
+  record StockMovVc STMovr;
+  record TSVc TSr;
+  record VATIVVc VATIVr;
+  record VATVIVc VATVIr;
+  record VIVc VIr;
+  record WSVc WSr;
+  record IntIVVc IntIVr;
+  record ProdOperationVc ProdOperationr;
+  record CredManVc CredManr;
+  record BuyBackVc BBr;
+  record TTVc TTr;
+  
+  switch (TRp.IntYc)
+    begin
+      case IVYc: 
+        IVr.SerNr = TRp.Number;
+        if ReadFirstMain(IVr, 1, true) then
+          begin
+            OpenWindow("IVDClass", 1, 0, "", "", IVr);
+          end;
+          
+      case IPYc:
+        IPr.SerNr = TRp.Number; 
+        if ReadFirstMain(IPr, 1, true) then
+          begin
+            OpenWindow("IPDClass", 1, 0, "", "", IPr);
+          end;
+
+      case VIYc:
+        VIr.SerNr = TRp.Number; 
+        if ReadFirstMain(VIr, 1, true) then
+          begin
+            OpenWindow("VIDClass", 1, 0, "", "", VIr);
+          end;
+     
+      case OPYc:
+        OPr.SerNr = TRp.Number; 
+        if ReadFirstMain(OPr, 1, true) then
+          begin
+            OpenWindow("OPDClass", 1, 0, "", "", OPr);
+          end;
+
+      case PUYc:
+        PUr.SerNr = TRp.Number; 
+        if ReadFirstMain(PUr, 1, true) then
+          begin
+            OpenWindow("PUDClass", 1, 0, "", "", PUr);
+          end;
+      
+      case SHYc:
+        SHr.SerNr = TRp.Number; 
+        if ReadFirstMain(SHr, 1, true) then
+          begin
+            OpenWindow("SHDClass", 1, 0, "", "", SHr);
+          end;
+     
+      case ExpYc:
+        Expr.SerNr = TRp.Number; 
+        if ReadFirstMain(Expr, 1, true) then
+          begin
+            OpenWindow("ExpDClass", 1, 0, "", "", Expr);
+          end;
+    
+      case PPYc:
+        PPr.SerNr = TRp.Number; 
+        if ReadFirstMain(PPr, 1, true) then
+          begin
+            OpenWindow("PPDClass", 1, 0, "", "", PPr);
+          end;
+      
+      case STMovYc:
+        STMovr.SerNr = TRp.Number; 
+        if ReadFirstMain(STMovr, 1, true) then
+          begin
+            OpenWindow("StockMovDClass", 1, 0, "", "", STMovr);
+          end;
+      
+      case SentSTMovYc:
+        STMovr.SerNr = TRp.Number; 
+        if ReadFirstMain(STMovr, 1, true) then
+          begin
+            OpenWindow("StockMovDClass", 1, 0, "", "", STMovr);
+          end;
+      
+      case PVYc:
+        VIr.SerNr = TRp.Number; 
+        if ReadFirstMain(VIr, 1, true) then
+          begin
+            OpenWindow("VIDClass", 1, 0, "", "", VIr);
+          end;
+       
+      case CLInYc:
+        CLInr.SerNr = TRp.Number; 
+        if ReadFirstMain(CLInr, 1, true) then
+          begin
+            OpenWindow("CLInDClass", 1, 0, "", "", CLInr);
+          end;
+      
+      case CLOutYc:
+        CLOutr.SerNr = TRp.Number; 
+        if ReadFirstMain(CLOutr, 1, true) then
+          begin
+            OpenWindow("CLOutDClass", 1, 0, "", "", CLOutr);
+          end;
+        
+      case SDYc:
+        SDr.SerNr = TRp.Number; 
+        if ReadFirstMain(SDr, 1, true) then
+          begin
+            OpenWindow("SDDClass", 1, 0, "", "", SDr);
+          end;
+      
+      case SRYc:
+        SRr.SerNr = TRp.Number; 
+        if ReadFirstMain(SRr, 1, true) then
+          begin
+            OpenWindow("SRDClass", 1, 0, "", "", SRr);
+          end;
+       
+      case OPOYc:
+        OPr.SerNr = TRp.Number; 
+        if ReadFirstMain(OPr, 1, true) then
+          begin
+            OpenWindow("OPDClass", 1, 0, "", "", OPr);
+          end;
+
+      case OPBYc:
+        OPr.SerNr = TRp.Number; 
+        if ReadFirstMain(OPr, 1, true) then
+          begin
+            OpenWindow("OPDClass", 1, 0, "", "", OPr);
+          end;
+          
+      case IPOYc:
+        IPr.SerNr = TRp.Number; 
+          if ReadFirstMain(IPr, 1, true) then
+            begin
+              OpenWindow("IPDClass", 1, 0, "", "", IPr);
+            end;
+
+      case IPBYc:
+        IPr.SerNr = TRp.Number; 
+        if ReadFirstMain(IPr, 1, true) then
+          begin
+            OpenWindow("IPDClass", 1, 0, "", "", IPr);
+          end;
+      
+      case ProdYc:
+        Prodr.SerNr = TRp.Number; 
+        if ReadFirstMain(Prodr, 1, true) then
+          begin
+            OpenWindow("ProdDClass", 1, 0, "", "", Prodr);
+          end;
+          
+      case ProdOperationYc:
+        Prodoperationr.SerNr = TRp.Number; 
+        if ReadFirstMain(Prodoperationr, 1, true) then
+          begin
+            OpenWindow("ProdOperationDClass", 1, 0, "", "", Prodoperationr);
+          end;
+         
+      case RetYc:
+        Retr.SerNr = TRp.Number; 
+        if ReadFirstMain(Retr, 1, true) then
+          begin
+            OpenWindow("RetDClass", 1, 0, "", "", Retr);
+          end;
+       
+      case WSYc:
+        WSr.SerNr = TRp.Number; 
+        if ReadFirstMain(WSr, 1, true) then
+          begin
+            OpenWindow("WSDClass", 1, 0, "", "", WSr);
+          end;
+      
+      case Check0Yc:
+        Checkr.SerNr = TRp.Number; 
+        if ReadFirstMain(Checkr, 1, true) then
+          begin
+            OpenWindow("CheckDClass", 1, 0, "", "", Checkr);
+          end;
+      
+      case CheckYc:
+        OwnCheckr.SerNr = TRp.Number; 
+        if ReadFirstMain(OwnCheckr, 1, true) then
+          begin
+            OpenWindow("CheckDClass", 1, 0, "", "", OwnCheckr);
+          end;
+      
+      case OwnCheck0Yc:
+        OwnCheckr.SerNr = TRp.Number; 
+        if ReadFirstMain(OwnCheckr, 1, true) then
+          begin
+            OpenWindow("OwnCheckDClass", 1, 0, "", "", OwnCheckr);
+          end;
+      
+      case OwnCheckYc:
+        OwnCheckr.SerNr = TRp.Number; 
+        if ReadFirstMain(OwnCheckr, 1, true) then
+          begin
+            OpenWindow("OwnCheckDClass", 1, 0, "", "", OwnCheckr);
+          end;
+     
+      case AT2WrofYc:
+        AT2Wrofr.SerNr = TRp.Number; 
+        if ReadFirstMain(AT2Wrofr, 1, true) then
+          begin
+            OpenWindow("AT2WrofDClass", 1, 0, "", "", AT2Wrofr);
+          end;
+      
+      case RestAccYc:
+        POSBalancer.SerNr = TRp.Number; 
+        if ReadFirstMain(POSBalancer, 1, true) then
+          begin
+            OpenWindow("POSBalanceDClass", 1, 0, "", "", POSBalancer);
+          end;
+      
+      case ChqDepYc:
+        ChqDepr.SerNr = TRp.Number; 
+        if ReadFirstMain(ChqDepr, 1, true) then
+          begin
+            OpenWindow("ChqDepDClass", 1, 0, "", "", ChqDepr);
+          end;
+     
+      case TSYc:
+        TSr.SerNr = TRp.Number; 
+        if ReadFirstMain(TSr, 1, true) then
+          begin
+            OpenWindow("TSDClass", 1, 0, "", "", TSr);
+          end;
+    
+      case ActYc:
+        Actr.SerNr = TRp.Number; 
+        if ReadFirstMain(Actr, 1, true) then
+          begin
+            OpenWindow("ActDClass", 1, 0, "", "", Actr);
+          end;
+      
+      case VATIVYc:
+        VATIVr.SerNr = TRp.Number; 
+        if ReadFirstMain(VATIVr, 1, true) then
+          begin
+            OpenWindow("VATIVDClass", 1, 0, "", "", VATIVr);
+          end;
+    
+      case VATVIYc:
+        VATVIr.SerNr = TRp.Number; 
+        if ReadFirstMain(VATVIr, 1, true) then
+          begin
+            OpenWindow("VATVIDClass", 1, 0, "", "", VATVIr);
+          end;
+      
+      case IntIVYc:
+        IntIVr.SerNr = TRp.Number; 
+        if ReadFirstMain(IntIVr, 1, true) then
+          begin
+            OpenWindow("IntIVDClass", 1, 0, "", "", IntIVr);
+          end;
+      
+      case RetPUYc:
+        RetPUr.SerNr = TRp.Number; 
+        if ReadFirstMain(RetPUr, 1, true) then
+          begin
+            OpenWindow("RetPUDClass", 1, 0, "", "", RetPUr);
+          end;
+    
+      case CredManYc:
+        CredManr.SerNr = TRp.Number; 
+        if ReadFirstMain(CredManr, 1, true) then
+          begin
+            OpenWindow("CredManDClass", 1, 0, "", "", CredManr);
+          end;
+    
+      case BuyBackReconYc:
+        BBr.SerNr = TRp.Number; 
+        if ReadFirstMain(BBr, 1, true) then
+          begin
+            OpenWindow("BuyBackDClass", 1, 0, "", "", BBr);
+          end;
+
+      case 888: //TTVc
+        TTr.SerNr = TRp.Number; 
+        if ReadFirstMain(TTr, 1, true) then
+          begin
+            OpenWindow("TTDClass", 1, 0, "", "", TTr);
+          end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IOffiSellerSClassOnOpenWindow(integer wn)
+begin
+  record LangToSalesBlock Ltsr;
+  row LangToSalesBlock Ltsrw;
+  longint i;
+  string 255 s;
+  boolean res;
+
+  BlockLoad(Ltsr);
+  for (i=0; i<MatRowCnt(Ltsr); i=i+1)
+		begin
+			MatRowGet(Ltsr,i,Ltsrw);
+			s = Ltsrw.LangCode;
+			M4PadString(s,12," ",false,s);
+			s = s & Ltsrw.Name;
+			SetListString(wn,i,s,false);
+    end;
+        
+  IOffiSellerSClassOnOpenWindow = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IOffiSellerSClassOnOKWindow(integer wn)
+begin
+  string 60 s;
+  Integer mwn;
+
+  mwn=MotherWindow(wn);
+  s = left(GetListString(wn,SelectedListLine(wn)), 12);
+  StripEndingSpaces(s);
+  CloseWindow(wn);
+  PasteString(mwn,s);
+  IOffiSellerSClassOnOKWindow = false;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IClassSClassOnOpenWindow(integer wn)
+begin
+	record RcVc RepSpec;
+
+	RepSpec.Media = mtScreen;
+	RepSpec.flags[0] = MotherWindow(wn);
+	repspec.flags[1] = wn;
+	RepSpec.flags[2] = 1; //Level
+  RepSpec.repname = "ISelectVClassRn";
+  RunReport(RepSpec,0);
+  IClassSClassOnOpenWindow = false;
+  Return;
+end;
+
+//===============================================
+//Выводим классификаторы в окно. Type: 0-старые классификаторы, 1-новые
+procedure ShowClassW(integer wn, string ClassStr, integer Type)
+begin
+	record DIVc DIr;
+	record VClassVc VClassr;
+	record RcVc RepSpec;
+	integer i, cnt, newwn;
+	string 60 Code, Name;
+
+	if nonblank(ClassStr) then
+		begin
+			newwn = OpenWindow("IClassDetWClass",1,wn,"","",RepSpec);
+			DeselectWindow(newwn, false);
+			cnt = IItemCountInStr(ClassStr);
+			for (i=0; i<cnt; i=i+1)
+				begin
+					Code = IGetItemFromStr(ClassStr, i);
+					switch (Type)
+						begin
+							case 0:
+								DIr.Code = Code;
+								ReadFirstMain(DIr,1,true);
+								Name = DIr.Name;
+							case 1:
+								VClassr.NewClass = Code;
+								ReadFirstMain(VClassr,1,true);
+								Name = VClassr.Comment;
+						end;
+					SetListString(newwn,2, Code & " - " & Name,false);
+				end;
+			PutWindowRecord(newwn, RepSpec);
+		end;
+	Return;
+end;
+
+global
+procedure BtnShowClassOld()
+begin
+	record INVc INr;
+	integer wn;
+
+	wn = CurWindow;
+	GetWindowRecord(wn, INr);
+	ShowClassW(wn, GetFieldValueByName(INr, "DispGroups", -1),0);
+	Return;
+end;
+
+global
+procedure BtnShowClassNew()
+begin
+	record INVc INr;
+	integer wn;
+
+	wn = CurWindow;
+	GetWindowRecord(wn, INr);
+	ShowClassW(wn, GetFieldValueByName(INr, "DispGroupsNew", -1),1);
+	Return;
+end;
+
+//===============================================
+//Группы складов
+global
+function boolean IStockGroupSClassOnOpenWindow(integer wn)
+begin
+  record IStockGroupBlock SGb;
+  row IStockGroupBlock SGbrw;
+  integer i;
+  string 255 s;
+
+  BlockLoad(SGb);
+  for (i=0; i<MatRowCnt(SGb); i=i+1)
+    begin
+      MatRowGet(SGb, i, SGbrw);
+      s = SGbrw.Code;
+      M4PadString(s, 20, " ", false, s);
+      s = s & SGbrw.Name;
+      SetListString(wn, i, s, false);
+    end;
+
+  IStockGroupSClassOnOpenWindow = false;
+  Return;
+end;
+
+//===============================================
+global
+function boolean IStockGroupSClassOnOKWindow(integer wn)
+begin
+  string 60 s;
+  Integer mwn;
+
+  mwn = MotherWindow(wn);
+  s = left(GetListString(wn,SelectedListLine(wn)), 12);
+  StripEndingSpaces(s);
+  CloseWindow(wn);
+  PasteString(mwn, s);
+  IStockGroupSClassOnOKWindow = false;
+  Return;
+end;
+
+//===============================================
+//Спициальная вставка времени доставки
+global
+function Boolean IDeliveryTimeSClassOnOpenWindow(Integer wn)
+begin
+  integer i, cnt, rownr;
+  record VSetSetBlock VSb;
+  time t;
+
+  BlockLoad(VSb);
+  rownr = 0;
+  cnt = IItemCountInStr(VSb.DeliveryTimeList);
+  for (i=0; i<cnt; i=i+1)
+    begin
+    t = StringToTime(IGetItemFromStr(VSb.DeliveryTimeList, i));
+    SetListString(wn, rownr, t, false);
+    rownr = rownr + 1;
+    end;
+
+  IDeliveryTimeSClassOnOpenWindow = false;
+  Return;
+end;
+
+global
+function Boolean IDeliveryTimeSClassOnOKWindow(Integer wn)
+begin
+  string 8 s;
+  integer mwn;
+
+  mwn = MotherWindow(wn);
+  s = GetListString(wn, SelectedListLine(wn));
+  CloseWindow(wn);
+  PasteString(mwn, s);
+  IDeliveryTimeSClassOnOKWindow = false;
+  Return;
+end;
+
+//===============================================
+//Окно рассылки коммерческого курса
+global
+procedure IEditAndMailBaseERVc()
+begin
+  record BaseERVc BERr;
+  record RcVc RepSpec;
+  record VSetSetBlock VSb;
+
+  BlockLoad(VSb);
+  if SetInSet(CurrentUser, VSb.AllowEmailSend) then //Пользователю разрешено инициировать рассылку
+    begin
+      BERr.Date = CurrentDate;
+      ReadLastMain(BERr, 1, False);
+      RepSpec.vals1 = BERr.Rate2;
+      OpenWindow("IBaseRateMailAClass", 1, 0, "", "", RepSpec);
+    end;
+  Return;
+end;
+
+global
+procedure IBaseRateMailBtn()
+begin
+  integer wn;
+  record RcVc RepSpec;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  wn = CurWindow;
+  GetWindowRecord(wn, RepSpec);
+  CloseWindow(wn);
+  BaseRateMail(RepSpec.vals1);
+  CloseWindow(wn);
+  MessageBox(0, "Курс " & RepSpec.vals1 & " отправлен.");
+  return;
+end;
+
+//===============================================
+//Создаем Enabler на таймаут сессии для конкурентных пользователей
+global
+procedure ISetInactTimeoutEnabler()
+begin
+  record UserVc Usr;
+  boolean Enabled;
+  string 60 FName;
+  string 20 Minutes;
+
+  if blank(CurrentUser) then //Если логин еще не прошел - выходим
+    begin
+    Return;
+    end;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+
+  FName = "ELogTime";
+  Enabled = FileExists(FName);
+
+  if Enabled and (Usr.TypeOfUser == kTypeOfUserNamed) then //Отключаем для именованных, если включено
+    begin
+    Delete_File(FName);
+    end;
+
+  if not Enabled and (Usr.TypeOfUser <> kTypeOfUserNamed) then //Включаем для конкурентных, если отключено
+    begin
+    CreateFile(FName);
+    CloseFile;
+    OpenExportFile(FName, True);
+    Minutes = "10";
+    ExportPadString(Minutes, Len(Minutes), " ", false); //Таймаут - 10 минут
+    CloseFile;
+    end;
+
+  Return;
+end;
+
+
+//===============================================
+/*
+event startup
+
+begin
+  ISetInactTimeoutEnabler;
+
+  Return;
+end;
+*/

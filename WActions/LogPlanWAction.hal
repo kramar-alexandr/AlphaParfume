@@ -1,0 +1,511 @@
+external inner procedure TSERW_RUS();
+external procedure AddHelpButton(LongInt, LongInt);
+external procedure AddErrButton(LongInt, LongInt);
+external inner function val GetStockQty(string,string,Date,Boolean);
+remote updating function Boolean MakeMovMM(var record tMovPlanVc, var record StockMovVc);
+remote updating function Boolean MakeMovKS(var record tMovPlanVc, var record StockMovVc);
+remote updating function Boolean MakeMovMMOnC(var record tMovPlanVc, var record StockMovVc);
+remote updating function Boolean MakeMovKSOnC(var record tMovPlanVc, var record StockMovVc);
+
+event DefineWindows
+begin
+   real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l;
+   string 255 label;
+   SetLangMode(LangRussian,"RUS",2);
+   
+WindowBegin("План/день на филиалы", LogPlanDDClass, CGview, -);
+UseView(LogPlanDVc);
+SetWRect(10, 80, 500, 450);
+BrowseButtons(True);
+vs = 20; h = 150; v = 20; h2 = 150; h3 = 350; 
+AddHelpButton(5, 5);
+EditField(h, v, 150, "Код товара", ViewOnly, ArtCode, False, 0);
+EditField(h, v += vs , 150, "Наименование", ViewOnly, ArtName, False, 0);
+EditField(h, v += vs, 80, "Группа продажи", ViewOnly, SalesGroup, False, 0); // код филиала
+MatrixBegin(20, 100, -31, -20, -, 2000);
+MatCol(1, h = 35, "Месяц", 0, Month, false, 0);
+MatCol(1, h += 80, "Год", 0, Year, false, 0);
+MatCol(1, h += 80, "План/М", 0, PlanM, false, 0);
+MatCol(1, h += 80, "Факт/М", 0, FactM, false, 0);
+MatCol(1, h += 80, "План/Д", 0, PlanD, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("План/день на филиалы", LogPlanDLClass, CGmlist, DMView);
+SpawnClass(LogPlanDDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(LogPlanDVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(64, 64, "Группа продажи", SalesGroup, false, SalesGroup);
+RlColKey(150, 150, "Код товара", ArtCode, false, ArtCode);
+RlColKey(250, 250, "Наменование", ArtName, false, ArtName);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Cоздание записей плана на день",LogPlanDVclass,CGMnt,RcType);
+SetWRect(20,80,430,290);
+vs = 20; v=6; h = 130;
+PeriodField(h,v,"Период");
+EditFieldTL(h,v+=vs, 100,"Группа продажи",M4Code,Normal,20,f2,false,SalesGroupSClass); 
+// EditFieldTL(h,v+=vs, 150,"Продавец",M4Code,Normal,20,f1,false,UserSClass);
+// EditFieldTL(h,v+=vs, 100,"Клиент", M4Code,Normal,20,ObjStr,false,CUSClass);
+// EditFieldTL(h,v+=vs, 100,"% отгрузки с Максана",M4Int,Normal,10,AccSpec,false,0); 
+EndWindow;  
+   
+   
+   
+WindowBegin("План/неделя на филиалы", LogPlWDClass, CGview, -);
+UseView(LogPlWVc);
+SetWRect(10, 80, 500, 450);
+BrowseButtons(True);
+vs = 20; h = 150; v = 20; h2 = 150; h3 = 350; 
+EditField(h, v, 150, "Код товара", ViewOnly, ArtCode, False, 0);
+EditField(h, v += vs , 150, "Наименование", ViewOnly, ArtName, False, 0);
+EditField(h, v += vs, 80, "Группа продажи", ViewOnly, SalesGroup, False, 0); // код филиала
+MatrixBegin(20, 100, -31, -20, -, 2000);
+MatCol(1, h = 35, "НеделяН", 0, WeekB, false, 0);
+MatCol(1, h += 80, "НеделяК", 0, WeekE, false, 0);
+MatCol(1, h += 80, "кол-во", 0, CountDW, false, 0);
+MatCol(1, h += 40, "План/Н", 0, PlanW, false, 0);
+MatCol(1, h += 50, "Факт/Н", 0, FactW, false, 0);
+MatCol(1, h += 50, "разность", 0, Diff, false, 0);
+MatCol(1, h += 50, "запас", 0, Stock, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("План/неделя на филиалы", LogPlWLClass, CGmlist, DMView);
+SpawnClass(LogPlWDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(LogPlWVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(64, 64, "Группа продажи", SalesGroup, false, SalesGroup);
+RlColKey(150, 150, "Код товара", ArtCode, false, ArtCode);
+RlColKey(250, 250, "Наменование", ArtName, false, ArtName);
+SearchField("Поиск");
+EndWindow;
+
+
+
+WindowBegin("День отгрузки на филиалах", ShipDayDClass, CGview, -);
+UseView(ShipDayVc);
+SetWRect(10, 80, 500, 250);
+BrowseButtons(True);
+vs = 20; h = 200; v = 20; h2 = 150; h3 = 350; 
+EditField(h, v, 80, "Группа продажи", Normal, Code, False, SalesGroupSClass);
+EditField(h, v += vs , 80, "День отгрузки", Normal, DayB, False, 0);
+EditField(h, v += vs, 80, "Последний день в плане недели", Normal, DayE, False, 0);
+EndWindow;
+
+WindowBegin("День отгрузки на филиалах", ShipDayLClass, CGmlist, DMView);
+SpawnClass(ShipDayDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(ShipDayVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Группа продажи", Code, false, Code);
+RlCol(150, 150, "День отгрузки", DayB, false);
+RlCol(250, 250, "Финальный день", DayE, false);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Расчёт Сигмы",LogPlanRClass,CGRcW,RcType);
+SetWRect(20,80,430,290);
+vs = 20; v=6; h = 130;
+PeriodField(h,v,"Период");
+EditFieldTL(h,v+=vs, 100,"Группа продажи",M4Code,Normal,20,f2,false,SalesGroupSClass); 
+// EditFieldTL(h,v+=vs, 150,"Продавец",M4Code,Normal,20,f1,false,UserSClass);
+// EditFieldTL(h,v+=vs, 100,"Клиент", M4Code,Normal,20,ObjStr,false,CUSClass);
+// EditFieldTL(h,v+=vs, 100,"% отгрузки с Максана",M4Int,Normal,10,AccSpec,false,0); 
+EndWindow;
+
+WindowBegin("Процент отгрузки с Максана", PercentDClass, CGview, -);
+UseView(PercentVc);
+SetWRect(10, 80, 500, 350);
+BrowseButtons(True);
+vs = 40; h = 80; v = 20; h1 = 230; h2 = 380;  
+EditField(h1, v, 80, "Первый день планируемого месяца", Normal, FDate, False, PasteCurDate);
+EditField(h1, v += vs, 80, "Группа продажи", Normal, SalesGroup, False, SalesGroupSClass);
+EditField(h  + 35, v += vs , 80, "Сотрудник", Normal, Empl, False, UserSClass);
+EditField(h2 - 35, v, 80, "Объект планирования", Normal, Cust, False, ObjSClass);
+EditField(h1, v += vs, 50, "Процент", Normal, Percent, False, 0);
+EndWindow;
+
+WindowBegin("Процент отгрузки с Максана", PercentLClass, CGmlist, DMView);
+SpawnClass(PercentDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(PercentVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(80, 80, "Первый день месяца", FDate, false, FDate);
+RlColKey(190, 190, "Группа продажи", SalesGroup, false, SalesGroup);
+RlColKey(260, 260, "Сотрудник", Empl, false, Empl);
+RlColKey(360, 360, "Объект", Cust, false, Cust);
+RlCol(500, 500, "Процент", Percent, false);
+SearchField("Поиск");
+EndWindow;  
+   
+
+
+WindowBegin("План продаж по б/н", BNPlanDClass, CGview, -);
+DynamicWindow;
+SetWRect(20,80,1200,500);
+Sizeable(-1,-1,0,0);
+UseView(BNPlanVc);
+h = 90; h2 = 290; h3 = 10; h4 = 390; h5 = 490; vs = 20; v = 10;
+EditFieldTL(h, v, 80, "Год", M4Code, Normal, 4, Year, False, 0);
+MatrixBegin(h3, v = 50, -53, -20, BNPlanRowType, 2001);
+Flip(0);
+MatCol(1, 32, "Код", 0, ArtCode, false, INSClass);
+MatColTL(1, 100, "Наименование", 0, M4Str, ViewOnly, 0, ArtName, false, 0);
+MatCol(1, -730, "Январь", 0, Jan, true, 0);
+MatCol(1, -670, "Февраль", 0, Feb, true, 0);
+MatCol(1, -610, "Март", 0, Mar, true, 0);
+MatCol(1, -550, "Апрель", 0, Apr, true, 0);
+MatCol(1, -490, "Май", 0, May, true, 0);
+MatCol(1, -430, "Июнь", 0, Jun, true, 0);
+MatCol(1, -370, "Июль", 0, Jul, true, 0);
+MatCol(1, -310, "Август", 0, Aug, true, 0);
+MatCol(1, -250, "Сентябрь", 0, Sept, true, 0);
+MatCol(1, -190, "Октябрь", 0, Oct, true, 0);
+MatCol(1, -130, "Ноябрь", 0, Nov, true, 0);
+MatCol(1, -70, "Декабрь", 0, Dec, true, 0);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+EndWindow;
+
+
+WindowBegin("План продаж по б/н", BNPlanLClass, CGmlist, VPlanSpecView);
+SetWRect(64, 80, 350, 200);
+SpawnClass(BNPlanDClass);
+Sizeable(-1, -1, 0, 0);
+UseView(BNPlanVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4,  "Год", Year, True, Year);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Недели планирования", tWeekPlanDClass, CGview, -);
+UseView(tWeekPlanVc);
+SetWRect(10, 80, 400, 350);
+BrowseButtons(True);
+vs = 20; h = 100; v = 20; h1 = 230; h2 = 380;  
+EditField(h, v, 80, "Группа продажи", Normal, Code, False, SalesGroupSClass);
+EditField(h, v += vs, 250, "Наименование", ViewOnly, Name, False, 0);
+MatrixBegin(20,  v += 40, -53, -20, tWeekPlanRowType, 1000);
+MatCol(1, 32, "№ недели", 0, NumWeek, false, 0);
+MatCol(1, 110, "Коэфф.", 0, Koeff, true, 0);
+MatCol(1, 220, "Выходн.", 0, WorkDay, true, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Недели планирования", tWeekPlanLClass, CGmlist, DMView);
+SpawnClass(tWeekPlanDClass);
+SetWRect(64, 80, 450, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tWeekPlanVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Группа продажи", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;  
+
+WindowBegin("Новинки", NewArtDClass, CGview, -);
+UseView(NewArtVc);
+SetWRect(10, 80, 400, 250);
+BrowseButtons(True);
+vs = 20; h = 100; v = 20; h1 = 230; h2 = 380;  
+EditField(h, v, 80, "Товар", Normal, ArtCode, False, INSClass);
+EditField(h, v += vs,-40, "Наименование", ViewOnly, ArtName, False, 0);
+EditField(h, v += vs, 80, "Склад", Normal, LocCode, False, LocationSClass);
+EditField(h1+50, v, -40, "Количество", Normal, Qty, False, 0);
+EndWindow;
+
+WindowBegin("Новинки", NewArtLClass, CGmlist, DMView);
+SpawnClass(NewArtDClass);
+SetWRect(64, 80, 550, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(NewArtVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(80, 80, "Товар", ArtCode, false, ArtCode);
+RlColKey(160, 160, "Наименование", ArtName, false, ArtName);
+RlColKey(-60, -60, "Склад", LocCode, false, LocCode);
+SearchField("Поиск");
+EndWindow; 
+
+WindowBegin("Планирование перемещений", tMovPlanDClass, CGview, -);
+UseView(tMovPlanVc);
+SetWRect(10, 80, 1000, 550);
+BrowseButtons(True);
+vs = 20; h = 130; v = 20; h1 = 250; h2 = 320;  h4 = 550;
+EditFieldTL(h, v, 80, "Номер", M4Long, ViewOnly, 20, SerNr, False, 0);
+EditFieldTL(h, v += vs, 80, "Дата планирования", M4Date, ViewOnly, 20, DatePlan, False, 0);
+EditFieldTL(h2, v, 80, "Дата поступления", M4Date, ViewOnly, 20, DateSup, False, 0);
+EditFieldTL(h4, v , 80, "Дата след. поступления", M4Date, ViewOnly, 20, NextSup, False, 0);
+EditField(h, v += vs, 80, "Группа продажи", ViewOnly, SalesGroup, False, 0);
+EditField(h2, v, 80, "Склад", ViewOnly, LocCode, False, 0);
+CheckBox(20, - 30, 0, "Распределить по складам", MovFlag);
+CheckBox(-50, - 30, 0, "ОК", OKFlag);
+MatrixBegin(20,  v += 40, -53, -35, tWeekPlanRowType, 800);
+MatCol(1, 50, "Код товара", 0, ArtCode, true, 0);
+MatCol(1, 130, "Наименование", 0, ArtName, false, 0);
+MatCol(1, -740, "Скл.Ф", 0, StockQty, true, 0);
+MatCol(1, -670, "Максан", 0, MaksanQty, true, 0);
+MatCol(1, -610, "C002", 0, CQty, true, 0);
+MatCol(1, -550, "План i+1", 0, PrVente, true, 0);
+MatCol(1, -490, "Сигма", 0, Sigma, true, 0);
+MatCol(1, -430, "План мес.", 0, PlanMois, true, 0);
+MatCol(1, -370, "Расч.к-во", 0, QtyAuto, true, 0); 
+MatCol(1, -310, "Кратн.к-во", 0, MultiQty, true, 0);
+MatCol(1, -250, "К-во фил.", 0, QtyFil, true, 0);
+MatCol(1, -190, "Подтв.к-во", 0, QtyLog, true, 0);
+MatCol(1, -130, "К перем. с А001", 0, QtyMov, true, 0);
+MatCol(1, -70, "К перем. с С002", 0, QtyMovC, true, 0);
+EndMatrix;
+SpecialMenu("Создать перемещение",'P',0,"CreateMovDsm");
+SpecialMenu("Выгрузить в Excel",'E',0,"ExcelMovDsm");
+EndWindow;
+
+WindowBegin("Планирование перемещений", tMovPlanLClass, CGmlist, DMView);
+SpawnClass(tMovPlanDClass);
+SetWRect(64, 80, 450, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tMovPlanVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(100, 100, "Группа продажи", SalesGroup, false, SalesGroup);
+RlColKey(200, 200, "Склад", LocCode, false, LocCode);
+RlColKey(300, 300, "Планирование", DatePlan, false, DatePlan);
+RlColKey(400, 400, "Поступление", DateSup, false, DateSup);
+SearchField("Поиск");
+EndWindow;  
+
+WindowBegin("Запланировать перемещение",MovPlanVClass,CGMnt,RcType);
+SetWRect(20,80,430,280);
+vs = 20; v=6; h = 170;
+//PeriodField(h,v,"Период");
+EditFieldTL(h, v, 80, "Дата планирования", M4Date, ViewOnly, 20, d1, False, 0);
+EditFieldTL(h, v += vs, 80, "Дата поступления", M4Date, Normal, 20, d2, False, PasteCurDate);
+EditFieldTL(h, v += vs, 80, "Дата след. поступления", M4Date, Normal, 20, RegDate, False, PasteCurDate);
+EditFieldTL(h, v += vs, 80, "Склад", M4UStr, Normal, 20, f2, False, LocationSClass);
+//EditField(h, v += vs, 80, "Группа продажи", ViewOnly, f1, False, SalesGroupSClass);
+// EditField(h, v += vs, 80, "Группы товаров", Normal, f2, False, ITSClass);
+// EditField(h, v += vs, 80, "Классификаторы товаров", Normal, f3, False, DISClass);
+EndWindow;  
+
+WindowBegin("Объекты план./Склад", ObjLocTClass, CGHbl, HBlRecType);
+SetBlid(ObjLocBlock);
+SetWRect(64, 80, 550, 440);
+Sizeable(-1,-1,-1,0);
+v = 10; vs = 20; h = 10; 
+MatrixBegin(h, v, -21, -10, ObjLocRowType, 999);
+MatCol(1, h = 30, "Объет ПЛАН", 60, Obj, false, ObjSClass);
+MatCol(1, h = 150, "Склад", 60, Loc, false, LocationSClass);
+EndMatrix;
+EndWindow;   
+
+  return;
+end;
+
+// global
+// updating procedure tMovPlanDClassOnOpenFromBrowse(Integer wn)
+// begin
+// record tMovPlanVc MPr;
+// row tMovPlanVc MPrw;
+// boolean res;
+// integer i;
+
+// GetWindowRecord(wn, MPr);
+// if MPr.OKFlag <> 1 then
+	// begin
+	// for (i = 0; i < MatRowCnt(MPr); i = i + 1)
+		// begin
+		// MatRowGet(MPr, i, MPrw);
+		// MPrw.MaksanQty = GetStockQty(MPrw.ArtCode, "A001", CurrentDate, false);	
+		// MatRowPut(MPr, i, MPrw);
+		// end;
+		// PutWindowRecord(wn,MPr);
+	// end;	
+// res = true;
+	
+// RETURN;
+// end;
+
+global
+function Boolean BNPlanDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record BNPlanVc BNPr;
+row  BNPlanVc BNPrw;
+record INVc INr;
+Boolean res;
+
+if (changed <> 0) and (fieldname == "ArtCode") then 
+	begin
+	GetWindowRecord(wn, BNPr);
+	MatRowGet(BNPr, rownr, BNPrw);
+	INr.Code = BNPrw.ArtCode;
+	ReadFirstMain(INr, 1, true); 
+	BNPrw.ArtName = INr.Name;
+	MatRowPut(BNPr,rownr,BNPrw);
+	PutWindowRecord(wn, BNPr);
+	end;
+BNPlanDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+function Boolean tWeekPlanDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record tWeekPlanVc WPr;
+record SalesGroupVc SGr;
+Boolean res;
+
+if (changed <> 0) and (fieldname == "Code") then 
+	begin
+	GetWindowRecord(wn, WPr);
+	SGr.SGroupCode = WPr.Code;
+	ReadFirstMain(SGr, 1, true); 
+	WPr.Name = SGr.SGroupName;
+	PutWindowRecord(wn, WPr);
+	end;
+tWeekPlanDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+function Boolean NewArtDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record NewArtVc NAr;
+record INVc INr;
+Boolean res;
+
+if (changed <> 0) and (fieldname == "ArtCode") then 
+	begin
+	GetWindowRecord(wn, NAr);
+	INr.Code = NAr.ArtCode;
+	ReadFirstMain(INr, 1, true); 
+	NAr.ArtName = INr.Name;
+	PutWindowRecord(wn, NAr);
+	end;
+NewArtDClassAfterEditField = res;
+RETURN;
+END;
+
+
+global
+function Boolean tMovPlanDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+Boolean res,resL;
+record tMovPlanVc MPr;
+record UserVc USr;
+Integer RwCnt;
+  
+res = true;
+Usr.Code = CurrentUser; 
+ReadFirstMain(USr,1,true);
+
+GetWindowRecord(wn, MPr);
+if (changed <> 0) then
+	begin
+		switch(fieldname)
+		begin
+		  case "ArtCode": res = False;
+		  case "ArtName": res = False;
+		  case "QtyAuto": res = False;
+		  case "PrVente": res = False;
+		  case "Sigma": res = False;
+		  case "MultiQty": res = False;
+		  case "PlanMois": res = False;
+		  case "StockQty": res = False;
+		  case "MaksanQty": res = False;
+		  case "CQty": res = False;
+		  case "QtyFil": res = (Usr.SalesGroup == MPr.SalesGroup);
+		  case "QtyLog": res = (Usr.Department == "81LOG");
+		  case "QtyMov": res = False;
+		  case "QtyMovC": res = False;
+		end;
+	end;
+	
+  tMovPlanDClassActiveEditField = res;
+  RETURN;
+END;
+
+global
+procedure MovPlanVClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "MovPlanVClass");
+  RepSpec.d1 = CurrentDate;
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+global
+updating procedure CreateMovDsm()
+BEGIN
+record tMovPlanVc MPr;
+record StockMovVc SMr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, MPr);
+
+if MakeMovKSOnC(MPr,SMr) then 
+	begin
+	nwn = OpenWindow("StockMovDClass",1,0,"","",SMr);
+	WindowFieldGoto(nwn, SMr, -1, "Gather", True);
+	//UpdateBrowses("tMovPlanVc");
+	//CreateRecordLink(SMr, CurrentCompany, MPr, CurrentCompany);
+	end;	
+if MakeMovMMOnC(MPr,SMr) then 
+	begin
+	nwn = OpenWindow("StockMovDClass",1,0,"","",SMr);
+	WindowFieldGoto(nwn, SMr, -1, "Gather", True);
+	//UpdateBrowses("tMovPlanVc");
+	//CreateRecordLink(SMr, CurrentCompany, MPr, CurrentCompany);
+	end;
+
+if MakeMovKS(MPr,SMr) then 
+	begin
+	nwn = OpenWindow("StockMovDClass",1,0,"","",SMr);
+	WindowFieldGoto(nwn, SMr, -1, "Gather", True);
+	//UpdateBrowses("tMovPlanVc");
+	//CreateRecordLink(SMr, CurrentCompany, MPr, CurrentCompany);
+	end;	
+if MakeMovMM(MPr,SMr) then 
+	begin
+	nwn = OpenWindow("StockMovDClass",1,0,"","",SMr);
+	WindowFieldGoto(nwn, SMr, -1, "Gather", True);
+	//UpdateBrowses("tMovPlanVc");
+	//CreateRecordLink(SMr, CurrentCompany, MPr, CurrentCompany);
+	end;
+RETURN;
+end;
+
+global
+updating procedure ExcelMovDsm()
+BEGIN
+record tMovPlanVc MPr;
+record RCVc RepSpec;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, MPr);
+
+RepSpec.f1 = MPr.SerNr;
+RepSpec.Media = mtExcel;//mtScreen;
+RepSpec.repname = "ExcelMovRn";
+RunReport(RepSpec,0);
+  
+RETURN;
+end;
+

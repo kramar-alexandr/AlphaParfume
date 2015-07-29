@@ -1,0 +1,46 @@
+external inner function val RoundVAL(val,LongInt,Integer);
+
+global
+function string 200 tGetNameInv(string ArtCode, var val koef)
+begin
+record tInvoiceVc Ir;
+string 200 res;
+
+Ir.Code = ArtCode;
+ReadFirstMain(Ir, 1, true);
+koef = Ir.Koef;
+res = Ir.NameInv;
+
+tGetNameInv = res;
+return;
+end;
+
+global
+procedure tCrRepList(longInt SerNr, var record TempVc Listr)
+begin
+record POVc POr;
+row POVc POrw;
+row TempVc Listrw;
+integer i;
+val koef, v1, v2;
+record SysFormatBlock SysFormatRec;
+
+POr.SerNr = SerNr;
+ReadFirstMain(POr, 1, true);
+  
+  BlockLoad(SysFormatRec);
+
+for (i = 0; i < MatRowCnt(POr); i = i + 1)
+	begin
+	MatRowGet(POr, i, POrw);
+	Listrw.f2 = tGetNameInv(POrw.ArtCode, koef);
+	Listrw.f3 = ValToString(POrw.Quant,M4Val,SysFormatRec.thousSep,SysFormatRec.decimalPt,1);
+	v1 = RoundVAL(koef, 3, M45Val); //POrw.Price *
+	v2 = RoundVAL(koef * POrw.Quant, 3, M45Val); //POrw.Price * 
+	Listrw.f4 = ValToString(v1,M45Val,SysFormatRec.thousSep,SysFormatRec.decimalPt,0);
+	Listrw.f5 = ValToString(v2,M45Val,SysFormatRec.thousSep,SysFormatRec.decimalPt,0);
+	MatRowPut(Listr, i, Listrw);
+	end;
+
+return;
+end;

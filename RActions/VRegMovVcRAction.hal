@@ -1,0 +1,45 @@
+global
+function LongInt RegMovVcRecordDefaults(var record RegMovVc Expr,record RegMovVc Exp2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+  longint newnr;
+  
+  newnr = -1; 
+  Expr.RegDate = CurrentDate;
+  Expr.SerNr = NextSerNr("RegMovVc",Expr.RegDate,newnr,false,"");
+  Expr.SalesMan = CurrentUser;
+  Expr.DoneFlag = 0;
+  RegMovVcRecordDefaults = res; 
+  RETURN;
+END;
+
+global
+updating function LongInt RegMovVcRecordCheck(var record RegMovVc VCr,record RegMovVc VCr2, LongInt stat, LongInt check)
+begin
+longint newnr;
+
+if Blank(VCr.SalesMan) then 
+	begin
+	VCr.SalesMan = CurrentUser;
+	end;
+
+if Blank(VCr.RegDate) then 
+	begin
+	VCr.RegDate = CurrentDate;
+	end;
+	
+if (VCr.SerNr<=0) then 
+	begin
+	newnr = -1;
+	VCr.SerNr = NextSerNr("RegMovVc",VCr.RegDate,newnr,false,"");
+	end;
+
+if (Blank(VCr.Location) or ((VCr2.DoneFlag != 0) and (VCr.DoneFlag == 0))) then 
+	begin
+	RegMovVcRecordCheck = -1;
+	end else
+	begin
+	RegMovVcRecordCheck = VCr2.DoneFlag;
+	end;
+RETURN;
+end;

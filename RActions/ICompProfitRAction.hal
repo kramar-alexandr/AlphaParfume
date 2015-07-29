@@ -1,0 +1,86 @@
+//===============================================
+global
+function Longint ICompProfitPlanVcRecordDuplicate(var record ICompProfitPlanVc ICPPr, record ICompProfitPlanVc ICPP2r, LongInt stat, LongInt check)
+begin
+  integer Month;
+
+  for (Month=1; Month<13; Month=Month+1) //Обнуляем флаги
+    begin
+			SetFieldValueByName(ICPPr, "Flag" & Month, 0, -1);
+    end;
+
+	ICPPr.PlanYear = -1;
+  ICompProfitPlanVcRecordDuplicate = 0;
+  Return;
+end;
+
+//===============================================
+global
+function Longint ICompProfitPlanVcRemoveTest(var record ICompProfitPlanVc ICPPr, record ICompProfitPlanVc ICPP2r, LongInt stat, LongInt check)
+begin
+	integer Month;
+	boolean res;
+
+	res = true;
+	for (Month=1; (Month<13) and res; Month=Month+1)
+		begin
+			res = res and (StringToLongInt(GetFieldValueByName(ICPPr, "Flag" & Month, -1)) == -1);
+		end;
+
+  if res then
+    begin
+      ICompProfitPlanVcRemoveTest = 1;
+    end
+  else
+    begin
+      ICompProfitPlanVcRemoveTest = 0;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+updating function Boolean ICompProfitPlanVcRecordCheck(var record ICompProfitPlanVc ICPPr, record ICompProfitPlanVc ICPP2r, LongInt stat, LongInt check)
+begin
+  longint res;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+  
+  if (ICPPr.PlanYear<2010) then
+    begin
+			RecordCheckError(1499,"Неверно указан год",-1,"PlanYear");
+			res = -1;
+    end;
+
+	ICompProfitPlanVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function Longint ICompProfitPlanResVcRecordDuplicate(var record ICompProfitPlanResVc ICPPRr, record ICompProfitPlanResVc ICPPR2r, LongInt stat, LongInt check)
+begin
+	ICPPRr.IDKey = -1;
+  ICompProfitPlanResVcRecordDuplicate = 0;
+  Return;
+end;
+
+//===============================================
+global
+updating function Boolean ICompProfitPlanResVcRecordCheck(var record ICompProfitPlanResVc ICPPRr, record ICompProfitPlanResVc ICPPR2r, LongInt stat, LongInt check)
+begin
+  longint res;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+  
+  if (ICPPRr.IDKey < 0) then
+    begin
+			RecordCheckError(1499,"Неверное значение",-1,"IDKey");
+			res = -1;
+    end;
+
+	ICompProfitPlanResVcRecordCheck = res;
+  Return;
+end;

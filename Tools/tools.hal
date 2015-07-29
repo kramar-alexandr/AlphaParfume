@@ -1,0 +1,1279 @@
+external inner function Boolean GetForeignCurncyRate(string,val,val,val,Date,Date);
+external procedure IVFromORDsm();
+external inner procedure GetAccDCBalance(string,string,Date,record ObjBalVc,Integer,Integer,Integer,string,var val,var val,Integer);
+external function LongInt IVVcRecordUpdateAfter(var record IVVc,record IVVc,LongInt,LongInt);
+external updating function LongInt IVVcRecordCheck(record IVVc,record IVVc,LongInt,LongInt);
+external updating function Boolean MakePlanPodr(record VPlanSpecVc, string, Boolean);
+external function Integer tLimD(val);//---t+
+external inner function Boolean PasteInvIn2IPr(var record IPVc,Integer,Date,var val,Integer,var Boolean);
+external inner procedure IPVc_PasteRecVal(var record IPVc, Integer);
+external inner procedure PPSumup(var record PPVc);
+
+
+global
+function val ABS(val R)
+begin
+
+if (R < 0) then
+  begin
+  ABS = -1 * R;
+  end else
+  begin
+  ABS = R;
+  end;
+
+RETURN;
+end;
+
+
+function date GetIVPlanPayDate(longint InvoiceNr)
+begin
+  record IVVc IVr;
+  date dt;
+
+  IVr.SerNr = InvoiceNr;
+  ReadFirstMain(IVr, 1, true);
+  dt = IVr.PlanPayDate;
+  if blankdate(dt) then
+    begin
+      dt = IVr.PayDate;
+    end;
+  GetIVPlanPayDate = dt;
+  Return;
+end;
+
+
+global 
+function integer GetCount(var string ItemCode, var string Location, var date d1)
+begin
+
+ record ItemHistVc IHr;
+ boolean TrHs,testf;
+ integer res;
+ string 225 tstr;
+ 
+ TrHs=true;
+ IHr.ArtCode = ItemCode;
+ IHr.Location = Location;
+ IHr.TransDate=CurrentDate();
+ 
+ While(LoopBackKey("ArtCodeLoc",IHr,3,TrHs)) begin
+  testf=true;
+  if IHr.TransDate<d1 then begin TrHs=false; testf=false; end;
+  if (IHr.FileName=="Fut3ORVc") or (IHr.FileName=="Fut1POVc") or (IHr.FileName=="IVVc") then begin testf=false; end;
+  if (testf) then  begin
+   res= res+IHr.Qty;
+      //startformat(15);
+	  //tstr = " 11SerNr=" & IHr.SerNr & " res=" & res & " FileName=" & IHr.FileName & " Qty=" & IHr.Qty & " ArtCode=" & IHr.ArtCode & " Location= " & IHr.Location & " Date=" & IHr.TransDate;
+	  //outstring(0,0,tstr,false);
+	  //endformat; 
+  end;// testf
+ end;// while
+ GetCount=res;
+return
+end;
+
+
+global
+procedure DblTransD(string dblstr,string l,Integer currepwn)
+begin
+  record TRVc TRr;
+  Integer yc1;
+  LongInt ser1;
+  Integer wn;
+  Boolean openf;
+  Integer i,rwcnt;
+  row TRVc TRrw;
+  if (nonblank(dblstr)) then begin
+    ser1 = FirstTransInRange(dblstr);
+    yc1 = FirstTransTypeInRange(dblstr);
+    TRr.Number = ser1;
+    TRr.IntYc = yc1;
+    if (ReadFirstMain(TRr,2,true)) then begin
+      openf = true;
+      if (openf) then begin
+        wn = OpenWindow("TRDClass",1,0,"","",TRr);
+      end;
+    end;end;
+ return;
+end;
+
+global 
+function string 255 GetObjCaption(var string Type1, var string Obj1)
+begin
+ boolean testf2,testf;
+ integer k;
+ string 255 res,diap;
+ record ObjVc Objr;
+ GetObjCaption="";
+ res=Obj1;
+ testf=true;
+ while (testf) begin
+  testf2=true;
+  k=0;
+  while (testf2) begin
+   if (mid(res,k,1)==",") then begin testf2=false; end;
+   diap = mid(res,0,k);
+   if (k==len(res)) then begin testf2=false; end;
+   k=k+1;
+  end;// поиск строки до запятой
+  res=right(res,len(res)-k); 
+  Objr.Code = diap;
+  //StopAlert("diap = " & diap & "  res=" & res);
+  if (ReadFirstMain(Objr,1,true)) then begin end;
+  if (Objr.OTCode==Type1) then begin GetObjCaption=diap; res=""; end;
+  if (blank(res)) then begin testf=false; end;
+ end;//while по строке CheckObjType
+ return;
+end;
+
+global
+function boolean InRange(var string Chto, var string VChem)
+begin
+ boolean testf2,testf;
+ integer k;
+ string 255 res,diap;
+ string 20 begDiap,endDiap;
+ Boolean No;
+ 
+ InRange = false;
+ No = True;
+ 
+ if SetInSet("!" & Chto, VChem) then
+	begin
+	InRange = False;
+	Goto L110;
+	end;
+ /*if Left(Chto, 1) == "!" then
+	begin
+	No = False;
+	Chto = Right(Chto, Len(Chto) - 1);
+	end;*/
+ 
+	
+ if (setinset(Chto, VChem)) then 
+	begin 
+	InRange = true; 
+	end else 
+	begin
+	res = VChem;
+   //stopalert(Chto & "  " & res);
+	while (nonblank(res)) 
+		begin
+		k=0;
+		testf=true;
+		while (testf) 
+			begin
+			if (mid(res,k,1)==",") then 
+				begin 
+				testf=false; 
+				end;
+			diap = mid(res,0,k);
+			if (k==len(res)) then 
+				begin 
+				testf=false; 
+				end;
+			k=k+1;
+			end;// поиск строки до запятой
+		res=right(res,len(res)-k);
+		begDiap = FirstInRange(diap,20);
+		/*if Left(begDiap, 1) == "!" then
+			begin
+			No = False;
+			begDiap = Right(begDiap, Len(begDiap) -1);
+			end;*/
+		endDiap = LastInRange(diap,20);
+		/*if Left(endDiap, 1) == "!" then
+			begin
+			No = False;
+			endDiap = Right(endDiap, Len(endDiap) -1);
+			end;*/
+		if (begDiap<=endDiap) and (Chto>=begDiap) and (Chto<=endDiap) then // and No then 
+			begin 
+			InRange = true; 
+			res=""; 
+			end;
+		end;// по строке 
+		
+	end;
+L110:;
+return;
+end;
+
+
+global
+procedure GetFullCurncyRate(var string curcode, Date dp, var val from, var val to1, var val to2, var val base1, var val base2)
+begin
+
+  Record BaseERVc BERr;
+  Record ERVc ERr;
+  Record BaseCurBlock bascur;
+  Date edp;
+  Boolean testf;
+  
+  from = blankval;
+  to1 = blankval;
+  to2 = blankval;
+  base1 = blankval;
+  base2 = blankval;
+  BlockLoad(bascur);
+  if blank(curcode) then begin
+    curcode = bascur.StdBaseCur;
+  end;
+  if blank(curcode) then begin
+    curcode = bascur.BaseCur1;
+  end;
+  if (blank(bascur.BaseCur2)) then begin goto L88; end;
+  if (curcode == bascur.BaseCur1) then begin goto L77; end;
+  if (curcode == bascur.BaseCur2) then begin goto L77; end;
+  testf = GetForeignCurncyRate(curcode,from,to1,to2,dp,edp);
+L77:;
+  base1 = 100;
+  base2 = 100;
+  BERr.Date = dp;
+  if (ReadLastMain(BERr,1,false)) then begin
+    base1 = BERr.Rate1;
+    base2 = BERr.Rate2;
+  end;
+  goto L99;
+L88:; /* Old way of using Rate */
+  if (curcode == bascur.BaseCur1) then begin goto L99; end;
+  testf = GetForeignCurncyRate(curcode,from,to1,to2,dp,edp);
+L99:;
+//
+  //base2 = 5.2;
+  //
+  return;
+end;
+
+
+global
+function Boolean PayCheck3(record CUVc CUr)
+begin
+
+Record ARVc ARr;
+Boolean testf,TrHs;
+string 3 tstr;
+            
+testf=false;
+ARr.CustCode = CUr.Code;
+TrHs = true;
+while (loopkey("CustCode",ARr,1,TrHs)) 
+  begin
+  if (ARr.CustCode==CUr.Code) then 
+    begin 
+    if ((ARr.RVal>0) and (CUr.Blacklist != 0)) then 
+      begin 
+      TrHs=false; 
+      testf=true; 
+      end;
+    end else 
+      begin 
+      TrHs= false; 
+      end;
+    end;
+PayCheck3 = testf;
+return;
+end;
+
+global
+function Boolean ObjTipCheck(record CUVc CUr)
+begin
+record ObjVc Objr;
+Boolean TrHs, res;
+
+Objr.OTCode = "TIP";
+TrHs = True;
+while LoopKey("OTCode", Objr, 1, TrHs) 
+	begin
+	TrHs = (Objr.OTCode == "TIP");
+	res = TrHs and SetInSet(Objr.Code, CUr.Objects);
+	if res then 
+		begin
+		TrHs = False;
+		end;
+	end;
+ObjTipCheck = res;
+RETURN;
+end;
+
+global
+function Boolean PayCheck(record CUVc CUr)
+begin
+
+  Record ARVc ARr;
+  Boolean testf,TrHs;
+  date PayDate;
+  
+  testf=false;
+  ARr.CustCode = CUr.Code;
+  TrHs = true;
+  while (loopkey("CustCode",ARr,1,TrHs)) 
+    begin
+    if (ARr.CustCode==CUr.Code) then 
+      begin 
+      //if (addday(ARr.DueDate,15+i)<CurrentDate()) and (ARr.RVal>0) and (nonblank(ARr.DueDate)) then begin TrHs=false; testf=true; end;
+      //if (addday(ARr.DueDate, 7 + i)<CurrentDate()) and (ARr.RVal>0) and (nonblank(ARr.DueDate)) then begin TrHs=false; testf=true; end; //закомментировала 24-02-12
+      PayDate = GetIVPlanPayDate(ARr.InvoiceNr);
+      if (PayDate < CurrentDate) and (ARr.RVal > 0) then 
+        begin 
+  //    StopAlert(tLimD(ARr.RVal) & "-- " & ARr.BookRVal & "-- "& i & "-=- " & ARr.DueDate);
+        TrHs = false; 
+        testf = true;
+        end;
+      end else 
+      begin 
+      TrHs = false; 
+      end;	
+    end;
+  paycheck = testf;
+  return;
+end;
+
+global
+function Boolean PayCheck4(record CUVc CUr, record ORVc ORr)
+begin
+record ARVc ARr;
+record ORVc OR2r;
+Boolean testf, TrHs, HsTr;
+string 3 tstr;
+integer i;
+val summa;
+
+testf = false;
+ARr.CustCode = CUr.Code;
+tstr = FirstInRange(CUr.Comment2, 3);
+i = StringToInt(tstr);
+TrHs = true;
+OR2r.CustCode = ORr.CustCode;
+OR2r.InvFlag = 0;
+summa = 0;
+HsTr = True;
+ResetLoop(OR2r);
+while LoopKey("CustCode", OR2r, 1, HsTr)
+	begin
+	HsTr = (OR2r.CustCode == ORr.CustCode);
+	if HsTr and (OR2r.ShipFlag <> 1) then
+		begin
+		summa = summa + OR2r.Sum4;
+		end;
+	end;
+	summa = summa + ORr.Sum4;
+	StopAlert(summa);
+while LoopKey("CustCode", ARr, 1, TrHs) 
+	begin
+	if (ARr.CustCode == CUr.Code) then 
+		begin 
+		//if (AddDay(ARr.DueDate, 7 + i) < CurrentDate()) and (ARr.RVal > 0) and // закомментировала 24-02-12
+			if (AddDay(ARr.DueDate, tLimD(ARr.BookRVal) + i) < CurrentDate()) and (ARr.BookRVal > 0) and
+					(((ARr.RVal + summa) < CUr.CreditLimit)) and (nonblank(ARr.DueDate)) then 
+			begin 
+			TrHs = false; 
+			testf = true; 
+			end;
+		end else 
+		begin 
+		TrHs = false; 
+		end;	
+	end;
+PayCheck4 = testf;
+RETURN;
+end;
+
+global
+function Boolean PayCheck5(record CUVc CUr, record ORVc ORr)
+begin
+record ORVc OR2r;
+record SHVc SHr;
+Boolean testf, HsTr;
+val summa;    
+
+testf = false;
+if nonblank(CUr.CreditLimit) and (CUr.CreditLimit > 0) then
+	begin
+	OR2r.CustCode = ORr.CustCode;
+	summa = 0;
+	HsTr = True;
+	ResetLoop(OR2r);
+	while LoopKey("CustCode", OR2r, 1, HsTr)
+		begin
+		HsTr = (OR2r.CustCode == ORr.CustCode);
+		if HsTr and (OR2r.ShipFlag <> 1) then
+			begin
+			SHr.OrderNr = OR2r.SerNr;
+			if (not(ReadFirstKey("OrderKey", SHr, 1, True))) then
+				begin
+				summa = summa + OR2r.Sum4;
+				end;
+			end;
+		end;
+	//summa = summa + ORr.Sum4;
+	//StopAlert(summa);
+	testf = (summa > CUr.CreditLimit);
+	end;
+PayCheck5 = testf;	
+RETURN;
+end;
+
+global
+function Boolean PayCheck2(record CUVc CU2r)
+begin
+record CUVc CUr;
+record VSetSetBlock VSr;
+string 255 astring;
+boolean TrHs;
+
+BlockLoad(VSr);
+if (VSr.EnableBlockBySearchKey <> 0) then 
+	begin
+	TrHs = True;
+	CUr.SearchKey = CU2r.SearchKey;
+	while LoopKey("SearchKey", CUr, 1, TrHs)
+		begin
+		BlockLoad(VSr);
+		if (CUr.SalesGroup == CU2r.SalesGroup) and (CUr.SearchKey == CU2r.SearchKey) and 
+					((CUr.CustCat == CU2r.CustCat) or (VSr.ViewSearchKeyWhenBlock <> 1)) then
+			begin
+			TrHs = not PayCheck(CUr);
+			end;
+		end;
+	PayCheck2 = not TrHs;
+	end else
+	begin
+	PayCheck2 = False;
+	end;
+RETURN;
+end;
+
+global
+function string 10 DReturnVal()
+begin
+  record BaseERVc Brr;
+  boolean trhs;
+  trhs = true;
+  BRr.Date = currentdate;  
+  while (loopbackkey("MainKey",Brr,1,trhs)) begin  trhs=false;  end;
+  DReturnVal = Brr.Rate2;
+ return 
+ end;
+ 
+ 
+ 
+ //===============
+ global procedure LogRecordIvvc(record IVVc IVr)
+ begin
+  row IVVC IVrw;
+  LogText(0,"RecordChange IVVC " & IVr.SerNr & " " & IVr.CustCode & " " & IVr.InvDate & " " & IVr.PayDeal & " " & IVr.PayDate & " " & IVr.TransDate & " " & IVr.Objects & " " & IVr.PriceList & " " & IVr.RebCode & " " & IVr.Sum4 & " " & IVr.CurncyCode );
+ return;
+ end;
+ 
+ global procedure LogRecordOrvc(record ORVc ORr)
+ begin
+  LogText(0,"RecordChange ORVC " & ORr.SerNr & " " & ORr.CustCode & " " & ORr.OrdDate & " " & ORr.PayDeal  & " " & ORr.Objects & " " & ORr.PriceList & " " & ORr.RebCode & " " & ORr.Sum4 & " " & ORr.CurncyCode);
+ return;
+ end;
+
+ global procedure LogRecordSHvc(record SHVc SHr)
+ begin
+  LogText(0,"RecordChange SHVC " & SHr.SerNr & " " & SHr.CustCode & " " & SHr.ShipDate & " " & SHr.OrderNr  & " " & SHr.Objects & " " & SHr.Location & " " & SHr.TotQty);
+ return;
+ end; 
+ 
+  global procedure LogRecordRetvc(record retVc Retr)
+ begin
+  LogText(0,"RecordChange RetVC " & retr.SerNr & " " & retr.CustCode & " " & retr.TransDate & " " & retr.Objects & " " & retr.Location & " " & retr.SumQuant & " " & retr.CurncyCode & " " & retr.OrdNr);
+ return;
+ end; 
+ 
+   global procedure LogRecordpuvc(record puVc pur)
+ begin
+  LogText(0,"RecordChange PUVC " & pur.SerNr & " " & pur.TransDate & " " & pur.Objects & " " & pur.Location & " " & pur.SumQuant & " " & pur.CurncyCode & " " & pur.SubTotal);
+ return;
+ end;
+ 
+   global procedure LogRecordIPvc(record IPVc IPr)
+ begin
+  LogText(0,"RecordChange IPVC " & ipr.SerNr & " " & ipr.TransDate & " " & ipr.PayMode & " " & ipr.PayCurCode & " " & ipr.CurPayVal);
+ return;
+ end;
+ 
+ global 
+ function val GetUserBal(record UserVc Usr)
+ begin
+ record Objvc Objr,Objr1;
+ record ObjBalVc ObjBalr;
+ record RcVc RepSpec;
+ date sbd;
+ val dv,cv;
+ string 255 tstr;
+
+ recordnew(RepSpec);
+ sbd = currentdate;
+ Objr.Code =Usr.PersObjx;
+ if (ReadFirstMain(Objr,1,true)) then begin end;
+ RepSpec.f5 = Objr.AutoObjects;
+ //StopAlert("RepSpec.f5=" & RepSpec.f5);
+ RepSpec.ObjStr = Usr.PersObjx;
+      switch (RepSpec.f5) begin
+       case "10": tstr = "37201"; 
+	   case "11": tstr = "37203"; 
+	   case "12": tstr = "37204"; 
+	   case "13": tstr = "37209"; 
+	   case "14": tstr = "37202"; 
+	   case "15": tstr = "37206"; 
+	   case "16": tstr = "37207"; 
+	   case "17": tstr = "37205"; 
+	   case "18": tstr = "37208"; 
+	   case "40": tstr = "37201"; 
+	   case "81": tstr = "37201"; 
+	   case "82": tstr = "37201"; 
+	   case "83": tstr = "37201"; 
+	   case "99": tstr = "37290"; 
+      end;
+	  ObjBalr.AccNumber = tstr;
+      RepSpec.ObjStr = Objr.Code;
+      ObjBalr.Object = RepSpec.ObjStr;
+	  //StopAlert("ObjBalr.AccNumber=" & ObjBalr.AccNumber & " RepSpec.ObjStr=" & RepSpec.ObjStr & " ObjBalr.Object=" & ObjBalr.Object);
+      RepSpec.basecurncy = 0;
+      RepSpec.SimVerf = 0;
+      RepSpec.flags[6] =0;
+	  if (ReadFirstMain(ObjBalr,2,true)) then begin end;
+      GetAccDCBalance(tstr,RepSpec.ObjStr,sbd,ObjBalr,RepSpec.SimVerf,RepSpec.basecurncy,0,RepSpec.CurncyCode,dv,cv,RepSpec.flags[6]);
+	  GetUserBal = dv-cv;
+ return;	  
+ end;
+ //===========
+ 
+ global 
+ function val VGetUserBal1(record UserVc Usr)
+ begin
+ record Objvc Objr,Objr1;
+ record ObjBalVc ObjBalr;
+ record RcVc RepSpec;
+ date sbd;
+ val dv,cv;
+ string 255 tstr;
+
+ recordnew(RepSpec);
+ sbd = currentdate;
+ Objr.Code =Usr.PersObjx;
+ if (ReadFirstMain(Objr,1,true)) then begin end;
+ RepSpec.f5 = Objr.AutoObjects;
+ //StopAlert("RepSpec.f5=" & RepSpec.f5);
+ RepSpec.ObjStr = Usr.PersObjx;
+     /* switch (RepSpec.f5) begin
+       case "10": tstr = "37201"; 
+	   case "11": tstr = "37203"; 
+	   case "12": tstr = "37204"; 
+	   case "13": tstr = "37209"; 
+	   case "14": tstr = "37202"; 
+	   case "15": tstr = "37206"; 
+	   case "16": tstr = "37207"; 
+	   case "17": tstr = "37205"; 
+	   case "18": tstr = "37208"; 
+	   case "40": tstr = "37201"; 
+	   case "81": tstr = "37201"; 
+	   case "82": tstr = "37201"; 
+	   case "83": tstr = "37201"; 
+	   case "99": tstr = "37290"; 
+      end;*/
+	  ObjBalr.AccNumber = Usr.PersAcc;
+      RepSpec.ObjStr = Objr.Code;
+      ObjBalr.Object = RepSpec.ObjStr;
+	  StopAlert("ObjBalr.AccNumber=" & ObjBalr.AccNumber & " RepSpec.ObjStr=" & RepSpec.ObjStr & " ObjBalr.Object=" & ObjBalr.Object);
+      RepSpec.basecurncy = 0;
+      RepSpec.SimVerf = 0;
+      RepSpec.flags[6] =0;
+	  if (ReadFirstMain(ObjBalr,2,true)) then begin end;
+      GetAccDCBalance(tstr,RepSpec.ObjStr,sbd,ObjBalr,RepSpec.SimVerf,RepSpec.basecurncy,0,RepSpec.CurncyCode,dv,cv,RepSpec.flags[6]);
+	  VGetUserBal1 = dv-cv;
+ return;	  
+ end;
+ 
+ global 
+ function val VGetUserBal(record UserVc Usr)
+ begin
+ record ObjBalVc ObjBalr;
+	  ObjBalr.AccNumber = Usr.PersAcc;
+      ObjBalr.Object = Usr.PersObjx;
+	  if (ReadFirstMain(ObjBalr,2,true)) then begin end;
+	  VGetUserBal = GetBalance(ObjBalr, "transdebit", CurrentDate) - GetBalance(ObjBalr, "transcredit", CurrentDate);
+ return;	  
+ end;
+ 
+ global 
+ function val GetUserBalCur(record UserVc Usr, string CurCode ) //Integer BasCur
+ begin
+ record Objvc Objr,Objr1;
+ record ObjBalVc ObjBalr;
+ record RcVc RepSpec;
+ date sbd;
+ val dv,cv;
+ string 255 tstr;
+
+ recordnew(RepSpec);
+ sbd = currentdate;
+ Objr.Code =Usr.PersObjx;
+ if (ReadFirstMain(Objr,1,true)) then begin end;
+ RepSpec.f5 = Objr.AutoObjects;
+ RepSpec.ObjStr = Usr.PersObjx;
+      switch (RepSpec.f5) begin
+       case "10": tstr = "37201"; 
+	   case "11": tstr = "37203"; 
+	   case "12": tstr = "37204"; 
+	   case "13": tstr = "37209"; 
+	   case "14": tstr = "37202"; 
+	   case "15": tstr = "37206"; 
+	   case "16": tstr = "37207"; 
+	   case "17": tstr = "37205"; 
+	   case "18": tstr = "37208"; 
+	   case "40": tstr = "37201"; 
+	   case "81": tstr = "37201"; 
+	   case "82": tstr = "37201"; 
+	   case "83": tstr = "37201"; 
+	   case "99": tstr = "37290"; 
+      end;
+	  ObjBalr.AccNumber = tstr;
+      RepSpec.ObjStr = Objr.Code;
+      ObjBalr.Object = RepSpec.ObjStr;
+      //RepSpec.basecurncy = BasCur;
+	  RepSpec.CurncyCode = CurCode;
+      RepSpec.SimVerf = 0;
+      RepSpec.flags[6] =0;
+	  if (ReadFirstMain(ObjBalr,2,true)) then begin end;
+      GetAccDCBalance(tstr,RepSpec.ObjStr,sbd,ObjBalr,RepSpec.SimVerf,RepSpec.basecurncy,0,RepSpec.CurncyCode,dv,cv,RepSpec.flags[6]);
+	  GetUserBalCur = dv-cv;
+ return;	  
+ end;
+ 
+ 
+ 
+ 
+ global 
+ procedure GetUserBalUaObj(var date bdate,var date edate,var string acctstr,var string  Objstr, var val dvu,var val cvu,var val dvs,var val cvs)
+ begin
+
+ string 255 tstr;
+ record TrVc Trr;
+ 
+ row TRVc TRrw;
+ integer i;
+ boolean trhs;
+ boolean testf;
+ val s1,s2,s3,s4;
+ trhs=true;
+ while (loopkey("AccNumberReconsf:" & acctstr,Trr,1,trhs)) begin
+       testf= true;
+       if (Trr.TransDate>edate) then begin testf=false; trhs=false; end;
+	   if (Trr.TransDate<bdate) then begin testf=false; end;
+	   if (testf) then begin
+ 	    for  (i=0;i<matrowcnt(TRr);i=i+1) begin
+	     matrowget(trr,i,trrw);
+	     if  (trrw.AccNumber==acctstr) and (setinset(Objstr,Trrw.Objects)) and (trrw.ovst==0) and (trrw.stp==1) and (trrw.Curncy=="UAH")then begin 
+	      s1=s1+Trrw.DebVal2; 
+	      s2=s2+Trrw.CredVal2; 
+		//startformat(15);
+        //outstring(0,0,trr.Number & "  " & trr.TransDate & "  " & trrw.Objects & "  " & Trrw.DebVal2 & "  " & trrw.AccNumber & "  " & s1 & "  " & s2,false);
+        //endformat;
+	     end;// accnumber if
+		 if  (trrw.AccNumber==acctstr) and (setinset(Objstr,Trrw.Objects)) and (trrw.ovst==0) and (trrw.stp==1) and ((trrw.Curncy=="USD") or (blank(trrw.Curncy))) then begin 
+	      s3=s3+Trrw.DebVal; 
+	      s4=s4+Trrw.CredVal;
+        //startformat(15);
+        //outstring(0,0,trr.Number & "  " & trr.TransDate & "  " & trrw.Objects & "  " & Trrw.CredVal & "  " & trrw.AccNumber & "  " & s4,false);
+        //endformat;
+	     end;// accnumber if
+        end;// for
+	   end;//testf
+      end;// while по операциям
+	  dvu = s1;cvu = s2;
+	  dvs = s3;cvs=s4;
+ return;	  
+ end;
+ //===========
+ global 
+ procedure GetUserBalUa(var date bdate,var date edate,var string objstr, var string acctstr, var val dvu,var val cvu,var val dvs,var val cvs)
+ begin
+
+ string 255 tstr;
+ record TrVc Trr;
+ row TRVc TRrw;
+ integer i;
+ boolean trhs;
+ boolean testf;
+ val s1,s2,s3,s4;
+ trhs=true;
+ //stopalert(acctstr);
+ while (loopkey("AccNumberReconsf:" & acctstr,Trr,1,trhs)) begin
+       testf= true;
+	   
+       if (Trr.TransDate>edate) then begin testf=false; end;
+	   if (Trr.TransDate<bdate) then begin testf=false; end;
+	   if (testf) then begin
+	     for  (i=0;i<matrowcnt(TRr);i=i+1) begin
+	     matrowget(trr,i,trrw);
+	     if  (trrw.AccNumber==acctstr) and (trrw.ovst==0) and (trrw.stp==1) and (trrw.Curncy=="UAH")then begin 
+	      s1=s1+Trrw.DebVal2; 
+	      s2=s2+Trrw.CredVal2; 
+		//startformat(15);
+        //outstring(0,0,trr.Number & "  " & trr.TransDate & "  " & trrw.Objects & "  " & Trrw.DebVal2 & "  " & trrw.AccNumber & "  " & s1 & "  " & s2,false);
+        //endformat;
+	     end;// accnumber if
+		 if  (trrw.AccNumber==acctstr)  and (trrw.ovst==0) and (trrw.stp==1) and ((trrw.Curncy=="USD") or (blank(trrw.Curncy))) then begin 
+	      s3=s3+Trrw.DebVal; 
+	      s4=s4+Trrw.CredVal;
+        //startformat(15);
+        //outstring(0,0,trr.Number & "  " & trr.TransDate & "  " & trrw.Objects & "  " & Trrw.CredVal & "  " & trrw.AccNumber & "  " & s4,false);
+        //endformat;
+	     end;// accnumber if
+        end;// for
+	   end;//testf
+      end;// while по операциям
+	  dvu = s1;cvu = s2;
+	  dvs = s3;cvs=s4;
+ return;	  
+ end;
+ 
+ global 
+ procedure GetUserBalUkr(var date bdate,var date edate,var string acctstr,var string  Objstr, var val dvu,var val cvu)
+ begin
+
+ string 255 tstr;
+ record TrVc Trr;
+ row TRVc TRrw;
+ integer i;
+ boolean trhs;
+ boolean testf;
+ val s1,s2;
+ trhs=true;
+ s1=0;
+ s2=0;
+ while (loopkey("AccNumberReconsf:" & acctstr,Trr,1,trhs)) begin
+       testf= true;
+       if (Trr.TransDate>edate) then begin testf=false; trhs=false; end;
+	   if (Trr.TransDate<bdate) then begin testf=false; end;
+	   if (testf) then begin
+ 	    for  (i=0;i<matrowcnt(TRr);i=i+1) begin
+	     matrowget(trr,i,trrw);
+	     if  (trrw.AccNumber==acctstr) and (setinset(Objstr,Trrw.Objects)) and (trrw.ovst==0) and (trrw.stp==1) then begin 
+	      s1=s1+Trrw.DebVal2; 
+	      s2=s2+Trrw.CredVal2; 
+		//startformat(15);
+        //outstring(0,0,trr.Number & "  " & trr.TransDate & "  " & trrw.Objects & "  " & Trrw.DebVal2 & "  " & trrw.AccNumber & "  " & s1 & "  " & s2,false);
+        //endformat;
+	     end;// accnumber if
+        end;// for
+	   end;//testf
+      end;// while по операциям
+	  dvu = s1;cvu = s2;
+ return;	  
+ end;
+ 
+ global 
+ procedure GetAccObjLink(var string acctstr,var string  Objstr, var boolean flag)
+ begin
+   record ObjBalVc ObjBalr;
+   boolean trhs,testf;
+   
+   ObjBalr.AccNumber=acctstr;
+   trhs=true;
+   while(loopkey("AccObjKey",ObjBalr,1,trhs)) begin
+    if (ObjBalr.AccNumber==acctstr) and (ObjBalr.Object==Objstr) then begin trhs=false; flag=true;end;
+	if (ObjBalr.AccNumber<>acctstr) then begin trhs=false; end;
+   end;
+ 
+ return;	  
+ end; 
+ 
+ global 
+ procedure GetUserDRPV(var string User,var date bdate,var date edate, var string ObjStr,var val temp1)
+ begin
+   record ObjBalVc ObjBalr;
+   boolean trhs,testf;
+   record Objvc Objr,Objr1;
+ record TRVc Trr,TrNew;
+ row TRVc Trrw,Trrw1;
+ record BaseERVc Err;
+ record UserVc Usr;
+ record AccVc ACCr;
+ boolean trhs2,trhs1;
+ integer i,k;
+ string 255 tstr,tstr1,tstr0;
+ val dv,cv,temp2,temp3,temp4,alltemp;
+ date sbd,sed;
+ array string 20 acctstr;
+ array val accval,cvval,dvval;
+ array val faccval,fcvval,fdvval;
+
+ integer j;
+ val cv333,dv333;
+ boolean trhsn,testfn;
+   
+  sbd= stringtodate("01.01.2007");
+  sed=addday(bdate,-1);
+  Usr.Code = User;
+  if (readfirstmain(Usr,1,true)) then begin end;
+  Objr.Code=Usr.PersObjx;
+        switch (ObjStr) begin
+       case "10": tstr ="66101";
+	   case "11": tstr ="66103";
+	   case "12": tstr ="66104";
+	   case "13": tstr ="66109";
+	   case "14": tstr ="66102";
+	   case "15": tstr ="66106";
+	   case "16": tstr ="66107";
+	   case "17": tstr ="66105";
+	   case "18": tstr ="66109";
+	   case "40": tstr ="66110";
+	   case "81": tstr ="66101";
+	   case "82": tstr ="66101";
+	   case "83": tstr ="66101";
+	   case "99": tstr ="66190";
+      end;
+	  acctstr[0]="811";acctstr[1]="9111";acctstr[2]="9211";acctstr[3]="812";acctstr[4]="9112";acctstr[5]="9212";acctstr[6]="813";
+	  acctstr[7]="9113";acctstr[8]="9213";acctstr[9]="814";acctstr[10]="9114";acctstr[11]="9214";acctstr[12]="333";acctstr[13]=tstr;
+	  acctstr[14]="";acctstr[15]="";acctstr[16]="";acctstr[17]="";acctstr[18]="";acctstr[19]="";acctstr[20]="";
+   if (nonblank(Usr.BankAcc)) then begin 
+    i=13;
+    for (i=13;i<14;i=i+1) begin
+     GetUserBalUkr( sbd,sed,acctstr[i],Objr.Code,dv, cv);
+      accval[i] = dv-cv;
+	  cvval[i] = cv;
+	  dvval[i] = dv;
+
+     GetUserBalUkr( sbd,edate,acctstr[i],Objr.Code,dv, cv);
+      faccval[i] = dv-cv;
+	  fcvval[i] = cv;
+	  fdvval[i] = dv;
+
+	 end; // for
+	 //==========кредит 333... поиск 
+	 /*
+	 setloopposition(trr,0);
+	 TRr.TransDate = sed;
+	 trhsn=true;
+	 dv333=0;
+	 while(loopkey("AccNumber:333",Trr,1,trhsn)) begin
+	 testfn=true;
+	  if (Trr.TransDate>edate) then begin testfn=false;trhsn=false; end;
+	  if (Trr.TransDate<sed) then begin testfn=false; end;
+	  matrowget(trr,0,trrw);
+	//  if (trrw.ovst==1) then begin testfn=false; end;
+	  if (trrw.AccNumber<>"333") then begin testfn=false; end;
+	  if (trrw.Objects<>ObjStr) then begin testfn=false; end;
+	  if (blank(trrw.CredVal))  then begin testfn=false; end;
+      if (testfn) then begin 
+	   for (j=1;j<matrowcnt(TRr);j=j+1) begin
+	    matrowget(trr,j,trrw);
+	    if (trrw.AccNumber==acctstr[13]) then begin
+         if (setinset(Objr.Code,Trrw.Objects)) then begin
+	      dv333=dv333+Trrw.DebVal2; 
+		  j = matrowcnt(trr);
+		 end;// код текущего emp
+		end;// 661.. acc
+	   end; // for j
+	  end;//testfn
+	 end;//while*/
+	 //==========
+
+	 
+	// temp1= ((faccval[0]+faccval[1]+faccval[2])-(accval[0]+accval[1]+accval[2]));
+	 //temp2= ((faccval[3]+faccval[4]+faccval[5])-(accval[3]+accval[4]+accval[5]));
+	 //temp3= ((faccval[6]+faccval[7]+faccval[8])-(accval[6]+accval[7]+accval[8]));
+	 //temp4= ((faccval[9]+faccval[10]+faccval[11])-(accval[9]+accval[10]+accval[11]));
+
+	 //StartFormat(15);
+	 //OutString(0,0,k,false);	 k=k+1;
+	 //OutString(10,0,Usr.Name,false);
+	 //OutString(20,0,Usr.Comment,false);
+	 //OutString(30,0,Usr.BankAcc,false);
+	 //OutString(40,0,RepSpec.f2,false);
+	 //OutString(50,0,"",false);
+	 //OutString(60,0,temp1,false);
+	 //OutString(70,0,temp2,false);
+	 //OutString(80,0,temp3,false);
+	 //OutString(90,0,temp4,false);
+	 //OutString(100,0,fcvval[13]-cvval[13]-(temp1+temp2+temp3+temp4),false);
+	 
+	 //OutString(110,0,fcvval[13]-cvval[13],false);
+     //OutString(120,0,dv333,false);
+	 //OutString(130,0,fdvval[13]-dvval[13]-dv333,false);
+	 //OutString(140,0,fdvval[13]-dvval[13],false);
+	 //OutString(150,0,cvval[13],false);
+	// OutString(160,0,dvval[13],false);
+	 temp1 = accval[13]+(fdvval[13]-dvval[13])-(fcvval[13]-cvval[13]);
+	// OutString(170,0,temp1,false);
+	 //alltemp = alltemp+temp1;
+end;
+ 
+ return;	  
+ end; 
+ 
+ //===========
+ global 
+ procedure GetUserBalArr(var date bdate,var date edate,var string acctstr,var string  Objstr, var array val Values)
+ begin
+
+ string 255 tstr;
+ record TrVc Trr;
+ 
+ row TRVc TRrw;
+ integer i,j,k,f;
+ boolean trhs;
+ boolean testf;
+ val s1,s2,s3,s4;
+ record CurncyCodeVc CCr;
+ array string 5 valuta;
+ trhs=true;
+ j=0;
+ while (loopmain(CCr,1,true)) begin 
+  valuta[j]=CCr.CurncyCode;
+  j=j+1;
+ end;
+ while (loopkey("AccNumberReconsf:" & acctstr,Trr,1,trhs)) begin
+       testf= true;
+       if (Trr.TransDate>edate) then begin testf=false; trhs=false; end;
+	   if (Trr.TransDate<bdate) then begin testf=false; end;
+
+	   if (testf) then begin
+ 	    for  (i=0;i<matrowcnt(TRr);i=i+1) begin
+	     matrowget(trr,i,trrw);
+	     if  (trrw.AccNumber==acctstr) and (setinset(Objstr,Trrw.Objects)) and (trrw.ovst==0) and (trrw.stp==1)then begin 
+		  for (k=0;k<j;k=k+1) begin
+		   if (valuta[k]==TRrw.Curncy) then begin 
+		    if (TRrw.Curncy=="USD") then begin Values[k]=Values[k]+Trrw.DebVal; Values[j+k]=Values[j+k]+Trrw.CredVal; 	
+			  //startformat(15);
+			  //outstring(0,0,trr.Number & " 1  " & TRrw.Curncy & " debet " & Values[k] & "  " & Trrw.DebVal & " credit " & Values[j+k] & "  " & Trrw.CredVal ,false);
+			  //endformat;
+			end
+		    else begin 
+			 if (TRrw.Curncy=="UAH") then begin Values[k]=Values[k]+Trrw.DebVal2; Values[j+k]=Values[j+k]+Trrw.CredVal2; 
+			 					  		  //startformat(15);
+			  //outstring(0,0,trr.Number & " 2  " & TRrw.Curncy & " debet " & Values[k] & "  " & Trrw.DebVal2 & " credit " & Values[j+k] & "  " & Trrw.CredVal2 ,false);
+			  //endformat;
+			 end
+			 else begin
+		      Values[k]=Values[k]+Trrw.CurDebVal; Values[j+k]=Values[j+k]+Trrw.CurCredVal;  
+			  //startformat(15);
+			  //outstring(0,0,trr.Number & "  " TRrw.Curncy & "  " & trrw.AccNumber & "  " & i "  " & Trrw.CurCredVal,false);
+			  //endformat;
+			 end;
+			end;
+		   end;
+		  end;
+		  			  
+
+	      //s1=s1+Trrw.DebVal2; 
+	      //s2=s2+Trrw.CredVal2; 
+	     end;// accnumber if
+        end;// for
+	   end;//testf
+      end;// while по операциям
+	//  dvu = s1;cvu = s2;
+//	  dvs = s3;cvs=s4;
+ return;	  
+ end;
+ 
+  //===========
+ global 
+ procedure GetUserBalArr2(var date bdate,var date edate,var string acctstr, var array val Values)
+ begin
+
+ string 255 tstr;
+ record TrVc Trr;
+ 
+ row TRVc TRrw;
+ integer i,j,k;
+ boolean trhs;
+ boolean testf;
+ val s1,s2,s3,s4;
+ record CurncyCodeVc CCr;
+ array string 5 valuta;
+ trhs=true;
+ j=0;
+ while (loopmain(CCr,1,true)) begin 
+  valuta[j]=CCr.CurncyCode;
+  j=j+1;
+ end;
+ while (loopkey("AccNumberReconsf:" & acctstr,Trr,1,trhs)) begin
+       testf= true;
+       if (Trr.TransDate>edate) then begin testf=false; trhs=false; end;
+	   if (Trr.TransDate<bdate) then begin testf=false; end;
+	   if (testf) then begin
+ 	    for  (i=0;i<matrowcnt(TRr);i=i+1) begin
+	     matrowget(trr,i,trrw);
+	     if  (trrw.AccNumber==acctstr) and (trrw.ovst==0) and (trrw.stp==1) then begin 
+		  for (k=0;k<j;k=k+1) begin
+		   if (valuta[k]==TRrw.Curncy) then begin 
+		    if (TRrw.Curncy=="USD") then begin Values[k]=Values[k]+Trrw.DebVal; Values[k+j]=Values[k+j]+Trrw.CredVal; end
+		    else begin 
+			 if (TRrw.Curncy=="UAH") then begin Values[k]=Values[k]+Trrw.DebVal2; Values[k+j]=Values[k+j]+Trrw.CredVal2; end
+			 else begin
+		      Values[k]=Values[k]+Trrw.CurDebVal; Values[k+j]=Values[k+j]+Trrw.CurCredVal; 
+			  	//		  startformat(15);
+			  //outstring(0,0," 00 " & trr.Number & "  " & TRrw.Curncy & "  " & trrw.AccNumber & "  " & i & " deb= " & Trrw.CurDebVal & "  cred=" & Trrw.CurCredVal,false);
+			  //endformat;
+			 end;
+			end;
+		   end;
+		  end;
+	     end;// accnumber if
+        end;// for
+	   end;//testf
+      end;// while по операциям
+ return;	  
+ end;
+ //====
+
+ global 
+ updating procedure AutoCreateIVvcFromSHvc(var longint OrderNr)
+ begin
+  record ORVc Orr;
+  row orvc orrw;
+  integer wn,i;
+  LongInt res;
+  record IVvc IVr,oldIVr;
+  row IVVc IVrw;
+  /*
+	 Orr.SerNr = OrderNr;
+	 if (readfirstmain(Orr,1,true)) then begin end;
+	 wn = OpenWindow("ORDClass",1,0,"","",Orr);
+	 IVFromORDsm;
+	 wn = curwindow;
+	 GetWindowRecord(wn,IVr);
+	 RecordCopy(oldIVr,IVr);
+	 IVr.OKFlag = 1;
+	 //matrowget(IVr,(matrowcnt(IVr))-1,Ivrw);
+	 //if (blank(Ivrw.ArtCode)) then begin 
+	  //stopalert("!!!!!!"); 
+	  //IVr.TotQty=IVr.TotQty-1;
+	  //IVrw.Quant=0;
+	 //end;
+	 res=IVVcRecordCheck(IVr,oldIVr,2,1);
+	 stopalert("res=" & res);
+	 //res=IVVcRecordUpdateAfter(IVr,oldIVr,0,0);
+	// if (RecordUpdate(oldIVr,IVr,false)==0) then begin end;
+	 PutWindowRecord(wn,IVr);
+	 */
+ return;
+ end;
+ 
+
+global 
+function string 255 DelSubstr(var string SubSt, var string St) //By DELPHI Deleting substring (SubSt) from string (St)
+begin
+ boolean testf;
+ integer i, pos;
+ string 255 res;
+i=0;
+ 
+if (SetInSet(SubSt, St)) then 
+	begin
+	testf=true;
+	while (testf) 
+		begin
+		if (Mid(St, i, Len(SubSt)) <> SubSt) then
+			begin
+			i=i + 1;
+			end else
+			begin
+			pos = i;
+			testf = False;
+			end;
+		if (pos == Len(St)-Len(SubSt)) then 
+			begin
+			DelSubstr=Left(St,pos - 1);
+			end else
+			begin
+			DelSubstr=Left(St,pos) & Right(St,Len(St) - pos - Len(SubSt) - 1);
+			end;
+		end;
+	end else
+	begin
+	DelSubstr=St;
+	end;
+ return;
+end;
+
+global
+procedure DblItemHistVc(string dblstr,string l,Integer currepwn)
+begin
+Integer wn;
+record ItemHistVc IHr;
+
+IHr.SerNr = dblstr;
+ReadFirstMain(IHr, 1, True);
+wn = OpenWindow("ItemHistDClass", 1, 0, "", "", IHr);
+
+RETURN;
+end;
+
+global
+function string 20 GetCUBalance(var record CUVc CUr)
+begin
+record ObjBalVc ObjBalr;
+record SysFormatBlock SysFormatRec;
+val Deb, Cred;
+
+
+  
+  BlockLoad(SysFormatRec);
+
+
+ObjBalr.AccNumber = "361";
+ObjBalr.Object = CUr.Code;
+if ReadFirstKey("ObjAccKey", ObjBalr, 2, True) then 
+	begin  
+    Deb =  GetBalance(ObjBalr, "transdebit", CurrentDate);  
+    Cred =  GetBalance(ObjBalr, "transcredit", CurrentDate);      
+    GetCUBalance = ValToString(Deb - Cred, M4Val, SysFormatRec.thousSep, SysFormatRec.decimalPt, 0);
+	end;    
+RETURN;
+end;
+
+global
+function Boolean HasCUZeroDebet(var record CUVc CUr)
+begin
+record ObjBalVc ObjBalr;
+record SysFormatBlock SysFormatRec;
+val Deb, Cred;
+  
+BlockLoad(SysFormatRec);
+ObjBalr.AccNumber = "361";
+ObjBalr.Object = CUr.Code;
+if ReadFirstKey("ObjAccKey", ObjBalr, 2, True) then 
+	begin  
+    Deb =  GetBalance(ObjBalr, "transdebit", CurrentDate);  
+    Cred =  GetBalance(ObjBalr, "transcredit", CurrentDate);      
+    // HasCUZeroDebet = (Deb == Cred);
+	HasCUZeroDebet = (ABS(Deb - Cred) <= 0.1);
+	end;    
+RETURN;
+end;
+
+updating
+function Boolean CreatePPFromIPCommAgent(record IPVc IPr)
+begin
+record PPVc Pr, P2r;
+row IPVc IPrw;
+row PPVc Prw;
+Integer RwCnt, RowCnt;
+val frrate, to1, to2, br1, br2;
+Boolean res;
+
+RecordNew(Pr);
+Pr.RegDate = CurrentDate;
+Pr.PayDate = CurrentDate;
+Pr.TransDate = CurrentDate;
+Pr.SerNr = NextSerNr("PPVc", Pr.TransDate, -1, True, "");
+Pr.PayMode = IPr.PayMode;
+Pr.CurncyCode = IPr.PayCurCode;
+GetFullCurncyRate(Pr.CurncyCode, Pr.TransDate, frrate, to1, to2, br1, br2);
+Pr.FrRate = frrate;
+Pr.ToRateB1 = to1; 
+Pr.ToRateB2 = to2;
+Pr.BaseRate1 = br1;
+Pr.BaseRate2 = br2;
+Pr.Sign = CurrentUser;
+Pr.RefStr = "IP." & IPr.SerNr;
+Pr.BankName = CurrentUser;
+Pr.SentFlag = 1;
+Pr.OrderedFlag = 1;
+Pr.BankAcc = CurrentUser;
+for (RwCnt = 0; RwCnt < MatRowCnt(IPr) ; RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(IPr, RwCnt, IPrw);
+	if nonblank(IPrw.InvoiceNr) then
+		begin
+		Prw.Person = CurrentUser;
+		Prw.Comment = IPrw.InvoiceNr & " " & IPrw.CustName;
+		Prw.PayVal = IPrw.BankVal;
+		Prw.PayMode = IPr.PayMode;
+		Prw.Objects = IPrw.Objects;
+		MatRowInsert(Pr, 0, Prw);
+		end;
+	end;
+PPSumup(Pr);
+RecordStore(Pr, True);
+P2r.SerNr = Pr.SerNr;
+ReadFirstMain(P2r, 1, True);
+Pr.DoneFlag = 1;
+RecordUpdate(P2r, Pr, True);
+CreatePPFromIPCommAgent = True;
+RETURN;
+end;
+
+
+
+global updating
+function Boolean MakeIPCommAgent(record RcVc RepSpec)
+begin
+record IPVc IPr, IP2r;
+record CUVc CUr;
+record ARVc ARr;
+record PayModeComAgentBlock PMCA;
+row PayModeComAgentBlock PMCAr;
+row IPVc IPrw;
+val checkamountp;
+Integer fn;
+Integer RowCnt;
+Integer RwCnt;
+Boolean TrHs;
+Boolean installmentf;
+
+
+RecordNew(IPr); 
+
+CUr.Code = RepSpec.f1;
+ReadFirstMain(CUr, 1, True);
+IPr.PayCurCode = CUr.CurncyCode;
+// IPr.PayMode = "AC";
+BlockLoad(PMCA);
+for(RwCnt = 0; RwCnt < MatRowCnt(PMCA); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(PMCA, RwCnt, PMCAr);
+	if ((PMCAr.SalesGroup == CUr.SalesGroup) and (PMCAr.CurncyCode == CUr.CurncyCode)) then
+		begin
+		IPr.PayMode = PMCAr.PayMode;
+		IPr.Comment = PMCAr.Comment;
+		end;
+	end;
+ResetLoop(ARr);
+ARr.CustCode = RepSpec.f1;
+TrHs = True;
+while LoopKey("CustCode", ARr, 1, TrHs)
+	begin
+	TrHs = ARr.CustCode == RepSpec.f1;
+	if (TrHs and (RepSpec.vals1 > 0)) then
+		begin
+		RowCnt = MatRowCnt(IPr);
+		//MatRowInsert(IPr, MatRowCnt(IPr), IPrw);
+		IPrw.InvoiceNr = ARr.InvoiceNr;
+		MatRowPut(IPr, RowCnt, IPrw);
+		PasteInvIn2IPr(IPr, RowCnt, CurrentDate, checkamountp, fn, installmentf);
+		MatRowGet(IPr, RowCnt, IPrw);
+		if (ARr.RVal < RepSpec.vals1) then
+			begin
+			IPrw.RecVal = ARr.RVal;
+			RepSpec.vals1 = RepSpec.vals1 - ARr.RVal;
+			end else
+			begin
+			IPrw.RecVal = RepSpec.vals1;
+			RepSpec.vals1 = 0;
+			end;
+		MatRowPut(IPr, RowCnt, IPrw);
+		IPVc_PasteRecVal(IPr, RowCnt);
+		end;
+	end;
+RecordStore(IPr, True);
+IP2r.SerNr = IPr.SerNr;
+ReadFirstMain(IP2r, 1, True);
+IPr.OKFlag = 1;
+if CreatePPFromIPCommAgent(IPr) then
+	begin
+	RecordUpdate(IP2r, IPr, True);
+	end;
+RETURN;
+end;
+
+

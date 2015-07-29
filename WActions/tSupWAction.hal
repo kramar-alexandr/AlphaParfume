@@ -1,0 +1,75 @@
+event DefineWindows
+begin
+record tVTicketsVc TVr;
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("Классификация поставщиков", SupClDClass, CGview, 0);
+UseView(SupClVc);
+SetWRect(64, 80, 550, 300);
+v = 10; vs = 20; h = 150;
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 200, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, SupGrClSClass);
+EndWindow;
+
+WindowBegin("Классификация поставщиков",SupClLClass, CGmlist, -);
+SpawnClass(SupClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(SupClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификация поставщиков",SupClSClass, CGslist, -);
+SpawnClass(SupClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(SupClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Группы классификаторов", SupGrClDClass, CGview, 0);
+UseView(SupGrClVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100;
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 200, Name, false, 0);
+EndWindow;
+
+WindowBegin("Группы классификаторов", SupGrClLClass, CGmlist, -);
+SpawnClass(SupGrClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(SupGrClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Группы классификаторов",SupGrClSClass, CGslist, -);
+SpawnClass(SupGrClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(SupGrClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+ return;
+end;

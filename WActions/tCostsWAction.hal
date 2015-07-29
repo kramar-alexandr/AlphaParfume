@@ -1,0 +1,810 @@
+ event DefineWindows
+begin
+real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l, h0, v1;
+Integer Cnt, wn;
+string 255 label;
+SetLangMode(LangRussian, "RUS", 2);
+
+WindowBegin("Номера недель",  tWeekDaysDClass, CGview,-);
+SetWRect(20, 80, 380, 260);
+UseView(tWeekDaysVc);
+v = 6;
+EditFieldTL(150, v, 80, "Год", M4Int, Normal, 4, CYear, True, 0);
+EditFieldTL(150, v += 24, 80, "№ недели в году", M4Int, Normal, 2, CWeekY, True, 0);
+EditFieldTL(150, v += 24, 120, "Период", M4Str, Normal, 21, Period, True, 0);
+EditFieldTL(150, v += 24, 80, "Месяц", M4Int, Normal, 2, CMonth, True, 0);
+EditFieldTL(150, v += 24, 80, "№ недели в месяце", M4Int, Normal, 2, CWeekM, True, 0);
+EditFieldTL(150, v += 24, 80, "Рабочих дней", M4Int, Normal, 2, CDay, True, 0);
+EndWindow;
+
+WindowBegin("Номера недель", tWeekDaysLClass, CGmlist, -);
+SpawnClass(tWeekDaysDClass);
+SetWRect(64, 80, 791, 308);
+Sizeable(-1, -1, 0, 0);
+UseView(tWeekDaysVc);
+RecordList(4, 17, -21, -40);
+RlColKey(4, 4, "Год", CYear, False, YearWeek);
+RlColKey(61, 61, "Неделя", CWeekY, False, CWeekY);
+RlCol(120, 120, "Дней", CDay, False);
+SearchField("Найти");
+EndWindow;
+
+
+
+WindowBegin("Расходы ГК", tCostsDClass, CGview, -);
+DynamicWindow;
+SetWRect(20,80,1050,550);
+Sizeable(-1,-1,0,0);
+UseView(tCostsVc);
+//AddHelpButton(-110, 6);
+h = 90; h2 = 290; h3 = 10; h4 = 550; h5 = 750; vs = 20; v = 30;
+EditFieldTL(h, v, 80, "Счет", M4Code, Normal, 20, AccCode, False, AccSClass);
+EditFieldTL(h2, v, 200, "Наименование", M4Str, ViewOnly, 200, AccName, False, 0);
+EditFieldTL(h4, v, 80, "Валюта", M4Code, Normal, 20, Curncy, False, CurncyCodeSClass);
+EditFieldTL(h5, v, 80, "Год", M4Long, Normal, 4, Year, False, 0);
+EnterSkip(Math);
+EditField(160, -30, 100, "Подписано", Normal, Sing1, False, UserSClass);
+EditField(350, -30, 100, "Согласовано", Normal, Sing2, False, UserSClass);
+ButtonFrame(10, v += 35, 0, 2, "по группам расходов: ");
+RadioButton(h, v, 0, 0, "учитывается в корр. к МП",Flag1);
+RadioButton(h2, v, 1, 0, "учитывается в ФП",Flag1);
+RadioButton(h4, v, 2, 0, "не учитывается в ФП",Flag1);
+
+ButtonFrame(10, v += 35, 0, 2, "по типу расходов: ");
+RadioButton(h, v, 0, 0, "постоянные",Flag2);
+RadioButton(h2, v, 1, 0, "переменные",Flag2);
+
+v1 = v;
+
+EditField(h, v = -110, 100, "Январь", Normal, SVal1, False, 0);
+EditField(h2, v, 100, "Февраль", Normal, SVal2, False, 0);
+EditField(h4, v, 100, "Март", Normal, SVal3, False, 0);
+EditField(h5, v, 100, "Апрель", Normal, SVal4, False, 0);
+EditField(h, v = -90, 100, "Май", Normal, SVal5, False, 0);
+EditField(h2, v, 100, "Июнь", Normal, SVal6, False, 0);
+EditField(h4, v, 100, "Июль", Normal, SVal7, False, 0);
+EditField(h5, v, 100, "Август", Normal, SVal8, False, 0);
+EditField(h, v = -70, 100, "Сентябрь", Normal, SVal9, False, 0);
+EditField(h2, v , 100, "Октябрь", Normal, SVal10, False, 0);
+EditField(h4, v, 100, "Ноябрь", Normal, SVal11, False, 0);
+EditField(h5, v, 100, "Декабрь", Normal, SVal12, False, 0);
+
+MatrixBegin(10, 135, -50, -110, tCostsRowType, 200);
+Flip(0);
+MatCol(1, 32, "PODR", 0, ObjPODR, false, ObjSClass);
+MatCol(1, 70, "Объекты обяз.", 0, ObjReq, true, ObjSClass);
+MatCol(1, 250, "Объекты др.", 0, ObjOther, true, ObjSClass);
+MatCol(1, 350, "№ нед/мес", 0, WeekNr, true, 0);
+MatCol(1, 410, "Коммент", 0, Comment, true, 0);
+
+Flip(1);
+MatCol(1, -400, "Янв", 0, Val1, true, 0);
+MatCol(1, -300, "Фев", 0, Val2, true, 0);
+MatCol(1, -200, "Мар", 0, Val3, true, 0);
+MatCol(1, -100, "Год", 0, SumM, true, 0);
+Flip(2);
+MatCol(1, -400, "Апр", 0, Val4, true, 0);
+MatCol(1, -300, "Май", 0, Val5, true, 0);
+MatCol(1, -200, "Июнь", 0, Val6, true, 0);
+MatCol(1, -100, "Год", 0, SumM, true, 0);
+Flip(3);
+MatCol(1, -400, "Июль", 0, Val7, true, 0);
+MatCol(1, -300, "Авг", 0, Val8, true, 0);
+MatCol(1, -200, "Сен", 0, Val9, true, 0);
+MatCol(1, -100, "Год", 0, SumM, true, 0);
+Flip(4);
+MatCol(1, -400, "Окт", 0, Val10, true, 0);
+MatCol(1, -300, "Ноя", 0, Val11, true, 0);
+MatCol(1, -200, "Дек", 0, Val12, true, 0);
+MatCol(1, -100, "Год", 0, SumM, true, 0);
+EndMatrix;
+v = v1;
+VTab(-35, v = 135, -16, v += vs, ToolFlip, 1, "I");
+VTab(-35, v, -16, v += vs, ToolFlip, 2, "II");
+VTab(-35, v, -16, v += vs, ToolFlip, 3, "III");
+VTab(-35, v, -16, v += vs, ToolFlip, 4, "IV");
+InsertRowTest;
+DeleteRowTest;
+
+/*
+MatCol(1, -660, "Январь", 0, Val1, true, 0);
+MatCol(1, -610, "Февраль", 0, Val2, true, 0);
+MatCol(1, -560, "Март", 0, Val3, true, 0);
+MatCol(1, -510, "Апрель", 0, Val4, true, 0);
+MatCol(1, -460, "Май", 0, Val5, true, 0);
+MatCol(1, -410, "Июнь", 0, Val6, true, 0);
+MatCol(1, -360, "Июль", 0, Val7, true, 0);
+MatCol(1, -310, "Август", 0, Val8, true, 0);
+MatCol(1, -260, "Сентябрь", 0, Val9, true, 0);
+MatCol(1, -210, "Октябрь", 0, Val10, true, 0);
+MatCol(1, -160, "Ноябрь", 0, Val11, true, 0);
+MatCol(1, -110, "Декабрь", 0, Val12, true, 0);
+MatCol(1, -60, "Коммент", 0, Comment, true, 0);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;*/
+EndWindow;
+
+
+WindowBegin("Расходы ГК", tCostsLClass, CGmlist, tCostsView);
+SetWRect(64, 80, 609, 298);
+SpawnClass(tCostsDClass);
+Sizeable(-1, -1, 0, 0);
+UseView(tCostsVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4,  "Счет", AccCode, True, AccCode);
+RlColKey(60, 60, "Наименование", AccName, True, AccName);
+RlColKey(-160, -160, "Валюта", Curncy, True, Curncy);
+RlColKey(-80, -80, "Год", Year, True, Year);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Выполнение бюджета месяца",tButExe1RClass, CGRcW,RcType);
+SetWRect (20,80,450,350);
+v = 6; vs = 20; h = 150; h0 = 75; h1 = 250;
+EditFieldTL(h,v+=20,170,"Год",M4long,Normal,21,long1,false,0);
+PeriodField(h,v+=20, "Период");
+//EditFieldTL(h,v+=20,170,"Месяц",M4Int,Normal,21,frc,false,tMonthSClass);
+EditFieldTL(h,v+=vs,100,"FN2",M4UStr,Normal,20,f1,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"PODR",M4UStr,Normal,20,f2,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"Др.объект",M4UStr,Normal,20,f3,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"Валюта",M4UStr,Normal,20,f4,false,CurncyCodeSClass);
+ButtonFrame(h, v += 50, 123, 2, "Сортировка");
+RadioButton(h, v, 0, 0, "Счет",ArtMode);
+RadioButton(h, v += 20, 1, 0, "FN1",ArtMode);
+vs = v;
+ButtonFrame(h0, vs += 35, 123, 2, "по группам расходов: ");
+RadioButton(h0, vs, 0, 0, "учитывается в корр. к МП",flags[1]);
+RadioButton(h0, vs += 20, 1, 0, "учитывается в ФП",flags[1]);
+RadioButton(h0, vs += 20, 2, 0, "не учитывается в ФП",flags[1]);
+RadioButton(h0, vs += 20, 3, 0, "по всем группам",flags[1]);
+vs = v;
+ButtonFrame(h1, vs += 35, 123, 2, "по типу расходов: ");
+RadioButton(h1, vs, 0, 0, "постоянные",flags[2]);
+RadioButton(h1, vs += 20, 1, 0, "переменные",flags[2]);
+RadioButton(h1, vs += 20, 2, 0, "по всем типам",flags[2]);
+
+EndWindow ;
+
+WindowBegin("Документы Расходы ГК",tButExe2RClass, CGRcW,RcType);
+SetWRect (20,80,450,200);
+v = 6; vs = 20; h = 150;
+EditFieldTL(h,v+=20,170,"Год",M4long,Normal,21,long1,false,0);
+EditFieldTL(h,v+=20,170,"№ Месяца",M4Int,Normal,21,frc,false,0);
+EditFieldTL(h,v+=vs,100,"Счет",M4UStr,Normal,20,f1,false,ObjSClass);
+EndWindow ;
+
+WindowBegin("Выполнение бюджета недели",tButExe3RClass, CGRcW,RcType);
+SetWRect (20,80,450,200);
+v = 6; vs = 20; h = 150; h0 = 75; h1 = 250;
+EditFieldTL(h,v+=20,170,"Год",M4long,Normal,21,long1,false,0);
+PeriodField(h,v+=20, "Период");
+EditFieldTL(h,v+=20,170,"Неделя в месяце",M4Int,Normal,21,toc,false,0);
+EditFieldTL(h,v+=vs,100,"FN2",M4UStr,Normal,20,f1,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"PODR",M4UStr,Normal,20,f2,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"Др.объект",M4UStr,Normal,20,f3,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"Валюта",M4UStr,Normal,20,f4,false,CurncyCodeSClass);
+ButtonFrame(h, v += 50, 123, 2, "Сортировка");
+RadioButton(h, v, 0, 0, "Счет",ArtMode);
+RadioButton(h, v += 20, 1, 0, "FN2",ArtMode);
+vs = v;
+ButtonFrame(h0, vs += 35, 123, 2, "по группам расходов: ");
+RadioButton(h0, vs, 0, 0, "учитывается в корр. к МП",flags[1]);
+RadioButton(h0, vs += 20, 1, 0, "учитывается в ФП",flags[1]);
+RadioButton(h0, vs += 20, 2, 0, "не учитывается в ФП",flags[1]);
+RadioButton(h0, vs += 20, 3, 0, "по всем группам",flags[1]);
+vs = v;
+ButtonFrame(h1, vs += 35, 123, 2, "по типу расходов: ");
+RadioButton(h1, vs, 0, 0, "постоянные",flags[2]);
+RadioButton(h1, vs += 20, 1, 0, "переменные",flags[2]);
+RadioButton(h1, vs += 20, 2, 0, "по всем типам",flags[2]);
+
+EndWindow ;
+
+
+WindowBegin("Отчет по отклонениям от бюджета",tButExe4RClass, CGRcW,RcType);
+SetWRect (20,80,450,350);
+v = 6; vs = 20; h = 150; h0 = 75; h1 = 250;
+EditFieldTL(h,v+=20,170,"Год",M4long,Normal,21,long1,false,0);
+PeriodField(h,v+=20, "Период");
+EditFieldTL(h,v+=20,170,"Отклонение больше:",M4Val,Normal,21,vals0,false,0);
+EditFieldTL(h,v+=vs,100,"FN2",M4UStr,Normal,20,f1,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"PODR",M4UStr,Normal,20,f2,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"Др.объект",M4UStr,Normal,20,f3,false,ObjSClass);
+EditFieldTL(h,v+=vs,100,"Валюта",M4UStr,Normal,20,f4,false,CurncyCodeSClass);
+ButtonFrame(h, v += 50, 123, 2, "Сортировка");
+RadioButton(h, v, 0, 0, "Счет",ArtMode);
+RadioButton(h, v += 20, 1, 0, "FN2",ArtMode);
+vs = v;
+ButtonFrame(h0, vs += 35, 123, 2, "по группам расходов: ");
+RadioButton(h0, vs, 0, 0, "учитывается в корр. к МП",flags[1]);
+RadioButton(h0, vs += 20, 1, 0, "учитывается в ФП",flags[1]);
+RadioButton(h0, vs += 20, 2, 0, "не учитывается в ФП",flags[1]);
+RadioButton(h0, vs += 20, 3, 0, "по всем группам",flags[1]);
+vs = v;
+ButtonFrame(h1, vs += 35, 123, 2, "по типу расходов: ");
+RadioButton(h1, vs, 0, 0, "постоянные",flags[2]);
+RadioButton(h1, vs += 20, 1, 0, "переменные",flags[2]);
+RadioButton(h1, vs += 20, 2, 0, "по всем типам",flags[2]);
+EndWindow ;
+
+
+
+
+WindowBegin("Соответствие недель", tComplWeeksDClass, CGview, -);
+DynamicWindow;
+SetWRect(20,80,600,550);
+//Sizeable(-1,-1,0,0);
+UseView(tComplWeeksVc);
+//AddHelpButton(-110, 6);
+h = 90; h2 = 290; h3 = 10; h4 = 550; h5 = 750; vs = 20; v = 30;
+EditFieldTL(h, v, 80, "Сер.№", M4Long, Viewonly, 20, SerNr, False, 0);
+EditFieldTL(h, v += 20, 80, "Счет", M4Code, Normal, 20, AccCode, False, AccSClass);
+EditFieldTL(h2, v, 200, "Наименование", M4Str, ViewOnly, 200, AccName, False, 0);
+EditFieldTL(h, v += 20, 150, "Отделы(PODR)", M4Str, Normal, 200, PODR, False, ObjSClass);
+EditFieldTL(h2, v, 80, "Год", M4Long, Normal, 4, Year, False, 0);
+EditField(160, -30, 100, "Подписано", Normal, Sing, False, UserSClass);
+//EnterSkip(Math);
+MatrixBegin(10, 120, -50, -40, tComplWeeksType, 200);
+MatCol(1, 30, "РАСХОДЫ ГК месяц", 0, MonthNrD, true, 0);
+MatCol(1, 150, "РАСХОДЫ ГК недели", 0, WeeksNrD, true, 0);
+MatCol(1, 300, "выдача месяц", 0, MonthNrR, true, 0);
+MatCol(1, 450, "выдача неделя", 0, WeeksNrR, true, 0);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+EndWindow;
+
+
+WindowBegin("Соответствие недель", tComplWeeksLClass, CGmlist, tComplWeeksView);
+SetWRect(64, 80, 609, 298);
+SpawnClass(tComplWeeksDClass);
+Sizeable(-1, -1, 0, 0);
+UseView(tComplWeeksVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4,  "Счет", AccCode, True, AccCode);
+RlColKey(60, 60, "Наименование", AccName, True, AccName);
+RlCol(-160, -160, "Отделы", PODR, True);
+RlColKey(-80, -80, "Год", Year, True, Year);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Соответствие недель", tComplWeeksSClass, CGslist, -);
+SpawnClass(tComplWeeksDClass);
+UseView(tComplWeeksVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4,  "Счет", AccCode, True, AccCode);
+RlColKey(60, 60, "Наименование", AccName, True, AccName);
+RlCol(-160, -160, "Отделы", PODR, True);
+RlColKey(-80, -80, "Год", Year, True, Year);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+RETURN;
+end;
+
+
+
+function Boolean tComplWeeksDClass_AccAfter(Integer wn, Integer changed)
+begin
+record tComplWeeksVc ACr;
+record AccVc Acc;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, ACr);
+	//GetPrevWindowRecord(wn, AC2r);
+  Acc.AccNumber = ACr.AccCode;
+  if ReadFirstMain(Acc, 1, True) then
+    begin
+    ACr.AccName = Acc.Comment;
+    end;
+	PutWindowRecord(wn, ACr);
+	end;
+tComplWeeksDClass_AccAfter = res;
+RETURN;
+end;
+
+
+function Boolean tCostsDClass_AccAfter(Integer wn, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, ACr);
+	//GetPrevWindowRecord(wn, AC2r);
+  Acc.AccNumber = ACr.AccCode;
+  if ReadFirstMain(Acc, 1, True) then
+    begin
+    ACr.AccName = Acc.Comment;
+    end;
+	PutWindowRecord(wn, ACr);
+	end;
+tCostsDClass_AccAfter = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val1After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val1;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal1 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val1After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val2After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val2;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal2 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val2After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val3After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val3;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal3 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val3After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val4After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val4;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal4 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val4After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val5After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val5;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal5 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val5After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val6After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val6;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal6 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val6After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val7After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val7;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal7 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val7After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val8After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val8;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal8 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val8After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val9After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val9;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal9 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val9After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val10After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val10;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal10 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val10After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val11After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val11;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal11 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val11After = res;
+RETURN;
+end;
+
+function Boolean tCostsDClass_Val12After(Integer wn, Integer rownr, Integer changed)
+begin
+record tCostsVc ACr, AC2r;
+record AccVc Acc;
+Boolean res;
+val SumAll, SVal;
+row tCostsVc ACrw;
+integer RwCnt;
+
+if (changed <> 0) then
+	begin
+  SVal = 0;
+  SumAll = 0;
+
+	GetWindowRecord(wn, ACr);
+  MatRowGet(ACr, rownr, ACrw);
+  ACrw.SumM = ACrw.Val1 + ACrw.Val2 + ACrw.Val3 + ACrw.Val4 + ACrw.Val5 + ACrw.Val6 + ACrw.Val7 + ACrw.Val8 + ACrw.Val9 + ACrw.Val10 + ACrw.Val11 + ACrw.Val12;
+  MatRowPut(ACr, rownr, ACrw);
+
+ for (RwCnt = 0; RwCnt < MatRowCnt(ACr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(ACr, RwCnt , ACrw);
+      SVal = SVal + ACrw.Val12;
+      SumAll = SumAll + ACrw.SumM;
+      end;
+
+ ACr.SumAll = SumAll;
+ ACr.SVal12 = SVal;
+
+	PutWindowRecord(wn, ACr);
+	end;
+
+tCostsDClass_Val12After = res;
+RETURN;
+end;
+
+global
+function Boolean tCostsDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	switch (fieldname)
+		begin
+		//case "Initiator": res = tCostsDClass_InitiatorAfter(wn, changed);
+		case "AccCode": res = tCostsDClass_AccAfter(wn,changed);
+		//case "Objects": res = tCostsDClass_ObjectsAfter(wn, rownr, changed);
+		case "Val1": res = tCostsDClass_Val1After(wn, rownr, changed);
+		case "Val2": res = tCostsDClass_Val2After(wn, rownr, changed);
+		case "Val3": res = tCostsDClass_Val3After(wn, rownr, changed);
+		case "Val4": res = tCostsDClass_Val4After(wn, rownr, changed);
+		case "Val5": res = tCostsDClass_Val5After(wn, rownr, changed);
+		case "Val6": res = tCostsDClass_Val6After(wn, rownr, changed);
+		case "Val7": res = tCostsDClass_Val7After(wn, rownr, changed);
+		case "Val8": res = tCostsDClass_Val8After(wn, rownr, changed);
+		case "Val9": res = tCostsDClass_Val9After(wn, rownr, changed);
+		case "Val10": res = tCostsDClass_Val10After(wn, rownr, changed);
+		case "Val11": res = tCostsDClass_Val11After(wn, rownr, changed);
+		case "Val12": res = tCostsDClass_Val12After(wn, rownr, changed);
+		end;
+	end;
+tCostsDClassAfterEditField = res;
+RETURN;
+end;
+
+global
+function Boolean tComplWeeksDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	switch (fieldname)
+		begin
+		case "AccCode": res = tComplWeeksDClass_AccAfter(wn,changed);
+		end;
+	end;
+tComplWeeksDClassAfterEditField = res;
+RETURN;
+end;

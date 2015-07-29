@@ -1,0 +1,112 @@
+event DefineWindows
+begin
+   integer h,v;
+  
+   SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("История сч./ф", HisIVLClass, CGmlist, -);
+SetWRect(64, 80, 900, 300);
+Sizeable(-1, -1, 0, 0);
+UseView(HisIVVc);
+RecordList(2, 4, -21, -39);
+RlColKey(2, 2, "№", SerNr, false, SerNr);
+RlColKey(25, 25, "№ сч.ф", OrderNr, false, OrderNr);
+RlColKey(120, 120, "код товара", ArtCode, false, ArtCode);
+RlColKey(220, 220, "код клиента", CustCode, false,CustCode);
+RlColKey(320, 320, "продавец", SalesMan, false, SalesMan);
+RlColKey(390, 390, "дата оплаты", PayDate, false, PayDate);
+RlCol(460, 460, "кол-во", Quant, true);
+RlCol(500, 500, "цена", Price, true);
+RlCol(550, 550, "сумма", Sum, true);
+RlColKey(610, 610, "валюта",CurncyCode, false,CurncyCode);
+RlColKey(655, 655, "склад",Location, false,Location);
+RlColKey(700, 700, "объекты",Objects, false,Objects);
+SearchField("Поиск");
+EndWindow;
+end;
+
+global
+updating
+procedure tOnCheckAfter (record IVVc IVr)
+begin
+Row IVVc IVrw;
+Record HisIVVc HisIVr;
+Integer rwcnt,i;
+boolean Found_1;
+
+rwcnt = MatRowCnt(IVr);
+for (i=0;i<rwcnt;i=i+1)
+begin
+MatRowGet(IVr,i,IVrw);
+if nonblank(IVrw.ArtCode) then 
+	begin
+	RecordNew(HisIVr);
+	HisIVr.OrderNr=IVr.SerNr;
+	HisIVr.ArtCode=IVrw.ArtCode;
+	HisIVr.Location=IVr.Location;
+	HisIVr.Quant=IVrw.Quant;
+	HisIVr.Price=IVrw.Price;
+	HisIVr.CurncyCode=IVr.CurncyCode;
+	HisIVr.Sum=IVrw.Sum;
+	HisIVr.CustCode=IVr.CustCode;
+	HisIVr.PayDate=IVr.PayDate;
+	HisIVr.Objects=IVr.Objects;
+	HisIVr.SalesMan=IVr.SalesMan;
+	RecordStore(HisIVr,True);
+	end;
+end;
+
+return;
+end;
+
+global
+updating function LongInt HisIVVcRecordCheck(var record HisIVVc HisIVr,record HisIVVc HisIV2r,LongInt stat,LongInt long4)
+begin
+LongInt res;
+res = 0;
+if (HisIVr.SerNr == -1) then 
+	begin
+	HisIVr.SerNr=NextSerNr("HisIVVc",CurrentDate,-1,false,"");
+	end;	
+HisIVVcRecordCheck = res;	
+RETURN;
+end;
+
+
+global
+function LongInt HisIVVcRecordDefaults(var record HisIVVc IVr,record HisIVVc IV2r,LongInt long3,LongInt long4)
+begin
+LongInt res;
+
+IVr.SerNr = -1;
+
+if SingleUserMode then
+	begin
+	IVr.SerNr=NextSerNr("HisIVVc",CurrentDate,-1,false,"");
+	end;
+  
+HisIVVcRecordDefaults = res;
+RETURN;
+end;
+
+
+global
+updating
+procedure tDelRecIV (record IVVc IVr)
+begin
+Boolean TrHs;
+record HisIVVc HisIVr;
+
+HisIVr.OrderNr=IVr.SerNr;
+TrHs = true;
+  while (LoopKey("OrderNr",HisIVr,1,TrHs)) 
+  begin
+    if HisIVr.OrderNr==IVr.SerNr then 
+	begin
+      RecordDelete(HisIVr);
+      StepBack(HisIVr);
+	end;
+  end;
+
+RETURN;
+end;

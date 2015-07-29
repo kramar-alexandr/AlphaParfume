@@ -1,0 +1,155 @@
+global
+updating function Boolean ExpDClassOKFlagButtonAction(Integer wn, Integer value)
+begin
+  record ExpVc Expr;
+  record ExpVc Exp2r;
+  row ExpVc Exprw;
+  record UserVc Usr;
+  record TTVc TTr;
+  row TTVc TTrw;
+  record TTVc TTrold;
+  Integer i, j;
+  Boolean res;
+
+  GetWindowRecord(wn,Expr);
+  GetPrevWindowRecord(wn,Exp2r);
+
+  res = inner.ExpDClassOKFlagButtonAction(wn, value);
+
+  res = res and nonblank(Exp2r.OKSign) and (Expr.FormalizedFlag == 1); //Нельзя ОКеить неподписанный и неоформленный отчет!
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+
+  res = res and (Usr.AccessGroup == "UCHR");
+
+  //Записать в доставку!
+  if res then
+    begin
+    for (j = 0; j < MatRowCnt(Expr); j = j + 1)
+      begin
+      MatRowGet(Expr, j, Exprw);
+      TTr.SerNr = Exprw.DocNr;
+      if (nonblank(Exprw.DocNr) and ReadFirstMain(TTr, 1, True))  then
+        begin
+        if ((TTr.Curncy == Expr.CurncyCode) and (TTr.OKFlag <> 0)) then
+          begin
+          for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+            begin
+            MatRowGet(TTr, i, TTrw);
+            TTrw.DSum = TTrw.DSum + Exprw.Sum * (TTrw.IVQuant / TTr.Quant);
+            MatRowPut(TTr, i, TTrw);
+            end;
+          end else
+          begin
+          res = false;
+          end;
+        TTr.Summa = 0;
+        for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+          begin
+          MatRowGet(TTr, i, TTrw);
+          TTr.Summa = TTr.Summa + TTrw.DSum;
+          end;
+        if res then
+          begin
+          RecordStore(TTr, True);
+          end;
+        end;
+      end;
+    end;
+
+  ExpDClassOKFlagButtonAction = res;
+  Return;
+end;
+
+
+global
+function Boolean ExpDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+  record ExpVc Expr;
+  Boolean res;
+
+  res = inner.ExpDClassDeleteRowTest(wn, rownr);
+  if (WindowState(wn)==0 or WindowState(wn)==2) then
+    begin
+    GetPrevWindowRecord(wn,Expr);
+    res = res and Blank(Expr.OKSign); //Нельзя удалять строку из подписанного!
+  end;
+  ExpDClassDeleteRowTest = res;
+  Return;
+end;
+
+
+global
+function Boolean ExpDClassActiveEditField(Integer wn, string fieldname, Integer fn, Integer wnst, Integer rownr, Integer changed)
+begin
+  Boolean res;
+  record ExpVc Expr;
+  record UserVc Usr;
+  record UserVc CUsr;
+
+  res = inner.ExpDClassActiveEditField(wn, fieldname, fn, wnst, rownr, changed);
+
+  if (wnst==2) then
+    begin//Rs_update
+      GetPrevWindowRecord(wn,Expr);
+      if (Expr.OKFlag <> 0) and (rownr <> -1) then
+        begin
+          switch (fieldname)
+            begin
+            case "Sum": res = blank(Expr.OKSign);
+            case "DocDate": res = blank (Expr.OKSign);
+            case "TransDate": res = blank (Expr.OKSign);
+            end;
+        end;
+
+      Usr.Code = Expr.Person;
+      ReadFirstMain(Usr, 1, True);
+      CUsr.Code = CurrentUser;
+      ReadFirstMain(CUsr, 1, True);
+
+      //Нельзя редактировать чужие (кроме начальника) и подписанные
+      res = res and Blank(Expr.OKSign) and ((Expr.Person == CurrentUser) or (Usr.Supervisor == CurrentUser) or
+                                             SetInSet("FIN", CUsr.Comment) or (CUsr.AccessGroup == "UCHR"));
+
+    end;
+
+  ExpDClassActiveEditField = res;
+  Return;
+end;
+
+
+//18.07.12 INAU
+global
+updating function Boolean ExpDClassFormalizedFlagButtonAction(integer wn, integer value)
+begin
+  record ExpVc Expr, Exp2r;
+  integer updatemode, newmode, normalmode;
+  integer ws;
+  boolean res;
+
+  normalmode = 0;
+  newmode = 1;
+  updatemode = 2;
+
+  ws = WindowState(wn);
+  GetWindowRecord(wn,Expr);
+  GetPrevWindowRecord(wn,Exp2r);
+
+  res = (ws == newmode) or ((ws == normalmode) and (Expr.OKFlag <> 1)) or ((ws == updatemode) and (Exp2r.OKFlag <> 1)); //Запрещать при установленном OK
+
+  if (res) then
+    begin
+      if (ws == newmode) or ((ws == normalmode) and (Expr.FormalizedFlag <> 1)) or ((ws == updatemode) and (Exp2r.FormalizedFlag <> 1)) then
+        begin
+          res = nonblank(Expr.OKSign);
+        end
+      else
+        begin
+          res = UserCanAction("UnOKAll", false);
+        end;
+    end;
+
+  ExpDClassFormalizedFlagButtonAction = res;
+  Return;
+end;

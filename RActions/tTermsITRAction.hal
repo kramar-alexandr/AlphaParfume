@@ -1,0 +1,387 @@
+external inner procedure ExtractObj(string, var Integer, var string);
+external function Boolean ORVc_PasteArtCode(var record ORVc,Integer,var string,Boolean);
+external function Boolean ORDClassQuantEFAfter(Integer,Integer,Integer,Integer);
+external inner procedure ORVc_PasteQuant(var record ORVc,Integer,var Boolean);
+external function boolean ISetInSet(string, string);
+external inner procedure ORVc_PastePrice(var record ORVc,Integer,var Boolean);
+
+
+//=============================================== tTermsITVcRecord...
+global
+function Longint tTermsITVcRecordDefaults(var record tTermsITVc TITr, record tTermsITVc TIT2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS", 2);
+
+if (SingleUserMode) then 
+	begin
+	TITr.SerNr = NextSerNr("tTermsITVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	TITr.SerNr = -1;
+	end;
+
+tTermsITVcRecordDefaults = res;
+RETURN;
+end;
+
+//=====================================================
+
+global
+function LongInt tTermsITVcRecordDuplicate(var record tTermsITVc TITr, record tTermsITVc TIT2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS", 2);
+if (SingleUserMode) then 
+  begin
+  TITr.SerNr = NextSerNr("tTermsITVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  TITr.SerNr = -1;
+  end;
+  
+TITr.MultFlag = 0;
+
+tTermsITVcRecordDuplicate = res; 
+RETURN;
+END;
+
+//===================================================
+
+global
+updating function LongInt tTermsITVcRecordRemoveTest(var record tTermsITVc TITr, record tTermsITVc TIT2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tTermsITVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,0011"))) then 
+  begin
+  tTermsITVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+//=====================================================
+
+global
+function LongInt tTermsITVcRecordCheck(var record tTermsITVc TITr, record tTermsITVc TIT2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+record tTermsITVc SP1r;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (TITr.SerNr < 1) then
+  begin
+  TITr.SerNr = NextSerNr("tTermsITVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (TITr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+  
+  tTermsITVcRecordCheck = res;
+RETURN;
+end;
+//=======================================================================================================================
+
+global
+function string 200 tCrStrIT()
+begin
+record tTermsITVc TITr;
+string 200 tStr;
+
+while (loopkey("ITCode", TITr, 1, true))
+	begin
+	if not(setinset(TITr.ITCode, tStr)) then
+		begin
+		if blank(tStr) then
+			begin
+			tStr = TITr.ITCode;
+			end
+		else
+			begin
+			tStr = tStr & "," & TITr.ITCode;
+			end;
+		end;
+	end;
+	
+tCrStrIT = tStr;
+return;
+end;
+
+
+// подсчёт количества товара данной группы Str
+function integer QntITInOR(record ORVc ORr, string Str)
+begin
+record INVc INr;
+row ORVc ORrw;
+integer i, ii;
+
+
+ii = 0;
+for (i = 0; i < matrowcnt(ORr); i = i + 1)
+	begin
+	matrowget(ORr, i, ORrw);
+	INr.Code = ORrw.ArtCode;
+	ReadFirstMain(INr, 1, True);
+	if (INr.Group == Str) then
+		begin
+		ii = ii + ORrw.Quant;
+		end;
+	end;	
+QntITInOR = ii;
+return;
+end;
+
+// подсчёт количества товара данной группы Str и данного классификатора
+function integer QntITClInOR(record ORVc ORr, string Str, string klass)
+begin
+record INVc INr;
+row ORVc ORrw;
+integer i, ii;
+
+
+ii = 0;
+for (i = 0; i < matrowcnt(ORr); i = i + 1)
+	begin
+	matrowget(ORr, i, ORrw);
+	INr.Code = ORrw.ArtCode;
+	ReadFirstMain(INr, 1, True);
+	if (INr.Group == Str) and ISetInSet(klass, INr.DispGroups) then
+		begin
+		ii = ii + ORrw.Quant;
+		end;
+	end;	
+QntITClInOR = ii;
+return;
+end;
+
+// поиск комбинации кода товара и количества
+// function integer tFindCombTIT(string 20 Str, integer ii)
+// begin
+// record tTermsITVc TITr;
+
+// TITr.ITCode = Str;
+// TrHs = true;
+// while (loopkey("ITCode", TITr, 1, TrHs))
+	// begin
+	// TrHs = (TITr.ITCode == Str);
+	// if TrHs and (ii >= TITr.ITQnt) then
+		// begin
+		// tFindCombTIT = true;
+		// end;
+	// end;
+// return;
+// end;
+//===============================================
+//Очищаем матрицу счета клиенту от рекламы
+procedure tORClearMatrixPR(var record ORVc ORr)
+begin
+integer RowCnt;
+row ORVc ORrw;
+record INVc INr;
+
+for(RowCnt = 0; (RowCnt < MatRowCnt(ORr)); RowCnt = RowCnt + 1)
+	begin
+	MatRowGet(ORr, RowCnt, ORrw); //ищем рекламу в счете
+	if ORrw.INRek == 1 then
+		begin
+	// INr.Code = ORrw.ArtCode;
+	// ReadFirstMain(INr, 1, True);
+	// if (INr.Group == "PR") then
+		// begin
+		MatRowDelete(ORr, RowCnt); // удаление строки
+		RowCnt = RowCnt - 1;
+		// end;
+		end;
+	end;
+  Return;
+end;
+//=====================================
+function boolean tFindSameCode(record ORVc  ORr, string ArtCode, var integer  nrrow)
+begin
+row ORVc ORrw;
+integer rownr, RowCnt;
+boolean res;
+
+for(RowCnt = 0; (RowCnt < MatRowCnt(ORr)); RowCnt = RowCnt + 1)
+	begin
+	MatRowGet(ORr, RowCnt, ORrw); //ищем рекламу в счете
+	if ORrw.ArtCode == ArtCode then
+		begin
+		nrrow = RowCnt;
+		res = true;
+		RowCnt = MatRowCnt(ORr);
+		end;
+	end;
+tFindSameCode = res;
+Return;
+end;
+//=====================================
+updating procedure PutInOR(var record ORVc ORr, string ArtCode, integer Qty)
+BEGIN
+row ORVc ORrw;
+integer rownr,nrrow, tQty;
+string 255 inwarning;
+Boolean chsum;
+
+if tFindSameCode(ORr, ArtCode, nrrow) then
+	begin
+	matrowget(ORr, nrrow, ORrw);
+	tQty = Qty + ORrw.Quant;
+	SetFieldValueByName(ORr, "Quant", tQty, nrrow);
+	end
+else
+	begin
+	rownr = MatRowCnt(ORr);
+	ORrw.ArtCode = ArtCode;
+	ORrw.Quant = Qty;
+	ORrw.INRek = 1;
+	MatRowInsert(ORr, rownr, ORrw);
+	end;
+
+
+ORVc_PasteArtCode(ORr,rownr,inwarning,false);
+ORVc_PasteQuant(ORr,rownr,chsum);
+// ORrw.Price = 0;
+// MatRowPut(ORr, rownr, ORrw);
+SetFieldValueByName(ORr, "Price", 0, rownr);
+ORVc_PastePrice(ORr,rownr,chsum);
+
+RETURN;
+END;
+//=====================================
+updating
+procedure tAddTester(var record ORVc ORr)
+begin
+integer RowCnt;
+row ORVc ORrw;
+record INVc INr;
+val n;
+
+for(RowCnt = 0; (RowCnt < MatRowCnt(ORr)); RowCnt = RowCnt + 1)
+	begin
+	MatRowGet(ORr, RowCnt, ORrw); 
+	if ORrw.Quant >= 5 then
+		begin
+		INr.Code = ORrw.ArtCode;
+		ReadFirstMain(INr, 1, True);
+		if nonblank(INr.tTesterCode) then
+			begin
+			n = Round(ORrw.Quant/5, DefaultCurRoundOff);
+			PutInOR(ORr, INr.tTesterCode, n);
+			end;
+		end;
+	end;
+  Return;
+end;
+
+//===============================================
+//Реклама по сумме счета
+updating
+procedure tORSummPR(var record ORVc ORr)
+begin
+integer RowCnt;
+row ORVc ORrw;
+record INVc INr;
+record tTermsBlock TBr;
+row tTermsBlock TBrw;
+
+blockLoad(TBr);
+for(RowCnt = 0; (RowCnt < MatRowCnt(TBr)); RowCnt = RowCnt + 1)
+	begin
+	MatRowGet(TBr, RowCnt, TBrw); 
+	if (ORr.BaseSum4 >= TBrw.SummS) and (ORr.BaseSum4 <= TBrw.SummF)  then
+		begin
+		PutInOR(ORr, TBrw.RekCode, TBrw.RekQnt);
+		RowCnt = MatRowCnt(TBr);
+		end;
+	end;
+  Return;
+end;
+
+global
+updating
+procedure tXXX(var record ORVc ORr)
+begin
+record tTermsITVc TITr;
+record INVc INr;
+row ORVc ORrw;
+string 200 tStr;
+string 20 Str;
+integer i, ii, pos;
+boolean TrHs;
+record VSetSetBlock VSSb;
+integer q, RekQnt;
+
+BlockLoad(VSSb);
+if VSSb.RekStart == 1 then
+	begin
+	ii = 0;
+	tStr = tCrStrIT;
+	pos = 0;
+
+	tORClearMatrixPR(ORr);
+	tAddTester(ORr); // добавление тестеров в сч.кл.
+	ExtractObj(tStr, pos, Str);
+	while nonblank(Str) 
+		begin
+		resetloop(TITr);
+		ii = QntITInOR(ORr, Str); // подсчёт количества товара данной группы Str
+		TITr.ITCode = Str;
+		TrHs = true;
+		while (loopkey("ITCode", TITr, 1, TrHs))
+			begin
+			TrHs = (TITr.ITCode == Str);
+			if TrHs then 
+				begin
+				if nonblank(TITr.ITClass)  then
+					begin
+					q = QntITClInOR(ORr, Str, TITr.ITClass) ;
+					if (q >= TITr.ITQnt)  then
+						begin
+						if (TITr.MultFlag == 1) then
+							begin
+							RekQnt = Round(q / TITr.ITQnt * TITr.RekQnt, DefaultCurRoundOff); // tRekQnt(ORr);
+							PutInOR(ORr, TITr.RekCode, RekQnt);
+							end
+						else
+							begin
+							PutInOR(ORr, TITr.RekCode, TITr.RekQnt); 
+							end;
+						end;
+					end
+				else
+					begin
+					if (ii >= TITr.ITQnt) then
+						begin
+						PutInOR(ORr, TITr.RekCode, TITr.RekQnt); 
+						end;
+					end;	
+				end;	
+			end;
+		ExtractObj(tStr, pos, Str);
+		end;
+		
+	tORSummPR(ORr);
+	end;	
+return;
+end;

@@ -1,0 +1,504 @@
+external inner updating procedure DeleteTransaction(LongInt,Integer);
+external updating procedure CreateORHistFromTT(record TTVc); //INAU 22.07.10
+external function string 255 ReplaceSubstrFromStr(string, string, string);
+//external function boolean ICheckObjs(string, string); //INAU 08.07.11
+//external updating procedure ORHist_ClearTTNr(longint); //INAU 01.08.10
+external inner function Boolean DateLocked(Date,string); //25.06.13 INAU
+external function string 60 IGetObjByType(string, string); //18.08.14 INAU
+external function string 255 IAddToSet(string, string);
+external inner procedure NormalizeObjstr(var string);
+
+function string 255 ChangeFNObjects(var string ObjectStr, string Obj)
+begin
+record ObjVc OBjr;
+string 20 OTCode;
+Boolean TrHs, Replaced;
+
+OBjr.Code = Obj;
+
+if ReadFirstMain(OBjr, 1, True) then
+  begin
+  OTCode = OBjr.OTCode;
+  ResetLoop(OBjr);
+  OBjr.OTCode = OTCode;
+  TrHs = True;
+  while LoopKey("OTCode", OBjr, 1, TrHs)
+    begin
+    TrHs = (OBjr.OTCode == OTCode);
+    if SetInSet(OBjr.Code, ObjectStr) then
+      begin
+      ObjectStr = ReplaceSubstrFromStr(ObjectStr, OBjr.Code, Obj);
+      TrHs = False;
+      Replaced = True;
+      end;
+    end;
+  end;
+if (not Replaced) then
+  begin
+  ChangeFNObjects = ObjectStr & "," & Obj;
+  end else
+  begin
+  ChangeFNObjects = ObjectStr;
+  end;
+RETURN;
+end;
+
+function Boolean CheckObjTip(string ObjStr)
+begin
+record ObjVc Objr;
+Boolean TrHs, res;
+
+Objr.OTCode = "TIP";
+TrHs = True;
+while LoopKey("OTCode", Objr, 1, TrHs) 
+  begin
+  TrHs = (Objr.OTCode == "TIP");
+  res = TrHs and SetInSet(Objr.Code, ObjStr);
+  if res then 
+    begin
+    TrHs = False;
+    end;
+  end;
+CheckObjTip = res;
+RETURN;
+end;
+
+global
+function Val LastBaseRate(var string Curncy)
+begin
+  record BaseERVc Brr;
+  Boolean TrHs;
+  
+  TrHs = True;
+  BRr.Date = CurrentDate;  
+  while (LoopbackKey("MainKey", Brr, 1, TrHs)) begin  TrHs = false;  end;
+  if (Curncy == "UAH") then 
+    begin
+    LastBaseRate = Brr.Rate2;
+    end
+    else
+    begin
+    LastBaseRate = 1;
+    end;
+RETURN;
+end;
+
+global
+function LongInt TTVcRecordDefaults(var record TTVc TTr,record TTVc TT2r, LongInt long3, LongInt long4)
+begin
+record UserVc USr;
+record CUVc CUr;
+Longint res;
+  
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+  TTr.SerNr = -1;
+  TTr.TransDate = CurrentDate;
+  TTr.Date = CurrentDate;
+  TTr.Department = Usr.Department;
+  TTr.SalesGroup = Usr.SalesGroup;
+  TTr.Km = 0;
+  TTr.KmPlan = 0;
+  TTr.Cost1kmPlan = 0;
+  TTr.Cost1km = 0;
+  TTr.DeliveryCost = 0;
+  TTr.DeliveryCostPlan = 0;
+  TTr.Summa = 0;
+  TTr.Curncy = "UAH";
+  TTr.CurncyRate = LastBaseRate(TTr.Curncy);
+  TTr.Mol = 1;
+  if (SingleUserMode) then 
+    begin
+    TTr.SerNr = NextSerNr("TTVc", TTr.TransDate, -1, false, "");
+    end;
+  //TTr.ObjStr = Left(Usr.Department,2);
+
+// 03.07.14 TGOR
+  TTr.LogNewUser = CurrentUser;
+  TTr.LogNewDate = CurrentDate;
+  TTr.LogNewTime = CurrentTime;
+  TTr.LogSaveUser = blankval;
+  TTr.LogSaveDate = "";
+  TTr.LogSaveTime = "";
+  TTr.LogOKUser = blankval;
+  TTr.LogOKDate = "";
+  TTr.LogOKTime = "";
+
+  TTVcRecordDefaults = res;  
+RETURN;
+END;
+
+
+//===============================================
+
+global
+procedure TTVc_LogAction(var record TTVc TTr, string ActionName)
+begin
+  if blank(GetFieldValueByName(TTr, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(TTr, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(TTr, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(TTr, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+//================================================
+
+
+global
+updating function longint TTVcRecordCheck(var record TTVc TTr,record TTVc TTrold, LongInt stat, LongInt long4)
+begin
+Longint res;
+record IVTTVc IVTTr;
+row TTVc TTrw;
+record ObjVc Objr, CUObjr;
+record TRVc TRr;
+row TrVc trrw;
+record AccVc Acr;
+Integer i, rwcnt,  bool;
+string 20 TmpObj;
+val sum1, sum2;
+record VSetTTBlock TTb;
+record StockMovVc SMr, SM2r;
+string 25 AccCredit, AccDebet, ShipObjType;
+record IVehicleVc IVehicler;
+record IVVc IVr, IV2r;
+date TransDate;
+string 250 ObjectStr;
+string 200 tAddObjDebet, tAddObjCredit;
+
+res = 0;
+bool = 0;
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(TTb);
+
+IVehicler.Code = TTr.TransCode;
+ReadFirstMain(IVehicler, 1, true);
+if IVehicler.ObjType == TTb.ShipObjType then
+  begin
+  ShipObjType = TTb.ShipObjType;
+  AccDebet = TTb.AccDebet;
+  AccCredit = TTb.AccCredit;
+  TransDate = TTr.TransDate;
+  end;
+if IVehicler.ObjType == TTb.tShipObjType then
+  begin
+  ShipObjType = TTb.tShipObjType;
+  AccDebet = TTb.tAccDebet;
+  AccCredit = TTb.tAccCredit;
+  tAddObjDebet = TTb.tAddObjDebet;
+  tAddObjCredit = TTb.tAddObjCredit;
+  TransDate = AddDay(TTr.TransDate, -(GetDay(TTr.TransDate)-1));
+  TransDate = AddMonth(TransDate, 1);
+  bool = 1;
+  end;
+if IVehicler.ObjType == TTb.ttShipObjType then
+  begin
+  ShipObjType = TTb.ttShipObjType;
+  AccDebet = TTb.ttAccDebet;
+  AccCredit = TTb.ttAccCredit;
+  TransDate = AddDay(TTr.TransDate, -(GetDay(TTr.TransDate)-1));
+  TransDate = AddMonth(TransDate, 1);
+  bool = 1;
+  end;
+if (TTr.SerNr <= 0) then
+  begin
+  TTr.SerNr = NextSerNr("TTVc", TTr.Date, -1, false, "");
+  end;
+
+if blank(TTr.TransCode) then
+  begin
+  res = -1;
+  end;
+
+
+if (res == 0) and ((TTr.OKFlag <> 0) or (TTr.FormalizedFlag<>0)) then
+  begin
+    if blank(TTr.TransTime) then //Не позволяем незаполненную дату отправки (факт)
+      begin
+        RecordCheckError(20549, "", -1, "TransTime");
+        res = -1;
+      end;
+    if blank(TTr.TransDate) then //Не позволяем незаполненное время отправки (факт)
+      begin
+        RecordCheckError(20549, "", -1, "TransDate");
+        res = -1;
+      end;
+  end;
+
+TTr.ActEndDate = "";
+TTr.ActEndTime = "";
+for (i=0; (i<MatRowCnt(TTr)) and (res==0); i=i+1) //08.07.11 INAU
+  begin
+    MatRowGet(TTr, i, TTrw);
+    if (TTr.FormalizedFlag <> 0) or (TTr.OKFlag <> 0) then
+      begin
+        if blank(TTrw.ActTime) then //Не позволяем незаполненное время
+          begin
+            RecordCheckError(20549, "", i, "ActTime");
+            res = -1;
+          end;
+        if blank(TTrw.ActDate) then //Не позволяем незаполненное время
+          begin
+            RecordCheckError(20549, "", i, "ActDate");
+            res = -1;
+          end;
+      end;
+    if (TTrw.ActDate > TTr.ActEndDate) or ((TTrw.ActDate == TTr.ActEndDate) and (TTrw.ActTime > TTr.ActEndTime)) then //Регистрируем дату/время последней доставки
+      begin
+        TTr.ActEndDate = TTrw.ActDate;
+        TTr.ActEndTime = TTrw.ActTime;
+      end;
+  end;
+
+
+if (res == 0) and (TTr.FormalizedFlag == 1) and ((stat == 1) or ((stat == 2) and (TTrold.FormalizedFlag == 0))) then //Установлен флаг "Оформлено"
+  begin
+    TTr.LogFormalizedDate = CurrentDate;
+    TTr.LogFormalizedTime = CurrentTime;
+    TTr.LogFormalizedUser = CurrentUser;
+  end;
+
+
+if (res == 0) and (TTr.OKFlag <> 0) ((stat == 1) or ((stat == 2) and (TTrold.OKFlag == 0))) then
+  begin
+  Objr.Code = TTr.TransCode;
+  ReadFirstMain(Objr, 1, True); 
+
+  if (TTr.FormalizedFlag == 0) then
+    begin
+      MessageBox(0, "Документ не оформлен");
+      res = -1;
+    end;
+
+  if (res == 0) and (Objr.OTCode == ShipObjType) and DateLocked(TransDate, "TRVc") then
+    begin
+      MessageBox(1046, "");
+      res = -1;
+    end;
+
+  if (res == 0) then
+    begin
+    if (Objr.OTCode == ShipObjType) and (TTb.MakeTrans <> 0) then
+      begin
+      RecordNew(TRr);
+      TRr.RegDate = CurrentDate;
+      TRr.TransDate = TransDate;
+      Trr.Comment = TTr.SerNr & " " & "доставка";
+      TRr.Number = TTr.SerNr;
+      TRr.IntYc = 888;
+      //TRr.IntYc = 206;
+      TRr.RegTime = CurrentTime;
+      TRr.LastChangeDate = CurrentDate;
+      //TRr.Number = NextSerNr("TRVc", TRr.TransDate, -1, False, "");
+      for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+        begin
+        MatRowGet(TTr, i, TTrw);
+        CUObjr.Code = TTrw.CUCode;
+        ReadFirstMain(CUObjr, 1, True);
+        trrw.VATCode = "";
+        trrw.SerNr = TTrw.IVCode;
+        trrw.CompCode = "";
+        trrw.Curncy = TTr.Curncy;
+        trrw.BaseRate1 = 1;
+        trrw.BaseRate2 = TTr.CurncyRate;
+        trrw.AccNumber = AccDebet;
+        Acr.AccNumber = trrw.AccNumber;
+        ReadFirstMain(Acr, 1, True);
+        trrw.Comment = Acr.Comment & " " & TTrw.IVCode;
+        ObjectStr = ChangeFNObjects(TTrw.ObjStr, IVehicler.DrCode); 
+        if bool == 1 then 
+          begin
+          trrw.Objects = ObjectStr & "," & TTr.TransCode;
+          end
+        else
+          begin
+          trrw.Objects = TTrw.ObjStr & "," & TTr.TransCode;
+          end; 
+
+        if (not CheckObjTip(trrw.Objects)) then
+          begin
+          if nonblank(CUObjr.AutoObjects) then 
+            begin
+            trrw.Objects = trrw.Objects & "," & CUObjr.AutoObjects;
+            end;
+          end;
+
+        if nonblank(TTb.AddObjDebet) then
+          begin
+          trrw.Objects = trrw.Objects & "," & TTb.AddObjDebet;
+          end;
+        if nonblank(tAddObjDebet) then
+          begin
+          trrw.Objects = trrw.Objects & "," & tAddObjDebet;
+          end;
+        if (trrw.Curncy == "USD") then
+          begin
+          trrw.DebVal = TTrw.DSum;
+          trrw.DebVal2 = TTrw.DSum * trrw.BaseRate2;
+          end else
+          begin
+          trrw.DebVal = Round(TTrw.DSum / trrw.BaseRate2, DefaultCurRoundOff);
+          trrw.DebVal2 = TTrw.DSum;
+          end;
+
+        if blank(IGetObjByType(trrw.Objects, "PODR")) then //18.08.14 INAU
+          begin
+          trrw.Objects = IAddToSet(Left(TTr.Department, 2), trrw.Objects);
+          end;
+
+        trrw.CredVal = BlankVal;
+        trrw.CredVal2 = BlankVal;
+        TRr.DSum = TRr.DSum + trrw.DebVal;
+        TRr.DSum2 = TRr.DSum2 + trrw.DebVal2;
+        Sum1 = TRr.DSum;
+        Sum2 = TRr.DSum2;
+        NormalizeObjstr(trrw.Objects);
+        MatRowPut(TRr, i, trrw);
+        end;
+      trrw.AccNumber = AccCredit;
+      trrw.Objects = TTr.TransCode & "," & Left(TTr.Department, 2);
+      trrw.Comment = Acr.Comment & " Доставка №" & TTr.SerNr;
+      if nonblank(TTb.AddObjCredit) then
+        begin
+        trrw.Objects = trrw.Objects & "," & TTb.AddObjCredit;
+        end;
+      if nonblank(tAddObjCredit) then
+          begin
+          trrw.Objects = trrw.Objects & "," & tAddObjCredit;
+          end;
+      trrw.DebVal = BlankVal;
+      trrw.DebVal2 = BlankVal;
+      trrw.CredVal = TRr.DSum;
+      trrw.CredVal2 = TRr.DSum2;
+      NormalizeObjstr(trrw.Objects);
+      MatRowPut(TRr, i, trrw);
+      TRr.CSum = 0-Sum1;
+      TRr.CSum2 = 0-Sum2;
+      RecordStore(TRr, False);
+      end; 
+    if (Objr.OTCode <> ShipObjType) then
+      begin
+      for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+        begin
+        MatRowGet(TTr, i, TTrw);
+        TTrw.DSum = 0;
+        MatRowPut(TTr, i, TTrw);
+        end;
+      TTr.Summa = 0;
+      RecordStore(TTr, False);
+      end;
+      
+    for (i = 0; i < MatRowCnt(TTr); i = i + 1)
+      begin
+      MatRowGet(TTr, i, TTrw);
+      IVTTr.IVCode = TTrw.IVCode;
+      if ReadFirstMain(IVTTr, 1, True) then
+        begin
+        RecordRemove(IVTTr);
+        end;
+        
+      if (TTr.TransitFlag == 0) then
+        begin
+        SMr.SerNr = TTrw.SMCode;
+        if ReadFirstMain(SMr, 1, True) then
+          begin
+          RecordCopy(SM2r,SMr);
+          SMr.TTCode = TTr.SerNr;
+          RecordUpdate(SM2r,SMr,False);
+          end;
+        IVr.SerNr = TTrw.IVCode;
+        if ReadFirstMain(IVr, 1, true) then
+          begin
+          RecordCopy(IV2r, IVr);
+          IVr.TTNr = TTr.SerNr;
+          RecordUpdate(IV2r, IVr, false);
+          end;
+        end;          
+      end;
+    end;
+
+  end;
+
+
+if ((TTrold.OKFlag <> 0) and ((TTr.OKFlag <> 0) or (not(UserCanAction("UnOKAll", False))))) then
+  begin    
+  res = -1;
+  end;
+  
+  
+if (res == 0) and (TTr.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (TTrold.OKFlag == 0))) then //Установлен OK
+    begin
+    TTVc_LogAction(TTr, "OK");
+    end;
+  
+TTVcRecordCheck = res;
+RETURN;
+end;
+
+
+global
+updating function longint TTVcRecordSave(var record TTVc TTr, record TTVc TT2r, longint stat, longint long4)
+begin
+  TTVc_LogAction(TTr, "Save");
+  TTVcRecordSave = 0;
+  Return;
+end;
+
+global
+function LongInt TTVcRecordDuplicate(var record TTVc TTr, record TTVc TTrold, LongInt long3, LongInt long4)
+begin
+  LongInt res;
+
+  TTr.SerNr = -1;
+  TTr.OKFlag = 0;
+  if (SingleUserMode) then 
+    begin
+    TTr.SerNr = NextSerNr("TTVc", TTr.TransDate, -1, false, "");
+    end;
+
+  // 03.07.14 TGOR
+  TTr.LogNewUser = CurrentUser;
+  TTr.LogNewDate = CurrentDate;
+  TTr.LogNewTime = CurrentTime;
+  TTr.LogSaveUser = blankval;
+  TTr.LogSaveDate = "";
+  TTr.LogSaveTime = "";
+  TTr.LogOKUser = blankval;
+  TTr.LogOKDate = "";
+  TTr.LogOKTime = "";
+
+  TTVcRecordDuplicate = res;
+RETURN;
+END;
+
+global
+updating function LongInt TTVcRecordUpdate(var record TTVc TTr,record TTVc TTrold,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+record IVTTVc IVTTr; 
+
+if (TTrold.OKFlag <> 0) and (TTr.OKFlag == 0) then 
+  begin
+  DeleteTransaction(TTr.SerNr, 888);
+  end;
+CreateORHistFromTT(TTr); //INAU 22.07.10
+TTVcRecordUpdate = res;
+RETURN;
+END;
+
+global
+function LongInt TTVcRecordRemoveTest(var record TTVc TTr, record TTVc TTrold, LongInt long3, LongInt globalf)
+begin
+LongInt res;
+
+res = -1;
+if (TTr.OKFlag <> 0) then
+  begin
+  res = 0;
+  end;  
+TTVcRecordRemoveTest = res;
+RETURN;
+end;
+

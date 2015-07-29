@@ -1,0 +1,208 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function Boolean CloseWindowByName(string);
+external inner procedure M4PadString(string, Integer, string, Boolean, var string);
+
+//===============================================
+//Имя рабочих инструментов
+global
+function string 200 GetWorkEquipName(string Code)
+begin
+  record IWorkEquipVc WEr;
+
+  WEr.Code = Code;
+  ReadFirstMain(WEr, 1, true);
+  GetWorkEquipName = WEr.Name;
+  Return;
+end;
+
+//===============================================
+global
+function string 255 IWorkEquipClassLClassHD(record IWorkEquipClassVc WECr)
+begin
+record IWorkEquipClassVc parentWECr
+
+  parentWECr.Code = WECr.Hierarchy;
+  ReadFirstMain(parentWECr, 1, true);
+  IWorkEquipClassLClassHD = parentWECr.Description;
+  Return;
+end;
+
+//===============================================
+global 
+procedure IWorkEquipClassInfo()
+begin
+  record IWorkEquipVc WEr;
+  record RcVc RepSpec;
+  integer wn;
+
+  wn = CurWindow;
+  GetWindowRecord(wn, WEr);
+  if nonblank(WEr.Classification) then
+    begin
+      RepSpec.f1 = WEr.Classification;
+      RepSpec.Media = mtScreen;
+      RepSpec.repname = "IWorkEquipClassificationRn";
+      RunReport(RepSpec, 0);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure VPositionDClassWorkEquipInfo()
+begin
+  record VPositionVc Pr;
+  integer i, cnt;
+  integer pos;
+  integer wn, nwn;
+  string 60 WECode;
+  string 255 s;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, Pr);
+  nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+  ClearStringList(nwn);
+  
+  pos = 0;
+  cnt = IItemCountInStr(Pr.WorkEquipList);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      WECode = IGetItemFromStr(Pr.WorkEquipList, i);
+      s = WECode;
+      M4PadString(s, 20, " ", false, s);
+      s = s & GetWorkEquipName(WECode);
+      SetListString(nwn, pos += 1, s, false);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblIWorkEquipVc(string dblstr, string l, integer currepwn)
+begin
+  record IWorkEquipVc WEr;
+  integer wn;
+
+  if (nonblank(dblstr)) then
+    begin
+      WEr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(WEr, 1, true) then
+        begin
+          wn = OpenWindow("IWorkEquipDClass", 1, 0, "", "", WEr);
+        end; 
+    end;
+  Return;  
+end;
+
+//===============================================
+//event startup 
+//begin
+//  SetLangMode(LangRussian, "RUS", 2);
+//  Setting("Классы рабочих инструментов ГК", IWorkEquipClassLClass, modSTR);
+//  Register("Рабочие инструменты ГК", "Рабочие инструменты ГК", IWorkEquipLClass, modSTR);
+//  Report("Журнал рабочих инструментов ГК", IWorkEquipJrnRClass, IWorkEquipJrnRn, 0, modSTR);
+//  Return;
+//end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классы рабочих инструментов ГК", IWorkEquipClassLClass, CGmlist, -);
+  SpawnClass(IWorkEquipClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IWorkEquipClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Description, false, Description);
+  RlColKey(-200, -200, "Род.код", Hierarchy, false, Hierarchy);
+  CalculatedColumn(-100, -100, "Род.Наим.", "IWorkEquipClassHD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классы рабочих инструментов ГК", IWorkEquipClassSClass, CGslist, -);
+  SpawnClass(IWorkEquipClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IWorkEquipClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Description, false, Description);
+  RlColKey(-200, -200, "Род.код", Hierarchy, false, Hierarchy);
+  CalculatedColumn(-100, -100, "Род.Наим.", "IWorkEquipClassHD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классы рабочих инструментов ГК", IWorkEquipClassDClass, CGview, -);
+  SetWRect(20, 80, 600, 180);
+  UseView(IWorkEquipClassVc);
+  v = 16; vs = 20; h = 100; h2 = 300;
+  EditField(h, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2, v, 80, "Иерархия", Normal, Hierarchy, false, IWorkEquipClassSClass);
+  EditField(h, v += vs, -40,"Наименование", Normal, Description, false, 0);
+  EndWindow;
+
+  WindowBegin("Список рабочих инструментов ГК", IWorkEquipLClass, CGmlist, -);
+  SpawnClass(IWorkEquipDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IWorkEquipVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(104, 104, "Наименование", Name, false, Name);
+  RlColKey(-300, -300, "Классификация", Classification, false, 0);
+  RlColKey(-40, -40, "Статус", Status, false, Status);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Список рабочих инструментов ГК", IWorkEquipSClass, CGslist, -);
+  SpawnClass(IWorkEquipDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IWorkEquipVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(104, 104, "Наименование", Name, false, Name);
+  RlColKey(-300, -300, "Классификация", Classification, false, 0);
+  RlColKey(-40, -40, "Статус", Status, false, Status);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Рабочие инструменты", IWorkEquipDClass, CGview, -);
+  SetWRect(20,80,700,250);
+//  Sizeable(0,-1,0,0);
+  UseView(IWorkEquipVc);
+  vs = 20; h = 100; h2 = 350;
+  EditField(h, v=6, 120, "Код", Normal, Code, false, 0);
+  EditField(h2, v, -100, "Наименование", Normal, Name, false, 0);
+  EditField(h, v+=vs, -100, "Классификация", Normal, Classification, false, IWorkEquipClassSClass);
+  ColourPushButton(-90, v-3, -40, v+13, "IWorkEquipClassInfo", "...", 0);
+  ButtonFrame(h, v+=50, 123, 2, "Статус");
+  RadioButton(h, v, 0, 0, "Подготовка", Status);
+  RadioButton(h, v+=16, 1, 0, "В работе", Status);
+  RadioButton(h, v+=16, 2, 0, "Архив", Status);
+  EndWindow;
+
+  WindowBegin("Определите журнал рабочих инструментов", IWorkEquipJrnRClass, CGRcW, RcType);
+  SetWRect(20,80,450,280);
+  EditFieldTL(h, v=6, 100, "Код инструмента", M4Code, Normal, 20, f1, false, IWorkEquipSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификация", M4UStr, Normal, 100, f2, false, IWorkEquipClassSClass);
+  ButtonFrame(h, v+=50, 123, 3, "Статус");
+  RadioButton(h, v, 0, 0, "Подготовка", flags[0]);
+  RadioButton(h, v+=16, 1, 0, "В работе", flags[0]);
+  RadioButton(h, v+=16, 2, 0, "Архив", flags[0]);
+  ButtonFrame(h, v+=50, 123, 2, "Функция");
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+  Return;
+end;

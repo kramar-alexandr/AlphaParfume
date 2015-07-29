@@ -1,0 +1,59 @@
+global updating
+procedure DPriceChangeMn(record RcVc RepSpec)
+begin
+ record INVc Inr;
+ boolean testf,TrHs;
+ record PLVc PLr;
+ string 20 tstr;
+ string 255 rs;
+ TrHs=true;
+ tstr= "Code";
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportnoheaderJob("изменение галочки цены");
+ tstr = "PLCode";
+ PLr.PLCode = RepSpec.f2;
+  
+ while (LoopKey(tstr,PLr,1,TrHs)) begin
+  INr.Code = PLr.ArtCode;
+  if (ReadFirstMain(INr,1,true)) then begin end;
+  if (Inr.Group==RepSpec.f1) then begin
+   rs = "PLr.ArtCode =" & PLr.ArtCode & " INr.ArtCode =" & INr.Code & " PLr.PLCode =" & PLr.PLCode & " INr.Group =" & INr.Group;
+   StartFormat(15);
+   Outstring (0,0,rs,false);
+   Outstring (0,0,"до апгрейда " & PLr.DonotRecalculate,false);
+   endformat;
+   if (PLr.DonotRecalculate<>0) then begin PLr.DonotRecalculate=0; end else begin PLr.DonotRecalculate=1; end;
+   if (RecordStore(PLr,true)) then begin end; 
+   StartFormat(15);
+   Outstring (0,0,"----------------",false);
+   rs = "PLr.ArtCode =" & PLr.ArtCode & " INr.ArtCode =" & INr.Code;
+   Outstring (0,0,rs,false);
+   Outstring (0,0,"после апгрейда " & PLr.DonotRecalculate,false);
+   Outstring (0,0,"=================",false);
+   endformat;
+  end;
+ end;// while
+   StartFormat(15);
+   Outstring (0,0,"Работа завершена!",false);
+   endformat
+ endjob;
+return;
+end;
+
+/*global updating //если изменяеться БД
+procedure DNameCutter(string s1, string s2)
+begin
+ record PLVc PLr;
+ boolean TrHs,testf;
+ string 25 tstr;
+ TrHs = true;
+ PLr.ArtCode = s1;
+ PLr.PLCode = s2;
+ if (ReadFirstKey("ArtCode",PLr,1,true)) then begin end;
+ 
+ if (PLr.DonotRecalculate==1) then begin PLr.DonotRecalculate=0; end;
+ if (PLr.DonotRecalculate==0) then begin PLr.DonotRecalculate=0; end;
+ if (RecordStore(PLr,true)) then begin end; 
+ return;
+end;
+*/

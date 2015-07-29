@@ -1,0 +1,941 @@
+external function boolean ICheckObjs(string, string);
+external function boolean ISetInSet(string, string);
+//FromSH
+remote inner function Boolean RetVc_PasteArtCode(var record RetVc,Integer,var string);
+remote inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+remote inner function Boolean ReadFirstItem(string,var record INVc,Boolean,Boolean);
+remote inner function val NotOKedReturnForOR(LongInt,Integer);
+remote inner procedure GetCostModel(record INVc,record CostAccBlock,var record ITVc,var Integer,var Integer,Boolean);
+remote inner function val FindCostPriceBasePrice(record CostAccBlock,record INVc,record ITVc);
+remote inner function val FindCostPriceWA(Integer,record INVc,string);
+remote inner function val FindCostPrice_ReturnedGoods(record RetVc,row RetVc);
+remote inner function Integer WAPerLocation(record INVc,record ITVc,record CostAccBlock);
+external inner procedure ExtractObj(string, var Integer, var string);
+
+function Boolean IfUserCanSignRetOrder(record IRetOrdVc ROr)
+begin
+record VUserRetOrdVc FNr;
+record ObjVc Objr;
+string 20 ObjStr;
+Integer pos;
+Boolean res;
+
+res = False;
+if nonblank(ROr.Objects) then
+	begin
+	FNr.Code = CurrentUser;
+	if ReadFirstMain(FNr, 1, True) then
+		begin
+		pos = 0;
+		ExtractObj(FNr.Function1, pos, ObjStr);
+		while (nonblank(ObjStr) and (not res))
+			begin
+			ResetLoop(Objr);
+			Objr.OTCode = "FN2";
+			while LoopKey("OTCode", Objr, 1, (not res))
+				begin
+				if SetInSet(Objr.Code, ROr.Objects) then
+					begin
+					//res = (Objr.AutoObjects == ObjStr);
+					res = SetInSet(ObjStr, Objr.AutoObjects);
+					end;
+				end;
+			ExtractObj(FNr.Function1, pos, ObjStr);
+			end;
+		end;
+	end;
+IfUserCanSignRetOrder = res;
+RETURN;
+end;
+
+//===============================================
+function string 255 GetDefValue(string Value, string DefaultValue)
+begin
+  if (StringToLongint(Value) == -1) or blank(Value) then
+    begin
+      GetDefValue = DefaultValue;
+    end
+  else
+    begin
+      GetDefValue = Value;
+    end;
+  Return;
+end;
+
+//===============================================
+//Пересчитываем суммы
+procedure RecalcTotals(var record IRetOrdVc IRetOrdr)
+begin
+  row IRetOrdVc IRetOrdrw;
+  integer i, cnt;
+  
+  IRetOrdr.SumOrdered = 0;
+  IRetOrdr.SumReceived = 0;
+  cnt = MatRowCnt(IRetOrdr);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      MatRowGet(IRetOrdr,i,IRetOrdrw);
+      IRetOrdr.SumOrdered = IRetOrdr.SumOrdered + IRetOrdrw.QntOrdered;
+      IRetOrdr.SumReceived = IRetOrdr.SumReceived + IRetOrdrw.QntReceived;
+    end;
+  Return;
+end;
+
+//===============================================
+// Склад для текущего типа возврата и подразделения
+function string 20 GetLocationByRetCode(string RetCode, string Location)
+begin
+  boolean found;
+  record IRetOrdTypesVc IRTr;
+  row IRetOrdTypesVc IRTrw;
+  integer i, cnt;
+
+  IRTr.Code = RetCode;
+  found = ReadFirstMain(IRTr,1,true);
+  if (found) then
+    begin
+      found = false;
+      cnt = MatRowCnt(IRTr);
+      for (i=0; (i<cnt) and not found; i=i+1)
+        begin
+          MatRowGet(IRTr,i,IRTrw);
+          found = ISetInSet(Location, IRTrw.Locations);
+        end;
+    end;
+  if (found) then
+    begin
+      GetLocationByRetCode = IRTrw.RetLocation;
+    end;
+  Return;
+end;
+
+//===============================================
+// Объекты для текущего типа возврата и подразделения
+function string 60 GetObjsByRetCode(string RetCode, string FileNr, integer FileType)
+begin
+  boolean found;
+  record IRetOrdTypesVc IRTr;
+  row IRetOrdTypesVc IRTrw;
+  record SHVc SHr;
+  record StockMovVc SMr;
+  integer i, cnt;
+  string 20 Location;
+
+  switch (FileType)
+    begin
+      case 0: //Отгрузка
+        begin
+          SHr.SerNr = FileNr;
+          ReadFirstMain(SHr,1,true);
+          Location = SHr.Location;
+        end;
+      case 1: //Перемещение
+        begin
+          SMr.SerNr = FileNr;
+          ReadFirstMain(SMr,1,true);
+          Location = SMr.FrLocation;
+        end;
+    end;
+    
+  IRTr.Code = RetCode;
+  found = ReadFirstMain(IRTr,1,true);
+  if (found) then
+    begin
+      found = false;
+      cnt = MatRowCnt(IRTr);
+      for (i=0; (i<cnt) and not found; i=i+1)
+        begin
+          MatRowGet(IRTr,i,IRTrw);
+          found = ISetInSet(Location, IRTrw.Locations);
+        end;
+    end;
+  if (found) then
+    begin
+      GetObjsByRetCode = IRTrw.DefObjects;
+    end;
+  Return;
+end;
+
+//===============================================
+// Заполняем связанные массивы, повторы игнорируем
+procedure AddIDToArr(var array longint aFileNr, var array string aRetCode, longint FileNr, string RetCode)
+begin
+  integer i;
+  boolean NotFound;
+
+  NotFound = true;
+  for (i=0; (nonblank(aRetCode[i]) and NotFound); i=i+1)
+    begin
+      NotFound = (aFileNr[i]<>FileNr) or (aRetCode[i]<>RetCode);
+    end;
+
+  if NotFound then
+    begin
+      aFileNr[i] = FileNr;
+      aRetCode[i] = RetCode;
+    end;
+  Return;
+end;
+
+//===============================================
+//Заполняем возврат данными из документа отгрузки
+//updating 
+procedure UpdateRetFromSH(var record RetVc Retr, record SHVc SHr)
+begin
+  Integer i, j, primary, queuecostmodel, waperloc;
+  val remn, costprice, ordered;
+  Boolean cont;
+  row SHVc SHrw;
+  record ORVc ORr;
+  row ORVc ORrw;
+  row RetVc Retrw;
+  record INVc INr;
+  record CostAccBlock CAb;
+  record ITVc ITr;
+  record RetGoodsBlock RGb;
+  Boolean testf;
+  String 10 CurCode;
+  val fr,to1,to2,br1,br2;
+
+  BlockLoad(RGb);
+  if Blank(Retr.Location) then
+    begin
+      Retr.Location = SHr.Location;
+    end;
+  Retr.RegDate = CurrentDate;
+  Retr.TransDate = CurrentDate;
+  Retr.UpdStockFlag = 1;
+  curcode = "";
+  GetFullCurncyRate(curcode,Retr.TransDate,fr,to1,to2,br1,br2);
+  Retr.CurncyCode = curcode;
+  Retr.FrRate = fr;
+  Retr.ToRateB1 = to1;
+  Retr.ToRateB2 = to2;
+  Retr.BaseRate1 = br1;
+  Retr.BaseRate2 = br2;
+  Retr.OrdNr = SHr.OrderNr;
+  Retr.SHNr = SHr.SerNr;
+  Retr.Type = RGb.ReduceDefault;
+  Retr.Objects = SHr.Objects;
+
+  for (i=0; i<MatRowCnt(Retr); i=i+1)
+    begin
+      MatRowGet(Retr, i, Retrw);
+      cont = true;
+      for (j=0; (j<MatRowCnt(SHr)) and cont; j=j+1)
+        begin
+          MatRowGet(SHr,j,SHrw);
+          cont = (SHrw.ArtCode != Retrw.ArtCode);
+        end;
+      Retrw.OrdRow = SHrw.OrdRow;
+      Retrw.Spec = SHrw.Spec;
+      Retrw.SerialNr = SHrw.SerialNr;
+      Retrw.VARList = SHrw.VARList;
+      Retrw.Recepy = SHrw.Recepy;
+      Retrw.Objects = SHrw.Objects;
+      Retrw.BestBefore = SHrw.BestBefore;
+      Retrw.PosCode = SHrw.PosCode;
+      Retrw.Coefficient = SHrw.Coefficient;
+      Retrw.BBCostPrice = SHrw.BBCostPrice;
+     //          RetVc_PasteArtCode(Retr, rownr, s);
+
+      //На основе PasteSHInRet
+      ORr.SerNr = SHr.OrderNr;
+      ReadFirstMain(ORr,1,true);
+      ReadFirstItem(ORrw.ArtCode,INr,false,false);
+      if (INr.SerNrf==1) then
+        begin
+          remn = SHrw.Ship;
+        end
+      else
+        begin
+          remn = ORrw.Shipd2 - NotOKedReturnForOR(SHr.OrderNr,SHrw.OrdRow);
+        end;
+      if (remn>SHrw.Ship) then
+        begin
+          remn = SHrw.Ship;
+        end;
+      ordered = remn;
+      testf = false;
+      if (SHrw.Ship!=0) then
+        begin
+          testf = true;
+        end;
+      if (testf) then
+        begin
+          GetCostModel(INr,CAb,ITr,primary,queuecostmodel,false);
+          if not ((INr.ItemType==0) or (INr.ItemType==3)) then
+            begin
+              waperloc = WAPerLocation(INr,ITr,CAb);
+            end;
+          Retrw.SHRow = j-1;
+          if ((SHrw.Ordered==0) and (remn==0)) then
+            begin
+              remn = blankval;
+            end;
+//          Retrw.Quant = remn;
+//          if (SHrw.Ship==0) then
+//            begin
+//              Retrw.Quant = blankval;
+//            end;
+          testf = true;
+          if (CAb.RetCostPriceFromSH==0) then
+            begin
+              testf = false;
+            end;
+          if (testf) then
+            begin
+              //rememebr about CalculateRetrowFIFO when changing this
+              switch (primary)
+                begin
+                  case 0: Retrw.CostPrice = blankval;
+                  case 1: Retrw.CostPrice = SHrw.FIFO;
+                  case 2: Retrw.CostPrice = FindCostPriceBasePrice(CAb,INr,ITr);
+                  case 3: Retrw.CostPrice = FindCostPriceWA(waperloc,INr,Retrw.Location);
+                  case 4: Retrw.CostPrice = SHrw.FIFO;
+                  case 9:
+                    switch (queuecostmodel)
+                      begin
+                        case 20: Retrw.CostPrice = SHrw.FIFO;
+                        otherwise Retrw.CostPrice = blankval;
+                      end;
+                  otherwise Retrw.CostPrice = FindCostPrice_ReturnedGoods(Retr,Retrw)/Retrw.Quant;
+                end;
+              Retrw.UPrice = Retrw.CostPrice;
+          end
+        else
+          begin
+            switch (primary)
+              begin
+                case 0: Retrw.CostPrice = blankval;
+                case 1:
+                  Retrw.UPrice = INr.InPrice;
+                  Retrw.CostPrice = Retrw.UPrice;
+                otherwise
+                  Retrw.UPrice = SHrw.FIFO;
+                  Retrw.CostPrice = SHrw.FIFO;
+              end;
+          end;
+        end;
+      MatRowPut(Retr, i, Retrw);
+    end;
+  Return;
+end;
+
+//===============================================
+updating procedure MakeStockMov(var record IRetOrdVc IRetOrdr, longint FileNr, string RetCode)
+begin
+  integer i, j, rownr;
+  record StockMovVc SMr, origSMr;
+  row StockMovVc SMrw;
+  row IRetOrdVc IRetOrdrw;
+  val TotalQnt;
+  longint StockMovNr;
+  string 30 Location;
+
+  RecordNew(SMr);
+  TotalQnt = 0;
+  SMr.SerNr = NextSerNr("StockMovVc",CurrentDate,-1,false,"");
+  origSMr.SerNr = FileNr;
+  ReadFirstMain(origSMr,1,true);
+//  SMr.ThrouLocation = origSMr.ThrouLocation;
+//  SMr.ToLocation = origSMr.FrLocation;
+//  SMr.FrLocation = origSMr.ToLocation;
+
+  rownr = 0;
+  for (j=0; (j<MatRowCnt(IRetOrdr)); j=j+1)
+    begin
+      MatRowGet(IRetOrdr,j,IRetOrdrw);
+      StockMovNr = GetDefValue(IRetOrdrw.FileNr, IRetOrdr.FileNr);
+      if (IRetOrdrw.QntReceived>0) and (IRetOrdrw.CreatedFileNr == -1) and (StockMovNr == FileNr) and (IRetOrdRw.RetCode == RetCode) then
+        begin
+          SMrw.ArtCode = IRetOrdrw.ArtCode;
+          SMrw.Spec = IRetOrdrw.ArtName;
+          SMrw.OrdQuant = IRetOrdrw.QntReceived;
+          SMrw.SentQuant = IRetOrdrw.QntReceived;
+          TotalQnt = TotalQnt + IRetOrdrw.QntReceived;
+          MatRowPut(SMr,rownr,SMrw);
+          IRetOrdrw.CreatedFileNr = SMr.SerNr;
+          MatRowPut(IRetOrdr,j,IRetOrdrw);
+          rownr= rownr+1;
+        end;
+    end;
+  SMr.TotSentQty = TotalQnt;
+//  Location = GetLocationByRetCode(IRetOrdrw.RetCode, origSMr.ToLocation);
+//  if nonblank(Location) then
+//    begin
+//      SMr.ToLocation = Location; 
+//    end;
+  SMr.LogNewUser = CurrentUser;
+  SMr.LogNewDate = CurrentDate;
+  SMr.LogNewTime = CurrentTime;
+  SMr.LogSaveUser = CurrentUser;
+  SMr.LogSaveDate = CurrentDate;
+  SMr.LogSaveTime = CurrentTime;
+  SMr.IRetOrdNr = IRetOrdr.SerNr;
+  RecordStore(SMr, true);
+  CreateRecordLink(IRetOrdr,CurrentCompany,SMr,CurrentCompany);  
+  CreateRecordLink(SMr,CurrentCompany,IRetOrdr,CurrentCompany);  
+  Return;
+end;
+
+//===============================================
+updating procedure MakeRet(var record IRetOrdVc IRetOrdr, longint FileNr, string RetCode)
+begin
+  integer i, j, rownr;
+  record RetVc Retr;
+  row RetVc Retrw;
+  row IRetOrdVc IRetOrdrw;
+  record SHVc SHr;
+  val Qnt,TotalQnt;
+  longint SHNr;
+  string 30 Location;
+
+  RecordNew(Retr);
+  TotalQnt = 0;
+  Retr.SerNr = NextSerNr("RetVc",CurrentDate,-1,false,"");
+  Retr.CustCode = IRetOrdr.CustCode;
+  Retr.CustName = IRetOrdr.CustName;
+//      Retr.Location =
+//      Retr.Comment =
+  SHr.SerNr = FileNr;
+  ReadFirstMain(SHr,1,true);
+  rownr = 0;
+  for (j=0; (j<MatRowCnt(IRetOrdr)); j=j+1)
+    begin
+      MatRowGet(IRetOrdr,j,IRetOrdrw);
+      SHNr = GetDefValue(IRetOrdrw.FileNr, IRetOrdr.FileNr);
+      if (IRetOrdrw.QntReceived > 0) and (IRetOrdrw.CreatedFileNr == -1) and (SHNr == FileNr) and (IRetOrdrw.RetCode == RetCode) then
+        begin
+          Retrw.ArtCode = IRetOrdrw.ArtCode;
+          Retrw.Quant = IRetOrdrw.QntReceived;
+          TotalQnt = TotalQnt + IRetOrdrw.QntReceived;
+          MatRowPut(Retr,rownr,Retrw);
+          IRetOrdrw.CreatedFileNr = Retr.SerNr;
+          MatRowPut(IRetOrdr,j,IRetOrdrw);
+          rownr= rownr+1;
+        end;
+    end;
+  UpdateRetFromSH(Retr, SHr);
+  Location = GetLocationByRetCode(IRetOrdrw.RetCode, SHr.Location);
+  if nonblank (Location) then
+    begin
+      Retr.Location = Location; 
+    end;
+  Retr.SumQuant = TotalQnt;
+  Retr.LogNewUser = CurrentUser;
+  Retr.LogNewDate = CurrentDate;
+  Retr.LogNewTime = CurrentTime;
+  Retr.LogSaveUser = CurrentUser;
+  Retr.LogSaveDate = CurrentDate;
+  Retr.LogSaveTime = CurrentTime;
+  Retr.IRetOrdNr = IRetOrdr.SerNr;
+  RecordStore(Retr, true);
+  CreateRecordLink(IRetOrdr,CurrentCompany,Retr,CurrentCompany);  
+  CreateRecordLink(Retr,CurrentCompany,IRetOrdr,CurrentCompany);  
+  Return;
+end;
+
+//===============================================
+updating procedure MakeTrans(var record IRetOrdVc IRetOrdr)
+begin
+  row IRetOrdVc IRetOrdrw;
+  integer i, cnt;
+  array longint aFileNr;
+  array string 10 aRetCode;
+  
+  cnt = MatRowCnt(IRetOrdr);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      MatRowGet(IRetOrdr,i,IRetOrdrw);
+      if (IRetOrdrw.QntReceived > 0) and (IRetOrdrw.CreatedFileNr == -1) then
+        begin
+          AddIdToArr(aFileNr, aRetCode, GetDefValue(IRetOrdrw.FileNr, IRetOrdr.FileNr), IRetOrdrw.RetCode);
+        end;
+    end;
+    
+  for (i=0; nonblank(aRetCode[i]); i=i+1)
+    begin
+      switch (IRetOrdr.FileType)
+        begin
+          case 0: MakeRet(IRetOrdr, aFileNr[i], aRetCode[i]);
+          case 1: MakeStockMov(IRetOrdr, aFileNr[i], aRetCode[i]); 
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+updating function boolean RemoveTrans(var record IRetOrdVc IRetOrdr)
+begin
+  record IRetOrdVc oldIRetOrdr;
+  row IretOrdVc IRetOrdrw;
+  record SHVc SHr;
+  record StockMovVc SMr;
+  integer i, rowcnt;
+  boolean CannotRemove;
+  
+  CannotRemove = true;
+  rowcnt = MatRowCnt(IRetOrdr);
+  for (i=0; i<rowcnt; i=i+1) //Проверяем, открыты ли все созданные из регистра документы
+    begin
+      MatRowGet(IRetOrdr,i,IRetOrdrw);
+      switch (IRetOrdr.FileType)
+        begin
+          case 0: //Отгрузки
+            begin
+              SHr.SerNr = IRetOrdrw.CreatedFileNr;
+              CannotRemove = CannotRemove and ReadFirstMain(SHr,1,true) and (SHr.OKFlag==1);
+            end;
+          case 1: //Перемещения
+            begin
+              SMr.SerNr = IRetOrdrw.CreatedFileNr;
+              CannotRemove = CannotRemove and ReadFirstMain(SMr,1,true) and (SMr.OKFlag==1);
+            end;
+        end;
+    end;
+    
+  if not CannotRemove then //Удаляем, если все открыты
+    begin
+      RecordCopy(oldIRetOrdr,IRetOrdr);
+      for (i=0; i<rowcnt; i=i+1)
+        begin
+          MatRowGet(IRetOrdr,i,IRetOrdrw);
+          switch (IRetOrdr.FileType)
+            begin
+              case 0: //Отгрузки
+                begin
+                  SHr.SerNr = IRetOrdrw.CreatedFileNr;
+                  ReadFirstMain(SHr,1,true);
+                  RecordDelete(SHr);
+                end;
+              case 1: //Перемещения
+                begin
+                  SMr.SerNr = IRetOrdrw.CreatedFileNr;
+                  ReadFirstMain(SMr,1,true);
+                  RecordDelete(SMr);
+                end;
+            end;
+          IRetOrdrw.CreatedFileNr = -1;
+          MatRowPut(IRetOrdr,i,IRetOrdrw);
+        end;
+      RecordUpdate(oldIRetOrdr,IRetOrdr,false);
+    end;
+    
+  RemoveTrans = not CannotRemove;
+  Return;
+end;
+
+//===============================================
+function boolean CheckSHNr(Longint SHNr, string ArtCode, string CustCode, var string errstr)
+begin
+  record SHVc SHr;
+  row SHVc SHrw;
+  Boolean res;
+  Integer i;
+
+  SetLangMode(LangRussian,"RUS",2);
+  SHr.SerNr = SHNr;
+  res  = ReadFirstMain(SHr,1,true) and (SHr.OKFlag==1);
+  if res then
+    begin
+      res = false;
+      for (i=0; i<MatRowCnt(SHr) and not res; i=i+1)
+        begin
+          MatRowGet(SHr,i,SHrw);
+          res = ((SHrw.ArtCode == ArtCode) and (SHrw.Ship>0));
+        end;
+    end;
+
+  if not res then
+    begin
+      errstr = " " & SHNr & ". Отгрузка не содержит указанную товарную позицию.";
+    end;
+
+  CheckSHNr = res;
+  Return;
+end;
+
+//===============================================
+function boolean CheckStockMovNr(Longint StockMovNr, string ArtCode, var string errstr)
+begin
+  record StockMovVc SMr;
+  row StockMovVc SMrw;
+  boolean res;
+  integer i;
+
+  SetLangMode(LangRussian,"RUS",2);
+  SMr.SerNr = StockMovNr;
+  res = ReadFirstMain(SMr,1,true) and (SMr.OKFlag == 1);
+  if res then
+    begin
+      res = false;
+      for (i=0; i<MatRowCnt(SMr) and not res; i=i+1)
+        begin
+          MatRowGet(SMr,i,SMrw);
+          res = (SMrw.ArtCode == ArtCode);
+        end;
+    end;
+
+  if not res then
+    begin
+      errstr = " " & StockMovNr & ". Перемещение не содержит указанную товарную позицию.";
+    end;
+
+  CheckStockMovNr = res;
+  Return;
+end;
+
+//===============================================
+global
+function boolean IRetOrdVcRecordDefaults(var record IRetOrdVc IRetOrdr,record IRetOrdVc IRetOrd2r,LongInt stat,LongInt long4)
+begin
+  longint newnr;
+  record UserVc Usr;
+
+  newnr = -1;
+  IRetOrdr.RegDate = CurrentDate;
+  if (SingleUserMode) then
+    begin
+      IRetOrdr.SerNr = NextSerNr("IRetOrdVc",IRetOrdr.RegDate,newnr,false,"");
+    end;
+  IRetOrdr.LogNewUser = CurrentUser;
+  IRetOrdr.LogNewDate = CurrentDate;
+  IRetOrdr.LogNewTime = CurrentTime;
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  IRetOrdr.InitLocation = Usr.Location;
+  IRetOrdVcRecordDefaults = true;
+  Return;
+end;
+
+//===============================================
+global
+function Longint IRetOrdVcRecordDuplicate(var record IRetOrdVc IRetOrdr, record IRetOrdVc IRetOrdr2, LongInt stat, LongInt check)
+begin
+  row IRetOrdVc IRetOrdrw;
+  integer i, rowcnt;
+  date blankd;
+  time blankt;
+  
+  rowcnt = MatRowCnt(IRetOrdr);
+  for (i=0; i<rowcnt; i=i+1) //Обнуляем ссылки на документы
+    begin
+      MatRowGet(IRetOrdr,i,IRetOrdrw);
+      IRetOrdrw.CreatedFileNr = -1;
+      MatRowPut(IRetOrdr,i,IRetOrdrw);
+    end;
+  IRetOrdr.RegDate = CurrentDate;
+  IRetOrdr.SerNr = -1; //NextSerNr("IRetOrdVc",Expr.RegDate,newnr,false,"");
+  IRetOrdr.OrderedFlag = 0;  
+  IRetOrdr.ReceivedFlag = 0;  
+  IRetOrdr.OKFlag = 0;
+  IRetOrdr.OrderedBy = blankval;
+  IRetOrdr.ReceivedBy = blankval;
+  IRetOrdr.LogNewUser = CurrentUser;
+  IRetOrdr.LogNewDate = CurrentDate;
+  IRetOrdr.LogNewTime = CurrentTime;
+  IRetOrdr.LogSaveUser = blankval;
+  IRetOrdr.LogSaveDate = blankd;
+  IRetOrdr.LogSaveTime = blankt;
+  IRetOrdr.LogOKUser = blankval;
+  IRetOrdr.LogOKDate = blankd;
+  IRetOrdr.LogOKTime = blankt;
+  IRetOrdr.LogOrderedDate = blankd;
+  IRetOrdr.LogOrderedTime = blankt;
+  IRetOrdr.LogReceivedDate = blankd;
+  IRetOrdr.LogReceivedTime = blankt;
+  IRetOrdVcRecordDuplicate = 0;
+  Return;
+end;
+
+//===============================================
+global
+updating function Longint IRetOrdVcRecordSaveAfter(var record IRetOrdVc IRetOrdr, record IRetOrdVc IRetOrdr2, LongInt stat, LongInt check)
+begin
+  longint res;
+  record StockMovVc SMr;
+  
+  if (IRetOrdr.FileType == 1) then //Линк на исходный документ перемещения
+    begin
+      SMr.SerNr = IRetOrdr.FileNr;
+//      ReadFirstMain(SMr,1,true);
+      CreateRecordLink(IRetOrdr,CurrentCompany,SMr,CurrentCompany);  
+      CreateRecordLink(SMr,CurrentCompany,IRetOrdr,CurrentCompany);
+    end;
+  IRetOrdVcRecordSaveAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Longint IRetOrdVcRecordRemoveTest(var record IRetOrdVc IRetOrdr, record IRetOrdVc IRetOrdr2, LongInt stat, LongInt check)
+begin
+//  if (IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag + IRetOrdr.OKFlag) < 0 then
+  if (IRetOrdr.OrderedFlag<>1) and (IRetOrdr.ReceivedFlag<>1) and (IRetOrdr.OKFlag<>1) then
+    begin
+      IRetOrdVcRecordRemoveTest = 1;
+    end
+  else
+    begin
+      IRetOrdVcRecordRemoveTest = 0;
+    end;
+  Return;
+end;
+
+
+//===============================================
+global
+updating function Boolean IRetOrdVcRecordCheck(var record IRetOrdVc IRetOrdr,record IRetOrdVc IRetOrdr2, LongInt stat, LongInt check)
+begin
+  record LocationVc Locr;
+  row IRetOrdVc IRetOrdrw;
+  longint res, newnr;
+  Integer i, j;
+  Boolean b; //вспомогательная
+  integer errcode;
+  string 255 tstr;
+  longint FileNr;
+  string 60 Objects;
+
+  SetLangMode(LangRussian,"RUS",2);
+
+  res = 0;
+  RecalcTotals(IRetOrdr);
+  
+  if (IRetOrdr.SerNr<=0) then
+    begin
+      newnr = -1;
+      IRetOrdr.SerNr = NextSerNr("IRetOrdVc",IRetOrdr.RegDate,newnr,false,"");
+    end;
+
+  if blank (IRetOrdr.RegDate) then
+    begin
+      IRetOrdr.RegDate = CurrentDate;
+    end;
+
+  if  (IRetOrdr.FileType==0) and (Blank(IRetOrdr.CustCode) or Blank(IRetOrdr.CustName)) then //Не выбран покупатель
+    begin
+      RecordCheckError(1120,"",-1,"CustCode");
+      res = -1;
+    end;
+
+  if (res <> -1) then //Проверяем верность заполнения склада инициатора
+    begin
+      Locr.Code = IRetOrdr.InitLocation;
+      if not (ReadFirstMain(Locr, 1, true) and (Locr.RequirePos == 0)) then //Непорядок
+        begin
+          RecordCheckError(1290 /*20549*/, "", -1, "InitLocation");
+          res = -1;
+        end;
+    end;
+ 
+  if (res<>-1) and (MatRowCnt(IRetOrdr)==0) then //Не разрешать пустую матрицу
+    begin
+      RecordCheckError(20549,"",0,"ArtCode");
+      res = -1;
+    end;
+
+  for (i=0; (i<MatRowCnt(IRetOrdr)) and (res==0); i=i+1)
+    begin
+      MatRowGet(IRetOrdr,i,IRetOrdrw);
+      FileNr = GetDefValue(IRetOrdrw.FileNr, IRetOrdr.FileNr);
+
+      if blank(IRetOrdrw.ArtName) then
+        begin
+          RecordCheckError(1233,"",i,"ArtCode");
+          res = -1;
+        end;
+   
+      if (res<>-1) and (IRetOrdrw.QntOrdered < 0) then
+        begin
+          RecordCheckError(1499,"Неверное значение",i,"QntOrdered");
+          res = -1;
+        end;
+
+      if (res<>-1) and (IRetOrdrw.QntReceived < 0) then
+        begin
+          RecordCheckError(1499,"Неверное значение",i,"QntReceived");
+          res = -1;
+        end;
+
+      if (res<>-1) and (IRetOrdrw.QntOrdered < IRetOrdrw.QntReceived) then
+        begin
+          RecordCheckError(1499,"Полученное кол-во не может превышать заказанное",i,"QntReceived");
+          res = -1;
+        end;
+
+      if (res<>-1) and (IRetOrdr.OrderedFlag==1) and blank(IRetOrdrw.QntOrdered) then
+        begin
+          RecordCheckError(1499,"Не может быть незаполненным",i,"QntOrdered");
+          res = -1;
+        end;
+
+      if (res<>-1) and (IRetOrdr.ReceivedFlag==1) blank(IRetOrdrw.QntReceived) then
+        begin
+          RecordCheckError(1499,"Не может быть незаполненным",i,"QntReceived");
+          res = -1;
+        end;
+
+			if (res<>-1) and (IRetOrdrw.QntReceived > 0) then
+        begin
+          switch (IRetOrdr.FileType)
+            begin
+              case 0: //Отгрузка
+                if not CheckSHNr(FileNr, IRetOrdrw.ArtCode, IRetOrdr.CustCode, tstr) then
+                  begin
+                    RecordCheckError(2246,tstr,i,IRetOrdr.FileNr);
+                    res = -1;
+                  end;
+              case 1: //Перемещение
+                if not CheckStockMovNr(FileNr, IRetOrdrw.ArtCode, tstr) then
+                  begin
+                    RecordCheckError(2246,tstr,i,IRetOrdr.FileNr);
+                    res = -1;
+                  end;
+            end;
+        end;
+
+      if (res<>-1) and ((IRetOrdrw.QntOrdered + IRetOrdrw.QntReceived) > 0) and (blank(IRetOrdrw.RetCode) or blank(IRetOrdrw.RetName)) then
+        begin
+          RecordCheckError(1499,"Неверный код возврата",i,"RetCode");
+          res = -1;
+        end;
+        
+      if (res<>-1) and blank (GetDefValue(IRetOrdrw.Objects, IRetOrdr.Objects)) then //Объекты из настройки
+        begin
+          IRetOrdrw.Objects = GetObjsByRetCode(IRetOrdrw.RetCode, FileNr, IRetOrdr.FileType);
+        end;
+
+      if (res<>-1) then
+        begin
+          if not ICheckObjs(GetDefValue(IRetOrdrw.Objects, IRetOrdr.Objects),"PODR,FN2") then
+            begin
+              RecordCheckError(1499,"Необходимы объекты PODR и FN2",i,"Objects");
+              res = -1;
+            end;
+        end;
+        
+//      if (res<>-1) then begin MatRowPut(IRetOrdr,i,IRetOrdrw) end;
+      MatRowPut(IRetOrdr,i,IRetOrdrw);
+    end;
+
+    if (res<>-1) and (IRetOrdr.OrderedFlag==1) and ((stat==1) or ((stat==2) and (IRetOrdr2.OrderedFlag==0))) then
+      begin
+		if IfUserCanSignRetOrder(IRetOrdr) then
+			begin
+			IRetOrdr.OrderedBy = CurrentUser;
+			IRetOrdr.LogOrderedDate = CurrentDate;
+			IRetOrdr.LogOrderedTime = CurrentTime;
+			end else
+			begin
+			res = -1;
+			end;
+      end;
+
+  if (res<>-1) and (IRetOrdr.ReceivedFlag==1) and ((stat==1) or ((stat==2) and (IRetOrdr2.ReceivedFlag==0))) then
+    begin
+      if ((IRetOrdr.OrderedFlag) == 0) then
+        begin
+          RecordCheckError(1499,"Необходимо подтверждение (заказано)",-1,"ReceivedFlag");
+          res = -1;
+        end
+      else
+        begin
+          IRetOrdr.ReceivedBy = CurrentUser;
+          IRetOrdr.LogReceivedDate = CurrentDate;
+          IRetOrdr.LogReceivedTime = CurrentTime;
+        end;
+    end;
+
+  if (res<>-1) and (IRetOrdr.OKFlag==1) and ((stat==1) or ((stat==2) and (IRetOrdr2.OKFlag==0))) then //Установлен OKFalg
+    begin
+      if ((IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag) < 2) then
+        begin
+          RecordCheckError(1499,"Необходимо подтверждение (заказано/получено)",-1,"OKFlag");
+          res = -1;
+        end
+      else
+        begin
+          IRetOrdr.LogOKUser = CurrentUser;
+          IRetOrdr.LogOKDate = CurrentDate;
+          IRetOrdr.LogOKTime = CurrentTime;
+          MakeTrans(IRetOrdr);
+        end;
+    end;
+    
+    if (res<>-1) and (IRetOrdr.OKFlag==0) and ((stat==1) or ((stat==2) and (IRetOrdr2.OKFlag==1))) then //Сброшен OKFalg
+      begin
+        if not RemoveTrans(IRetOrdr) then
+          begin
+            RecordCheckError(1499,"Операция невозможна, т.к. имеются проведенные документы",-1,"OKFlag");
+            res = -1;
+          end;
+      end;
+  
+  IRetOrdVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassInsertRowTest(Integer wn, Integer rownr)
+begin
+  record IRetOrdVc IRetOrdr;
+  GetWindowRecord(wn, IRetOrdr);
+  IRetOrdDClassInsertRowTest = ((IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag + IRetOrdr.OKFlag) == 0);
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IRetOrdDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+  record IRetOrdVc IRetOrdr;
+  GetWindowRecord(wn, IRetOrdr);
+  IRetOrdDClassDeleteRowTest = ((IRetOrdr.OrderedFlag + IRetOrdr.ReceivedFlag + IRetOrdr.OKFlag) == 0);
+  Return;
+end;
+
+//===============================================
+global
+function LongInt IRetOrdVcRecordSave(var record IRetOrdVc IRetOrdr,record IRetOrdVc IRetOrd2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  IRetOrdr.LogSaveUser = CurrentUser;
+  IRetOrdr.LogSaveDate = CurrentDate;
+  IRetOrdr.LogSaveTime = CurrentTime;
+  IRetOrdVcRecordSave = res;
+  Return;
+end;
+
+//===============================================
+//Действиz с регистром при удалении созданного из него документа
+global 
+updating procedure IRetOrdVc_OnCreatedDocRemove(longint IRetOrdNr, longint CreatedFileNr)
+begin
+  record IRetOrdVc IRetOrdr, oldIRetOrdr;
+  row IRetOrdVc IRetOrdrw;
+  integer i, rowcnt;
+  
+  IRetOrdr.SerNr = IRetOrdNr;
+  if ReadFirstMain(IRetOrdr,1,true) then
+    begin
+      RecordCopy(oldIRetOrdr,IRetOrdr);
+      IRetOrdr.OKFlag = 0;
+      rowcnt = MatRowCnt(IRetOrdr);
+      for (i=0; i<rowcnt; i=i+1)
+        begin
+          MatRowGet(IRetOrdr,i,IRetOrdrw);
+          if (IRetOrdrw.CreatedFileNr==CreatedFileNr) then //Удаляем ссылку на созданный документ
+            begin
+              IRetOrdrw.CreatedFileNr = -1;
+              MatRowPut(IRetOrdr,i,IRetOrdrw);
+            end;
+        end;
+      RecordUpdate(oldIRetOrdr,IRetOrdr,false);
+    end;
+  Return;
+end;
+

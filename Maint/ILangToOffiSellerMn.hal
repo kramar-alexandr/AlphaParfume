@@ -1,0 +1,20 @@
+//CUVc. LangCode -> OffiSeller
+global
+updating procedure ILangToOffiSellerMn(record RcVc RepSpec)
+begin
+  record CUVc CUr, CU2r;
+	integer i, cnt;
+	
+	cnt = CountRecords("CUVc");
+	ResetLoop(CUr);
+	for (i=0; i<cnt; i=i+1)
+		begin
+			LoopMain(CUr, 1, true);
+			ResetLoop(CU2r);
+			CU2r.Code = CUr.Code;
+			ReadFirstMain(CU2r,1,true);
+			CU2r.OffiSeller = CU2r.LangCode;
+			RecordUpdate(CUr, CU2r, false);
+		end;
+  Return;
+end;

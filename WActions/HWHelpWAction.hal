@@ -1,0 +1,19 @@
+global
+procedure AddHelpButton(LongInt x0, LongInt y0)
+begin
+ColourPushButton(x0, y0, x0 + 50, y0 + 20, "ShowHWHelp", "Help", 2);
+RETURN;
+end;
+
+global
+procedure ShowHWHelp()
+begin
+record RcVc RepSpec;
+
+RepSpec.f1 = GetWindowClass(CurWindow);
+RepSpec.Media = mtScreen;
+RepSpec.repname = "HWHelpRn";
+RunReport(RepSpec, 1);
+RETURN;
+end;
+

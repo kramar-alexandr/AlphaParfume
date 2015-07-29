@@ -1,0 +1,409 @@
+// external procedure AddRowV(record CUVc , record VoieVc , var integer );
+// external procedure AddRowVP(record PotCustVc , record VoieVc , var integer);
+external inner procedure ExtractObj(string, var Integer, var string);
+global
+function Longint VoieVcRecordDefaults(var record VoieVc Vr, record VoieVc V2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+ SetLangMode(LangRussian, "RUS", 2);
+
+Vr.DateCr = CurrentDate;
+Vr.Auteur = CurrentUser;
+if (SingleUserMode) then 
+	begin
+	Vr.SerNr = NextSerNr("VoieVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	Vr.SerNr = -1;
+	end;
+
+VoieVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt VoieVcRecordDuplicate(var record VoieVc Vr, record VoieVc V2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+ SetLangMode(LangRussian, "RUS", 2);
+if (SingleUserMode) then 
+  begin
+  Vr.SerNr = NextSerNr("VoieVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  Vr.SerNr = -1;
+  end;
+Vr.OKFlag = 0;
+VoieVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt VoieVcRecordRemoveTest(var record VoieVc Vr, record VoieVc V2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+VoieVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not UserCanAction("UnOKAll",True)) then 
+  begin
+  VoieVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+global
+function LongInt VoieVcRecordCheck(var record VoieVc Vr, record VoieVc V2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode;
+record UserVc USr;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (Vr.SerNr < 1) then
+  begin
+  Vr.SerNr = NextSerNr("VoieVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (Vr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+  
+if  (V2r.OKFlag == 1) and (Vr.OKFlag == 1)  then
+	begin
+	res = -1;
+	end;  
+if (Vr.OKFlag <> V2r.OKFlag) and  (Vr.OKFlag == 0) and (not UserCanAction("UnOKAll",True)) then 
+	begin
+	res = -1;
+	end;  
+	
+if blank(Vr.Jour) then 
+	begin
+	RecordCheckError(1008,"",-1,"Jour");	
+	res = -1;
+	end; 	
+	
+  
+  VoieVcRecordCheck = res;
+RETURN;
+end;
+
+global
+function LongInt VoieVcRecordSave(var record VoieVc Vr, record VoieVc V2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+
+Vr.DateCon = CurrentDate;
+Vr.Conserv = CurrentUser;
+
+VoieVcRecordSave = res; 
+RETURN;
+END;
+
+global
+function Longint StorCheckVcRecordDefaults(var record StorCheckVc SCr, record StorCheckVc SC2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+ SetLangMode(LangRussian, "RUS", 2);
+
+SCr.DateCr = CurrentDate;
+SCr.Auteur = CurrentUser;
+USr.Code = SCr.Auteur;
+ReadFirstMain(USr, 1, true);
+SCr.SalesGroup = USr.SalesGroup;
+if (SingleUserMode) then 
+	begin
+	SCr.SerNr = NextSerNr("StorCheckVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	SCr.SerNr = -1;
+	end;
+
+StorCheckVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt StorCheckVcRecordDuplicate(var record StorCheckVc SCr, record StorCheckVc SC2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+ SetLangMode(LangRussian, "RUS", 2);
+if (SingleUserMode) then 
+  begin
+  SCr.SerNr = NextSerNr("StorCheckVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  SCr.SerNr = -1;
+  end;
+SCr.OKFlag = 0;
+StorCheckVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt StorCheckVcRecordRemoveTest(var record StorCheckVc SCr, record StorCheckVc SC2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+StorCheckVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if SetInSet(Usr.AccessGroup, "0011,1011K,ADMIN") then 
+  begin
+  StorCheckVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+global
+function LongInt StorCheckVcRecordCheck(var record StorCheckVc SCr, record StorCheckVc SC2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode;
+record UserVc USr;
+row StorCheckVc SCrw;
+integer RwCnt, pos, rpos, i;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (SCr.SerNr < 1) then
+  begin
+  SCr.SerNr = NextSerNr("StorCheckVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (SCr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+  
+if  (SC2r.OKFlag == 1) and (SCr.OKFlag == 1)  then
+	begin
+	res = -1;
+	end;  
+if (SCr.OKFlag <> SC2r.OKFlag) and  (SCr.OKFlag == 0) and (not UserCanAction("UnOKAll",True)) then 
+	begin
+	res = -1;
+	end;  
+
+if (SCr.OKFlag <> SC2r.OKFlag) and  (SCr.OKFlag == 1)  then 
+	begin
+	for (i = 0; i < MatRowCnt(SCr); i = i + 1)
+		begin
+		MatRowGet(SCr, i, SCrw);
+		if (nonblank(SCrw.DatePl) and blank(SCrw.DateFc)) then
+			begin
+			res = -1;
+			MessageBox(0, "Дата факт должна быть заполнена!");	
+			//RecordCheckError(1008,"",-1,"SerNr");	
+			end;  
+		end;
+    end;
+  StorCheckVcRecordCheck = res;
+RETURN;
+end;
+
+global
+function LongInt StorCheckVcRecordSave(var record StorCheckVc SCr, record StorCheckVc SC2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+
+SCr.DateCon = CurrentDate;
+SCr.Conserv = CurrentUser;
+
+StorCheckVcRecordSave = res; 
+RETURN;
+END;
+
+// процедуры для заполнения таблиц
+global
+function string 50 AddRowClass(string Classification)
+begin
+row VoieVc Vrw;
+record CClassVc CCr;
+record CUVc CUr;
+
+Resetloop(CCr);
+While LoopMain(CCr, 1, true)
+	begin
+	if (CCr.CType == "RAY") and SetInSet(CCr.Code, Classification) and nonblank(Classification) then
+		begin
+		AddRowClass = CCr.Code;
+		end;
+	end;	
+	
+RETURN;
+END;
+
+// global
+// function string 50 AddRowClassP(string Code)
+// begin
+// row VoieVc Vrw;
+// record CClassVc CCr;
+// record PotCustVc PCUr;
+
+// PCUr.Code = Code;
+// ReadFirstMain(PCUr, 1, true);
+
+// Resetloop(CCr);
+// While LoopMain(CCr, 1, true)
+	// begin
+	// if (CCr.CType == "RAY") and SetInSet(CCr.Code, PCUr.Classific) and nonblank(PCUr.Classific) then
+		// begin
+		// AddRowClassP = CCr.Code;
+		// end;
+	// end;	
+// RETURN;
+// END;
+
+
+
+global
+procedure AddRow1(string Vendeur, string ClassCode, var record TempVc Tmpr, var integer rpos)
+begin
+row TempVc Tmprw;
+string 200 key;
+record CUVc CUr;
+record UserVc USr;
+record CClassVc CCr;
+record PotCustVc PCUr;
+
+ResetLoop(CUr);
+key = "Code:"  & Vendeur;
+While LoopKey(key, CUr, 1, true)
+	begin
+	If SetInSet(ClassCode, CUr.Classification) and (CUr.SalesMan == Vendeur) and (CUr.blockedFlag == 0) then
+		begin
+		Tmprw.f2 = 1;
+		Tmprw.f3 = 1;
+		Tmprw.f4 = CUr.Code; 
+		Tmprw.f5 = CUr.Name;
+		Tmprw.f6 = CUr.DelAddr0;
+		Tmprw.f7 = AddRowClass(CUr.Classification);	
+		MatRowInsert(Tmpr, rpos, Tmprw);
+		//AddRowV(CUr, Vr, rpos);
+		rpos = rpos + 1;
+		end;
+	end;
+RETURN;
+END;
+
+global
+procedure AddRow2(string Vendeur, string ClassCode, var record TempVc Tmpr, var integer rpos)
+begin
+row TempVc Tmprw;
+record CUVc CUr;
+record UserVc USr;
+string 200 key;
+record CClassVc CCr;
+record PotCustVc PCUr;
+
+ResetLoop(PCUr);
+PCUr.SalMan = Vendeur;
+While LoopKey("SalMan", PCUr, 1, true)
+	begin
+	If SetInSet(ClassCode, PCUr.Classific) and (PCUr.SalMan == Vendeur) and (PCUr.Close == 0) then
+		begin
+		//AddRowVP(PCUr, Vr, rpos);
+		Tmprw.f2 = 2;
+		Tmprw.f3 = 2;
+		Tmprw.f4 = PCUr.Code; 
+		Tmprw.f5 = PCUr.Name;
+		Tmprw.f6 = PCUr.Adr;
+		Tmprw.f7 = AddRowClass(PCUr.Classific);	
+		MatRowInsert(Tmpr, rpos, Tmprw);
+		rpos = rpos + 1;
+		end;
+	end;
+RETURN;
+END;
+
+
+global
+procedure AddRow(string Vendeur, string Classif, var record TempVc Tmpr)
+begin
+row VoieVc Vrw;
+Boolean res;
+integer rpos, pos;
+record CUVc CUr;
+record UserVc USr;
+string 200 key, ClassCode;
+record CClassVc CCr;
+record PotCustVc PCUr;
+row TempVc Tmprw;
+
+
+pos = 0;
+ExtractObj(Classif, pos, ClassCode);
+while nonblank(ClassCode) 
+	begin
+	rpos = 0;
+	AddRow1( Vendeur, ClassCode, Tmpr, rpos);
+	AddRow2( Vendeur, ClassCode, Tmpr, rpos);	
+	ExtractObj(Classif, pos, ClassCode);
+	end;	
+//RwCnt = rpos;	
+return;
+end;
+
+
+global
+procedure FindClass(string Classification, var string Code1,var string Code2,var string Code3)
+begin
+record CClassVc CCr;
+record CUVc CUr;
+
+Resetloop(CCr);
+While LoopMain(CCr, 1, true)
+	begin
+	if (CCr.CType == "RAY") and SetInSet(CCr.Code, Classification) and nonblank(Classification) then
+		begin
+		Code1 = CCr.Code;
+		end;
+	if (CCr.CType == "TTT") and SetInSet(CCr.Code, Classification) and nonblank(Classification) then
+		begin
+		Code2 = CCr.Code;
+		end;
+//НУЖНО ЗАМЕНИТЬ НА НОВЫЙ ВИД КЛАССИФИКАТОРА "СПЕЦИАЛИЗАЦИЯ"							
+	if (CCr.CType == "SPEC") and SetInSet(CCr.Code, Classification) and nonblank(Classification) then
+		begin
+		Code3 = CCr.Code;
+		end;
+	end;	
+
+return;
+end;
+
+
+

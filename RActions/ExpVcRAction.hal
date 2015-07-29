@@ -1,0 +1,195 @@
+external inner  procedure GetFullCurncyRate(var string,Date,var val,var val,var val,var val,var val);
+external inner function Boolean AccInRange(string,string);
+external procedure ExpVc_LogAction(var record ExpVc, string); //18.03.13 INAU
+
+global
+function LongInt ExpVcRecordDefaults(var record ExpVc Expr,record ExpVc Exp2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+  string 10 curcode;
+  val fr,to1,to2,br1,br2;
+
+  res = inner.ExpVcRecordDefaults(Expr, Exp2r, stat, long4);
+
+  curcode = "UAH";
+  GetFullCurncyRate(curcode,Expr.TransDate,fr,to1,to2,br1,br2);
+  Expr.CurncyCode = curcode;
+  Expr.FrRate = fr;
+  Expr.ToRateB1 = to1;
+  Expr.ToRateB2 = to2;
+  Expr.BaseRate1 = br1;
+  Expr.BaseRate2 = br2;
+
+  //18.03.13 INAU
+  Expr.LogNewUser = CurrentUser;
+  Expr.LogNewDate = CurrentDate;
+  Expr.LogNewTime = CurrentTime;
+  Expr.LogSaveUser = blankval;
+  Expr.LogSaveDate = "";
+  Expr.LogSaveTime = "";
+  Expr.LogFormalizedUser = blankval;
+  Expr.LogFormalizedDate = "";
+  Expr.LogFormalizedTime = "";
+  Expr.LogOKUser = blankval;
+  Expr.LogOKDate = "";
+  Expr.LogOKTime = "";
+  Expr.LogAnnulUser = blankval;
+  Expr.LogAnnulDate = "";
+  Expr.LogAnnulTime = "";
+  //===
+
+  ExpVcRecordDefaults = res;
+  Return;
+end;
+
+
+global
+function LongInt ExpVcRecordDuplicate(var record ExpVc Expr,record ExpVc Exp2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.ExpVcRecordDuplicate(Expr, Exp2r, stat, long4);
+
+  Expr.FormalizedFlag = 0; //18.07.12 INAU
+
+  //18.03.13 INAU
+  Expr.LogNewUser = CurrentUser;
+  Expr.LogNewDate = CurrentDate;
+  Expr.LogNewTime = CurrentTime;
+  Expr.LogSaveUser = blankval;
+  Expr.LogSaveDate = "";
+  Expr.LogSaveTime = "";
+  Expr.LogFormalizedUser = blankval;
+  Expr.LogFormalizedDate = "";
+  Expr.LogFormalizedTime = "";
+  Expr.LogOKUser = blankval;
+  Expr.LogOKDate = "";
+  Expr.LogOKTime = "";
+  Expr.LogAnnulUser = blankval;
+  Expr.LogAnnulDate = "";
+  Expr.LogAnnulTime = "";
+  //===
+
+  ExpVcRecordDuplicate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt ExpVcRecordSave(var record ExpVc Expr, record ExpVc Exp2r, LongInt stat, LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.ExpVcRecordSave(Expr, Exp2r, stat, long4);
+  ExpVc_LogAction(Expr, "Save"); //18.03.13 INAU
+  ExpVcRecordSave = res;
+  Return;
+end;
+
+
+function boolean CheckBudgetExists(record ExpVc Expr, row ExpVc Exprw)
+begin
+  record VSetSetBlock VSr;
+  record VBudgetVc VBr;
+  row VBudgetVc VBrw;
+  Integer i;
+  boolean TrHs, TrHs2;
+  record UserVc Usr;
+
+  CheckBudgetExists = True;
+  BlockLoad(VSr);
+  if (VSr.BlockAvans <> 0) then
+    begin  
+    if (AccInRange(Exprw.AccNumber, Vsr.CheckAcc)) then
+      begin
+      CheckBudgetExists = False;
+      ResetLoop(VBr);
+      TrHs = True;
+      while(loopmain(VBr, 1, TrHs))
+        begin
+        if (GetMonth(VBr.DMonth) == GetMonth(Expr.TransDate)) then 
+          begin
+          TrHs2 = True;
+          for (i = 0; (i < MatRowCnt(VBr)) and (TrHs2); i = i + 1)
+            begin
+            MatRowGet(VBr, i, VBrw);
+            if (VBrw.Account == Exprw.AccNumber)  and SetInSet(VBrw.ObjectStr, Exprw.Objects) then
+              begin
+              TrHs2 = False;
+              TrHs = False;
+              CheckBudgetExists = True;
+              end;
+            end;
+          end;
+        end;
+      end;
+    end;
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+  if (Usr.AccessGroup == "UCHR") then
+    begin
+    CheckBudgetExists = True;
+    end;
+  Return;
+end;
+
+
+global
+updating function LongInt ExpVcRecordCheck(var record ExpVc Expr,record ExpVc Exp2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+  row ExpVc Exprw;
+  integer i;
+  integer insertmode, updatemode;
+  record TRVc TRr;
+
+  res = 0;
+  insertmode = 1;//Rs_insert
+  updatemode = 2;//Rs_update
+
+  SetLangMode(LangRussian,"RUS",2);
+
+  for (i = 0 ; (i < MatRowCnt(Expr)) and (res <> -1);i=i+1)
+    begin
+      MatRowGet(Expr,i,Exprw);
+      if (not CheckBudgetExists(Expr, Exprw)) then
+        begin
+          res = -1; 
+        end;
+    end;
+
+  if (res <> -1) then
+    begin
+      res = inner.ExpVcRecordCheck(Expr, Exp2r, stat, long4);
+    end;
+
+  //18.03.13 INAU
+  if (res == 0) and (Expr.FormalizedFlag == 1) and ((stat == 1) or ((stat == 2) and (Expr.FormalizedFlag == 0))) then //Утверждено
+    begin
+      ExpVc_LogAction(Expr, "Formalized");
+    end;
+
+  if (res == 0) and (Expr.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (Exp2r.OKFlag == 0))) then //OK
+    begin
+      ExpVc_LogAction(Expr, "OK");
+    end;
+
+  if (res == 0) and (Expr.Invalid == 1) and ((stat == 1) or ((stat == 2) and (Exp2r.Invalid == 0))) then //Запись аннулирована
+    begin
+      ExpVc_LogAction(Expr, "Annul");
+    end;
+  //===
+
+  //=== 22.05.13 TGOR
+  TRr.TransDate = Expr.TransDate;
+  TRr.Number = Expr.SerNr;
+  if not(ReadFirstKey("TransDate", TRr,2,true)) and ((Expr.OKFlag <> Exp2r.OKFlag) and (Expr.OKFlag == 1)) then
+    begin
+    res = -1;
+    MessageBox(0, "Создавать запись операции запрещено.");
+    end;
+  //===
+
+  ExpVcRecordCheck = res;
+  Return;
+end;

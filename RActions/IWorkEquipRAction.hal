@@ -1,0 +1,250 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+
+//===============================================
+//Проверка строки классов рабочих средств
+global
+function boolean IWorkEquipClassCheck(string ClassStr, var string ErrCode)
+begin
+  record IWorkEquipClassVc WECr;
+  integer i, cnt;
+  string 60 WEClass;
+  boolean res;
+  
+  res = true;
+  ErrCode = blankval;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      WEClass = IGetItemFromStr(ClassStr, i);
+      WECr.Code = WEClass;
+      res = res and ReadFirstMain(WECr, 1, true);
+    end;
+
+  if not res then
+    begin
+      ErrCode = WEClass;
+    end;
+
+  IWorkEquipClassCheck = res;
+  Return;
+end;
+
+//===============================================
+//Проверка строки множетства, содержащего коды рабочих средств
+global
+function boolean IWorkEquipListCheck(string SetStr, var string ErrCode)
+begin
+  record IWorkEquipVc WEr;
+  integer i, cnt;
+  string 60 WECode;
+  boolean res;
+  
+  res = true;
+  ErrCode = blankval;
+  cnt = IItemCountInStr(SetStr);
+  for (i=0; (i < cnt) and nonblank(SetStr) and res; i=i+1)
+    begin
+      WECode = IGetItemFromStr(SetStr, i);
+      WEr.Code = WECode;
+      res = res and ReadFirstMain(WEr, 1, true);
+    end;
+
+  if not res then
+    begin
+      ErrCode = WECode;
+    end;
+
+  IWorkEquipListCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+updating function Longint IWorkEquipClassVcRecordCheck(var record IWorkEquipClassVc WECr, record IWorkEquipClassVc WEC2r, LongInt stat, LongInt check)
+begin
+  longint res;
+  record IWorkEquipClassVc parentWECr;
+  string 20 ErrCode;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+
+  if blank(WECr.Code) then
+    begin
+      RecordCheckError(1499, "Требуется код класса", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(WECr.Description) then
+    begin
+      RecordCheckError(1499, "Требуется наименование класса", -1, "Description");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(WECr.Hierarchy) then
+    begin
+      parentWECr.Code = WECr.Hierarchy;
+      if not ReadFirstMain(parentWECr, 1, true) then
+        begin
+          RecordCheckError(1120, WECr.Hierarchy, -1, "Hierarchy");
+          res = -1;
+        end;
+    end;
+  
+  IWorkEquipClassVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+updating function Longint IWorkEquipVcRecordCheck(var record IWorkEquipVc WEr, record IWorkEquipVc WE2r, LongInt stat, LongInt check)
+begin
+  longint res;
+  string 20 ErrCode;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+
+  if blank(WEr.Code) then
+    begin
+      RecordCheckError(1499, "Требуется код рабочего средства", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(WEr.Name) then
+    begin
+      RecordCheckError(1499, "Требуется наименование класса", -1, "Name");
+      res = -1;
+    end;
+
+  if (res == 0) and not IWorkEquipClassCheck(WEr.Classification, ErrCode) then
+    begin
+      RecordCheckError(1120, ErrCode, -1, "Classification");
+      res = -1;
+    end;
+  
+  IWorkEquipVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+//Имя класса рабочих инструментов
+function string 200 GetWorkEquipClassName(string Code)
+begin
+  record IWorkEquipClassVc WECr;
+
+  WECr.Code = Code;
+  ReadFirstMain(WECr, 1, true);
+  GetWorkEquipClassName = WECr.Description;
+  Return;
+end;
+
+//===============================================
+//Список классов из классификации рабочих инструментов
+//f1 - строка классификаторов
+global
+procedure IWorkEquipClassificationRn(record RcVc RepSpec)
+begin
+  integer i, cnt;
+  string 60 ClassCode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  StartReportNoHeaderJob("Классы рабочих инструментов ГК");
+  cnt = IItemCountInStr(RepSpec.f1);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      ClassCode = IGetItemFromStr(RepSpec.f1, i);
+      StartFormat(15);
+      OutString(12, 0, ClassCode, false);
+      OutString(100, 0, GetWorkEquipClassName(ClassCode), false);
+      EndFormat;
+    end;
+  EndJob;
+  Return;
+end;
+
+//===============================================
+procedure IWorkEquipJrnClassDetails(string ClassStr)
+begin
+  integer i, cnt;
+  string 60 ClassCode;
+
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      ClassCode = IGetItemFromStr(ClassStr, i);
+      StartFormat(15);
+      OutString(300, 0, GetWorkEquipClassName(ClassCode), false);
+      EndFormat;
+    end;
+  Return;
+end;
+
+//===============================================
+//Журнал рабочих инструментов ГК
+global
+procedure IWorkEquipJrnRn(record RcVc RepSpec)
+begin
+  record IWorkEquipVc WEr;
+  boolean cont;
+  integer rw;
+  string 20 StatusStr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  StartReportJob("Журнал рабочих инструментов ГК");
+
+  rw = 2;
+  if nonblank(RepSpec.f1) then
+    begin
+      Header(rw, "Код инструмента: " & RepSpec.f1, 0);
+      rw = rw + 1;
+    end;
+  if nonblank(RepSpec.f2) then
+    begin
+      Header(rw, "Классификация: " & RepSpec.f2, 0);
+      rw = rw + 1;
+    end;
+
+  switch (RepSpec.flags[0])
+    begin
+      case 0: StatusStr = "Подготовка";
+      case 1: StatusStr = "В работе";
+      case 2: StatusStr = "Архив";
+    end;
+    
+  Header(rw, "Статус: " & StatusStr, 0);
+
+  EndHeader;
+
+  StartFormat(15);
+  OutString(12, 0, "Код", false);
+  OutString(80, 0, "Наименование", false);
+  OutString(300, 0, "Классификация", false);
+  EndFormat;
+  Black_Divider(0, 1);
+  EndFormat;
+
+  ResetLoop(WEr);
+  WEr.Code = RepSpec.f1;
+  cont = true;
+  while LoopMain(WEr, 1, cont)
+    begin
+      cont = blank(RepSpec.f1) or (WEr.Code == RepSpec.f1);
+      if cont and (blank(RepSpec.f2) or SetInSet(RepSpec.f2, WEr.Classification)) and (WEr.Status == RepSpec.flags[0]) then
+        begin
+          StartFormat(15);
+          OutString(12, "DblIWorkEquipVc", WEr.Code, false);
+          OutString(80, 0, WEr.Name, false);
+          OutString(300, 0, WEr.Classification, false);
+          EndFormat;
+          if (RepSpec.ArtMode == 1) then
+            begin
+              IWorkEquipJrnClassDetails(WEr.Classification);
+            end;
+        end;
+    end;
+
+  EndJob;
+  Return;
+end;

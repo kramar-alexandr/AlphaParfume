@@ -1,0 +1,149 @@
+global
+function Boolean LocEquipDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record LocEquipVc LEr;
+row LocEquipVc LErw;
+record ASVc ASr;
+record ttPhysStockVc Locr;
+record CUVc CUr;
+record INVc INr;
+record UserVc Usr;
+Boolean res;
+
+GetWindowRecord(wn, LEr);
+
+
+if (changed <> 0) then 
+	begin
+	if (fieldname == "InventoryNr") then  
+		begin
+		ASr.Code = LEr.InventoryNr;
+		if ReadFirstMain(ASr, 1, True) then
+			begin
+			LEr.Description = ASr.Name;
+//			LEr.AT2Code = ATUr.AT2Code;
+//			LEr.AT2Class = ATUr.AT2Class;
+			LEr.VECode = ASr.VECode;
+			LEr.VEName = ASr.VEName;
+//			LEr.ContractNr = ATUr.ContractNr;
+//			LEr.WarrantyNr = ATUr.WarrantyNr;
+			LEr.PurchVal = ASr.CostIn;
+//			LEr.SerialNr = ATUr.SerialNr;
+//			LEr.NewUsedf = ATUr.NewUsedf;
+			LEr.Objects = ASr.Objects;
+			LEr.Comment = ASr.Comment;
+			LEr.RespPerson = ASr.EmpCode;
+				Usr.Code = ASr.EmpCode;
+				ReadFirstMain(Usr,1,true);
+				LEr.NamePerson = Usr.Name;
+//			LEr.Model1 = ATUr.Model1;
+//			LEr.Model2 = ATUr.Model2;
+//			LEr.InitDeprVal1 = ATUr.InitDeprVal1;
+//			LEr.InitDeprVal2 = ATUr.InitDeprVal2;
+			LEr.StartingDate1 = ASr.PurchaseDate;
+//			LEr.StartingDate2 = ATUr.StartingDate2;
+//			LEr.ModelMin = ATUr.ModelMin;
+//			LEr.ModelMax = ATUr.ModelMax;
+			LEr.UsedFromDate = ASr.StartDate;
+			LEr.EndDate = ASr.EndDate;
+//			LEr.PurchVal2 = ATUr.PurchVal2;
+			end;
+		end;
+		if (fieldname == "LocCode") then  
+			begin
+			Locr.Code = LEr.LocCode;
+			if ReadFirstMain(Locr, 1, True) then
+				begin
+				LEr.LocName = Locr.Name;
+				end;			
+			end;
+		if (fieldname == "VECode") then  
+			begin
+			CUr.Code = LEr.VECode;
+			ReadFirstMain(CUr,1,true);
+			LEr.VEName = CUr.Name;	
+			end;	
+		if (fieldname == "RespPerson") then  
+			begin
+			Usr.Code = LEr.RespPerson;
+			ReadFirstMain(Usr,1,true);
+			LEr.NamePerson = Usr.Name;	
+			end;		
+		if (fieldname == "ExpendCode") then  
+			begin
+			MatRowGet(LEr, rownr, LErw);	
+			INr.Code = LErw.ExpendCode;
+			ReadFirstMain(INr,1,true);
+			LErw.ExpendName = INr.Name;	
+			MatRowPut(LEr, rownr, LErw);
+			end;
+		PutWindowRecord(wn, LEr);
+	end;
+LocEquipDClassAfterEditField = res;
+RETURN;
+END;
+
+
+global
+function Boolean LocEqClassGrSClassOnOpenWindow(integer wn)
+begin
+record LocEqClassGrBlock SCb;
+row LocEqClassGrBlock SCbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(SCb);
+for (RwCnt = 0; RwCnt < MatRowCnt(SCb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(SCb, RwCnt, SCbr);
+  SetListString(wn, RwCnt, SCbr.Code & ":" & "   " & SCbr.NameGr, false);
+  end;
+LocEqClassGrSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean LocEqClassGrSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+LocEqClassGrSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean LocEqClassSClassOnOpenWindow(integer wn)
+begin
+record LocEqClassBlock SCb;
+row LocEqClassBlock SCbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(SCb);
+for (RwCnt = 0; RwCnt < MatRowCnt(SCb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(SCb, RwCnt, SCbr);
+  SetListString(wn, RwCnt, SCbr.Code & ":" & "   " & SCbr.Name, false);
+  end;
+LocEqClassSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean LocEqClassSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+LocEqClassSClassOnOKWindow = false;
+RETURN;
+end;

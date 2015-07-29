@@ -1,0 +1,34 @@
+external function string 255 ReplaceSubstrFromStr(string, string, string);
+
+global
+updating procedure tChangeClassINMn (record RcVc RepSpec)
+begin
+record InVc Inr;
+record InVc Inrold;
+record DIVc Dir;
+Integer i;
+Boolean TrHs;
+Integer key;
+string 20 keyname;
+
+SetLangMode(LangRussian,"RUS",2);
+i = 0;
+Dir.Code = RepSpec.f2;
+if nonblank(RepSpec.f2) and ReadFirstMain(Dir, 1, True) then
+	begin
+	ResetLoop(Inr);
+	while LoopMain(Inr, key, True)
+		begin
+		if  (SetInSet(RepSpec.f1, INr.DispGroups) and nonblank(RepSpec.f1)) then
+				begin
+  			Inr.DispGroups = ReplaceSubstrFromStr(Inr.DispGroups, RepSpec.f1, RepSpec.f2);
+  			Inrold.Code = Inr.Code;
+        ReadFirstMain(Inrold, 1, True);
+				RecordUpdate(Inrold,Inr, false);
+				i = i + 1;
+				end;
+		end;
+	MessageBox(0, "Готово! Количество исправленных карточек товара = " & i);
+	end;
+RETURN;
+end;

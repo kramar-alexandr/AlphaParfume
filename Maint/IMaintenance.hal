@@ -1,0 +1,255 @@
+//===============================================
+//Удаляем записи IVTTVc по заданную дату
+global
+updating procedure DelFromIVTTMn(record RcVc RepSpec)
+begin
+  record IVTTVc IVTTr;
+  boolean cont;
+
+  cont = true;
+  while (cont)
+    begin
+      cont = LoopKey("TransDate", IVTTr, 1, true) and ((IVTTr.TransDate < RepSpec.d1) or blankdate(IVTTr.TransDate));
+      if (cont) then
+        begin 
+          RecordDelete(IVTTr);
+          StepBack(IVTTr);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Установить/исправить связь IVVc -> TTVc
+global
+updating procedure IIVVcToTTVcMn(record RcVc RepSpec)
+begin
+  record TTVc TTr;
+  row TTVc TTrw;
+  record IVVc IVr, IV2r;
+  date bd, ed;
+  boolean cont;
+  integer i;
+  
+  bd = RepSpec.sStartDate;
+  ed = RepSpec.sEndDate;
+  cont =  NonBlankDate(bd) and NonBlankDate(ed);
+  TTr.Date = bd;
+  while LoopKey("Date", TTr, 1, cont)
+    begin
+      cont = DateInRange(TTr.Date, bd, ed);
+      if cont and (TTr.OKFlag == 1) and (TTr.TransitFlag == 0) then
+        begin
+          for (i=0; i< MatRowCnt(TTr); i=i+1)
+            begin
+              MatRowGet(TTr, i, TTrw);
+              IVr.SerNr = TTrw.IVCode;
+              if ReadFirstMain(IVr, 1, true) then
+                begin
+                  RecordCopy(IV2r, IVr);
+                  IVr.TTNr = TTr.SerNr;
+                  RecordUpdate(IV2r, IVr, false);
+                end;
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Изменить параметры стикеров
+global
+updating procedure IStickerSetParamsMn(record RcVc RepSpec)
+begin
+  record IStickerVc Sr, newSr;
+  string 60 KeyStr;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  cont = true;
+  if nonblank(RepSpec.f1) then
+    begin
+      KeyStr = "FormCode";
+      Sr.FormCode = RepSpec.f1;
+    end;
+
+  if blank(KeyStr) and nonblank(RepSpec.f2) then
+    begin
+      KeyStr = "Group";
+      Sr.Group = RepSpec.f2;
+    end;
+
+  if blank(KeyStr) and nonblank(RepSpec.f3) then
+    begin
+      KeyStr = "ArtCode";
+    end;
+
+  if blank(KeyStr) or (blank(RepSpec.f4) and (RepSpec.flags[0] <= 0)) then
+    begin
+      MessageBox(0, "Не определены параметры");
+      cont = false;
+    end;
+
+  while LoopKey(KeyStr, Sr, 1, cont)
+    begin
+      cont =  (KeyStr == "ArtCode") or
+              ((KeyStr == "FormCode") and (Sr.FormCode == RepSpec.f1)) or
+              ((KeyStr == "Group") and (Sr.Group == RepSpec.f2));
+
+      if (cont) and (blank(RepSpec.f3) or SetInSet(RepSpec.f3, Sr.DispGroups)) then
+        begin
+          newSr.ArtCode = Sr.ArtCode;
+          ReadFirstMain(newSr, 1, true);
+          
+          if nonblank(RepSpec.f4) then
+            begin
+              newSr.FormCode = RepSpec.f4;
+            end;
+
+          if (RepSpec.flags[0] > 0) then
+            begin
+              newSr.MaxLineLen = RepSpec.flags[0];
+            end;
+          
+          RecordUpdate(Sr, newSr, false);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Устанавливаем OK, принудительный RecordStore
+global
+updating procedure ItVTicketOKStoreMn(record RcVc RepSpec)
+begin
+  record tVTicketsVc VTr;
+
+  VTr.SerNr = RepSpec.long1;
+  if ReadFirstMain(VTr, 1, true) then
+    begin
+      VTr.SolFlag = 1;
+      RecordStore(VTr, true);
+    end;
+  Return;
+end;
+
+//===============================================
+//Удаляем записи выполнения бюджета на указанную дату
+global
+updating procedure DelFromIBudgetDiffMn(record RcVc RepSpec)
+begin
+  record IBudgetDiffVc IBDr;
+  boolean cont;
+
+  IBDr.RegDate = RepSpec.d1;
+  cont = true;
+  while LoopKey("RegDate", IBDr, 1, true)
+    begin
+      cont = (IBDr.RegDate == RepSpec.d1);
+      if (cont) then
+        begin 
+          RecordDelete(IBDr);
+          StepBack(IBDr);
+        end;
+    end;
+  Return;
+end;
+
+
+//===============================================
+//Прописываем группу продажи в регистр "Касса приход"
+global
+updating procedure ISetSaleGroupInCLInMn(record RcVc RepSpec)
+begin
+  record CLInVc CLr, oldCLr;
+  record UserVc Usr;
+
+  ResetLoop(CLr);
+  while LoopMain(CLr, 1, true)
+    begin
+      if blank(CLr.SalesGroup) then
+        begin
+        Usr.Code = CLr.Person;
+        if blank(Usr.Code) then //Если не заполнен сотрудник - берем создателя
+          begin
+          Usr.Code = CLr.LogNewUser;
+          end;
+        ReadFirstMain(Usr,1,true);
+        CLr.SalesGroup = Usr.SalesGroup;
+        oldCLr.SerNr = CLr.SerNr;
+        ReadFirstMain(oldCLr, 1, true);
+        RecordUpdate(oldCLr, CLr, false);
+        end;
+    end;
+
+  MessageBox(0, "All done!");
+  Return;
+end;
+
+//===============================================
+//Прописываем группу продажи в регистр "Касса расход"
+global
+updating procedure ISetSaleGroupInCLOutMn(record RcVc RepSpec)
+begin
+  record CLOutVc CLr, oldCLr;
+  record UserVc Usr;
+
+  ResetLoop(CLr);
+  while LoopMain(CLr, 1, true)
+    begin
+      if blank(CLr.SalesGroup) then
+        begin
+        Usr.Code = CLr.Person;
+        if blank(Usr.Code) then //Если не заполнен сотрудник - берем создателя
+          begin
+          Usr.Code = CLr.LogNewUser;
+          end;
+        ReadFirstMain(Usr,1,true);
+        CLr.SalesGroup = Usr.SalesGroup;
+        oldCLr.SerNr = CLr.SerNr;
+        ReadFirstMain(oldCLr, 1, true);
+        RecordUpdate(oldCLr, CLr, false);
+        end;
+    end;
+
+  MessageBox(0, "All done!");
+  Return;
+end;
+
+//===============================================
+//Сбрасываем флаг возможности фактурирования в Счетах клиенту ранее 01.01.2014
+global
+updating procedure IUnsetOSFlagInORMn(record RcVc RepSpec)
+begin
+  record ORVc ORr, newORr;
+  boolean cont;
+
+  ResetLoop(ORr);
+  ORr.OSFlag = 1;
+  cont = true;
+  while LoopKey("OSFlag", ORr, 1, cont)
+    begin
+      cont = (ORr.OSFlag == 1);
+      if cont and ORr.OrdDate < StringToDate("01.01.2014") then
+        begin
+        newORr.SerNr = ORr.SerNr;
+        ReadFirstMain(newORr, 1, true);
+        newORr.OSFlag = 0;
+        RecordUpdate(ORr, newORr, false);
+        end;
+    end;
+
+  MessageBox(0, "All done!");
+  Return;
+end;
+
+//===============================================
+//Пустышка для иммитации активности пользователя
+global
+//updating
+procedure IDummyEn(record RcVc RepSpec)
+begin
+  LogText(10, RepSpec.f1 & " dummy activity during idle !");
+  Return;
+end;
+

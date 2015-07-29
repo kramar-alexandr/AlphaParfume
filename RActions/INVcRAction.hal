@@ -1,0 +1,45 @@
+global
+function LongInt INVcRecordDuplicate(var record INVc INr,record INVc IN2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.INVcRecordDuplicate(INr, IN2r, stat, long4);
+
+  INr.SerNrf = 0;
+  INr.MinLevel = blankval;
+  INr.MaxLevel = blankval;
+  INr.Department = "";
+  INr.InvCode = "";
+  INr.DefaultSource = "";
+  INr.RepaPricePerWeight = blankval;
+  INr.LastBasePriceChange = CurrentDate;
+  INr.HazLevCode = "";
+  INr.AlcPrc = blankval;
+  INr.Unittext2 = "";
+  INr.Conversion1 = blankval;
+  INr.UnitCoefficient = blankval;
+  INr.Conversion2 = blankval;
+  INr.DefPalletItem = blankval;
+  INr.PickArea = blankval;
+  INr.LocArea = "";
+  INr.PalletsInPickArea = blankval;
+  INr.QtyonPallet = blankval;
+  INr.PalletLayers = blankval;
+  INr.QtyonPalletLayer = blankval;
+  INr.PalletWidth = blankval;
+  INr.PalletHeight = blankval;
+  INr.PalletDepth = blankval;
+  INr.DefPosWidth = blankval;
+  INr.DefPosHeight = blankval;
+  INr.DefPosDepth = blankval;
+  INr.Width = blankval;
+  INr.Height = blankval;
+  INr.Depth = blankval;
+  INr.Volume = blankval;
+  INr.Density = blankval;
+  INr.NetWeight = blankval;
+  INr.Weight = blankval;
+
+  INVcRecordDuplicate = res; 
+  Return;
+end;

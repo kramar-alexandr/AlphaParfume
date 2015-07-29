@@ -1,0 +1,918 @@
+external function val FindCostPriceBP(Integer,record INVc,string);
+external function val FindCostPriceWA(Integer,record INVc,string);
+external procedure GetCostsFromRecords(record ItemHistVc,var val,var val,Boolean,Date);
+external procedure PrintItemHistLine(record ItemHistVc,val);
+external function roundmode CostPriceDecimals();
+external function Boolean ConsigmentStock(string,string,Date);
+external function Boolean ReadFirstItem(string,var record INVc,Boolean,Boolean);
+external procedure GetCostModel(record INVc, record CostAccBlock, var record ITVc, var Integer, var Integer, Boolean);
+external function Integer WAPerLocation(record INVc,record ITVc,record CostAccBlock);
+external function val FindCostPriceBasePrice(record CostAccBlock, record INVc, record ITVc);
+external function Integer FIFOPerLocation(record INVc,record ITVc,record CostAccBlock);
+external function val FindCostPriceLIFO(Integer,record INVc,string,string,val,val,Boolean,Boolean,Boolean,Integer,Integer);
+external function val FindCostPriceSerial(record INVc,string,string,val,val,Boolean,Integer);
+external function Boolean TestArtCode(string,string,record INVc);
+external external function string 255 NextSerialNumber(string,string,record SerNrTrackBlock);
+external function roundmode SetRoundModeD(Integer);
+external function Boolean ExpandStructItem(string,string,val,var record SHVc);
+external procedure GetStockedItemFromRecepy(record SHVc,var string,var val);
+external procedure FindAdjstockvQtySHVc(string,record SHVc,string,Integer,var val);
+external procedure CombineStructure(var record SHVc);
+external function val ItemHist_ComponentItem_CostPrice(record CostAccBlock,string,LongInt,LongInt,string,val,string);
+external function val GetStockQty(string,string,Date,Boolean);
+external function val QtyUsedBeforeDate(record ItemHistVc,Boolean,Date);
+external function val FindWAPriceBackdated(Integer,record INVc,string,val,Date,Boolean,Integer);
+
+
+//15.05.13 INAU - заменяем CurCost на DefCost если отклонение превышает Percent (%)
+procedure CheckCostVal(var val CurCost, val DefCost, val Percent)
+begin
+  val diff;
+
+  diff = (DefCost - CurCost) * 100 / DefCost;
+  if (diff < 0) then
+    begin
+      diff = -diff;
+    end;
+  if (diff > Percent) then
+    begin
+      CurCost = DefCost;
+    end;
+  Return;
+end;
+
+
+//03.04.13 INAU - StockToolsFIFO.hal
+function val FindCostPriceCP(Integer WAPerLocation,record INVc INr,string location)
+begin
+  val res;
+
+  if (INr.PriceFactor!=0) then begin
+    res = INr.InPrice / INr.PriceFactor;
+  end else begin
+    res = INr.InPrice;
+  end;
+  FindCostPriceCP = res;
+  return;
+end;
+
+
+//03.04.13 INAU - StockToolsFIFO.hal
+function val CalculateCosts(record ItemHistVc IHr,val qty,var val adjv,var val skippedqty,var val takenqty,Boolean costfrrecf,Boolean printf,Boolean todaysratef,Integer OverwriteCostModel,Integer PerLocation,record INVc INr)
+begin
+  val res;
+  val remcost,t;
+  val remcostprice,totcostprice;
+  record ItemHistVc printIHr;
+
+  res = blankval;
+  switch (OverwriteCostModel) begin
+    case 1:
+      t = FindCostPriceCP(PerLocation,INr,IHr.Location);
+      remcostprice = (IHr.RemQty-takenqty)*t;
+      totcostprice = IHr.Qty*t;
+    case 2:
+      t = FindCostPriceBP(PerLocation,INr,IHr.Location);
+      remcostprice = (IHr.RemQty-takenqty)*t;
+      totcostprice = IHr.Qty*t;
+    case 3:
+      t = FindCostPriceWA(PerLocation,INr,IHr.Location);
+//      remcostprice = (IHr.RemQty-takenqty)*t; this or below ? , but this sounds worng doesnt it ?  or maybe only for FIFO ?
+      remcostprice = IHr.RemQty*t;
+
+      totcostprice = IHr.Qty*t;
+    otherwise
+      remcostprice = IHr.RemCostPrice; //Здесь лезут последствия приходов по нулевым ценам
+      totcostprice = IHr.TotCostPrice;
+      //04.04.13 INAU
+      CheckCostVal(remcostprice, INr.InPrice * IHr.RemQty, 30);
+      CheckCostVal(totcostprice, INr.InPrice * IHr.Qty, 30);
+      //===
+  end;
+  if (costfrrecf) or (todaysratef) then begin
+    GetCostsFromRecords(IHr,remcostprice,totcostprice,todaysratef,CurrentDate);
+  end;
+  if (printf) then begin
+    RecordCopy(printIHr,IHr);
+//    printIHr.RemQty = printIHr.RemQty - takenqty;
+    if (printIHr.RemQty>(qty - takenqty)) then begin
+      printIHr.RemQty = qty - takenqty;
+    end else begin
+      printIHr.RemQty = printIHr.RemQty;
+    end;
+    if (printIHr.RemQty>qty) then begin
+      remcostprice = (remcostprice*qty)/printIHr.RemQty;
+      printIHr.RemQty = qty;
+    end else begin
+      switch (OverwriteCostModel) begin
+        case 1:
+          remcostprice = printIHr.RemQty*FindCostPriceCP(PerLocation,INr,IHr.Location);
+        case 2:
+          remcostprice = printIHr.RemQty*FindCostPriceBP(PerLocation,INr,IHr.Location);
+      end;
+    end;
+    PrintItemHistLine(printIHr,remcostprice);
+  end;
+  remcost = remcostprice - adjv*(Round(totcostprice/IHr.Qty,CostPriceDecimals));
+  if ((adjv - IHr.RemQty)<0) then begin
+    t = IHr.RemQty - adjv;
+    skippedqty = IHr.RemQty-t;
+    adjv = 0;
+  end else begin
+    adjv = adjv - IHr.RemQty;
+    skippedqty = IHr.RemQty;
+    t = 0;
+  end;
+  if (adjv==0) then begin // stop skipping...
+    if (t+takenqty>qty) then begin
+      t = qty - takenqty;
+    end;
+    if (t!=0) then begin
+      if (IHr.RemQty==t) then begin
+        res = res + remcostprice;
+      end else begin
+        if (t==IHr.RemQty-skippedqty) then begin
+          res = res + remcost;
+        end else begin
+          res = res + (round(totcostprice/IHr.Qty,CostPriceDecimals) * t);
+        end;
+      end;
+      takenqty = takenqty + t;
+    end;
+  end;
+  CalculateCosts = res;
+  return;
+end;
+
+
+//03.04.13 INAU - StockToolsFIFO.hal
+global
+function val FindCostPriceFIFO(Integer FIFOPerLocation,record INVc INr,string location,string serialnr,val qty,val adjustqty,Boolean costfrrecf,Boolean printf,Boolean todaysratef,Integer OverwriteCostModel,Integer consigstock)
+begin
+  record ItemHistVc IHr;
+  string 200 thekey;
+  Integer keys;
+  Boolean foundf,testf;
+  val res,adjv,t,takenqty,remcost,skippedqty;
+  Date blankd;
+
+  res = blankval;
+  takenqty = 0;
+  IHr.ArtCode = INr.Code;
+  IHr.Location = location;
+  if ((FIFOPerLocation==0) or (blank(location))) then begin
+    thekey = "ActiveQty";
+    keys = 1;
+  end else begin
+    thekey = "ActiveLocQty";
+    keys = 2;
+  end;
+  adjv = adjustqty;
+  ResetLoop(IHr);
+  foundf = true;
+  while (LoopKey(thekey,IHr,keys,foundf)) begin
+    if (IHr.ArtCode!=INr.Code) then begin
+      foundf = false;
+    end;
+    if (keys==2) then begin
+      if (IHr.Location!=location) then begin
+        foundf = false;
+      end;
+    end;
+    if (takenqty>=qty) then begin
+      foundf = false;
+    end;
+    if (IHr.RemQty<0) then begin
+      if ((blank(IHr.SerialNr)) and (blank(IHr.Variety))) then begin // If a normal stocked item has a record with negative RemQty, there is no need to read further
+        foundf = false;
+      end;
+    end;
+    if (foundf) then begin
+      testf = true;
+      switch (consigstock) begin
+        case 1:
+          if (ConsigmentStock(IHr.ArtCode,IHr.SerialNr,blankd)) then begin//current status
+//          if (IHr.ConsigStock!=0) then begin
+            testf = false;
+          end;
+        case 2:
+          if (ConsigmentStock(IHr.ArtCode,IHr.SerialNr,blankd)==false) then begin
+//          if (IHr.ConsigStock==0) then begin
+            testf = false;
+          end;
+      end;
+      if (printf) then begin
+        if (nonblank(location)) then begin
+          if (OverwriteCostModel!=kCostModelWA) then begin
+            if (IHr.Location!=location) then begin testf = false; end;
+          end;
+        end;
+      end;
+      if (testf) then begin
+        res = res + CalculateCosts(IHr,qty,adjv,skippedqty,takenqty,costfrrecf,printf,todaysratef,OverwriteCostModel,FIFOPerLocation,INr);
+      end;
+    end;
+  end;
+
+  //04.03.13 INAU - не допускать нулевые цены!
+  CheckCostVal(res, INr.InPrice * Qty, 30);
+
+  FindCostPriceFIFO = res;
+  return;
+end;
+
+
+//24.03.14 INAU - не изменена, но тянем, т.к. в 7.2 уже не global
+//StockToolsFIFO.hal для FindCostPrice
+function val FindLastCostPriceSerial(record INVc INr,string location,string serialnr,val qty,Boolean printf,Integer consigstock)
+begin
+  record ItemHistVc IHr;
+  string 200 thekey;
+  Integer keys;
+  Boolean foundf,testf;
+  val res,adjv,t,takenqty,remcost,skippedqty,lqty;
+
+  lqty = -qty;
+  res = blankval;
+  takenqty = 0;
+  IHr.ArtCode = INr.Code;
+  IHr.SerialNr = serialnr;
+  thekey = "ArtCodeSerialNr";
+  keys = 2;
+  adjv = 0;
+  ResetLoop(IHr);
+  foundf = true;
+  while (LoopBackKey(thekey,IHr,keys,foundf)) begin
+    if (IHr.ArtCode!=INr.Code) then begin
+      foundf = false;
+    end;
+    if (IHr.SerialNr!=serialnr) then begin
+      foundf = false;
+    end;
+    if (takenqty>=lqty) then begin
+      foundf = false;
+    end;
+    testf = foundf;
+    if (testf) then begin
+      testf = true;
+      switch (consigstock) begin
+        case 1:
+          if (IHr.ConsigStock!=0) then begin
+            testf = false;
+          end;
+        case 2:
+          if (IHr.ConsigStock==0) then begin
+            testf = false;
+          end;
+      end;
+      if (testf) then begin
+        if (IHr.Qty<lqty) then begin
+          takenqty = takenqty + IHr.Qty;
+        end else begin
+          takenqty = takenqty + lqty;
+        end;
+        res = res + (IHr.TotCostPrice*lqty)/IHr.Qty;
+      end;
+    end;
+  end;
+  FindLastCostPriceSerial = res;
+  return;
+end;
+
+
+//28.03.13 INAU - StockToolsFIFO.hal
+global
+function val FindCostPrice(string artcode,string location,string serialnr,val qty,val adjustqty,Boolean todaysratef)
+begin
+  record INVc INr;
+  record ITVc ITr;
+  Integer primary,queuecostmodel,waperloc;
+  record CostAccBlock CAb;
+  val res,v;
+
+  if (ReadFirstItem(artcode,INr,false,false)) then begin
+    BlockLoad(CAb);
+    GetCostModel(INr,CAb,ITr,primary,queuecostmodel,true);
+    if (INr.ItemType==0) or (INr.ItemType==3) then begin
+      switch (primary) begin
+        case 1: primary = 1;
+        case 2: primary = 2;
+        case 3:
+          primary = 3;
+          waperloc = 0;
+        case 9:
+          primary = 9;
+        otherwise
+          primary = 1;
+      end;
+    end else begin
+      waperloc = WAPerLocation(INr,ITr,CAb);
+    end;
+    switch (primary) begin
+      case kCostModelCostPrice: res = qty*INr.InPrice;//CostPricePerLocation(INr,ITr,CAb)
+//      case 1: res = qty*FindCostPriceCostPrice(CostPricePerLocation(INr,ITr,CAb),INr,location);//no alue per location
+      case kCostModelPctBasePrice: res = qty*FindCostPriceBasePrice(CAb,INr,ITr);
+      case kCostModelWA:
+        v = FindCostPriceWA(waperloc,INr,location);
+        if (INr.ItemType!=kItemTypeStocked) then begin
+          if (v==0) then begin v = INr.InPrice; end;
+        end;
+        res = qty*v;
+      case kCostModelQueued:
+        switch (queuecostmodel) begin
+          case kQueuedCostModelFIFO: res = FindCostPriceFIFO(FIFOPerLocation(INr,ITr,CAb),INr,location,serialnr,qty,adjustqty,false,false,todaysratef,0,0);
+          case kQueuedCostModelLIFO: res = FindCostPriceLIFO(FIFOPerLocation(INr,ITr,CAb),INr,location,serialnr,qty,adjustqty,false,false,todaysratef,0,0);
+        end;
+      case 20:
+//        res = FindCostPriceSerial(INr,location,serialnr,qty,adjustqty,false,0);
+//adjustqty must be zero for Serial Nr tracking , not sure for Batch nr
+        if (qty<0) then begin
+          res = -FindLastCostPriceSerial(INr,location,serialnr,qty,false,0);//here
+        end else begin
+          res = FindCostPriceSerial(INr,location,serialnr,qty,0,false,0);
+        end;
+    end;
+  end;
+  if (blank(res)) then begin
+    if (qty<0) then begin
+//      res = qty*INr.InPrice;
+    end;
+  end else begin
+    if (qty<0) then begin
+//      res = -res;//or here
+    end;
+  end;
+
+  //28.03.13 INAU - не допускать нулевые цены!
+  CheckCostVal(res, INr.InPrice * Qty, 30);
+
+  res = Round(res,CostPriceDecimals);
+  FindCostPrice = res;
+  RETURN;
+END;
+
+
+//28.03.13 INAU - не изменена, но тянем, т.к. находилась в одном HAL'е с измененной FindCostPrice
+global
+procedure CalculateSHRowFIFO(record CostAccBlock CostAccRec,string location,record SHVc SHp,row SHVc SHrw,Integer currow)
+BEGIN
+  val adjstockv,t;
+  row SHVc SH2rw;
+  Integer j;
+  string 10 loc2;
+  record INVc INr;
+  Boolean testf;
+  record SerNrTrackBlock SNrb;
+  string 255 serialnr;
+  val qty,sum;
+
+  BlockLoad(SNrb);
+  if (ReadFirstItem(SHrw.ArtCode,INr,true,false)) then begin end;
+  for (j=0;j<currow;j=j+1) begin
+    MatRowGet(SHp,j,SH2rw);
+    testf = true;
+    loc2 = SH2rw.Location;
+    if (blank(loc2)) then begin
+      loc2 = location;
+    end;
+//    if (TestArtCode(SH2rw.ArtCode,SHrw.ArtCode,INr)) and (location==loc2) then begin
+    if (TestArtCode(SH2rw.ArtCode,SHrw.ArtCode,INr)==false) then begin
+      testf = false;
+    end;
+    if (CostAccRec.FIFOPerLocation!=0) then begin
+      if (location!=loc2) then begin
+        testf = false;
+      end;
+    end;
+    if (testf) then begin
+      adjstockv = adjstockv + SH2rw.Ship;
+    end;
+  end;
+  if (SNrb.BulkSerialNos!=0) and (INr.SerNrf==1) then begin
+    SHrw.FIFORowVal = blankval;
+    qty = blankval;
+    serialnr = FirstInRange(SHrw.SerialNr,30);
+    while (nonblank(serialnr)) begin
+      SHrw.FIFORowVal = SHrw.FIFORowVal + FindCostPrice(SHrw.ArtCode,location,serialnr,1.00,adjstockv,false);
+      qty = qty + 1;
+      adjstockv = adjstockv + 1;
+      serialnr = NextSerialNumber(SHrw.ArtCode,serialnr,SNrb);
+      if (qty>=SHrw.Ship) then begin serialnr = ""; end;
+    end;
+  end else begin
+    SHrw.FIFORowVal = FindCostPrice(SHrw.ArtCode,location,SHrw.SerialNr,SHrw.Ship,adjstockv,false);
+  end;
+  SHrw.FIFORowVal = Round(SHrw.FIFORowVal,SetRoundModeD(5));
+  SHrw.FIFO = SHrw.FIFORowVal/SHrw.Ship;
+  SHrw.FIFO = Round(SHrw.FIFO,SetRoundModeD(5));
+//  SHrw.WAB2 = (INr.WeighedAvPriceB2/INr.WeighedAvPrice)*SHrw.FIFO;
+  SHrw.WAB2 = INr.WeighedAvPriceB2;
+  RETURN;
+END;
+
+
+//28.03.13 INAU - не изменена, но тянем, т.к. находилась в одном HAL'е с измененной FindCostPrice
+global
+procedure UpdateSHFIFO(record SHVc SHp)
+BEGIN
+  record MainStockBlock MSb;
+  record CostAccBlock CostAccRec;
+  record SHVc RecSHr;
+  row SHVc SHrw,SH2rw,RecSHrw;
+  Integer i,rwcnt;
+  Integer j;
+  string 10 location,loc2;
+  Boolean isstruct;
+  string 20 stockartcode;
+  val t,recqty,adjstockv;
+
+  BlockLoad(CostAccRec);
+  location = SHp.Location;
+  if (blank(location)) then begin
+    BlockLoad(MSb);
+    location = MSb.MainStock;
+  end;
+  rwcnt = MatRowCnt(SHp);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(SHp,i,SHrw);
+    loc2 = SHrw.Location;
+    if (blank(loc2)) then begin
+      loc2 = location;
+    end;
+    if (nonblank(SHrw.ArtCode)) then begin
+      if (SHrw.Ship!=0) then begin
+        isstruct = ExpandStructItem(SHrw.ArtCode,SHrw.Recepy,SHrw.Ship,RecSHr);
+        if (isstruct==false) then begin
+          CalculateSHRowFIFO(CostAccRec,loc2,SHp,SHrw,i);
+        end else begin
+          adjstockv = blankval;
+          SHrw.FIFORowVal = blankval;
+          if (MatRowCnt(RecSHr)!=1) then begin goto L88UpdateSHFIFOSkipRow; end;
+//same as in  FindAdjstockvQtySHVc
+//          if (MatRowCnt(RecSHr)==0) then begin goto L88UpdateSHFIFOSkipRow; end;
+          GetStockedItemFromRecepy(RecSHr,stockartcode,recqty);
+          FindAdjstockvQtySHVc("SHVc",SHp,stockartcode,i,adjstockv);
+          SHrw.FIFORowVal = FindCostPrice(stockartcode,loc2,"",recqty,adjstockv,false);
+          SHrw.FIFORowVal = Round(SHrw.FIFORowVal,SetRoundModeD(5));
+          SHrw.FIFO = SHrw.FIFORowVal/recqty;
+          SHrw.FIFO = Round(SHrw.FIFO,SetRoundModeD(5));
+        end;
+      end else begin
+        SHrw.FIFO = blankval;
+        SHrw.FIFORowVal = blankval;
+      end;
+      MatRowPut(SHp,i,SHrw);
+    end;
+L88UpdateSHFIFOSkipRow:;
+  end;
+  RETURN;
+END;
+
+
+//28.03.13 INAU - StockToolsFIFO3.hal
+global
+function val FindCostPrice_ReturnedGoods_FromSH(record CostAccBlock CAb,record INVc INr,record RetVc Retr,row RetVc Retrw,Integer queuecostmodel,Integer currow)
+begin
+  val res;
+  record SHVc SHr;
+  row SHVc SHrw;
+  record SHVc recSHr;
+  row SHVc recSHrw;
+  Boolean isstruct;
+  Integer i,rwcnt;
+  string 255 location;
+  record MainStockBlock MSb;
+
+  isstruct = ExpandStructItem(Retrw.ArtCode,Retrw.Recepy,Retrw.Quant,recSHr);
+  if (isstruct==false) then begin
+    SHr.SerNr = Retr.SHNr;
+    if (ReadFirstMain(SHr,1,true)) then begin
+      if (Retrw.SHRow>=0) then begin
+        MatRowGet(SHr,Retrw.SHRow,SHrw);
+        res = SHrw.FIFORowVal/SHrw.Ship;
+      end else begin
+        res = INr.WeighedAvPrice;
+      end;
+    end else begin
+      res = Retrw.CostPrice;
+    end;
+  end else begin
+    location = Retrw.Location;
+    if (blank(location)) then begin
+      location = Retr.Location;
+    end;
+    if (blank(location)) then begin
+      BlockLoad(MSb);
+      location = MSb.MainStock;
+    end;
+    CombineStructure(recSHr);
+    rwcnt = MatRowCnt(recSHr);
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(recSHr,i,recSHrw);
+      res = res + ItemHist_ComponentItem_CostPrice(CAb,"SHVc",Retr.SHNr,Retrw.SHRow,RecSHrw.ArtCode,RecSHrw.Ship,location);
+    end;
+  end;
+
+  //28.03.13 INAU - не допускать нулевые цены!
+  CheckCostVal(res, INr.InPrice, 30);
+
+  FindCostPrice_ReturnedGoods_FromSH = res;
+  return;
+end;
+
+
+//02.04.13 INAU - StockToolsFIFO.hal для FindCostPriceFIFOBackDated
+function Boolean FindNegativeSourceFIFOCost(Integer FIFOPerLocation,record INVc INr,string location,string serialnr,val qty,val adjustqty,Date td,var val inprice)
+begin
+  record ItemHistVc IHr;
+  record ItemHistVc sourceIHr;
+  string 200 thekey;
+  Integer keys;
+  Boolean foundf,testf;
+  val qcnt,fifoq,fifov;
+  val t; //04.04.13 INAU
+
+  inprice = qty * INr.InPrice;
+  qcnt = -qty;
+  fifoq = 0;
+  fifov = 0;
+  foundf = true;
+  IHr.ArtCode = INr.Code;
+  IHr.Location = location;
+  IHr.FIFODate = td;
+  if ((FIFOPerLocation==0) or (blank(IHr.Location))) then begin
+    thekey = "ArtCodeFD";
+    if (blank(td)) then begin
+      keys = 1;
+    end else begin
+      keys = 2;
+    end;
+  end else begin
+    thekey = "ArtCodeLocFD";
+    keys = 3;
+  end;
+  while (LoopBackKey(thekey,IHr,keys,foundf)) begin
+    if (IHr.ArtCode!=INr.Code) then begin
+      foundf = false;
+    end;
+    if (keys==3) then begin
+      if (IHr.Location!=location) then begin
+        foundf = false;
+      end;
+    end;
+    if (IHr.Qty>0) then begin foundf = false; end; // As soon as we have a positive one, we stop, on purpouse, because after this it is impossible to figure out negative qty FIFO cost...
+    if (foundf) then begin
+      testf = true;
+      if (IHr.StockAffectf==0) then begin testf = false; end;
+      if (IHr.ItemType!=kItemTypeStocked) then begin testf = false; end;
+      if (IHr.Invalid!=0) then begin testf = false; end;
+      if (testf) then begin
+        sourceIHr.SerNr = IHr.Source;
+        if (ReadFirstMain(sourceIHr,1,true)) then begin
+          if (qcnt>=sourceIHr.Qty) then begin
+            fifoq = fifoq + sourceIHr.Qty;
+//            fifov = fifov + sourceIHr.TotCostPrice;
+            //04.04.13 INAU
+            t = sourceIHr.TotCostPrice;
+            CheckCostVal(t, INr.InPrice * sourceIHr.Qty, 30)
+            fifov = fifov + t;
+            //
+            qcnt = qcnt - sourceIHr.Qty;
+          end else begin
+            fifoq = fifoq + qcnt;
+//            fifov = fifov + ((sourceIHr.TotCostPrice / sourceIHr.Qty) * qcnt);
+            //04.04.13 INAU
+            t = ((sourceIHr.TotCostPrice / sourceIHr.Qty) * qcnt);
+            CheckCostVal(t, INr.InPrice * qcnt, 30)
+            fifov = fifov + t;
+            //
+            qcnt = 0;
+          end;
+          if (qcnt<=0) then begin
+            foundf = false;
+          end;
+        end;
+      end;
+    end;
+  end;
+  if (fifoq>0) then begin
+    qcnt = -qty;
+    if (fifoq<qcnt) then begin
+      inprice = -((fifov / fifoq) * qcnt);
+    end else begin
+      inprice = -fifov;
+    end;
+  end;
+  return;
+end;
+
+
+//02.04.13 INAU - StockToolsFIFO.hal
+global
+function val FindCostPriceFIFOBackDated(Integer FIFOPerLocation,record INVc INr,string location,string serialnr,val qty,val adjustqty,Date td,Boolean costfrrecf,Integer print,Boolean ondayratef,Integer OverwriteCostModel,Integer consigstock,Integer repcalcwa)
+//val adjustqty ?
+begin
+  record ItemHistVc IHr;
+  record ItemHistVc nextIHr;
+  record ItemHistVc outIHr;
+  record ItemHistVc printIHr;
+  record ITVc ITr;
+  string 200 thekey;
+  Integer keys;
+  Boolean foundf,firstf,testf;
+  val qcnt,res,instock,inprice,qusebefdat;
+  val remcostprice,totcostprice,t,usedqty,outqty,nextqty;
+  record CostAccBlock CAb;
+  LongInt looppos;
+
+  res = blankval;
+  testf = false;
+  BlockLoad(CAb);
+  if (qty<0) then begin
+    switch (OverwriteCostModel) begin
+      case 2:
+        ITr.Code = INr.Group;
+        if (ReadFirstMain(ITr,1,true)) then begin
+        end;
+        inprice = qty * FindCostPriceBasePrice(CAb,INr,ITr);
+      case 3:
+        inprice = qty * INr.WeighedAvPrice;
+      otherwise
+        FindNegativeSourceFIFOCost(FIFOPerLocation,INr,location,serialnr,qty,adjustqty,td,inprice);
+    end;
+    goto LFindCostPriceFIFOBackDated;
+  end;
+  if (blankdate(td)) or (td==CurrentDate) then begin
+    testf = true;
+  end;
+  switch (OverwriteCostModel) begin
+    case 1:
+      if (blankdate(td)) or (td>=CurrentDate) then begin
+        testf = true;
+      end;
+    case 2:
+      if (blankdate(td)) or (td>=CurrentDate) then begin
+        testf = true;
+      end;
+  end;
+  if (testf) then begin
+    inprice = FindCostPriceFIFO(FIFOPerLocation,INr,location,serialnr,qty,adjustqty,costfrrecf,print!=0,ondayratef,OverwriteCostModel,consigstock);
+    goto LFindCostPriceFIFOBackDated;
+  end;
+  IHr.ArtCode = INr.Code;
+  IHr.Location = location;
+  IHr.FIFODate = td;
+
+/*if FIFO per location it is not that simple at all
+*/
+
+
+  if ((FIFOPerLocation==0) or (blank(IHr.Location))) then begin
+    thekey = "ArtCodeFD";
+    keys = 2;
+    instock = GetStockQty(INr.Code,"",td,false);
+  end else begin
+    thekey = "ArtCodeLocFD";
+    keys = 3;
+    instock = GetStockQty(INr.Code,location,td,false);
+  end;
+
+  RecordNew(nextIHr);
+  ResetLoop(IHr);
+  foundf = true;
+  while (LoopBackKey(thekey,IHr,keys,foundf)) begin
+    if (IHr.ArtCode!=INr.Code) then begin
+      foundf = false;
+    end;
+    if (keys==3) then begin
+      if (IHr.Location!=location) then begin
+        foundf = false;
+      end;
+    end;
+    if (foundf) then begin
+      testf = true;
+      if (IHr.StockAffectf==0) then begin testf = false; end;
+      if (IHr.ItemType!=kItemTypeStocked) then begin testf = false; end;
+      if (IHr.Invalid!=0) then begin testf = false; end;
+      if (testf) then begin
+        qcnt = qcnt + IHr.Qty;
+        if (IHr.Qty<0) then begin
+          outqty = outqty - IHr.Qty;
+        end;
+        if (qcnt>=(instock-adjustqty)) then begin
+          looppos = GetLoopPosition(IHr);
+          RecordCopy(nextIHr,IHr);
+          RecordCopy(printIHr,IHr);
+          printIHr.RemQty = printIHr.Qty;
+          switch (OverwriteCostModel) begin
+            case 3:
+              printIHr.RemCostPrice = printIHr.TotCostPrice;
+            otherwise
+              printIHr.RemCostPrice = printIHr.TotCostPrice;
+          end;
+          foundf = false;
+        end;
+      end;
+    end;
+  end;
+
+  outqty = 0;
+/* // This causes problems, what is this function supposed to solve, cause whatever it does it screwes up the new "QtyUsedBeforeDate" function
+  RecordCopy(outIHr,nextIHr);
+  outIHr.ArtCode = INr.Code;
+  outIHr.Location = location;
+  outIHr.FIFODate = td;
+
+  qcnt = 0;
+// shuld be possible to move to loop above
+  foundf = true;
+  while (LoopBackKey(thekey,outIHr,keys,foundf)) begin // Start from the nextIHr record and find all out things
+    if (outIHr.ArtCode!=INr.Code) then begin
+      foundf = false;
+    end;
+    if (keys==3) then begin
+      if (outIHr.Location!=location) then begin
+        foundf = false;
+      end;
+    end;
+    if (foundf) then begin
+      testf = true;
+      if (outIHr.StockAffectf==0) then begin testf = false; end;
+      if (outIHr.Invalid!=0) then begin testf = false; end;
+      if (testf) then begin
+        qcnt = qcnt + outIHr.Qty;
+        if (qcnt>=(instock-adjustqty)) then begin
+          foundf = false;
+        end;
+        if (outIHr.Qty>0) then begin
+          if (CAb.RetFIFOQue!=0) then begin
+            if (outIHr.FileName=="RetVc") then begin
+            end else begin
+              testf = false;
+            end;
+          end else begin
+            testf = false;
+          end;
+        end;
+      end;
+      if (outIHr.Invalid!=0) then begin testf = false; end;
+      if (testf) then begin
+        outqty = outqty - outIHr.Qty;
+      end;
+    end;
+  end;
+  outqty = outqty + adjustqty;
+*/
+  ResetLoop(nextIHr);
+  nextIHr.ArtCode = INr.Code;
+  nextIHr.Location = location;
+  SetLoopPosition(nextIHr,looppos-1);
+
+  inprice = 0;
+  usedqty = 0;
+  firstf = true;
+  foundf = true;
+  while (LoopKey(thekey,nextIHr,keys,foundf)) begin // Start from the nextIHr record
+    if (nextIHr.ArtCode!=INr.Code) then begin
+      foundf = false;
+    end;
+    if (keys==3) then begin
+      if (nextIHr.Location!=location) then begin
+        foundf = false;
+      end;
+    end;
+    if (nextIHr.FIFODate>td) then begin
+      foundf = false;
+    end;
+    if (usedqty>=qty) then begin
+      foundf = false;
+    end;
+    if (foundf) then begin
+      testf = true;
+      if (nextIHr.StockAffectf==0) then begin testf = false; end;
+      if (nextIHr.ItemType!=kItemTypeStocked) then begin testf = false; end;
+      if (nextIHr.Invalid!=0) then begin testf = false; end;
+      if (nextIHr.Qty<0) then begin testf = false; end;
+      if (testf) then begin
+        qusebefdat = QtyUsedBeforeDate(nextIHr,FIFOPerLocation!=0,AddDay(td,0)); // nextIHr.FIFODate
+//        qusebefdat = QtyUsedBeforeDate(nextIHr,true,AddDay(td,-1)); //what if run on date when "things" happen
+        nextqty = nextIHr.Qty - outqty - qusebefdat;
+        outqty = outqty - nextIHr.Qty - qusebefdat;
+        if (outqty<0) then begin
+          outqty = 0;
+        end;
+        if (nextqty<0) then begin
+          testf = false;
+        end;
+      end;
+      if (testf) then begin
+        if ((usedqty+nextqty)>qty) then begin
+          nextqty = qty - usedqty;
+        end else begin
+          nextqty = nextqty;
+        end;
+        usedqty = usedqty + nextqty;
+        switch (consigstock) begin
+          case 1:
+            if (ConsigmentStock(nextIHr.ArtCode,nextIHr.SerialNr,td)) then begin
+//            if (nextIHr.ConsigStock!=0) then begin
+              testf = false;
+            end;
+          case 2:
+            if (ConsigmentStock(nextIHr.ArtCode,nextIHr.SerialNr,td)==false) then begin
+//            if (nextIHr.ConsigStock==0) then begin
+              testf = false;
+            end;
+        end;
+        if (testf) then begin
+        switch (OverwriteCostModel) begin
+          case 3:
+            if (FIFOPerLocation!=0) then begin
+              t = nextIHr.WATotCostPerLoc/nextIHr.Qty;
+            end else begin
+              t = nextIHr.WATotCost/nextIHr.Qty;
+            end;
+            t = FindWAPriceBackdated(FIFOPerLocation,INr,nextIHr.Location,1,td,false,repcalcwa);
+            if (nextIHr.FileName=="RetVc") then begin
+              if (CAb.RetFIFOQue!=0) then begin
+                remcostprice = nextIHr.Qty*t;
+              end else begin
+                remcostprice = nextIHr.RemQty*t;
+              end;
+            end else begin
+//              remcostprice = nextIHr.RemQty*t;
+              if (nextqty>nextIHr.Qty) then begin
+                remcostprice = nextIHr.Qty*t;
+              end else begin
+                remcostprice = nextqty*t;
+              end;
+            end;
+            if (nextIHr.Qty>0) then begin
+              totcostprice = nextIHr.Qty*t;
+            end else begin
+              totcostprice = nextIHr.Qty*t;
+            end;
+//StopAlert("totcostprice " & totcostprice & " nextIHr.SerNr " & nextIHr.SerNr);
+
+          case 2:
+            remcostprice = FindCostPriceBasePrice(CAb,INr,ITr) * nextIHr.Qty; // nextIHr.BPTotCost; // BPTotCost seems to be blank at all time
+            totcostprice = FindCostPriceBasePrice(CAb,INr,ITr) * nextIHr.Qty; // nextIHr.BPTotCost; // BPTotCost seems to be blank at all time
+          case 1:
+            if (INr.PriceFactor!=0) then begin
+              remcostprice = nextIHr.CPTotCost / INr.PriceFactor; //CPTotCost; I don't think CPTotCost is correct....
+              totcostprice = nextIHr.CPTotCost / INr.PriceFactor; //CPTotCost; I don't think CPTotCost is correct....
+            end else begin
+              remcostprice = nextIHr.CPTotCost; //CPTotCost; I don't think CPTotCost is correct....
+              totcostprice = nextIHr.CPTotCost; //CPTotCost; I don't think CPTotCost is correct....
+            end;
+          otherwise
+//            remcostprice = nextIHr.RemCostPrice;
+            remcostprice = nextIHr.TotCostPrice;
+            totcostprice = nextIHr.TotCostPrice;
+        end;
+        
+        //03.04.13 INAU
+        CheckCostVal(totcostprice, nextIHr.Qty * INr.InPrice, 30);
+        
+        if (costfrrecf) or (ondayratef) then begin
+          GetCostsFromRecords(nextIHr,remcostprice,totcostprice,ondayratef,td);
+        end;
+        if (print==2) then begin
+          if (nextqty!=0) then begin
+//          if (remcostprice!=0) and (nextqty!=0) then begin// qty can be no zero and price zero
+            RecordCopy(printIHr,nextIHr);
+            switch (OverwriteCostModel) begin
+              case 3:
+                if (nextIHr.FileName=="RetVc") then begin
+                  if (CAb.RetFIFOQue!=0) then begin
+                    printIHr.RemQty = nextIHr.Qty;
+                  end;
+                end;
+            end;
+            printIHr.RemQty = nextqty;
+            PrintItemHistLine(printIHr,nextqty * Round((totcostprice / nextIHr.Qty),CostPriceDecimals));
+          end;
+        end;
+
+        inprice = inprice + nextqty * Round((totcostprice / nextIHr.Qty),CostPriceDecimals);
+        printIHr.RemQty = printIHr.RemQty + nextqty;
+        end;
+      end;
+    end;
+  end;
+  if (print==1) then begin
+    if (printIHr.Qty!=0) then begin
+//    if (printIHr.TotCostPrice!=0) then begin // qty can be no zero and price zero
+      PrintItemHistLine(printIHr,Round(printIHr.TotCostPrice,CostPriceDecimals));
+    end;
+  end;
+LFindCostPriceFIFOBackDated:;
+  
+  //02.04.13 INAU - не допускать нулевые цены!
+  CheckCostVal(inprice, INr.InPrice * qty, 30);
+  
+  res = Round(inprice,CostPriceDecimals);
+
+  FindCostPriceFIFOBackDated = res;
+  return;
+end;

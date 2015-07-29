@@ -1,0 +1,1252 @@
+external inner function Integer GetIntYc(Date);
+external inner procedure AddObj(String, var string);
+external function boolean ISetInSet(string, string);
+remote inner procedure GetFullCurncyRate (var string, Date, var val, var val, var val, var val, var val);
+external inner function val MulRateToBase2(var string,val,val,val,val,val,val,roundmode);
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external function string 255 IGetAccName(string);
+external inner procedure AutoObj(var string);
+external inner function Integer GetIntYc(Date);
+external inner procedure TRUpdateDebRows(var row TrVc, Date);
+external inner procedure TRUpdateCredRows(var row TrVc, Date);
+external inner procedure TRUpdateCurDebValRows(var row TRVc,Date);
+external inner procedure SpecialRateCalc(val,val,val,var val);
+remote inner procedure TRVc_PasteCurncy(var record TRVc,Integer);
+
+
+procedure tTRUpdateCurDebValRows(var row TRVc TRrp,Date trdat)
+BEGIN
+  val sv,tor1,tor2;
+  val temp;
+stopalert("!!!");
+  TRrp.CredVal = sv;
+  TRrp.CredVal2 = sv;
+  TRrp.CurCredVal = sv;
+  if (TRrp.Typ==0) then begin
+    if ((TRrp.DebVal==0) and
+        ((TRrp.ToRateB1!=0) or (TRrp.ToRateB2!=0))) then begin
+      sv = MulRateToBase1(TRrp.Curncy,TRrp.CurDebVal,TRrp.FrRate,TRrp.ToRateB1,TRrp.ToRateB2,TRrp.BaseRate1,TRrp.BaseRate2,DefaultCurRoundOff);
+      TRrp.DebVal = sv;
+      SpecialRateCalc(sv,TRrp.BaseRate1,TRrp.BaseRate2,sv);
+      sv = Round(sv,DefaultCurRoundOff);
+      TRrp.DebVal2 = sv;
+    end;
+    if ((TRrp.DebVal!=0) and
+        ((TRrp.ToRateB1==0) and (TRrp.ToRateB2==0))) then begin
+      tor1 = blankval;
+      tor2 = blankval;
+      if (TRrp.FrRate==0) then begin // Old Currency Style
+        sv = TRrp.DebVal*100;
+        tor1 = sv/TRrp.CurDebVal;
+        tor1 = Round(tor1,DefaultCurRoundOff);
+      end else begin
+        GetFullCurncyRate(TRrp.Curncy,trdat,temp,tor1,tor2,temp,temp);
+        sv = TRrp.DebVal/TRrp.CurDebVal;
+        sv = sv*TRrp.FrRate;
+        SpecialRateCalc(sv,TRrp.BaseRate1,TRrp.BaseRate2,sv);
+        sv = Round(sv,DefaultCurRoundOff);
+        if (tor1==0) then begin // Only one is filled at this moment
+          tor2 = sv;
+        end else begin
+          tor1 = sv;
+        end;
+      end;
+      TRrp.ToRateB1 = tor1;
+      TRrp.ToRateB2 = tor2;
+    end;
+  end else begin
+    if (true) then begin
+      sv = MulRateToBase1(TRrp.Curncy,TRrp.CurDebVal,TRrp.FrRate,TRrp.ToRateB1,TRrp.ToRateB2,TRrp.BaseRate1,TRrp.BaseRate2,DefaultCurRoundOff);
+      TRrp.DebVal = sv;
+      SpecialRateCalc(sv,TRrp.BaseRate1,TRrp.BaseRate2,sv);
+      sv = Round(sv,DefaultCurRoundOff);
+      TRrp.DebVal2 = sv;
+    end;
+  end;
+  RETURN;
+END;
+
+procedure tTRUpdateCurCredValRows(var row TRVc TRrp,Date trdat)
+BEGIN
+  val sv,tor1,tor2;
+  val temp;
+
+  TRrp.DebVal = sv;
+  TRrp.DebVal2 = sv;
+  TRrp.CurDebVal = sv;
+  if (TRrp.Typ==0) then begin
+    if ((TRrp.CredVal==0) and
+        ((TRrp.ToRateB1!=0) or (TRrp.ToRateB2!=0))) then begin
+      sv = MulRateToBase1(TRrp.Curncy,TRrp.CurCredVal,TRrp.FrRate,TRrp.ToRateB1,TRrp.ToRateB2,TRrp.BaseRate1,TRrp.BaseRate2,DefaultCurRoundOff);
+      TRrp.CredVal = sv;
+      SpecialRateCalc(sv,TRrp.BaseRate1,TRrp.BaseRate2,sv);
+      sv = Round(sv,DefaultCurRoundOff);
+      TRrp.CredVal2 = sv;
+    end;
+    if ((TRrp.CredVal!=0) and
+        ((TRrp.ToRateB1==0) and (TRrp.ToRateB2==0))) then begin
+      tor1 = blankval;
+      tor2 = blankval;
+      if (TRrp.FrRate==0) then begin // Old Currency Style
+        sv = TRrp.CredVal*100;
+        tor1 = sv/TRrp.CurCredVal;
+        tor1 = Round(tor1,DefaultCurRoundOff);
+      end else begin
+        GetFullCurncyRate(TRrp.Curncy,trdat,temp,tor1,tor2,temp,temp);
+        sv = TRrp.CredVal/TRrp.CurCredVal;
+        sv = sv*TRrp.FrRate;
+        SpecialRateCalc(sv,TRrp.BaseRate1,TRrp.BaseRate2,sv);
+        sv = Round(sv,DefaultCurRoundOff);
+        if (tor1==0) then begin // Only one is filled at this moment
+          tor2 = sv;
+        end else begin
+          tor1 = sv;
+        end;
+      end;
+      TRrp.ToRateB1 = tor1;
+      TRrp.ToRateB2 = tor2;
+    end;
+  end else begin
+    if (true) then begin
+      sv = MulRateToBase1(TRrp.Curncy,TRrp.CurCredVal,TRrp.FrRate,TRrp.ToRateB1,TRrp.ToRateB2,TRrp.BaseRate1,TRrp.BaseRate2,DefaultCurRoundOff);
+      TRrp.CredVal = sv;
+      SpecialRateCalc(sv,TRrp.BaseRate1,TRrp.BaseRate2,sv);
+      sv = Round(sv,DefaultCurRoundOff);
+      TRrp.CredVal2 = sv;
+    end;
+  end;
+  RETURN;
+END;
+
+//===============================================
+//Заем
+global
+updating procedure tLoanAdd(LongInt SerNr)
+begin
+record tLoanVc Lr;
+record tCalcWageVc CWr;
+
+CWr.SerNr = SerNr;
+ReadFirstMain(CWr, 1, true);
+RecordNew(Lr);
+Lr.SerNr = NextSerNr("tLoanVc",currentdate,-1,false,"");
+Lr.tCalcWageSerNr = CWr.SerNr;
+Lr.Code = CWr.CodeServ;
+Lr.Name = CWr.NameServ;
+Lr.SumLoan = CWr.Loan;
+Lr.LDate = currentdate;
+Lr.WeekNr = CWr.WeekNr;
+RecordStore(Lr, false);
+  Return;
+end;
+
+//===============================================
+//Запись операции
+procedure WageTRHeader(var record TRVc TRr, record tCalcWageVc CWr, record RcVc RepSpec)
+begin
+  SetLangMode(LangRussian,"RUS",2);
+  TRr.RegDate = CurrentDate;
+  TRr.TransDate = RepSpec.d1;
+  TRr.Comment = "Расчет ЗП  со службой " & CWr.NameServ;
+  TRr.Number = NextSerNr("TRVc",TRr.TransDate,-1,false,"");
+  TRr.IntYc = GetIntYc(TRr.TransDate);
+  TRr.RegTime = CurrentTime;
+  TRr.LastChangeDate = CurrentDate;
+  Return;
+end;
+
+//===============================================
+updating procedure WageTRStore(record TRVc TRr)
+begin
+  record VSetSetBlock Setr;
+
+  if MatRowCnt(TRr)>0 then
+    begin
+    RecordStore(TRr, true);
+    end;
+  Return;
+end;
+
+//===============================================
+updating procedure WageTRRows(var record TRVc TRr, record tCalcWageVc CWr, record RcVc RepSpec)
+begin
+record tCalcWageVc oldCWr;
+row tCalcWageVc CWrw;
+record tPostUserVc PUr;
+row TRVc TRrw;
+record AccVc Acr;
+integer tr_row,RwCnt,ttr_row ;
+string 255 ObjStr, ObjStr1;
+val t,frrate,to1,to2,br1,br2;
+record BaseERVc BRr;
+val debval, baserate;
+val nfr,nto1,nto2,nbr1,nbr2;
+string 255 crncy;
+Date td;
+boolean TrHs;
+record ObjVc Objr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  TRr.RegDate = CurrentDate;
+  TRr.TransDate = RepSpec.d1;
+  TRr.Comment = "Расчет ЗП  со службой " & CWr.NameServ;
+  TRr.Number = NextSerNr("TRVc",TRr.TransDate,-1,false,"");
+  TRr.IntYc = GetIntYc(TRr.TransDate);
+  TRr.RegTime = CurrentTime;
+  TRr.LastChangeDate = CurrentDate;
+
+
+td = TRr.TransDate;
+for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(CWr, RwCnt, CWrw);
+  resetloop(PUr);
+  PUr.tDepart = CWr.CodeServ;
+  TrHs = true;
+  while (LoopKey("tDepart", PUr, 1, TrHs))
+  	begin
+
+  	TrHs = (PUr.tDepart == CWr.CodeServ);
+  	if TrHs and  (PUr.UserCode == CWrw.UserCode) and (PUr.SolFlag == 0) and (PUr.ObjStr == CWrw.ObjStr) then
+  		begin
+        ObjStr1 = "";
+        Objr.Code = CWrw.UserCode;
+        readfirstmain(Objr, 1 , true);
+        ObjStr1 = Objr.AutoObjects;
+      // ставка
+      if (CWrw.Wage <> 0) and nonblank(PUr.AccWage) and nonblank(PUr.AccCalc) then
+        begin
+        //===========================================================================================
+
+         if CWr.Currency == "UAH" then
+            begin
+            //CurDebVal
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal2 = CWrw.Wage;
+            debval = TRrw.DebVal2;
+            TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal2 = debval;
+            TRrw.CredVal = debval / TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end
+          else
+            begin // Для USD
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal = CWrw.Wage;
+            debval = TRrw.DebVal;
+            TRrw.DebVal2 = TRrw.DebVal * TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal = debval;
+            TRrw.CredVal2 = debval * TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+          end;
+        end;
+
+       /* if CWr.Currency <> "RUR" then
+            begin
+            //CurDebVal
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal2 = CWrw.Wage;
+            debval = TRrw.DebVal2;
+            TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal2 = debval;
+            TRrw.CredVal = debval / TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end
+          else
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            crncy = "RUR";
+            GetFullCurncyRate(crncy,td,nfr,nto1,nto2,nbr1,nbr2);
+            TRrw.Curncy = crncy;
+            TRrw.FrRate = nfr;
+            TRrw.ToRateB1 = nto1;
+            TRrw.ToRateB2 = nto2;
+            TRrw.BaseRate1 = nbr1;
+            TRrw.BaseRate2 = nbr2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.CurDebVal = CWrw.Wage;
+            TRrw.DebVal = MulRateToBase1(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.DebVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CurCredVal = CWrw.Wage;
+            TRrw.CredVal = MulRateToBase1(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.CredVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+          end;
+        end;*/
+    //===============================================================
+
+    // сдельная
+    if (CWrw.PieceRatesw <> 0) and nonblank(PUr.AccWage) and nonblank(PUr.AccCalc) then
+        begin
+        //===========================================================================================
+
+        if CWr.Currency == "UAH" then
+            begin
+            //CurDebVal
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal2 = CWrw.PieceRatesw;
+            debval = TRrw.DebVal2;
+            TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal2 = debval;
+            TRrw.CredVal = debval / TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end
+          else
+            begin
+            // for USD
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            //TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal = CWrw.PieceRatesw;
+            debval = TRrw.DebVal;
+            TRrw.DebVal2 = TRrw.DebVal * TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal = debval;
+            TRrw.CredVal2 = debval * TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end;
+
+        /*
+        if CWr.Currency <> "RUR" then
+            begin
+            //CurDebVal
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal2 = CWrw.PieceRatesw;
+            debval = TRrw.DebVal2;
+            TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal2 = debval;
+            TRrw.CredVal = debval / TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end
+          else
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            crncy = "RUR";
+            GetFullCurncyRate(crncy,td,nfr,nto1,nto2,nbr1,nbr2);
+            TRrw.Curncy = crncy;
+            TRrw.FrRate = nfr;
+            TRrw.ToRateB1 = nto1;
+            TRrw.ToRateB2 = nto2;
+            TRrw.BaseRate1 = nbr1;
+            TRrw.BaseRate2 = nbr2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.CurDebVal = CWrw.PieceRatesw;
+            TRrw.DebVal = MulRateToBase1(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.DebVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.AccNumber = PUr.AccWage;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CurCredVal = CWrw.PieceRatesw;
+            TRrw.CredVal = MulRateToBase1(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.CredVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end;*/
+        end;
+        // сдельная EL
+        if (CWrw.PieceRateswEL <> 0) and nonblank(PUr.AccWage) and nonblank(PUr.AccCalc) then
+            begin
+            //===========================================================================================
+            if CWr.Currency == "UAH" then
+                begin
+                //CurDebVal
+                TRrw.VATCode = "";
+                TRrw.CompCode = "";
+                TRrw.SerNr = 0;
+                TRrw.Curncy = "USD";
+                TRrw.BaseRate1 = 1;
+                BRr.Date = RepSpec.d1;
+                ReadLastMain(BRr, 1, False);
+                TRrw.BaseRate2 = BRr.Rate2;
+                ObjStr = PUr.ObjStr;
+                AutoObj(ObjStr);
+                TRrw.Objects = ObjStr & ",EL";
+                TRrw.SerNr = "";
+                TRrw.DebVal2 = CWrw.PieceRateswEL;
+                debval = TRrw.DebVal2;
+                TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+                TRrw.AccNumber = PUr.AccWage;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.CredVal = blankval;
+                TRrw.CredVal2 = blankval;
+                TRUpdateDebRows(TRrw, TRr.TransDate);
+                TRr.DSum =  TRr.DSum + TRrw.DebVal;
+                TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+                TRrw.AccNumber = PUr.AccCalc;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.DebVal = blankval;
+                TRrw.DebVal2 = blankval;
+                TRrw.CredVal2 = debval;
+                TRrw.CredVal = debval / TRrw.BaseRate2;
+                TRUpdateCredRows(TRrw, TRr.TransDate);
+                TRr.CSum =  TRr.CSum - TRrw.CredVal;
+                TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                end
+              else
+                begin // for USD
+                TRrw.VATCode = "";
+                TRrw.CompCode = "";
+                TRrw.SerNr = 0;
+                TRrw.Curncy = "USD";
+                TRrw.BaseRate1 = 1;
+                BRr.Date = RepSpec.d1;
+                ReadLastMain(BRr, 1, False);
+                TRrw.BaseRate2 = BRr.Rate2;
+                ObjStr = PUr.ObjStr;
+                AutoObj(ObjStr);
+                TRrw.Objects = ObjStr & ",EL";
+                TRrw.SerNr = "";
+                TRrw.DebVal = CWrw.PieceRateswEL;
+                debval = TRrw.DebVal;
+                TRrw.DebVal2 = TRrw.DebVal * TRrw.BaseRate2;
+                TRrw.AccNumber = PUr.AccWage;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.CredVal = blankval;
+                TRrw.CredVal2 = blankval;
+                TRUpdateDebRows(TRrw, TRr.TransDate);
+                TRr.DSum =  TRr.DSum + TRrw.DebVal;
+                TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+                TRrw.AccNumber = PUr.AccCalc;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.DebVal = blankval;
+                TRrw.DebVal2 = blankval;
+                TRrw.CredVal = debval;
+                TRrw.CredVal2 = debval * TRrw.BaseRate2;
+                TRUpdateCredRows(TRrw, TRr.TransDate);
+                TRr.CSum =  TRr.CSum - TRrw.CredVal;
+                TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                end;
+
+            /*
+            if CWr.Currency <> "RUR" then
+                begin
+                //CurDebVal
+                TRrw.VATCode = "";
+                TRrw.CompCode = "";
+                TRrw.SerNr = 0;
+                TRrw.Curncy = "USD";
+                TRrw.BaseRate1 = 1;
+                BRr.Date = RepSpec.d1;
+                ReadLastMain(BRr, 1, False);
+                TRrw.BaseRate2 = BRr.Rate2;
+                ObjStr = PUr.ObjStr;
+                AutoObj(ObjStr);
+                TRrw.Objects = ObjStr & ",EL";
+                TRrw.SerNr = "";
+                TRrw.DebVal2 = CWrw.PieceRateswEL;
+                debval = TRrw.DebVal2;
+                TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+                TRrw.AccNumber = PUr.AccWage;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.CredVal = blankval;
+                TRrw.CredVal2 = blankval;
+                TRUpdateDebRows(TRrw, TRr.TransDate);
+                TRr.DSum =  TRr.DSum + TRrw.DebVal;
+                TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+                TRrw.AccNumber = PUr.AccCalc;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.DebVal = blankval;
+                TRrw.DebVal2 = blankval;
+                TRrw.CredVal2 = debval;
+                TRrw.CredVal = debval / TRrw.BaseRate2;
+                TRUpdateCredRows(TRrw, TRr.TransDate);
+                TRr.CSum =  TRr.CSum - TRrw.CredVal;
+                TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                end
+              else
+                begin
+                TRrw.VATCode = "";
+                TRrw.CompCode = "";
+                TRrw.SerNr = 0;
+                crncy = "RUR";
+                GetFullCurncyRate(crncy,td,nfr,nto1,nto2,nbr1,nbr2);
+                TRrw.Curncy = crncy;
+                TRrw.FrRate = nfr;
+                TRrw.ToRateB1 = nto1;
+                TRrw.ToRateB2 = nto2;
+                TRrw.BaseRate1 = nbr1;
+                TRrw.BaseRate2 = nbr2;
+                ObjStr = PUr.ObjStr;
+                AutoObj(ObjStr);
+                TRrw.Objects = ObjStr & ",EL";
+                TRrw.SerNr = "";
+                TRrw.CurDebVal = CWrw.PieceRateswEL;
+                TRrw.DebVal = MulRateToBase1(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+                TRrw.DebVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+                TRrw.AccNumber = PUr.AccWage;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.CredVal = blankval;
+                TRrw.CredVal2 = blankval;
+                TRUpdateDebRows(TRrw, TRr.TransDate);
+                TRr.DSum =  TRr.DSum + TRrw.DebVal;
+                TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+                TRrw.AccNumber = PUr.AccCalc;
+                TRrw.Comment = IGetAccName(TRrw.AccNumber);
+                TRrw.DebVal = blankval;
+                TRrw.DebVal2 = blankval;
+                TRrw.CurCredVal = CWrw.PieceRateswEL;
+                TRrw.CredVal = MulRateToBase1(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+                TRrw.CredVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+                TRUpdateCredRows(TRrw, TRr.TransDate);
+                TRr.CSum =  TRr.CSum - TRrw.CredVal;
+                TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+                MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+                end;*/
+            end;
+
+
+        //===============================================================
+
+    // мотивация положительная
+      if (CWrw.Motivw > 0) and nonblank(PUr.AccMotiv) and nonblank(PUr.AccCalc) then
+        begin
+    //===========================================================================================
+          if CWr.Currency == "UAH" then
+             begin
+             TRrw.VATCode = "";
+             TRrw.CompCode = "";
+             TRrw.SerNr = 0;
+             TRrw.Curncy = "USD";
+             TRrw.BaseRate1 = 1;
+             BRr.Date = RepSpec.d1;
+             ReadLastMain(BRr, 1, False);
+             TRrw.BaseRate2 = BRr.Rate2;
+             ObjStr = PUr.ObjStr;
+             AutoObj(ObjStr);
+             TRrw.Objects = ObjStr;
+             TRrw.SerNr = "";
+             TRrw.DebVal2 = CWrw.Motivw;
+             debval = TRrw.DebVal2;
+             TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+             TRrw.AccNumber = PUr.AccMotiv;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.CredVal = blankval;
+             TRrw.CredVal2 = blankval;
+             TRUpdateDebRows(TRrw, TRr.TransDate);
+             TRr.DSum =  TRr.DSum + TRrw.DebVal;
+             TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+             TRrw.AccNumber = PUr.AccCalc;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.DebVal = blankval;
+             TRrw.DebVal2 = blankval;
+             TRrw.CredVal2 = debval;
+             TRrw.CredVal = debval / TRrw.BaseRate2;
+             TRUpdateCredRows(TRrw, TRr.TransDate);
+             TRr.CSum =  TRr.CSum - TRrw.CredVal;
+             TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             end
+           else
+             begin // for USD
+              TRrw.VATCode = "";
+              TRrw.CompCode = "";
+              TRrw.SerNr = 0;
+              TRrw.Curncy = "USD";
+              TRrw.BaseRate1 = 1;
+              BRr.Date = RepSpec.d1;
+              ReadLastMain(BRr, 1, False);
+              TRrw.BaseRate2 = BRr.Rate2;
+              ObjStr = PUr.ObjStr;
+              AutoObj(ObjStr);
+              TRrw.Objects = ObjStr;
+              TRrw.SerNr = "";
+              TRrw.DebVal = CWrw.Motivw;
+              debval = TRrw.DebVal;
+              TRrw.DebVal2 = TRrw.DebVal * TRrw.BaseRate2;
+              TRrw.AccNumber = PUr.AccMotiv;
+              TRrw.Comment = IGetAccName(TRrw.AccNumber);
+              TRrw.CredVal = blankval;
+              TRrw.CredVal2 = blankval;
+              TRUpdateDebRows(TRrw, TRr.TransDate);
+              TRr.DSum =  TRr.DSum + TRrw.DebVal;
+              TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+              MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+              TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+              TRrw.AccNumber = PUr.AccCalc;
+              TRrw.Comment = IGetAccName(TRrw.AccNumber);
+              TRrw.DebVal = blankval;
+              TRrw.DebVal2 = blankval;
+              TRrw.CredVal = debval;
+              TRrw.CredVal2 = debval * TRrw.BaseRate2;
+              TRUpdateCredRows(TRrw, TRr.TransDate);
+              TRr.CSum =  TRr.CSum - TRrw.CredVal;
+              TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+              MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             end;
+         /*
+         if CWr.Currency <> "RUR" then
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal2 = CWrw.Motivw;
+            debval = TRrw.DebVal2;
+            TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccMotiv;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal2 = debval;
+            TRrw.CredVal = debval / TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end
+          else
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            crncy = "RUR";
+            GetFullCurncyRate(crncy,td,nfr,nto1,nto2,nbr1,nbr2);
+            TRrw.Curncy = crncy;
+            TRrw.FrRate = nfr;
+            TRrw.ToRateB1 = nto1;
+            TRrw.ToRateB2 = nto2;
+            TRrw.BaseRate1 = nbr1;
+            TRrw.BaseRate2 = nbr2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.CurDebVal = CWrw.Motivw;
+            TRrw.DebVal = MulRateToBase1(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.DebVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.AccNumber = PUr.AccMotiv;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CurCredVal = CWrw.Motivw;
+            TRrw.CredVal = MulRateToBase1(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.CredVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end;
+            */
+        end;
+
+    //===============================================================
+
+
+    // мотивация отрицательная
+      if (CWrw.Motivw < 0) and nonblank(PUr.AccMotiv) and nonblank(PUr.AccCalc) then
+        begin
+    //===========================================================================================
+          if CWr.Currency == "UAH" then
+             begin
+             TRrw.VATCode = "";
+             TRrw.CompCode = "";
+             TRrw.SerNr = 0;
+             TRrw.Curncy = "USD";
+             TRrw.BaseRate1 = 1;
+             BRr.Date = RepSpec.d1;
+             ReadLastMain(BRr, 1, False);
+             TRrw.BaseRate2 = BRr.Rate2;
+             TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+             TRrw.SerNr = "";
+             TRrw.DebVal2 = -1 * CWrw.Motivw;
+             debval = TRrw.DebVal2;
+             TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+             TRrw.AccNumber = PUr.AccCalc;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.CredVal = blankval;
+             TRrw.CredVal2 = blankval;
+             TRUpdateDebRows(TRrw, TRr.TransDate);
+             TRr.DSum =  TRr.DSum + TRrw.DebVal;
+             TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             ObjStr = PUr.ObjStr;
+             AutoObj(ObjStr);
+             TRrw.Objects = ObjStr;
+             TRrw.AccNumber = PUr.AccMotiv;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.DebVal = blankval;
+             TRrw.DebVal2 = blankval;
+             TRrw.CredVal2 = debval;
+             TRrw.CredVal = debval / TRrw.BaseRate2;
+             TRUpdateCredRows(TRrw, TRr.TransDate);
+             TRr.CSum =  TRr.CSum - TRrw.CredVal;
+             TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             end
+           else
+             begin
+             TRrw.VATCode = "";
+             TRrw.CompCode = "";
+             TRrw.SerNr = 0;
+             TRrw.Curncy = "USD";
+             TRrw.BaseRate1 = 1;
+             BRr.Date = RepSpec.d1;
+             ReadLastMain(BRr, 1, False);
+             TRrw.BaseRate2 = BRr.Rate2;
+             TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+             TRrw.SerNr = "";
+             TRrw.DebVal = -1 * CWrw.Motivw;
+             debval = TRrw.DebVal;
+             TRrw.DebVal2 = TRrw.DebVal * TRrw.BaseRate2;
+             TRrw.AccNumber = PUr.AccCalc;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.CredVal = blankval;
+             TRrw.CredVal2 = blankval;
+             TRUpdateDebRows(TRrw, TRr.TransDate);
+             TRr.DSum =  TRr.DSum + TRrw.DebVal;
+             TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             ObjStr = PUr.ObjStr;
+             AutoObj(ObjStr);
+             TRrw.Objects = ObjStr;
+             TRrw.AccNumber = PUr.AccMotiv;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.DebVal = blankval;
+             TRrw.DebVal2 = blankval;
+             TRrw.CredVal = debval;
+             TRrw.CredVal2 = debval * TRrw.BaseRate2;
+             TRUpdateCredRows(TRrw, TRr.TransDate);
+             TRr.CSum =  TRr.CSum - TRrw.CredVal;
+             TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             end;
+
+         /*
+         if CWr.Currency <> "RUR" then
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.SerNr = "";
+            TRrw.DebVal2 = -1 * CWrw.Motivw;
+            debval = TRrw.DebVal2;
+            TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.AccNumber = PUr.AccMotiv;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal2 = debval;
+            TRrw.CredVal = debval / TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end
+          else
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            crncy = "RUR";
+            GetFullCurncyRate(crncy,td,nfr,nto1,nto2,nbr1,nbr2);
+            TRrw.Curncy = crncy;
+            TRrw.FrRate = nfr;
+            TRrw.ToRateB1 = nto1;
+            TRrw.ToRateB2 = nto2;
+            TRrw.BaseRate1 = nbr1;
+            TRrw.BaseRate2 = nbr2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.CurDebVal = -1 * CWrw.Motivw;
+            TRrw.DebVal = MulRateToBase1(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.DebVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.AccNumber = PUr.AccMotiv;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CurCredVal = -1 * CWrw.Motivw;
+            TRrw.CredVal = MulRateToBase1(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.CredVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end;
+            */
+        end;
+
+
+    // премия
+      if (CWrw.Award <> 0) and nonblank(PUr.AccAward) and nonblank(PUr.AccCalc) then
+        begin
+     //===========================================================================================
+         if CWr.Currency == "UAH" then
+             begin
+             TRrw.VATCode = "";
+             TRrw.CompCode = "";
+             TRrw.SerNr = 0;
+             TRrw.Curncy = "USD";
+             TRrw.BaseRate1 = 1;
+             BRr.Date = RepSpec.d1;
+             ReadLastMain(BRr, 1, False);
+             TRrw.BaseRate2 = BRr.Rate2;
+             ObjStr = PUr.ObjStr;
+             AutoObj(ObjStr);
+             TRrw.Objects = ObjStr;
+             TRrw.SerNr = "";
+             TRrw.DebVal2 = CWrw.Award;
+             debval = TRrw.DebVal2;
+             TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+             TRrw.AccNumber = PUr.AccAward;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.CredVal = blankval;
+             TRrw.CredVal2 = blankval;
+             TRUpdateDebRows(TRrw, TRr.TransDate);
+             TRr.DSum =  TRr.DSum + TRrw.DebVal;
+             TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+             TRrw.AccNumber = PUr.AccCalc;
+             TRrw.Comment = IGetAccName(TRrw.AccNumber);
+             TRrw.DebVal = blankval;
+             TRrw.DebVal2 = blankval;
+             TRrw.CredVal2 = debval;
+             TRrw.CredVal = debval / TRrw.BaseRate2;
+             TRUpdateCredRows(TRrw, TRr.TransDate);
+             TRr.CSum =  TRr.CSum - TRrw.CredVal;
+             TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+             MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             end
+           else
+             begin // for USD
+              TRrw.VATCode = "";
+              TRrw.CompCode = "";
+              TRrw.SerNr = 0;
+              TRrw.Curncy = "USD";
+              TRrw.BaseRate1 = 1;
+              BRr.Date = RepSpec.d1;
+              ReadLastMain(BRr, 1, False);
+              TRrw.BaseRate2 = BRr.Rate2;
+              ObjStr = PUr.ObjStr;
+              AutoObj(ObjStr);
+              TRrw.Objects = ObjStr;
+              TRrw.SerNr = "";
+              TRrw.DebVal = CWrw.Award;
+              debval = TRrw.DebVal;
+              TRrw.DebVal2 = TRrw.DebVal * TRrw.BaseRate2;
+              TRrw.AccNumber = PUr.AccAward;
+              TRrw.Comment = IGetAccName(TRrw.AccNumber);
+              TRrw.CredVal = blankval;
+              TRrw.CredVal2 = blankval;
+              TRUpdateDebRows(TRrw, TRr.TransDate);
+              TRr.DSum =  TRr.DSum + TRrw.DebVal;
+              TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+              MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+              TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+              TRrw.AccNumber = PUr.AccCalc;
+              TRrw.Comment = IGetAccName(TRrw.AccNumber);
+              TRrw.DebVal = blankval;
+              TRrw.DebVal2 = blankval;
+              TRrw.CredVal = debval;
+              TRrw.CredVal2 = debval * TRrw.BaseRate2;
+              TRUpdateCredRows(TRrw, TRr.TransDate);
+              TRr.CSum =  TRr.CSum - TRrw.CredVal;
+              TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+              MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+             end;
+
+         /*
+         if CWr.Currency <> "RUR" then
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            TRrw.Curncy = "USD";
+            TRrw.BaseRate1 = 1;
+            BRr.Date = RepSpec.d1;
+            ReadLastMain(BRr, 1, False);
+            TRrw.BaseRate2 = BRr.Rate2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.DebVal2 = CWrw.Award;
+            debval = TRrw.DebVal2;
+            TRrw.DebVal = TRrw.DebVal2 / TRrw.BaseRate2;
+            TRrw.AccNumber = PUr.AccAward;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CredVal2 = debval;
+            TRrw.CredVal = debval / TRrw.BaseRate2;
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end
+          else
+            begin
+            TRrw.VATCode = "";
+            TRrw.CompCode = "";
+            TRrw.SerNr = 0;
+            crncy = "RUR";
+            GetFullCurncyRate(crncy,td,nfr,nto1,nto2,nbr1,nbr2);
+            TRrw.Curncy = crncy;
+            TRrw.FrRate = nfr;
+            TRrw.ToRateB1 = nto1;
+            TRrw.ToRateB2 = nto2;
+            TRrw.BaseRate1 = nbr1;
+            TRrw.BaseRate2 = nbr2;
+            ObjStr = PUr.ObjStr;
+            AutoObj(ObjStr);
+            TRrw.Objects = ObjStr;
+            TRrw.SerNr = "";
+            TRrw.CurDebVal = CWrw.Award;
+            TRrw.DebVal = MulRateToBase1(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.DebVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurDebVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.AccNumber = PUr.AccAward;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.CredVal = blankval;
+            TRrw.CredVal2 = blankval;
+            TRUpdateDebRows(TRrw, TRr.TransDate);
+            TRr.DSum =  TRr.DSum + TRrw.DebVal;
+            TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            TRrw.Objects = CWrw.UserCode & "," & ObjStr1;
+            TRrw.AccNumber = PUr.AccCalc;
+            TRrw.Comment = IGetAccName(TRrw.AccNumber);
+            TRrw.DebVal = blankval;
+            TRrw.DebVal2 = blankval;
+            TRrw.CurCredVal = CWrw.Award;
+            TRrw.CredVal = MulRateToBase1(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRrw.CredVal2 = MulRateToBase2(TRrw.Curncy,TRrw.CurCredVal,TRrw.FrRate,TRrw.ToRateB1,TRrw.ToRateB2,TRrw.BaseRate1,TRrw.BaseRate2,DefaultCurRoundOff);
+            TRUpdateCredRows(TRrw, TRr.TransDate);
+            TRr.CSum =  TRr.CSum - TRrw.CredVal;
+            TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+            MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+            end;
+            */
+    //===============================================================
+
+          // Calculated fields
+          TRr.DiffVal = TRr.DSum + TRr.CSum;
+          TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+
+        end;
+      end;
+    end;
+  end;
+
+  if MatRowCnt(TRr)>0 then
+    begin
+    RecordStore(TRr, true);
+    // Update tCalcWageVc
+  oldCWr.SerNr = CWr.SerNr;
+  readfirstmain(oldCWr, 1, true)
+  oldCWr.TRFlag = 1;
+  oldCWr.TRNumber = TRr.Number;
+  oldCWr.TRIntYc = TRr.IntYc;
+  oldCWr.HasTrans = 1;
+  oldCWr.TransDate = TRr.TransDate;
+  RecordUpdate(CWr, oldCWr, true);
+    end;
+
+  Return;
+end;
+
+//===============================================
+global
+updating procedure tOperMakeTransMn(record RcVc RepSpec)
+begin
+record UserVc Usr;
+record tCalcWageVc CWr, oldCWr;
+boolean TrHs;
+record TRVc TRr;
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, true);
+if nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR,FINO1") then
+    begin
+    ResetLoop(CWr);
+    CWr.OKFlag = 1;
+    CWr.TRFlag = 0;
+    TrHs = true;
+    while LoopKey("OKFlag",CWr, 1, TrHs)
+      begin
+      TrHs =   (CWr.OKFlag == 1);
+        if TrHs and (CWr.TRFlag == 0) then
+          begin
+          if CWr.Loan <> 0 then
+            begin
+            // запись в заём
+            tLoanAdd(CWr.SerNr);
+            end;
+          RecordNew(TRr);
+          WageTRRows(TRr, CWr, RepSpec);
+          end;
+      end;
+    end;
+  Return;
+end;

@@ -1,0 +1,190 @@
+remote function Boolean HasCUZeroDebet(var record CUVc);
+remote inner function boolean CheckClassInCUVc(record CUVc,record CCatVc,var string);
+external procedure IAddAndReplaceObjs(var string, string);
+external function string 60 IGetObjByType(string, string);
+
+
+global
+function Boolean CUDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+Boolean res,resL;
+record CUVc CUr;
+record UserVc USr;
+record tCUAccessBlock CUAb;
+row tCUAccessBlock CUAbr;
+Integer RwCnt;
+
+res = true;
+resL = False;
+Usr.Code = CurrentUser;
+ReadFirstMain(USr,1,true);
+BlockLoad(CUAb);
+for (RwCnt = 0; RwCnt < MatRowCnt(CUAb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(CUAb, RwCnt, CUAbr);
+	if (Usr.AccessGroup == CUAbr.AccessGrCode) then
+		begin
+		resL = true;
+		RwCnt = MatRowCnt(CUAb);
+		end;
+	end;
+
+GetWindowRecord(wn, CUr);
+if (changed != 0) then
+	begin
+		switch(fieldname)
+		begin
+		 // case "ContractDate": res = (CUr.ValTerm <> 1) ; //and resL
+		  case "Passp": res = (CUr.Status == 0) and resL; //(CUr.ValPas <> 1) and
+		  case "RefINN": res = (CUr.Status == 0) and resL;//(CUr.ValRefINN <> 1) and
+		  case "EGRPOU": res = resL;//(CUr.ValEGRPOU <> 1) and
+		  case "RefSingle": res = (CUr.Status == 0) and resL;//(CUr.ValRefSingle <> 1) and
+		  case "RefOPP": res = (CUr.Status == 1) and resL; //(CUr.ValRefOPP <> 1) and
+		  case "AssigDir": res = (CUr.Status == 1) and resL; // (CUr.ValAssigDir <> 1) and
+		  case "Excerpt": res = (CUr.Status == 1) and resL; //(CUr.ValExcerpt <> 1) and
+		  case "RefNDS": res = (CUr.Status == 1) and resL; // (CUr.ValRefNDS <> 1) and
+		  // 15.03.13 TGOR
+		  case "CommDate": res = (Usr.AccessGroup == "LAW");
+		  case "CommTime": res = (Usr.AccessGroup == "LAW");
+		  case "Field": res = (Usr.AccessGroup == "LAW");
+		  case "tCreditLimit": res = (CUr.tLimKrFlag == 0) or (Usr.AccessGroup == "1011K");
+		  //case "Comment": res = (Usr.AccessGroup == "LAW");
+
+		end;
+	end;
+
+if (res) then
+	begin
+	res = inner.CUDClassActiveEditField(wn, fieldname, fn, wnst, rownr, changed);
+	end;
+  CUDClassActiveEditField = res;
+  RETURN;
+END;
+
+
+global
+function Boolean CUDClassOnOKWindow(Integer wn)
+begin
+  Integer mwn;
+  record CUVc CUr;
+  record VCUNoteVc CNr;
+
+  if (WindowState(wn)==0) then begin
+    if (ReadMarkedRecord(wn,CNr)) then begin
+      CUr.Code = CNr.CustCode;
+      if (ReadFirstMain(CUr,1,true)) then begin
+        mwn = OpenWindow("CUDClass",1,0,"","",CUr);
+      end;
+    end;
+  end;
+  CUDClassOnOKWindow = true;
+  return;
+end;
+
+
+global
+procedure DblCUVc(string dblstr,string l,Integer currepwn)
+begin
+Integer wn;
+record CUVc CUr;
+
+if (nonblank(l)) then
+	begin
+	CUr.Code = l;
+	end
+else
+	begin
+	CUr.Code = dblstr;
+	end;
+if (nonblank(CUr.Code)) then
+	begin
+	if (ReadFirstMain(CUr,1,true)) then
+		begin
+		wn = OpenWindow("CUDClass",1,0,"","",CUr);
+		if setinset(CurrentUser,"NSKI,EKOX") and blank(CUr.LowPrew) then
+			begin
+			CUr.LowPrew = CurrentUser;
+			PutWindowRecord(wn, CUr);
+			end;
+		end;
+	end;
+return;
+end;
+
+
+global
+function Boolean CUDClassblockedFlagButtonAction(Integer wn, Integer value)
+begin
+record CUVc CUr;
+record VSetSetBlock VSet;
+
+GetWindowRecord(wn, CUr);
+
+BlockLoad(VSet);
+
+CUDClassblockedFlagButtonAction =  (HasCUZeroDebet(CUr) or UserCanAction("UnOKAll", True) or SetInSet(CurrentUser, VSet.AllowedUser));
+RETURN;
+end;
+
+
+global
+function Boolean CUDClassOnOpenWindow(Integer wn)
+begin
+  record CUVc CUr;
+  record CCatVc CCatr;
+  string 255 tstr;
+
+  GetWindowRecord(wn,CUr);
+  if (nonblank(CUr.CustCat)) then begin
+    CCatr.Code = CUr.CustCat;
+    if (ReadFirstMain(CCatr,1,true)) then begin
+      if (CheckClassInCUVc(CUr,CCatr,tstr)==false) then begin
+        MessageBox(1707,tstr);
+        WindowFieldGoto(wn,CUr,-1,"CustCat",true);
+      end;
+    end;
+  end;
+
+//  SetWindowNameArg(wn,"");
+  CUDClassOnOpenWindow = false;
+  return;
+end;
+
+
+global
+procedure CUDClassOnWindowRecordChange(Integer wn)
+begin
+  record CUVc CUr;
+
+  GetWindowRecord(wn,CUr);
+  return;
+end;
+
+
+global
+function Boolean CUClassSClassOnOpenPaste(Integer wn,string find)
+begin
+  CUClassSClassOnOpenPaste = false; //Разрешаем окно выбора обязательных классификаторов контакта
+  return;
+end;
+
+/*
+//25.06.14 INAU - Автозаполнение объекта планирования (CUVcWActionTool.hal)
+global
+function Boolean CUVc_PasteSalesMan(var record CUVc CUp)
+begin
+  boolean res;
+  record UserVc Usr;
+
+  res = inner.CUVc_PasteSalesMan(CUp);
+  if (res) then
+    begin
+    Usr.Code = CUp.SalesMan;
+    ReadFirstMain(Usr, 1, true);
+    IAddAndReplaceObjs(CUr.Objects, IGetObjByType(Usr.Objx, "PLAN")); //или изменяем объект типа PLAN
+    end;
+
+  CUVc_PasteSalesMan = res;
+  Return;
+end;
+*/

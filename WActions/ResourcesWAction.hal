@@ -1,0 +1,732 @@
+function Boolean IncidentDClass_UserAfter(Integer wn, Integer changed)
+begin
+record IncidentsVc Ir, I2r;
+record UserVc USr;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	res = (Ir.NewFlag <> 1) and (I2r.NewFlag <> 1);
+	if res then
+		begin
+		USr.Code = Ir.User;
+		res = res and ReadFirstMain(USr, 1, True);
+		if res then
+			begin
+			Ir.UserName = USr.Name;
+			Ir.SalesGroup = USr.SalesGroup;
+			Ir.Department = USr.Department;
+			end;
+		PutWindowRecord(wn, Ir);
+		end else
+		begin
+		PutWindowRecord(wn, I2r);
+		end;
+	end;
+IncidentDClass_UserAfter = res;
+RETURN;
+end;
+
+function boolean IncidentDClass_IFormAfter(Integer wn, Integer changed)
+begin
+record IncidentsVc Ir, I2r;
+record IncidentFormVc IFr;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	res = (Ir.NewFlag <> 1) and (I2r.NewFlag <> 1);
+	if res then
+		begin
+		IFr.IForm = Ir.IForm;
+		res = res and ReadFirstMain(IFr, 1, True);
+		if res then
+			begin
+			Ir.Comment = IFr.Comment;
+			end;
+		PutWindowRecord(wn, Ir);
+		end else
+		begin
+		PutWindowRecord(wn, I2r);
+		end;
+	end;
+IncidentDClass_IFormAfter = res;	
+RETURN;
+end;
+
+function boolean IncidentDClass_ITypeAfter(Integer wn, Integer changed)
+begin
+record IncidentsVc Ir, I2r;
+record IncidentFormVc IFr;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	res = (Ir.NewFlag <> 1) and (I2r.NewFlag <> 1);
+	if res then
+		begin
+		PutWindowRecord(wn, Ir);
+		end else
+		begin
+		PutWindowRecord(wn, I2r);
+		end;
+	end;
+IncidentDClass_ITypeAfter = res;	
+RETURN;
+end;
+
+function Boolean IncidentDClass_ObjectsAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record IncidentsVc Ir, I2r;
+row IncidentsVc Irw, I2rw;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	MatRowGet(I2r, rownr, I2rw);
+	MatRowGet(Ir, rownr, Irw);
+	res = ((Ir.NewFlag == 1) and (Ir.SolFlag == 1) and (I2r.SolFlag == 1) and (Ir.OKFlag <> 1));
+	if res then
+		begin
+		if (blank(I2rw.Sign) or (I2rw.Sign == CurrentUser)) then
+			begin
+			Irw.Sign = CurrentUser;
+			MatRowPut(Ir, rownr, Irw);
+			end else
+			begin
+			MatRowPut(Ir, rownr, I2rw);
+			end;
+		end else
+		begin
+		MatRowPut(Ir, rownr, I2rw);
+		end;
+	PutWindowRecord(wn, Ir);
+	end;
+IncidentDClass_ObjectsAfter = res;
+RETURN;
+end;
+
+
+function Boolean IncidentDClass_SolDateAfter(Integer wn, Integer changed)
+begin
+record IncidentsVc Ir, I2r;
+row IncidentsVc Irw, I2rw;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	res = (I2r.SolFlag <> 1);
+	if (not res) then
+		begin
+		Ir.SolDate = I2r.SolDate;
+		PutWindowRecord(wn, Ir);
+		end;
+	end;
+IncidentDClass_SolDateAfter = res;
+RETURN;
+end;
+
+function Boolean IncidentDClass_DateRecAfter(Integer wn, Integer changed)
+begin
+record IncidentsVc Ir, I2r;
+row IncidentsVc Irw, I2rw;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	res = (I2r.NewFlag <> 1);
+	if (not res) then
+		begin
+		Ir.DateRec = I2r.DateRec;
+		PutWindowRecord(wn, Ir);
+		end;
+	end;
+IncidentDClass_DateRecAfter = res;
+RETURN;
+end;
+
+function Boolean IncidentCheckOK(Integer wn, Integer changed)
+begin
+record IncidentsVc Ir, I2r;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	if (Ir.OKFlag <> 0) then
+		begin
+		PutWindowRecord(wn, I2r);
+		end;
+	end;
+IncidentCheckOK = res;
+RETURN;
+end;
+
+global
+function Boolean IncidentDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	switch (fieldname)
+		begin
+		case "User": res = IncidentDClass_UserAfter(wn, changed);
+		case "IForm": res = IncidentDClass_IFormAfter(wn, changed);
+		case "IType": res = IncidentDClass_ITypeAfter(wn, changed);
+		case "Objects": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		case "Sign": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		case "Price": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		case "Comment1": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		case "SolDate": res = IncidentDClass_SolDateAfter(wn, changed);
+		case "DateRec": res = IncidentDClass_DateRecAfter(wn, changed);
+		end;
+	res = IncidentCheckOK(wn, changed);
+	end;
+IncidentDClassAfterEditField = res;
+RETURN;
+end;
+
+global
+function Boolean IncidentDClassOKFlagButtonAction(Integer wn, Integer value)
+begin
+record IncidentsVc Ir, I2r;
+Boolean res;
+
+
+res = (value == 0);
+if res then
+	begin
+	GetWindowRecord(wn, Ir);
+	res = res and (Ir.SolFlag == 1) and (MatRowCnt(Ir) > 0);
+	end;
+IncidentDClassOKFlagButtonAction = res;
+RETURN;
+end;
+
+global
+function Boolean IncidentDClassSolFlagButtonAction(Integer wn, Integer value)
+begin
+record IncidentsVc Ir, I2r;
+Boolean res;
+
+
+res = (value == 0);
+if res then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	res = res and (Ir.NewFlag == 1) and (I2r.SolFlag <> 1);
+	if blank(Ir.SolDate) then
+		begin
+		Ir.SolDate = CurrentDate;
+		Ir.SolTime = CurrentTime;
+		PutWindowRecord(wn, Ir);
+		end;
+	if blank(Ir.SolTime) then
+		begin
+		Ir.SolTime = CurrentTime;
+		PutWindowRecord(wn, Ir);
+		end;
+	end;
+IncidentDClassSolFlagButtonAction = res;
+RETURN;
+end;
+
+global
+function Boolean IncidentDClassNewFlagButtonAction(Integer wn, Integer value)
+begin
+record IncidentsVc Ir, I2r;
+Boolean res;
+
+res = (value == 0);
+if res then
+	begin
+	GetWindowRecord(wn, Ir);
+	GetPrevWindowRecord(wn, I2r);
+	res = res and nonblank(Ir.User) and nonblank(Ir.IForm) and nonblank(Ir.IType) and (I2r.NewFlag <> 1);
+	if blank(Ir.DateRec) then
+		begin
+		Ir.DateRec = CurrentDate;
+		Ir.TimeRec = CurrentTime;
+		PutWindowRecord(wn, Ir);
+		end;
+	if blank(Ir.TimeRec) then
+		begin
+		Ir.TimeRec = CurrentTime;
+		PutWindowRecord(wn, Ir);
+		end;
+	end;
+IncidentDClassNewFlagButtonAction = res;
+RETURN;
+end;
+
+
+global
+function Boolean WorkerSoftDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record WorkerSoftVc Softr;
+row WorkerSoftVc Softrw;
+record SoftKindVc Kindr, Kind2r;
+record StateVc STr;
+record VPositionVc VPr;
+Integer RwCnt;
+Boolean TrHs;
+if (changed <> 0) then
+	begin
+	if (fieldname == "SoftKind") then
+		begin
+		GetWindowRecord(wn, Softr);
+		MatRowGet(Softr, rownr, Softrw);
+		Kindr.SoftKind = Softrw.SoftKind;
+		TrHs = ReadFirstMain(Kindr, 1, True);
+		if TrHs then
+			begin
+			Kind2r.Parent = Kindr.SoftKind;
+			TrHs = TrHs and (not ReadFirstKey("Parent", Kind2r, 1, True));
+			end;
+		if TrHs then
+			begin
+			Softrw.Comment = Kindr.Comment;
+			Softrw.Price = Kindr.Price;
+			end else
+			begin
+			Softrw.SoftKind = blankval;
+			end;
+		MatRowPut(Softr, rownr, Softrw);
+		PutWindowRecord(wn, Softr);
+		end;
+	// if (fieldname == "WorkCode") then
+		// begin
+		// GetWindowRecord(wn, Softr);
+		// STr.Code = Softr.WorkCode;
+		// if ReadFirstMain(STr, 1, True) then
+			// begin
+			// Softr.WorkName = STr.Name;
+			// Softr.Department = STr.Department;
+			// end else
+			// begin
+			// Softr.WorkCode = blankval;
+			// end;
+		// PutWindowRecord(wn, Softr);
+		// end;	
+		if (fieldname == "WorkCode") then
+		begin
+		GetWindowRecord(wn, Softr);
+		VPr.Code = Softr.WorkCode;
+		if ReadFirstMain(VPr, 1, True) then
+			begin
+			Softr.WorkName = VPr.Name;
+			//Softr.Department = STr.Department;
+			end else
+			begin
+			Softr.WorkCode = blankval;
+			end;
+		PutWindowRecord(wn, Softr);
+		end;	
+	end;
+WorkerSoftDClassAfterEditField = TrHs;
+RETURN;
+end;
+
+global
+function Boolean UserSoftDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record UserSoftVc Softr, Soft2r;
+row UserSoftVc Softrw;
+record WorkerSoftVc WSoftr;
+row WorkerSoftVc WSoftrw;
+record SoftKindVc Kindr, Kind2r;
+record UserVc USr;
+Integer RwCnt;
+Boolean TrHs;
+
+if (changed <> 0) then
+	begin
+	if (fieldname == "SoftKind") then
+		begin
+		GetWindowRecord(wn, Softr);
+		MatRowGet(Softr, rownr, Softrw);
+		Kindr.SoftKind = Softrw.SoftKind;
+		TrHs = ReadFirstMain(Kindr, 1, True);
+		if TrHs then
+			begin
+			Kind2r.Parent = Kindr.SoftKind;
+			TrHs = TrHs and (not ReadFirstKey("Parent", Kind2r, 1, True));
+			end;
+		if TrHs then
+			begin
+			Softrw.Comment = Kindr.Comment;
+			Softrw.DateRec = CurrentDate;
+			Softrw.Signature = CurrentUser;
+			end else
+			begin
+			Softrw.SoftKind = blankval;
+			end;
+		MatRowPut(Softr, rownr, Softrw);
+		PutWindowRecord(wn, Softr);
+		end;
+		
+	if (fieldname == "Code") then
+		begin
+		GetWindowRecord(wn, Softr);
+		GetPrevWindowRecord(wn, Soft2r);
+		if (Softr.Code <> Soft2r.Code) then
+			begin
+			USr.Code = Softr.Code;
+			if ReadFirstMain(USr, 1, True) then
+				begin
+				WSoftr.WorkCode = USr.StateJob;
+				WSoftr.Department = USr.Department;
+				Softr.Name = USr.Name;
+				Softr.SalesGroup = USr.SalesGroup;
+				Softr.Department = USr.Department;
+				while LoopMain(WSoftr, 1, (not TrHs)) 
+					begin
+					TrHs = (WSoftr.WorkCode == USr.StateJob) and (WSoftr.Department == USr.Department);
+					if TrHs then
+						begin
+						for (RwCnt = 0; RwCnt < MatRowCnt(WSoftr); RwCnt = RwCnt + 1)
+							begin
+							MatRowGet(WSoftr, RwCnt, WSoftrw);
+							Softrw.SoftKind = WSoftrw.SoftKind;
+							Softrw.Comment = WSoftrw.Comment;
+							Softrw.DateRec = CurrentDate;
+							Softrw.Signature = CurrentUser;
+							MatRowPut(Softr, RwCnt, Softrw);
+							end;
+						end;
+					end;
+				end else
+				begin
+				Softr.Code = blankval;
+				end;
+			end;
+		PutWindowRecord(wn, Softr);
+		end;	
+	end;
+UserSoftDClassAfterEditField = TrHs;
+RETURN;
+end;
+
+function Boolean UserPlanTaskDClassCodeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+record UserPlanTaskVc UPTr, UPT2r;
+record UserVc USr;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, UPTr);
+	GetPrevWindowRecord(wn, UPT2r);
+	USr.Code = UPTr.Code;
+	res = ReadFirstMain(USr, 1, True) and blank(UPT2r.Code);
+	if res then
+		begin
+		UPTr.Name = USr.Name;
+		UPTr.Department = USr.Department;
+		UPTr.SalesGroup = USr.SalesGroup;
+		PutWindowRecord(wn, UPTr);
+		end else
+		begin
+		PutWindowRecord(wn, UPT2r);
+		end;
+	end;
+UserPlanTaskDClassCodeEFAfter = res;
+RETURN;
+end;
+
+function Boolean UserPlanTaskDClassKindEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+record UserPlanTaskVc UPTr, UPT2r;
+row UserPlanTaskVc UPTrw, UPT2rw;
+record UserVc USr;
+record TaskKindBlock TKb;
+row TaskKindBlock TKbr;
+Integer RwCnt;
+Boolean res, TrHs;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, UPTr);
+	MatRowGet(UPTr, rownr, UPTrw);
+	GetPrevWindowRecord(wn, UPT2r);
+	MatRowGet(UPT2r, rownr, UPT2rw);
+	USr.Code = CurrentUser;
+	res = ReadFirstMain(USr, 1, True) and (UPTr.Department == USr.Department);
+	if res then
+		begin
+		BlockLoad(TKb);
+		for (RwCnt = 0; (RwCnt < MatRowCnt(TKb)) and (not TrHs); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(TKb, RwCnt, TKbr);
+			TrHs = (TKBr.TaskType == UPTrw.Kind);
+			end;
+		if TrHs then
+			begin
+			UPTrw.Comment = TKBr.Comment;
+			UPTrw.Term = TKbr.TaskTime;
+			MatRowPut(UPTr, rownr, UPTrw);
+			end else
+			begin
+			MatRowPut(UPTr, rownr, UPT2rw);
+			end;
+			//UPTr.Free = 0;
+		// for (RwCnt = 0; RwCnt < MatRowCnt(UPTr); RwCnt = RwCnt + 1)
+			// begin
+			// MatRowGet(UPTr, RwCnt, UPTrw);
+			// UPTr.Free = UPTr.Free + UPTrw.Term;
+			// end;
+		PutWindowRecord(wn, UPTr);
+		end;
+	end;
+UserPlanTaskDClassKindEFAfter = res and TrHs;
+RETURN;
+end;
+
+function Boolean UserPlanTaskDClassStartDateEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+record UserPlanTaskVc UPTr, UPT2r;
+row UserPlanTaskVc UPTrw, UPT2rw, UPT3rw;
+record UserVc USr;
+Integer RwCnt, RowCnt;
+Date EndDate;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, UPTr);
+	GetPrevWindowRecord(wn, UPT2r);
+	MatRowGet(UPT2r, rownr, UPT2rw);
+	USr.Code = CurrentUser;
+	res = ReadFirstMain(USr, 1, True) and (UPTr.Department == USr.Department) and blank(UPT2rw.StartDate);
+	if res then
+		begin
+		if (rownr > 0) then
+			begin
+			MatRowGet(UPTr, rownr - 1, UPT3rw);
+			if (UPT3rw.InvalidRow == 1) then
+				begin
+				RwCnt = rownr - 1;
+				while((UPT3rw.InvalidRow == 1) and (RwCnt > -1))
+					begin
+					MatRowGet(UPTr, RwCnt, UPT3rw);
+					RwCnt = RwCnt - 1;
+					end;
+				end;
+			end;
+		MatRowGet(UPTr, rownr, UPTrw);
+		// if ((UPTrw.StartDate < UPT3rw.EndDate) and (UPT3rw.InvalidRow <> 1)) then
+			// begin
+			// UPTrw.StartDate = UPT3rw.EndDate;
+			// end;
+		if (UPTrw.Term > 0)  then
+			begin
+			UPTrw.EndDate = AddDay(UPTrw.StartDate, UPTrw.Term);
+			MatRowPut(UPTr, rownr, UPTrw);
+			end else
+			begin
+			MatRowPut(UPTr, rownr, UPT2rw);
+			end;
+		PutWindowRecord(wn, UPTr);
+		end else
+		begin
+		PutWindowRecord(wn, UPT2r);
+		end;
+	end;
+UserPlanTaskDClassStartDateEFAfter = res;
+RETURN;
+end;
+
+
+global
+function Boolean UserPlanTaskDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+Boolean res;
+
+switch (fieldname) 
+	begin
+	case "Code": res = UserPlanTaskDClassCodeEFAfter(wn, fn, rownr, changed);
+	case "Kind": res = UserPlanTaskDClassKindEFAfter(wn, fn, rownr, changed);
+	case "StartDate": res = UserPlanTaskDClassStartDateEFAfter(wn, fn, rownr, changed);
+	end;
+UserPlanTaskDClassAfterEditField = res;
+RETURN;
+end;
+
+global 
+function Boolean UserPlanTaskDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record UserPlanTaskVc UPTr, UPT2r;
+row UserPlanTaskVc UPTrw, UPT2rw, UPT3rw;
+record UserVc USr;
+Integer RwCnt, RowCnt;
+Boolean res;
+
+if (WindowState(wn) == 2) then 
+	begin
+	USr.Code = CurrentUser;
+	ReadFirstMain(USr, 1, True);
+	GetWindowRecord(wn, UPTr);
+	res = (USr.Department == UPTr.Department);
+	GetPrevWindowRecord(wn, UPT2r);   
+	res = res and (rownr == MatRowCnt(UPT2r));
+	end;
+UserPlanTaskDClassDeleteRowTest = res;
+RETURN;
+end;
+
+global 
+function Boolean UserPlanTaskDClassInsertRowTest(Integer wn, Integer rownr)
+begin
+record UserPlanTaskVc UPTr, UPT2r;
+row UserPlanTaskVc UPTrw, UPT2rw, UPT3rw;
+record UserVc USr;
+Integer RwCnt, RowCnt;
+Boolean res;
+
+if (WindowState(wn) == 2) then 
+	begin
+	USr.Code = CurrentUser;
+	ReadFirstMain(USr, 1, True);
+	GetWindowRecord(wn, UPTr);
+	res = (USr.Department == UPTr.Department);
+	res = res and (rownr == MatRowCnt(UPTr));
+	end;
+UserPlanTaskDClassInsertRowTest = res;
+RETURN;
+end;
+
+//Должности
+
+function Boolean VPositionDClass_CodeAfter(Integer wn, Integer changed)
+begin
+record VPositionVc Pr, P2r;
+Boolean res;
+
+SetLangMode(LangRussian, "RUS", 2);
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Pr);
+	GetPrevWindowRecord(wn, P2r);
+	if (Pr.Code <> P2r.Code) and nonblank(P2r.Code) then
+		begin
+		Pr.Code = P2r.Code;
+		MessageBox(0, "Можно изменить только при создании!");
+		PutWindowRecord(wn, Pr);
+		end;
+	end;
+VPositionDClass_CodeAfter = res;	
+RETURN;	
+end;
+
+function Boolean VPositionDClass_ClassCodeAfter(Integer wn, Integer changed)
+begin
+record VPositionVc Pr;
+record ProfClassVc PCr;
+Boolean res;
+
+SetLangMode(LangRussian, "RUS", 2);
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Pr);
+	PCr.SerNr = Pr.ClassCode;
+	if ReadFirstMain(PCr, 1, True) then
+		begin
+		Pr.ClassCodeSerNr = PCr.SerNr;
+		Pr.ClassCode = PCr.KP;
+		Pr.ClassName = PCr.PNR;
+		end;
+	PutWindowRecord(wn, Pr);
+
+	end;
+VPositionDClass_ClassCodeAfter = res;	
+RETURN;	
+end;
+
+function Boolean VPositionDClass_SuperiorAfter(Integer wn, Integer changed)
+begin
+record VPositionVc Pr, P2r;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Pr);
+	P2r.Code = Pr.Superior;
+	if ReadFirstMain(P2r, 1, True) then
+		begin
+		Pr.SuperiorName = P2r.Name;
+		end;
+	PutWindowRecord(wn, Pr);
+
+	end;
+VPositionDClass_SuperiorAfter = res;	
+RETURN;	
+end;
+
+function Boolean VPositionDClass_FuncCodeAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record VPositionVc Pr, P2r;
+row VPositionVc Prw, P2rw;
+record FunVc Fr;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	GetWindowRecord(wn, Pr);
+	GetPrevWindowRecord(wn, P2r);
+	MatRowGet(Pr, rownr, Prw);
+	MatRowGet(P2r, rownr, P2rw);
+	Fr.Code = Prw.FuncCode;
+	if ReadFirstMain(Fr, 1, True) then
+		begin
+		Prw.Comment = Fr.Name;
+		MatRowPut(Pr, rownr, Prw);
+		end else
+		begin
+		MatRowPut(Pr, rownr, P2rw);
+		end;
+	PutWindowRecord(wn, Pr);
+	end;
+VPositionDClass_FuncCodeAfter = res;	
+RETURN;	
+end;
+
+global
+function Boolean VPositionDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	switch (fieldname)
+		begin
+		//case "Code": res = VPositionDClass_CodeAfter(wn, changed);
+		case "ClassCode": res = VPositionDClass_ClassCodeAfter(wn, changed);
+		case "Superior": res = VPositionDClass_SuperiorAfter(wn, changed);
+		case "FuncCode": res = VPositionDClass_FuncCodeAfter(wn, rownr, changed);
+		// case "Objects": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		// case "Sign": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		// case "Price": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		// case "Comment1": res = IncidentDClass_ObjectsAfter(wn, rownr, changed);
+		// case "SolDate": res = IncidentDClass_SolDateAfter(wn, changed);
+		// case "DateRec": res = IncidentDClass_DateRecAfter(wn, changed);
+		end;
+	end;
+VPositionDClassAfterEditField = res;
+RETURN;
+end;
+

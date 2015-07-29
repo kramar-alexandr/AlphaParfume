@@ -1,0 +1,1574 @@
+external function Boolean BarcodeValidate(var string, Boolean);
+external procedure AddHelpButton(LongInt, LongInt);
+external inner procedure ExtractObj(string, var Integer, var string);
+external inner function string 255 StripCharacter(string, string);
+
+event startup
+begin
+SetLangMode(LangRussian,"RUS",2);
+Register("Help", "Help", HWHelpLClass, modDBMain);
+Import("Импорт цен", UpdatePricingMn, UpdatePricingMn, modFilK);
+Register("Help", "Help", HWHelpLClass, modIT);
+Setting("Настройка Типы инцидентов", IncidentTypeTClass, modIT);
+Setting("Настройка Виды инцидентов", IncidentFormLClass, modIT);
+Setting("Настройка Классы инцидентов", IncidentClassLClass, modIT);
+Setting("Настройка Типы ПО", SoftwareTypeTClass, modIT);
+Setting("Настройка Условия распростр. ПО", SoftwarePriceTClass, modIT);
+Setting("Виды ПО", SoftKindLClass, modIT);
+Setting("ПО - Паспорт должности", WorkerSoftLClass, modIT);
+Setting("Типы задач", TaskKindTClass, modIT);
+Setting("Настройка - Классы тех. средств", IClassITTechLClass, modIT);
+Setting("Настройка - Классы провайдеров услуг", IClassServProvLClass, modIT);
+Setting("Имена файлов", HALNameLClass, modIT);
+Register("Инциденты", "Инциденты", IncidentLClass, modIT);
+Register("ПО. Сотрудники", "ПО. Сотрудники", UserSoftLClass, modIT);
+Register("Запланированные задачи", "Запланированные задачи", UserPlanTaskLClass, modIT);
+Register("Технические средства", "Технические средства", IITTechLClass, modIT);
+Register("Провайдеры услуг", "Провайдеры услуг", IServProvLClass, modIT);
+Register("Улучшения КИС", "Улучшения КИС", UpCISLClass, modIT);
+Register("Технические задания","Технические задания",VObjectiveVc,modIT);
+Report("Отчёт по улучшениям КИС", tUpCISRClass, tUpCISRn, 0, modIT);
+Report("Незавершенные документы", IWastedDocsRClass, IWastedDocsRn, 0, modIT);
+Report("Ошибочные счета клиентам", VORVcHistRClass, VORVcHistRn, 0, modBORG);
+Report("Аннулированные счета-фактуры клиентам", VIVVcHistRClass, VIVVcHistRn, 0, modBORG);
+Report("Остатки на складе на дату", VRemStockGroupRClass, VRemStockGroupRn, 0, modVLog);
+Maintenance("Удалить объект из карточек клиентов", VDelObjCUVClass, VDelObjCUMn, modDBMain);
+
+
+Register("Операции", "Операции", OperVc, modSTR);
+Register("Функции", "Функции", FunVc, modSTR);
+Register("Должности ГК", "Должности ГК", VPositionLClass, modSTR);
+Register("Должности ГК", "Должности ГК", VPositionLClass, modEmp);
+Register("Структурные подразделения", "Структурные подразделения", StPodrVc, modSTR);
+Register("Классификатор профессий", "Классификатор профессий", ProfClassLClass, modSTR);
+Register("Фрагметы текста", "Фрагметы текста", FragmVc, modSTR);
+Register("Виды документов ГК", "Виды документов ГК", tTypeDocVc, modSTR);
+Register("Бизнес - процессы ГК", "Бизнес - процессы ГК", tBizProcVc, modSTR);
+
+Setting("Классы должностей", VClassPosLClass, modSTR); 
+Setting("Образование", tEducationLClass, modSTR);
+Setting("Базовые знания", tBasicKnowLClass, modSTR);
+Setting("Базовые умения", BasicSkillLClass, modSTR);
+Setting("Владение компьютером", CompSkillTClass, modSTR);
+Setting("Владение транспортным средством", TranspSkillTClass, modSTR);
+Setting("Иностранные языки",tLanguagesLClass, modSTR);
+Setting("Основные навыки",tSkillsLClass, modSTR);
+//Setting("Функции", VFuncPosLClass, modSTR); 
+
+Setting("Права/ответственность", VRightsPosLClass, modSTR);
+Setting("Типы классификаторов структуры",StTypeClLClass,modSTR);
+Setting("Классификации операций", WOClassLClass,modSTR);
+Setting("Классификации функций", FunClassLClass,modSTR);
+Setting("Классификации подразделений", PodrClassLClass,modSTR);
+Setting("Группы функций", FunGrLClass,modSTR);
+Setting("Названия документов", DocNameTClass, modSTR);
+Setting("Классификации видов документов", tDocClLClass, modSTR);
+Setting("Классификации бизнес-процессов", tBizClLClass, modSTR);
+Setting("Типовые бизнес-процессы", tBizTypLClass, modSTR);
+Setting("Типы крассификаторов видов документов", tDocTClLClass, modSTR);
+Setting("Типы крассификаторов бизнес-процессов", tBizTClLClass, modSTR);
+
+Report("Журнал операций ГК", OperGKRClass, OperGKRn, 0, modSTR);
+Report("Журнал функций ГК", FunGKRClass, FunGKRn, 0, modSTR);
+Report("Журнал подразделений ГК", PodrGKRClass, PodrGKRn, 0, modSTR);
+Report("Журнал должностей ГК", PostGKRClass, PostGKRn, 0, modSTR);
+Report("Журнал должностей ГК", PostGKRClass, PostGKRn, 0, modEmp);
+Report("Отчёт по видам док-в ГК", tTypeDocRClass, tTypeDocRn, 0, modSTR);
+Report("Бизнес-процессы ГК", tBizProcRClass, tBizProcRn, 0, modSTR);
+
+Setting("Настройка - рекламируемые группы", PrRemainingTClass, modFilK);
+RETURN;
+end;
+
+
+global
+function Boolean VCUHierarchyObjTClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record VCUHierarchyObjBlock VCHr, VCH2r;
+row VCUHierarchyObjBlock VCHrw, VCH2rw;
+record CClassVc Cr;
+record ObjVc Objr;
+Boolean ObjYes, ClassYes;
+
+if (rownr > -1) and (changed <> 0)then 
+	begin
+	GetWindowRecord(wn, VCHr);
+	GetPrevWindowRecord(wn, VCH2r);
+	MatRowGet(VCHr, rownr, VCHrw);
+	switch(fieldname)
+		begin
+		case "Classification": 	begin
+								Cr.Code = VCHrw.Classification;
+								
+								if ReadFirstMain(Cr, 1, True) then
+									begin
+									VCHrw.Comment = Cr.Comment;
+									end else
+									begin
+									VCHrw.Classification = blankval;
+									end;
+								MatRowPut(VCHr, rownr, VCHrw);
+								PutWindowRecord(wn, VCHr);
+								end;
+		case "ObjStr": 	begin
+						Objr.Code = VCHrw.ObjStr;
+						if ReadFirstMain(Objr, 1, True) and (Objr.TerminateFlag <> 1) then
+							begin
+							VCHrw.Comment1 = Objr.Comment;
+							end else
+							begin
+							VCHrw.ObjStr = blankval;
+							end;
+						MatRowPut(VCHr, rownr, VCHrw);
+						PutWindowRecord(wn, VCHr);
+						end;
+		end;
+	end;
+VCUHierarchyObjTClassAfterEditField = False;
+RETURN;
+end;
+
+global
+function Boolean VOrdNoSHRClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record RcVc RepSpec;
+record UserVc USr;
+Boolean res;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (USr.limitedAccess <> 0) then
+	begin
+	DeselectWindow(wn, false);
+	GetWindowRecord(wn, RepSpec);
+	RepSpec.f2 = USr.SalesGroup;
+	RepSpec.f1 = blankval;
+	PutWindowRecord(wn, RepSpec);
+	end;
+RETURN;
+end;
+
+global
+procedure VOrdNoSHRClassReportDefaults(Integer wn)
+BEGIN
+record RcVc RepSpec;
+record UserVc Usr;
+  
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "VOrdNoSHRClass");  
+RepSpec.flags[0] = 0;
+RepSpec.f1 = USr.Location;
+if (USr.limitedAccess <> 0) then 
+    begin
+    RepSpec.f2 = Usr.SalesGroup;
+	RepSpec.f1 = blankval;
+    end;
+PutWindowRecord(wn,RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+global
+function Boolean CUFieldSClassOnOpenWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+//mwn = MotherWindow(wn);
+SetLangMode(LangRussian, "RUS", 2);
+SetListString(wn, RwCnt += 1, "SearchKey: Сокр.", false);
+SetListString(wn, RwCnt += 1, "Person: Основное конт.лицо", false);
+SetListString(wn, RwCnt += 1, "PayDeal: Условие опл. (кл.)", false);
+SetListString(wn, RwCnt += 1, "CreditLimit: Лимит кредита (кл.)", false);
+SetListString(wn, RwCnt += 1, "VECustID: Курс валюты", false);
+SetListString(wn, RwCnt += 1, "PLCode: Прейскурант", false);
+SetListString(wn, RwCnt += 1, "RebCode: Таблица скидок", false);
+SetListString(wn, RwCnt += 1, "ContractDate: Cрок договора", false);
+SetListString(wn, RwCnt += 1, "Comment2: Доп. условия", false);
+SetListString(wn, RwCnt += 1, "Department: Оф.наименование", false);
+SetListString(wn, RwCnt += 1, "BlackList: В черном списке", false);
+SetListString(wn, RwCnt += 1, "blockedFlag: Закрыт", false);
+//==== TGOR 8.01.13
+SetListString(wn, RwCnt += 1, "Passp: Паспортные данные", false);
+SetListString(wn, RwCnt += 1, "RefINN: Справка ИНН", false);
+SetListString(wn, RwCnt += 1, "EGRPOU: Выписка ЕГРПОУ", false);
+SetListString(wn, RwCnt += 1, "RefSingle: Свидетельство о ед. налоге", false);
+SetListString(wn, RwCnt += 1, "RefOPP: Справка 4-ОПП (для Юр.лиц)", false);
+SetListString(wn, RwCnt += 1, "AssigDir: Документ о назначении директора", false);
+SetListString(wn, RwCnt += 1, "Excerpt: Выдержка из устава", false);
+SetListString(wn, RwCnt += 1, "RefNDS: Свидетельство НДС", false);
+//====
+
+CUFieldSClassOnOpenWindow = false;
+Return;
+end;
+
+global
+function Boolean CUFieldSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+CUFieldSClassOnOKWindow = false;
+Return;
+end;
+
+global
+function Boolean IncidentTypeSClassOnOpenWindow(Integer wn)
+begin
+record IncidentTypeBlock ITb;
+row IncidentTypeBlock ITbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(ITb);
+for (RwCnt = 0; RwCnt < MatRowCnt(ITb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ITb, RwCnt, ITbr);
+	SetListString(wn, RwCnt, ITbr.IType & ":  " & ITbr.Comment, false);
+	end;
+IncidentTypeSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean IncidentTypeSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+IncidentTypeSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean SoftwareTypeSClassOnOpenWindow(Integer wn)
+begin
+record SoftwareTypeBlock STb;
+row SoftwareTypeBlock STbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(STb);
+for (RwCnt = 0; RwCnt < MatRowCnt(STb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(STb, RwCnt, STbr);
+	SetListString(wn, RwCnt, STbr.SType & ":  " & STbr.Comment, false);
+	end;
+SoftwareTypeSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean SoftwareTypeSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+SoftwareTypeSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean SoftwarePriceSClassOnOpenWindow(Integer wn)
+begin
+record SoftwarePriceBlock SPb;
+row SoftwarePriceBlock SPbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(SPb);
+for (RwCnt = 0; RwCnt < MatRowCnt(SPb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(SPb, RwCnt, SPbr);
+	SetListString(wn, RwCnt, SPbr.SPrice & ":  " & SPbr.Comment, false);
+	end;
+SoftwarePriceSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean SoftwarePriceSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+SoftwarePriceSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean TaskKindSClassOnOpenWindow(Integer wn)
+begin
+record TaskKindBlock TKb;
+row TaskKindBlock TKbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(TKb);
+for (RwCnt = 0; RwCnt < MatRowCnt(TKb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(TKb, RwCnt, TKbr);
+	SetListString(wn, RwCnt, TKbr.TaskType & ":  " & TKbr.Comment, false);
+	end;
+TaskKindSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean TaskKindSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+TaskKindSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+global
+function Boolean VEducationSClassOnOpenWindow(Integer wn)
+begin
+record VEducationBlock ITb;
+row VEducationBlock ITbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(ITb);
+for (RwCnt = 0; RwCnt < MatRowCnt(ITb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ITb, RwCnt, ITbr);
+	SetListString(wn, RwCnt, ITbr.Code & ":  " & ITbr.Comment, false);
+	end;
+VEducationSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean VEducationSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+VEducationSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+global
+function Boolean BasicKnowSClassOnOpenWindow(Integer wn)
+begin
+record BasicKnowBlock ITb;
+row BasicKnowBlock ITbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(ITb);
+for (RwCnt = 0; RwCnt < MatRowCnt(ITb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ITb, RwCnt, ITbr);
+	SetListString(wn, RwCnt, ITbr.Code & ":  " & ITbr.Comment, false);
+	end;
+BasicKnowSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean BasicKnowSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+BasicKnowSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean CompSkillSClassOnOpenWindow(Integer wn)
+begin
+record CompSkillBlock ITb;
+row CompSkillBlock ITbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(ITb);
+for (RwCnt = 0; RwCnt < MatRowCnt(ITb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ITb, RwCnt, ITbr);
+	SetListString(wn, RwCnt, ITbr.Code & ":  " & ITbr.Comment, false);
+	end;
+CompSkillSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean CompSkillSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+CompSkillSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean TranspSkillSClassOnOpenWindow(Integer wn)
+begin
+record TranspSkillBlock ITb;
+row TranspSkillBlock ITbr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(ITb);
+for (RwCnt = 0; RwCnt < MatRowCnt(ITb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(ITb, RwCnt, ITbr);
+	SetListString(wn, RwCnt, ITbr.Code & ":  " & ITbr.Comment, false);
+	end;
+TranspSkillSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean TranspSkillSClassOnOKWindow(Integer wn)
+begin
+Integer mwn, RwCnt;
+
+mwn = MotherWindow(wn);
+PasteString(mwn, FirstInRange(GetListString(wn, SelectedListLine(wn)), 20));
+CloseWindow(wn);
+TranspSkillSClassOnOKWindow = false;
+RETURN;
+end;
+
+global 
+function Boolean CloseInfo()
+begin
+CloseWindow(CurWindow);
+RETURN;
+end;
+
+global 
+function Boolean CloseWindowByName(string WindowName)
+begin
+Integer wn;
+wn = FindWindow(WindowName);
+if (wn <> 0) then
+	begin
+	CloseWindow(wn);
+	end;
+RETURN;
+end;
+
+// global
+// function Boolean InfoClassOnOpenWindow(Integer wn)
+// begin
+// Integer mwn, RwCnt;
+
+// SetLangMode(LangRussian, "RUS", 2);
+	// SetListString(wn, RwCnt, Tmpr.f2 & ": " & Tmpr.f3, false);
+	// end;
+
+// InfoClassOnOpenWindow = false;
+// RETURN;
+// end;
+
+
+
+global
+procedure ClassPosInfo()
+begin
+record VPositionVc Pr;
+record VClassPosVc CPr;
+record TempVc Tmp;
+row TempVc Tmpr;
+Integer wn, nwn, pos, RwCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", CPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Pr.Classification, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	CPr.Code = ClassCode;
+	if ReadFirstMain(CPr, 1, True) then
+		begin
+		SetListString(nwn, RwCnt += 1, CPr.Code & ": " & CPr.Name, false);
+		end;
+	ExtractObj(Pr.Classification, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure BasicKnowInfo()
+begin
+record VPositionVc Pr;
+record BasicKnowBlock BKr;
+row BasicKnowBlock BKrw;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Pr.BasicKnow, pos, ClassCode);
+RwCnt = -1;
+BlockLoad(BKr);
+while nonblank(ClassCode) 
+	begin
+	for(RowCnt = 0; RowCnt < MatRowCnt(BKr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(BKr, RowCnt, BKrw);
+		if (ClassCode == BKrw.Code) then
+			begin
+			SetListString(nwn, RwCnt += 1, BKrw.Code & ": " & BKrw.Comment, false);
+			end;
+		end;
+	ExtractObj(Pr.BasicKnow, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure CompSkillInfo()
+begin
+record VPositionVc Pr;
+record CompSkillBlock BKr;
+row CompSkillBlock BKrw;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+pos = 0;
+ClearStringList(nwn);
+ExtractObj(Pr.CompSkill, pos, ClassCode);
+RwCnt = -1;
+BlockLoad(BKr);
+while nonblank(ClassCode) 
+	begin
+	for(RowCnt = 0; RowCnt < MatRowCnt(BKr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(BKr, RowCnt, BKrw);
+		if (ClassCode == BKrw.Code) then
+			begin
+			SetListString(nwn, RwCnt += 1, BKrw.Code & ": " & BKrw.Comment, false);
+			end;
+		end;
+	ExtractObj(Pr.CompSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure BasicSkillInfo()
+begin
+record VPositionVc VPr;
+record BasicSkillVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.BasicSkill, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.BasicSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure tSkillsInfo()
+begin
+record VPositionVc VPr;
+record tSkillsVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.tSkills, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.tSkills, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure tLanguagesInfo()
+begin
+record VPositionVc VPr;
+record tLanguagesVc BSr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, VPr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", VPr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(VPr.LangSkill, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BSr.Code = ClassCode;
+	if ReadFirstMain(BSr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, BSr.Code & ": " & BSr.Name, false);
+		end;
+	ExtractObj(VPr.LangSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+global
+procedure TranspSkillInfo()
+begin
+record VPositionVc Pr;
+record TranspSkillBlock BKr;
+row TranspSkillBlock BKrw;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Pr.TranspSkill, pos, ClassCode);
+RwCnt = -1;
+BlockLoad(BKr);
+while nonblank(ClassCode) 
+	begin
+	for(RowCnt = 0; RowCnt < MatRowCnt(BKr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(BKr, RowCnt, BKrw);
+		if (ClassCode == BKrw.Code) then
+			begin
+			SetListString(nwn, RwCnt += 1, BKrw.Code & ": " & BKrw.Comment, false);
+			end;
+		end;
+	ExtractObj(Pr.TranspSkill, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure RightsInfo()
+begin
+record VPositionVc Pr;
+record VRightsPosVc BKr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+string 255 Text;
+
+SetLangMode(LangRussian, "RUS", 2);
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Pr.Rights, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BKr.Code = ClassCode;
+	if ReadFirstMain(BKr, 1, True) then
+		begin
+		for (RowCnt = 0; RowCnt < LineTextCnt(BKr); RowCnt = RowCnt + 1)
+			begin
+			SetListString(nwn, RwCnt += 1, LineTextGet(BKr, RowCnt), False);
+			end;
+		SetListString(nwn, RwCnt += 1, " ", False);
+		end;
+	ExtractObj(Pr.Rights, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+global
+procedure ObligationsInfo()
+begin
+record VPositionVc Pr;
+record VRightsPosVc BKr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+string 255 Text;
+
+SetLangMode(LangRussian, "RUS", 2);
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Pr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Pr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Pr.Obligations, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	BKr.Code = ClassCode;
+	if ReadFirstMain(BKr, 1, True) then
+		begin
+		for (RowCnt = 0; RowCnt < LineTextCnt(BKr); RowCnt = RowCnt + 1)
+			begin
+			SetListString(nwn, RwCnt += 1, LineTextGet(BKr, RowCnt), False);
+			end;
+		SetListString(nwn, RwCnt += 1, " ", False);
+		end;
+	ExtractObj(Pr.Obligations, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+event DefineWindows
+begin
+real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l;
+string 255 label;
+SetLangMode(LangRussian, "RUS", 2); 
+
+WindowBegin("Настройка Классы - Объекты", VCUHierarchyObjTClass, CGHbl, HBlRecType);
+SetBlid(VCUHierarchyObjBlock);
+SetWRect(20, 80, 600, 357);
+Sizeable(-1, -1, 0, 0);
+StaticText(4, 20, "Если в карточке клиента будет установлен указанный классификатор, то при сохранении ", False); 
+StaticText(4, 30, "карточки в объект клиента будет добавлена иерархия к указанному объекту", False);
+MatrixBegin(4, 60, -31, -20, VCUHierarchyObjRowType, 99);
+MatColTL(1, h = 24, "Класс", 0, M4Code, Normal, 20, Classification, false, CClassSClass);
+MatColTL(1, h += 80, "Наименование", 0, M4Str, ViewOnly, 100, Comment, false, 0);
+MatColTL(1, h += 130, "Объект", 0, M4Code, Normal, 20, ObjStr, false, ObjSClass);
+MatColTL(1, h += 80, "Наименование", 0, M4Str, ViewOnly, 100, Comment1, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Настройка Разрешения контактов", CUCardControlTClass, CGHbl, HBlRecType);
+SetBlid(CUCardControlBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+StaticText(4, 20, "СОКР. - SearchKey;  Основное конт.лицо - Person; Условие опл. (кл.) - PayDeal", False); 
+StaticText(4, 30, "Курс валюты - VECustID; Таблица скидок - RebCode; Cрок договора - ContractDate", False);
+MatrixBegin(4, 60, -31, -20, CUCardControlRowType, 99);
+MatColTL(1, h = 24, "Поле", 0, M4Str, Normal, 20, FieldName, false, CUFieldSClass);
+MatColTL(1, h += 100, "Разрешено", 0, M4UStr, Normal, 200, AccessGroup, false, AccessGroupSClass);
+MatColTL(1, -100, "Извещать", 0, M4UStr, Normal, 200, User, false, UserSClass);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Поле карточки клиента", CUFieldSClass, CGother,-);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+   
+WindowBegin("Неотгруженные счета клиентам", VOrdNoSHRClass, CGRcW, RcType);
+SetWRect (20, 80, 450, 300);
+v = 6; vs = 20; h = 100;
+PeriodField(h, v += vs, "Период");
+EditFieldTL(h, v += vs, 180, "Склад(ы)", M4UStr, Normal, 180, f1, false, LocationSClass);
+EditFieldTL(h, v += vs, 80, "Группа продажи", M4Code, Normal, 80, f2, false, SalesGroupSClass);
+EditFieldTL(h, v += vs, 80, "Клиент", M4Code, Normal, 80, f3, false, CUSClass);
+EditFieldTL(h, v += vs, 80, "Продавец", M4Code, Normal, 80, f4, false, UserSClass);
+EditFieldTL(h, v += vs, 80, "Объект", M4Code, Normal, 80, f5, false, ObjSClass);
+RadioButton(h, v += 2 * vs, 0, 0, "Незакрытые", flags[0]);
+RadioButton(h += 100, v, 0, 0, "Сортировка по дате", flags[1]);
+RadioButton(h -= 100, v += vs, 1, 1, "Все", flags[0]);
+RadioButton(h , v, 1, 1, "Сортировка по номеру", flags[1]);
+EndWindow;      
+
+WindowBegin("Список клиентов", CuListRClass, CGRcW, RcType);
+SetWRect (20, 80, 450, 300);
+v = 6; vs = 20; h = 100;
+AddHelpButton(-70, 20);
+EditFieldTL(h, v += vs, 80, "Код клиента", M4Code, Normal, 80, f3, false, CUSClass);
+EditFieldTL(h, v += vs, 80, "Категория", M4UStr, Normal, 80, f1, false, CCatSClass);
+EditFieldTL(h, v += vs, 80, "Группа продажи", M4Code, Normal, 80, f2, false, SalesGroupSClass);
+EditFieldTL(h, v += vs, 80, "Классификация", M4UStr, Normal, 80, f6, false, CClassSClass);
+EditFieldTL(h, v += vs, 80, "Продавец", M4Code, Normal, 80, f4, false, UserSClass);
+EditFieldTL(h, v += vs, 80, "Тип объекта", M4Code, Normal, 80, f5, false, OTSClass);
+CheckBox(h + 100, v, 0, "Проверка", flags[1]);
+RadioButton(h, v += 2 * vs, 0, 0, "Незакрытые", flags[0]);
+RadioButton(h, v += vs, 1, 1, "Все", flags[0]);
+EndWindow;       
+
+WindowBegin("HansaWorld Help", HWHelpDClass, CGview, -);
+SetWRect(20, 80, 800, 380);
+Sizeable(-1, -1, -1, 0);
+UseView(HWHelpVc);
+v = 6; vs = 20; h = 100; h2 = 300;
+EditField(h, v, 80, "SerNr", ViewOnly, SerNr, True, 0);
+EditField(h2, v, -40,"HelpWindow", Normal, HelpWindow, false, 0);
+EditField(h, v += vs, -40, "Заголовок", Normal, HelpCaption, false, 0);
+TextField(20, v += 2 * vs, -40, -50, HelpBody, 0);
+CheckBox(20, -30, 0, "Показывать", Visible);
+EndWindow;
+
+WindowBegin("HansaWorld Help", HWHelpLClass, CGmlist, -);
+SpawnClass(HWHelpDClass);
+SetWRect(64, 80, 609, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(HWHelpVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 20, "SerNr", SerNr, false, SerNr);
+RlColKey(80, 80, "HelpWindow", HelpWindow, false, HelpWindow);
+RlCol(250, 250, "Заголовок", HelpCaption, false);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Настройка Типы инцидентов", IncidentTypeTClass, CGHbl, HBlRecType);
+SetBlid(IncidentTypeBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, IncidentTypeRowType, 99);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, IType, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 100, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Типы инцидентов", IncidentTypeSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Виды инцидентов", IncidentFormSClass, CGslist, -);
+SpawnClass(IncidentFormDClass);
+UseView(IncidentFormVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", IForm, false, IForm);
+RlColKey(70, 70, "Наименование", Comment, False, Comment);
+RlColKey(305, 305, "Тип", IType, false, IType); 
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Виды инцидентов", IncidentFormLClass, CGmlist, -);
+SpawnClass(IncidentFormDClass);
+UseView(IncidentFormVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", IForm, false, IForm);
+RlColKey(70, 70, "Вид", Parent, false, IForm);
+RlColKey(305, 305, "Наименование", Comment, False, Comment); 
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Виды инцидентов", IncidentFormDClass, CGview, -);
+SetWRect(20, 80, 700, 180);
+//Sizeable(500, 100, 600, 280);
+UseView(IncidentFormVc);
+v = 6; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, IForm, False, 0);
+EditField(h2, v, -40,"Наименование", Normal, Comment, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, IType, false, IncidentTypeSClass);
+EditFieldTL(h2, v, 80, "Иерархия",  M4Code, Normal, 20, Parent, false, IncidentFormSClass);
+EditFieldTL(h, v += vs, 80, "Стоимость", M4Val, Normal, 20, Price, false, IncidentFormSClass);
+EndWindow;
+
+WindowBegin("Классы инцидентов", IncidentClassSClass, CGslist, -);
+SpawnClass(IncidentClassDClass);
+UseView(IncidentClassVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", IClass, false, IClass);
+RlColKey(70, 70, "Наименование", Comment, False, Comment);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Классы инцидентов", IncidentClassLClass, CGmlist, -);
+SpawnClass(IncidentClassDClass);
+UseView(IncidentClassVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", IClass, false, IClass);
+RlColKey(70, 70, "Наименование", Comment, False, Comment); 
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Классы инцидентов", IncidentClassDClass, CGview, -);
+SetWRect(20, 80, 700, 180);
+//Sizeable(500, 100, 600, 280);
+UseView(IncidentClassVc);
+v = 6; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, IClass, False, 0);
+EditField(h2, v, -40,"Наименование", Normal, Comment, false, 0);
+EditFieldTL(h, v += vs, 80, "Стоимость", M4Val, Normal, 20, Price, false, 0);
+EndWindow;
+
+WindowBegin("Инциденты", IncidentLClass, CGmlist, -);
+SpawnClass(IncidentDClass);
+UseView(IncidentsVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "№", SerNr, false, SerNr);
+RlColKey(60, 60, "Нов.", NewFlag, false, AllFlags);
+RlColKey(80, 80, "Реш.", SolFlag, false, AllFlags);
+RlColKey(100, 100, "ОК", OKFlag, false, AllFlags);
+RlColKey(160, 160, "Отдел", Department, false, Department);
+RlCol(305, 305, "Комментарий", Comment, False); 
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Инциденты", IncidentDClass, CGview, -);
+SetWRect(20, 80, 800, 380);
+Sizeable(-1, -1, -1, 0);
+UseView(IncidentsVc);
+v = 6; vs = 20; h = 80; h2 = 200; h3 = 350; h4 = 530; h5 = 660;
+Tile(0, 130, false, "", DateRec);
+ActiveFieldOnNew(User);
+EditField(h, v, 80, "№", ViewOnly, SerNr, True, 0);
+EditFieldTL(h2, v, 80, "Дата", M4Date, Normal, 20, DateRec, False, PasteCurDate);
+EditField(h3, v, 80, "Время", Normal, TimeRec, false, PasteCurTime);
+EditField(h, v += vs, 80, "Сотрудник", Normal, User, false, UserSClass);
+EnterSkip(IType);
+EditField(h2, v, 250, "", ViewOnly, UserName, false, 0);
+EditField(h4, v, 80, "Гр. продажи", ViewOnly, SalesGroup, false, 0);
+EditField(h5, v, -40, "Отдел", ViewOnly, Department, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, IType, False, IncidentTypeSClass);
+EditFieldTL(h2, v, 80, "Вид", M4Code, Normal, 20, IForm, False, IncidentFormSClass);
+EnterSkip(IClassification);
+EditField(h3 - 50, v, -40, "", ViewOnly, Comment, false, 0);
+EditFieldTL(h, v += vs, -40, "Классиф.", M4UStr, Normal, 100, IClassification, False, IncidentClassSClass);
+EditFieldTL(h, v += vs, 80, "Решено", M4Date, Normal, 20, SolDate, False, PasteCurDate);
+EditField(h2, v, 80, "", Normal, SolTime, false, PasteCurTime);
+CheckBox(h3, v, 0, "Получено", NewFlag);
+CheckBox(h4, v , 0, "Решено", SolFlag);
+CheckBox(h5, v , 0, "OK", OKFlag);
+//EditFieldTL(h, v += vs, -40, "Подписи", M4UStr, Normal, 100, Signature, False, UserSClass);
+TileButton(1,"Содержание");
+TileButton(2,"Отработка");
+Tile(1, 200, True, "", Description);
+v = 6;
+TextField(20, v, -40, -20, Description, 0);
+Tile(2, 200, True, "", Math);
+MatrixBegin(20, v, -40, -20, IncidentsRowType, 99);
+MatColTL(1, 32, "Объекты", 0, M4UStr, Normal, 60, Objects, false, ObjSClass);
+MatColTL(1, 250, "Подпись", 0, M4Code, Normal, 20, Sign, false, UserSClass);  
+MatColTL(1, 350, "Сумма", 0, M4Val, Normal, 20, Price, True, 0);  
+MatCol(1, 430, "Комментарий", 200, Comment1, False, 0);
+EndMatrix;
+EndWindow;
+
+
+//
+WindowBegin("Настройка Типы ПО", SoftwareTypeTClass, CGHbl, HBlRecType); 
+SetBlid(SoftwareTypeBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, SoftwareTypeRowType, 99);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, SType, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 100, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Настройка Условия распростр. ПО", SoftwarePriceTClass, CGHbl, HBlRecType);
+SetBlid(SoftwarePriceBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, SoftwarePriceRowType, 99);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, SPrice, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 100, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Типы ПО", SoftwareTypeSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Условия распространения ПО", SoftwarePriceSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Виды ПО", SoftKindSClass, CGslist, -);
+SpawnClass(SoftKindDClass);
+UseView(SoftKindVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", SoftKind, false, SoftKind);
+RlColKey(70, 70, "Вид", Parent, false, SoftKind); 
+RlColKey(170, 170, "Тип", SType, false, SType); 
+RlColKey(300, 300, "Наименование", Comment, False, Comment);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Виды ПО", SoftKindLClass, CGmlist, -);
+SpawnClass(SoftKindDClass);
+UseView(SoftKindVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", SoftKind, false, SoftKind);
+RlColKey(70, 70, "Вид", Parent, false, Parent); 
+RlColKey(170, 170, "Тип", SType, false, SType); 
+RlColKey(300, 300, "Наименование", Comment, False, Comment);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Виды ПО", SoftKindDClass, CGview, -);
+SetWRect(20, 80, 700, 180);
+UseView(SoftKindVc);
+v = 6; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, SoftKind, False, 0);
+EditField(h2, v, -40,"Наименование", Normal, Comment, false, 0);
+EditFieldTL(h, v += vs, 80, "Тип", M4Code, Normal, 20, SType, false, SoftwareTypeSClass);
+EditFieldTL(h2, v, 80, "Иерархия",  M4Code, Normal, 20, Parent, false, SoftKindSClass);
+EditFieldTL(h, v += vs, 80, "Условия", M4Code, Normal, 20, SPrice, false, SoftwarePriceSClass);
+EditFieldTL(h2, v += vs, 80, "Цена", M4Val, Normal, 20, Price, True, 0);
+EndWindow;
+
+WindowBegin("ПО. Паспорт должности", WorkerSoftLClass, CGmlist, -);
+SpawnClass(WorkerSoftDClass);
+UseView(WorkerSoftVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", WorkCode, false, WorkCode);
+RlColKey(100, 100, "Отдел", Department, false, Department); 
+RlColKey(300, 300, "Наименование", WorkName, False, WorkName);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("ПО. Паспорт должности", WorkerSoftSClass, CGslist, -);
+SpawnClass(WorkerSoftDClass);
+UseView(WorkerSoftVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", WorkCode, false, WorkCode);
+RlColKey(100, 100, "Отдел", Department, false, Department); 
+RlColKey(300, 300, "Наименование", WorkName, False, WorkName);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("ПО. Паспорт должности", WorkerSoftDClass, CGview, -);
+SetWRect(20, 80, 700, 180);
+Sizeable(-1, -1, -1, 0);
+UseView(WorkerSoftVc);
+v = 6; vs = 20; h = 60; h2 = 250; h4 = 550;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, WorkCode, False, VPositionSClass);
+EditField(h2, v, 200,"Наименование", Normal, WorkName, false, 0);
+EditFieldTL(h4, v, 80, "Отдел", M4Code, Normal, 20, Department, false, DepSClass);
+MatrixBegin(4, 60, -31, -20, WorkerSoftRowType, 99);
+MatColTL(1, h = 24, "Код ПО", 0, M4Code, Normal, 20, SoftKind, false, SoftKindSClass);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, ViewOnly, 200, Comment, false, 0);
+MatColTL(1, -80, "Цена", 0, M4Val, ViewOnly, 80, Price, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("ПО. Сотрудники", UserSoftLClass, CGmlist, -);
+SpawnClass(UserSoftDClass);
+UseView(UserSoftVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Отдел", Department, false, Department); 
+RlColKey(200, 200, "Группа", SalesGroup, false, SalesGroup); 
+RlColKey(300, 300, "Фамилия И.О.", Name, False, Name);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("ПО. Сотрудники", UserSoftDClass, CGview, -);
+SetWRect(20, 80, 700, 180);
+Sizeable(-1, -1, -1, 0);
+UseView(UserSoftVc);
+v = 16; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, Code, False, UserSClass);
+EditField(h2, v, -40,"Фамилия И.О.", ViewOnly, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Отдел", M4Code, ViewOnly, 20, Department, false, DepSClass);
+EditFieldTL(h2, v, 80, "Группа", M4Code, ViewOnly, 5, SalesGroup, false, SalesGroupSClass);
+MatrixBegin(4, 80, -31, -20, UserSoftRowType, 99);
+MatColTL(1, h = 24, "Код ПО", 0, M4Code, Normal, 20, SoftKind, false, SoftKindSClass);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, ViewOnly, 200, Comment, false, 0);
+MatColTL(1, -180, "Дата", 0, M4Date, ViewOnly, 20, DateRec, false, 0);
+MatColTL(1, -80, "Подпись", 0, M4Code, ViewOnly, 20, Signature, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Запланированные задачи", UserPlanTaskLClass, CGmlist, -);
+SpawnClass(UserPlanTaskDClass);
+UseView(UserPlanTaskVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(60, 60, "Год", Year, false, Code);
+// RlColKey(120, 120, "OK", OKFlag, false, OKFlag);
+RlColKey(150, 150, "Отдел", Department, false, Department); 
+RlColKey(250, 250, "Группа", SalesGroup, false, SalesGroup); 
+RlColKey(350, 350, "Фамилия И.О.", Name, False, Name);
+RlCol(-1, -1, "", Invalid, True);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Запланированные задачи", UserPlanTaskDClass, CGview, -);
+SetWRect(20, 80, 800, 180);
+Sizeable(-1, -1, -1, 0);
+UseView(UserPlanTaskVc);
+v = 16; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Год", M4Int, Normal, 20, Year, False, 0);
+EditFieldTL(h, v += vs, 80, "Код", M4Code, Normal, 20, Code, False, UserSClass);
+EnterSkip(Math);
+EditField(h2, v, -40,"Фамилия И.О.", ViewOnly, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Отдел", M4Code, ViewOnly, 20, Department, false, DepSClass);
+EditFieldTL(h2, v, 80, "Группа", M4Code, ViewOnly, 5, SalesGroup, false, SalesGroupSClass);
+MatrixBegin(4, 120, -31, -30, UserPlanTaskRowType, 299);
+MatColTL(1, h = 24, "Тип", 0, M4Code, Normal, 20, Kind, false, TaskKindSClass);
+MatColTL(1, h += 80, "Наименование", 0, M4Str, Normal, 200, Comment, false, 0);
+MatColTL(1, -340, "Начало", 0, M4Date, Normal, 20, StartDate, false, PasteCurDate);
+MatColTL(1, -260, "Оконч.", 0, M4Date, Normal, 20, EndDate, false, PasteCurDate);
+MatColTL(1, -180, "ТЗ", 0, M4Long, Normal, 20, VirtLink, false, VObjectiveSClass);
+MatColTL(1, -140, "Подпись", 0, M4UStr, Normal, 100, Sign, false, UserSClass);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+MatOverStrike(InvalidRow);
+//EditFieldTL(-100, -20, 80, "Всего дней", M4Int, ViewOnly, 20, Free, True, 0);
+EndWindow;
+
+WindowBegin("Типы задач", TaskKindTClass, CGHbl, HBlRecType);
+SetBlid(TaskKindBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, TaskKindRowType, 99);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, TaskType, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 100, Comment, false, 0);
+MatColTL(1, h = -280, "Время", 0, M4Int, Normal, 50, TaskTime, True, 0);
+MatColTL(1, h = -200, "Стоим.", 0, M4Val, Normal, 50, TaskPrice, True, 0);
+MatColTL(1, h = -120, "Подпись", 0, M4UStr, Normal, 100, Sign, False, UserSClass);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Типы задач", TaskKindSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+
+WindowBegin("Ошибочные счета клиентам", VORVcHistRClass, CGRcW, RcType);
+SetWRect (20, 80, 400, 300);
+v = 6; vs = 20; h = 100;
+AddHelpButton(-70, 20);
+PeriodField(h, v += vs, "Период");
+EditFieldTL(h, v += vs, 80, "Группа продажи", M4Code, Normal, 80, f1, false, SalesGroupSClass);
+EditFieldTL(h, v += vs, 80, "Продавец", M4Code, Normal, 80, f2, false, UserSClass);
+EditFieldTL(h, v += vs, 80, "Склад", M4Code, Normal, 80, f3, false, LocationSClass);
+EditFieldTL(h, v += vs, 80, "Оператор", M4Code, Normal, 80, f4, false, UserSClass);
+EndWindow;   
+
+WindowBegin("Аннулированные счета-фактуры клиентам", VIVVcHistRClass, CGRcW, RcType);
+SetWRect (20, 80, 400, 300);
+v = 6; vs = 20; h = 100;
+AddHelpButton(-70, 20);
+PeriodField(h, v += vs, "Период");
+EditFieldTL(h, v += vs, 80, "Группа продажи", M4Code, Normal, 80, f1, false, SalesGroupSClass);
+EditFieldTL(h, v += vs, 80, "Склад", M4UStr, Normal, 80, f3, false, LocationSClass);
+EditFieldTL(h, v += vs, 80, "Оператор", M4Code, Normal, 80, f4, false, UserSClass);
+EndWindow; 
+
+WindowBegin("Технические задания", VObjectiveSClass, CGslist, -);
+SpawnClass(VObjectiveDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VObjectiveVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "№", SerNr, True, SerNr);
+RlColKey(74, 74, "Отпр.", UsrCode, false, UsrCode);
+RlColKey(94, 94, "Ут", StartFlag, false, StartFlag);
+RlColKey(114, 114, "Пл", RecFlag, false, RecFlag);
+RlColKey(134, 134, "Комментарий", Comment, false, Comment);
+RlCol(-1,-1,"",Invalid,true);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Остатки на складе на дату", VRemStockGroupRClass, CGRcW, RcType);
+SetWRect (20, 80, 420, 300);
+v = 6; vs = 20; h = 100;
+AddHelpButton(-70, 20);
+EditFieldTL(h, v += vs, 80, "Товар", M4Code, Normal, 80, f1, false, INSClass);
+EditFieldTL(h, v += vs, 80, "Группа", M4Code, Normal, 80, f2, false, ITSClass);
+EditFieldTL(h, v += vs, 80, "Классификация", M4Code, Normal, 80, f3, false, DISClass);
+EditFieldTL(h, v += vs, 80, "Склад(ы)", M4UStr, Normal, 80, f4, false, LocationSClass);
+EditFieldTL(h, v += vs, 80, "Дата", M4Date, Normal, 80, d1, false, PasteCurDate);
+EditFieldTL(h, v += vs, 80, "Прейскурант", M4Code, Normal, 80, f5, false, PLDefSClass);
+RadioButton(h, v += 2 * vs, 0, 0, "Только в наличии", flags[0]);
+RadioButton(h, v += vs, 1, 1, "Только отсутствующие", flags[0]);
+RadioButton(h, v += vs, 2, 2, "Все", flags[0]);
+CheckBox(h, v += vs, 0, "Исключить товары с кодом -1", flags[1]);
+CheckBox(h, v += vs, 0, "Показывать код поставщика", flags[2]);
+EndWindow;
+
+//Должности
+
+WindowBegin("Образование", VEducationTClass, CGHbl, HBlRecType);
+SetBlid(VEducationBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, VEducationRowType, 99);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, Code, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 200, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Образование", VEducationSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Базовые знания", BasicKnowTClass, CGHbl, HBlRecType);
+SetBlid(BasicKnowBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, BasicKnowRowType, 299);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, Code, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 200, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Базовые знания", BasicKnowSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Владение компьютером", CompSkillTClass, CGHbl, HBlRecType);
+SetBlid(CompSkillBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, CompSkillRowType, 99);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, Code, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 200, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Владение компьютером", CompSkillSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Владение транспортным средством", TranspSkillTClass, CGHbl, HBlRecType);
+SetBlid(TranspSkillBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, TranspSkillRowType, 99);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, Code, false, 0);
+MatColTL(1, h += 100, "Наименование", 0, M4Str, Normal, 200, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Владение транспортным средством", TranspSkillSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("Функции", VFuncPosDClass, CGview, -);
+SetWRect(20, 80, 600, 180);
+//Sizeable(-1, -1, -1, -1);
+UseView(VFuncPosVc);
+v = 16; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, Code, False, 0);
+EditFieldTL(h2, v, 80, "Иерархия", M4Code, Normal, 20, Hierarchy, false, DepSClass);
+EditField(h, v += vs, -40,"Наименование", Normal, Name, false, 0);
+EndWindow;
+
+WindowBegin("Функции", VFuncPosLClass, CGmlist, -);
+SpawnClass(VFuncPosDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VFuncPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(74, 74, "Род.код", Hierarchy, false, Hierarchy);
+RlColKey(114, 114, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Функции", VFuncPosSClass, CGslist, -);
+SpawnClass(VFuncPosDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VFuncPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+RlColKey(204, 204, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классы должностей", VClassPosDClass, CGview, -);
+SetWRect(20, 80, 600, 180);
+//Sizeable(-1, -1, -1, -1);
+UseView(VClassPosVc);
+v = 16; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, Code, False, 0);
+EditFieldTL(h2, v, 80, "Иерархия", M4Code, Normal, 20, Hierarchy, false, VClassPosSClass);
+EditField(h, v += vs, -40,"Наименование", Normal, Name, false, 0);
+EndWindow;
+
+WindowBegin("Классы должностей", VClassPosLClass, CGmlist, -);
+SpawnClass(VClassPosDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VClassPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(74, 74, "Род.код", Hierarchy, false, Hierarchy);
+RlColKey(114, 114, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классы должностей", VClassPosSClass, CGslist, -);
+SpawnClass(VClassPosDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VClassPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+RlColKey(204, 204, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+
+WindowBegin("Права/ответственность", VRightsPosDClass, CGview, -);
+SetWRect(20, 80, 600, 380);
+Sizeable(-1, -1, -1, -1);
+UseView(VRightsPosVc);
+v = 16; vs = 20; h = 100; h2 = 300;
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, Code, False, 0);
+RadioButton(h2, v, 0, 0, "Право", TypePos);
+RadioButton(h2 + 100, v, 1, 0, "Ответственность", TypePos);
+EditField(h, v += vs, -40,"Наименование", Normal, Name, false, 0);
+TextField(20, v += 2 * vs, -40, -20, Contents, 0);
+EndWindow;
+
+WindowBegin("Права/ответственность", VRightsPosLClass, CGmlist, -);
+SpawnClass(VRightsPosDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VRightsPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(94, 94, "П/О", TypePos, false, TypePos);
+RlColKey(120, 120, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Права/ответственность", VRightsPosSClass, CGslist, -);
+SpawnClass(VRightsPosDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VRightsPosVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(94, 94, "П/О", TypePos, false, TypePos);
+RlColKey(120, 120, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Должности ГК", VPositionDClass, CGview, -);
+SetWRect(20, 80, 800, 380);
+Sizeable(-1, -1, -1, 0);
+UseView(VPositionVc);
+FormName(PrintVPositionD);
+v = 6; vs = 20; h = 100; h2 = 280; h3 = 150; h4 = 530; h5 = 660;
+Tile(0, 130, false, "", Code);
+ActiveFieldOnNew(Code);
+EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, Code, False, 0);
+EditFieldTL(h2, v, -150, "Наименование", M4Str, Normal, 100, Name, False, 0);
+CheckBox(h5, v, 0, "Закрыта", Invalid);
+EditFieldTL(h, v += vs, 80, "Код КП", M4Code, Normal, 20, ClassCode, False, ProfClassSClass);
+EditFieldTL(h2, v, -40, "Наименование", M4Str, Normal, 100, ClassName, False, 0);
+EditFieldTL(h, v += vs, 80, "Код вн.", M4Code, Normal, 20, OutCode, False, 0);
+EditFieldTL(h2, v, -40, "Наименование", M4Str, Normal, 100, OutName, False, 0);
+EditFieldTL(h, v += vs, 80, "Руководитель", M4Code, Normal, 20, Superior, False, VPositionSClass);
+EditFieldTL(h2, v, -40, "Наименование", M4Str, ViewOnly, 100, SuperiorName, False, 0);
+EditFieldTL(h, v += vs, -81, "Классификация", M4UStr, Normal, 200, Classification, False, VClassPosSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "ClassPosInfo", "...", 3);
+TileButton(1,"Требования");
+TileButton(2,"Должностные обязанности");
+TileButton(3,"Права и ответственность");
+Tile(1, 200, True, "", Education);
+v = 6;
+EditFieldTL(h3, v, -81, "Профиль образования", M4UStr, Normal, 200, Education, False, tEducationSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "tEducationInfo", "...", 3);
+EditFieldTL(h3, v += vs, 80, "Стаж работы, лет", M4Int, Normal, 20, WorkingTerm, True, 0);
+EditFieldTL(h3, v += vs, -81, "Основные знания", M4UStr, Normal, 200, BasicKnow, False, tBasicKnowSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "tBasicKnowInfo", "...", 3);
+EditFieldTL(h3, v += vs, -81, "Личные качества", M4UStr, Normal, 200, BasicSkill, False, BasicSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "BasicSkillInfo", "...", 3);
+EditFieldTL(h3, v += vs, -81, "Основные навыки", M4UStr, Normal, 200, tSkills, False, tSkillsSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "tSkillsInfo", "...", 3);
+EditFieldTL(h3, v += vs, -81, "Иностранные языки", M4UStr, Normal, 200, LangSkill, False, tLanguagesSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "tLanguagesInfo", "...", 3);
+EditFieldTL(h3, v += vs, -81, "Владение ПК", M4UStr, Normal, 200, CompSkill, False, CompSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "CompSkillInfo", "...", 3);
+EditFieldTL(h3, v += vs, -81, "Владение ТС", M4UStr, Normal, 200, TranspSkill, False, TranspSkillSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "TranspSkillInfo", "...", 3);
+CheckBox(h3, v += vs, 0, "Командировки", Mission);
+CheckBox(h2, v, 0, "Управление людьми", PeMan);
+StaticText(h - 50, v += 2 * vs, "Комментарии", False); 
+TextField(h3, v - 10, -40, -20, PrivateSkill, 0);
+//EditFieldTL(h3, v += vs, -81, "Личные качества", M4TextField, Normal, 200, PrivateSkill, False, PrivateSkillSClass);
+//ColourPushButton(-78, v - 2, -40, v + 18, "PrivateSkillInfo", "...", 3);
+v = 6;
+Tile(2, 200, True, "", Math);
+MatrixBegin(20, v, -40, -20, VPositionRowType, 200);
+MatColTL(1, 32, "Код", 0, M4UStr, Normal, 60, FuncCode, false, FunSClass);
+//MatColTL(1, 250, "Наименование", 0, M4Str, ViewOnly, 20, Comment, false, 0);  
+//MatColTL(1, -50, "%", 0, M4Val, Normal, 20, Percent, True, 0);  
+EndMatrix;
+Tile(3, 200, True, "", Rights);
+v = 6;
+EditFieldTL(h, v += vs, -81, "Права", M4UStr, Normal, 200, Rights, False, VRightsPosSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "RightsInfo", "...", 3);
+EditFieldTL(h, v += vs, -81, "Ответственность", M4UStr, Normal, 200, Obligations, False, VRightsPosSClass);
+ColourPushButton(-78, v - 2, -40, v + 18, "ObligationsInfo", "...", 3);
+EditFieldTL(h, v += vs, -81, "Рабочие инстр.", M4UStr, Normal, 200, WorkEquipList, False, IWorkEquipSClass); //21.06.13 INAU
+ColourPushButton(-78, v - 2, -40, v + 18, "VPositionDClassWorkEquipInfo", "...", 3);
+EndWindow;
+//Оh, Dumkopf!
+
+WindowBegin("Должности ГК", VPositionLClass, CGmlist, -);
+SpawnClass(VPositionDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VPositionVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(94, 94, "Рук.", Superior, True, Superior);
+RlColKey(154, 154, "Наименование", Name, false, Name);
+RlColKey(-1, -1, "", Invalid, True, 0);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Должности ГК", VPositionSClass, CGslist, -);
+SpawnClass(VPositionDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VPositionVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, True, Code);
+RlColKey(94, 94, "Наименование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+//Классификатор профессий
+WindowBegin("Классификатор профессий", ProfClassDClass, CGview, -);
+SetWRect(20, 80, 600, 280);
+//Sizeable(-1, -1, -1, -1);
+UseView(ProfClassVc);
+v = 16; vs = 20; h = 150; h2 = 350;
+EditFieldTL(h, v, 80, "Код КП", M4Code, Normal, 20, KP, False, 0);
+EditFieldTL(h2, v, 80, "Код ЗКППТР", M4Code, Normal, 20, ZKPPTR, False, 0);
+EditFieldTL(h, v += vs, 80, "Випуск ЄТКД", M4UStr, Normal, 20, VETKD, False, 0);
+EditFieldTL(h2, v , 80, "Випуск ДКХП", M4UStr, Normal, 20, VDKHP, False, 0);
+EditField(h, v += vs, -40,"Професійна назва роботи", Normal, PNR, false, 0);
+EndWindow;
+
+WindowBegin("Классификатор профессий", ProfClassLClass, CGmlist, -);
+SpawnClass(ProfClassDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(ProfClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код КП", KP, True, KP);
+RlColKey(120, 120, "Професійна назва роботи", PNR, false, PNR);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Классификатор профессий", ProfClassSClass, CGslist, -);
+SpawnClass(ProfClassDClass);
+SetWRect(64, 80, 809, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(ProfClassVc);
+RecordList(4, 17, -21, -39);
+RlColKey(-1, -1, "", SerNr, false, SerNr);
+RlColKey(2, 2, "Код КП", KP, True, KP);
+RlColKey(120, 120, "Професійна назва роботи", PNR, false, PNR);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Info", InfoClass, CGother,-);
+CloseOnCancel;
+SetWRect(71, 80, 400, 250);
+StringList(9, 9, -20, -50);
+WhiteBackground;
+Modality(1);
+WType(1);
+v = -33; h = -200;
+HalPushButton(h, v, h+60, v+20, "CloseInfo", "OK");
+EndWindow;
+
+WindowBegin("Удалить объект из карточек клиентов", VDelObjCUVClass, CGMnt, RcType); 
+SetWRect (20, 80, 300, 200);
+v = 6; vs = 20; h = 100;
+EditFieldTL(h, v += vs, 80, "Тип объекта", M4Code, Normal, 80, f1, True, OTSClass);
+EndWindow;
+
+WindowBegin("Настройка - рекламируемые группы", PrRemainingTClass, CGHbl, HBlRecType);
+SetBlid(PrRemainingBlock);
+SetWRect(20, 80, 700, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, PrRemainingRowType, 199);
+MatColTL(1, h = 24, "Код", 0, M4Code, Normal, 20, Code, false, ITSClass);
+MatColTL(1, h += 100, "Комментарий", 0, M4Str, Normal, 200, Comment, false, 0);
+EndMatrix;
+EndWindow;
+
+RETURN;
+end;

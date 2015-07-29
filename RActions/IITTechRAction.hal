@@ -1,0 +1,61 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+remote inner procedure StripEndingSpaces(var string);
+
+//===============================================
+function boolean CheckClass(string ClassStr)
+begin
+  record IClassITTechVc ICITTr;
+  integer i, cnt;
+  string 60 Class;
+  boolean res;
+  
+  res = true;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      Class = IGetItemFromStr(ClassStr, i);
+      StripEndingSpaces(Class);
+      ICITTr.Code = Class;
+      res = ReadFirstMain(ICITTr, 1, true);
+    end;
+  CheckClass = res;
+end;
+
+//===============================================
+global
+function Longint IITTechVcRecordDuplicate(var record IITTechVc ITTr, record IITTechVc ITT2r, LongInt stat, LongInt check)
+begin 
+  ITTr.InventoryNr = blankval;
+  IITTechVcRecordDuplicate = 0;
+  Return;
+end;
+
+//===============================================
+global
+updating function Boolean IITTechVcRecordCheck(var record IITTechVc ITTr, record IITTechVc ITT2r, LongInt stat, LongInt check)
+begin
+  longint res;
+  integer errcode;
+  string 255 tstr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+  
+  if blank(ITTr.InventoryNr) then
+    begin
+      RecordCheckError(1499, "Код не может быть незаполненным", -1, "InventoryNr");
+      res = -1;
+    end;
+ 
+  if (res <> -1) and not CheckClass(ITTr.Classification) then
+    begin
+      RecordCheckError(1499, "Неверная классификация", -1, "Classification");
+      res = -1;      
+    end;
+ 
+  IITTechVcRecordCheck = res;
+  Return;
+end;
+
+

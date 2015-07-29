@@ -1,0 +1,12 @@
+/* Harus7.hal */
+
+event DefineWindows
+begin
+  real x,h,h1,hl,h2,h3,h4,h5,h6,h7,hs,v,v2,vm,l,vs,f,t,es,hm;
+
+  SetLangMode(LangRussian,"RUS",2);
+
+
+
+  return;
+end;

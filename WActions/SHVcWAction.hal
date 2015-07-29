@@ -1,0 +1,161 @@
+remote inner procedure SHSumUp(var record SHVc);
+remote inner procedure RefillShipment(var record SHVc,record SHVc);
+remote inner function string 20 FindCustRoute(string,string,string);
+remote inner procedure GetUserAccessGroup(string,var string);
+remote updating procedure SHVC_LogPrint(record SHVc); //14.12.09 INAU
+external function boolean ISetInSet(string, string); //12.03.12 INAU
+external function Boolean SHDClassDelAddrCodeEFAfter(Integer,Integer, Integer,Integer);
+external procedure ClearIt();
+
+
+function Boolean SHDClassLocationEFAfter(Integer wn,Integer rownr,Boolean changedf)
+begin
+  record SHVc SHr;
+  record SHVc SH2r;
+  Boolean res;
+  Integer insertmode;
+  record UserVc Usr;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr,1,true);
+  
+  insertmode = 1;//Rs_insert
+  res = true;
+  if (changedf) then
+    begin
+      GetWindowRecord(wn,SHr);
+      if not ISetInSet(SHr.Location, Usr.ValidLocList) then 
+        begin
+        SHr.Location = "";
+        end;
+      PutWindowRecord(wn,SHr);
+    end;
+  SHDClassLocationEFAfter = res;
+  Return;
+end;
+
+
+global
+function Boolean SHDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+  Boolean res;
+
+  res = true;
+  switch (fieldname)
+    begin
+    case "Location": res = SHDClassLocationEFAfter(wn, rownr, changed<>0);
+    case "DelAddrCode": res = SHDClassDelAddrCodeEFAfter(wn,fn,rownr,changed);
+    end;
+
+  res = res and inner.SHDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+
+  SHDClassAfterEditField = res;
+  Return;
+end;
+
+
+global
+function Boolean SHDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record SHVc SHr;
+  string 10 accgroup;
+  
+  res = inner.SHDClassActiveEditField(wn,fieldname,fn,wnst,rownr,changed);
+  if (res) and (rownr>=0) and (fieldname=="Objects") then
+    begin
+      GetWindowRecord(wn,SHr);
+      if (SHr.OKFlag==0) then
+        begin
+        GetUserAccessGroup(CurrentUser,accgroup);
+        res = (accgroup == "ADMIN");
+        end;
+    end; 
+  SHDClassActiveEditField = res;
+  Return;
+end;
+
+
+global
+updating function Boolean SHDClassPrint(Integer wn, Boolean previewf)
+begin
+  Boolean res;
+  record SHVc SHr;
+  record RcVc RepSpec;
+  Integer normalmode;
+  
+  normalmode = 0;//Rs_normal
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, SHr);
+  if (WindowState(wn) == normalmode) then
+    begin 
+      //14.12.09 INAU
+      RepSpec.f1 = SHr.SerNr;
+      RepSpec.ArtMode = 1;
+      RepSpec.flags[1] = 1;
+      RepSpec.flags[2] = 1;
+      RepSpec.flags[5] = 1;
+      //RepSpec.flags[4] = 0;
+      RepSpec.JobDf = 1;
+      RepSpec.sStartDate = SHr.ShipDate;
+      RepSpec.sEndDate = SHr.ShipDate;
+      if not previewf then //печать
+        begin
+          RepSpec.Media = mtPrinter;
+        end;
+      RepSpec.repname = "ShipRn";
+      RunReport(RepSpec, 0);
+      SHVC_LogPrint(SHr);
+    end;
+
+  res = true;
+  SHDClassPrint = res;
+  Return;
+end;
+
+
+function Boolean SHDClassButtonAction(string whichone,Integer wn,Integer value)
+begin
+  Boolean res;
+  record SHVc SHr;
+  Integer normalmode, updatemode;
+ 
+  normalmode = 0;//Rs_normal
+  updatemode = 2;//Rs_update
+  if (WindowState(wn) == normalmode) then
+    begin
+    GetWindowRecord(wn,SHr);
+    end;
+
+  if (WindowState(wn) == updatemode) then
+    begin
+    GetPrevWindowRecord(wn,SHr);
+    end;
+
+  res = (SHr.OKFlag == 0);
+  
+  SHDClassButtonAction = res;
+  Return;
+end;
+
+
+function Boolean SHDClassOKFlagButtonAction(Integer wn,Integer value)
+begin
+  SHDClassOKFlagButtonAction = inner.SHDClassOKFlagButtonAction(wn, value) and SHDClassButtonAction("OKFlag",wn,value);
+  Return;
+end;
+
+global
+function Boolean SHDClassCheck1ButtonAction(Integer wn,Integer value)
+begin
+  ClearIt;
+  SHDClassCheck1ButtonAction = inner.SHDClassCheck1ButtonAction(wn, value) and SHDClassButtonAction("Check1",wn,value);
+  Return;
+end;
+
+global
+function Boolean SHDClassCheck2ButtonAction(Integer wn,Integer value)
+begin
+  SHDClassCheck2ButtonAction = inner.SHDClassCheck2ButtonAction(wn, value) and SHDClassButtonAction("Check2",wn,value);
+  Return;
+end;

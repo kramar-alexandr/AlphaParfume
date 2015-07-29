@@ -1,0 +1,105 @@
+remote inner function string 255 UserBlockedAccs(string);
+
+global
+procedure ToStrTRCode(var string rstr,Integer ycp,LongInt nrp)
+begin
+  string 255 t2;
+
+  SetLangMode(LangRussian,"RUS",2);
+  t2 = nrp;
+  rstr = StrTRCode(ycp);
+  if (ycp == 888) then
+    begin
+    rstr = "ДОСТ";
+    end;
+  if (nonblank(rstr)) then
+    begin
+    rstr = rstr & ".";
+    end;
+  rstr = rstr & t2;
+  return;
+end;
+
+
+global
+procedure DblTrans(string adblstr,string l,Integer currepwn)
+begin
+  record TRVc TRr;
+  Integer yc1;
+  LongInt ser1;
+  Integer wn;
+  string 255 blockaccs,dblstr;
+  Boolean openf;
+  Integer i,rwcnt;
+  row TRVc TRrw;
+  Integer oldcomp,newcomp;
+
+  SetLangMode(LangRussian,"RUS",2);
+
+  dblstr = l;
+  if (len(dblstr)<4) then begin
+    dblstr = adblstr;
+  end;
+
+  if (nonblank(dblstr)) then begin
+    ser1 = FirstTransInRange(dblstr);
+    yc1 = FirstTransTypeInRange(dblstr);
+    oldcomp = CurrentCompany;
+    if (nonblank(l)) then begin
+      newcomp = StringToLongInt(l);
+      if (newcomp!=oldcomp) then begin
+        if (SetCompany(newcomp,false)) then begin
+        end;
+      end;
+    end;
+    TRr.Number = ser1;
+    TRr.IntYc = yc1;
+
+    if (Left(dblstr, 4) == "ДОСТ") then
+      begin
+      TRr.IntYc = 888;
+      end;
+
+    if (ReadFirstMain(TRr,2,true)) then begin
+      openf = true;
+      blockaccs = UserBlockedAccs(CurrentUser);
+      if (nonblank(blockaccs)) then begin
+        rwcnt = MatRowCnt(TRr);
+        for (i=0;i<rwcnt;i=i+1) begin
+          MatRowGet(TRr,i,TRrw);
+          if (SetInSet(TRrw.AccNumber,blockaccs)) then begin
+            openf = false;
+            i = rwcnt;
+          end;
+        end;
+      end;
+      if (openf) then begin
+        wn = OpenWindow("TRDClass",1,0,"","",TRr);
+      end;
+    end;
+    if (oldcomp!=CurrentCompany) then begin
+      ResetCompany(oldcomp);
+    end;
+  end;
+  return;
+end;
+
+
+global
+function Integer StrToYc(string ystr)
+begin
+  Integer res;
+  
+  SetLangMode(LangRussian,"RUS",2);
+
+  if (ystr=="ДОСТ") then
+    begin
+    res = 888;
+    end
+  else
+    begin
+    res = inner.StrToYc(ystr);
+    end;
+  StrToYc = res;
+  Return;
+end;

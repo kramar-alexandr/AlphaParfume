@@ -1,0 +1,274 @@
+external function string 255 IGetCUName(string);
+external function string 255 IGetUserName(string);
+
+//===============================================
+function Boolean IServProvDClassVECodeEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IServProvVc ISPr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ISPr);
+      ISPr.VEName = IGetCUName(ISPr.VECode);
+      if blank(ISPr.VEName) then
+        begin
+          ISPr.VECode = blankval;
+        end;
+      PutWindowRecord(wn, ISPr);
+    end;
+
+  IServProvDClassVECodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean IServProvDClassRespCodeEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IServProvVc ISPr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ISPr);
+      ISPr.RespName = IGetUserName(ISPr.RespCode);
+      if blank(ISPr.RespName) then
+        begin
+          ISPr.RespCode = blankval;
+        end;
+      PutWindowRecord(wn, ISPr);
+    end;
+
+  IServProvDClassRespCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean IServProvDClassDepartmentEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IServProvVc ISPr;
+  record DepVc Depr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ISPr);
+      Depr.Code = ISPr.Department;
+      if not ReadFirstMain(Depr, 1, true) then
+        begin
+          ISPr.Department = blankval;
+        end;
+      PutWindowRecord(wn, ISPr);
+    end;
+
+  IServProvDClassDepartmentEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean IServProvDClassSalesGroupEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IServProvVc ISPr;
+  record SalesGroupVc SGr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ISPr);
+      SGr.SGroupCode = ISPr.SalesGroup;
+      if not ReadFirstMain(SGr, 1, true) then
+        begin
+          ISPr.SalesGroup = blankval;
+        end;
+      PutWindowRecord(wn, ISPr);
+    end;
+
+  IServProvDClassSalesGroupEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean IServProvDClassCurncyCodeEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IServProvVc ISPr;
+  record CurncyCodeVc Curncyr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ISPr);
+      Curncyr.CurncyCode = ISPr.CurncyCode;
+      if not ReadFirstMain(Curncyr, 1, true) then
+        begin
+          ISPr.CurncyCode = blankval;
+        end;
+      PutWindowRecord(wn, ISPr);
+    end;
+
+  IServProvDClassCurncyCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IServProvDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "VECode": res = IServProvDClassVECodeEFAfter(wn, changed);
+          case "RespCode": res = IServProvDClassRespCodeEFAfter(wn, changed);
+          case "Department": res = IServProvDClassDepartmentEFAfter(wn, changed);
+          case "SalesGroup": res = IServProvDClassSalesGroupEFAfter(wn, changed);
+          case "CurncyCode": res = IServProvDClassCurncyCodeEFAfter(wn, changed);
+        end;
+    end;
+  IServProvDClassAfterEditField = res;
+  Return;
+end;
+
+
+event DefineWindows
+begin
+  real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классы провайдеров услуг", IClassServProvLClass, CGmlist, -);
+  SpawnClass(IClassServProvDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassServProvVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, True, Code);
+  RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+  RlColKey(204, 204, "Наименование", Description, false, Description);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классы провайдеров услуг", IClassServProvDClass, CGview, -);
+  SetWRect(20, 80, 600, 180);
+  //Sizeable(-1, -1, -1, -1);
+  UseView(IClassServProvVc);
+  v = 16; vs = 20; h = 100; h2 = 300;
+  EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, Code, False, 0);
+  EditFieldTL(h2, v, 80, "Иерархия", M4Code, Normal, 20, Hierarchy, false, IClassServProvSClass);
+  EditField(h, v += vs, -40,"Наименование", Normal, Description, false, 0);
+  EndWindow;
+
+  WindowBegin("Классы провайдеров услуг", IClassServProvSClass, CGslist, -);
+  SpawnClass(IClassServProvDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassServProvVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, True, Code);
+  RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+  RlColKey(204, 204, "Наименование", Description, false, Description);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Список провайдеров услуг", IServProvLClass, CGmlist, -);
+  SpawnClass(IServProvDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IServProvVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(104, 104, "Наименование", Name, false, Name);
+  RlColKey(-500, -500, "Назначение", Purpose, false, Purpose);
+  RlColKey(-280, -280, "Отв.", RespCode, false, RespCode);
+  RlColKey(-180, -180, "Отд.", Department, false, Department);
+  RlColKey(-80, -80, "*", Rating, true, Rating);
+  RlColKey(-60, -60, "рег", RegularPayFlag, false, RegularPayFlag);
+  RlColKey(-40, -40, "б/н", NonCashPayFlag, false, NonCashPayFlag);
+  RlColKey(-20, -20, "закр", Closed, false, Closed);
+  BrowseSubsetButton(-40,-15);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Список провайдеров услуг", IServProvSClass, CGslist, -);
+  SpawnClass(IServProvDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IServProvVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(104, 104, "Наименование", Name, false, Name);
+  RlColKey(-500, -500, "Назначение", Purpose, false, Purpose);
+  RlColKey(-280, -280, "Отв.", RespCode, false, RespCode);
+  RlColKey(-180, -180, "Отд.", Department, false, Department);
+  RlColKey(-80, -80, "*", Rating, true, Rating);
+  RlColKey(-60, -60, "рег", RegularPayFlag, false, RegularPayFlag);
+  RlColKey(-40, -40, "б/н", NonCashPayFlag, false, NonCashPayFlag);
+  RlColKey(-20, -20, "закр", Closed, false, Closed);
+  BrowseSubsetButton(-40,-15);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Провайдер услуг", IServProvDClass, CGview, -);
+  SetWRect(20,80,600,415);
+  Sizeable(0,-1,0,0);
+  UseView(IServProvVc);
+  Tile(0, 150, false, "", Code);
+  vs = 20; h = 150; h1 = 350; h2 = 420;
+  EditField(h, v=6, 120, "Код", Normal, Code, false, 0);
+  EditField(h2, v, -40, "Классификация", Normal, Classification, false, IClassServProvSClass);
+  EditField(h, v+=vs, -40, "Наименование", Normal, Name, false, 0);
+  EditField(h, v+=vs, -40, "Описание", Normal, Description, false, 0);
+  EditField(h, v+=vs, -40, "Назначение", Normal, Purpose, false, 0);
+
+  StaticText(h-50, v+40, "Рейтинг", false);
+  RadioButton(h, v+=30, 1, 0, "1", Rating);
+  RadioButton(h+30, v, 2, 0, "2", Rating);
+  RadioButton(h+60, v, 3, 0, "3", Rating);
+  RadioButton(h+90, v, 4, 0, "4", Rating);
+  RadioButton(h+120, v, 5, 0, "5", Rating);
+
+  CheckBox(-100, v , 0, "Закрыт", Closed);
+
+  TileButton(1, "Контакты");
+  TileButton(2, "Регулярные платежи");
+  TileButton(3, "Дополнительно");
+
+  Tile(1, 170, false, "1", VECode);
+  EditField(h, v=6, 120, "Поставщик", Normal, VECode, false, VESClass);
+  EnterSkip(Addr);
+  EditField(h2, v, -40, "", Normal, VEName, false, 0);
+  EditField(h, v+=vs, -40, "Адрес", Normal, Addr, false, 0);
+  EditField(h, v+=vs, -40, "", Normal, Addr2, false, 0);
+  EditField(h, v+=vs, -40, "", Normal, Addr3, false, 0);
+  EditField(h, v+=vs, -40, "Контактное лицо", Normal, ContactPerson, false, 0);
+  EditField(h, v+=vs, -40, "Контактные телефоны", Normal, ContactPhone, false, 0);
+  EditField(h, v+=vs, 120, "Контракт №", Normal, ContractNr, true, 0);
+  EditField(h2, v, 120, "Дата контракта", Normal, ContractDate, false, PasteCurDate);
+
+  Tile(2, 170, false, "2", RegularPayVal);
+  EditField(h, v=6, 120, "Сумма", Normal, RegularPayVal, true, 0);
+  EditField(h1, v, 60, "Валюта", Normal, CurncyCode, false, CurncyCodeSClass);
+  CheckBox(-250, v=6 ,0, "Регулярный платеж", RegularPayFlag);
+  CheckBox(-250, v+=vs ,0, "Безналичный расчет", NonCashPayFlag);
+
+  Tile(3, 170, false, "3", RespCode);
+  EditField(h, v=6, 120, "Ответственный сотрудник", Normal, RespCode, false, UserSClass);
+  EnterSkip(Department);
+  EditField(h1, v=6, -40, "", Normal, RespName, false, 0);
+  EditField(h, v+=vs, 60, "Отдел", Normal, Department, false, DepSClass);
+  EditField(h1, v, 60, "Группа продажи", Normal, SalesGroup, false, SalesGroupSClass);
+  EditField(h, v+=vs, 260, "Объекты", Normal, Objects, false, ObjSClass);
+  EditField(h, v+=vs, -40, "Комментарий", Normal, Comment, false, 0);
+  EditField(h, v+=vs, -40, "", Normal, Comment2, false, 0);
+  EditField(h, v+=vs, -40, "", Normal, Comment3, false, 0);
+
+  EndWindow;
+
+  Return;
+end;

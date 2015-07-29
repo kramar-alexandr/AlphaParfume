@@ -1,0 +1,60 @@
+global
+function LongInt tHistSalVcRecordCheck(var record tHistSalVc HSr, record tHistSalVc HS2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode;
+record UserVc USr;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+if (stat <> updatemode) and (HSr.SerNr < 1) then
+	begin
+	HSr.SerNr = NextSerNr("tHistSalVc", CurrentDate, -1, false, "");
+	end;
+if (stat == updatemode) and (HSr.SerNr < 1) then
+	begin
+	res = -1;
+	end;
+  tHistSalVcRecordCheck = res;
+RETURN;
+end;
+
+global updating
+procedure SalHistAdd(string ECode, string EStruct, string EPost, val ESalary, date EDate)
+begin
+record tHistSalVc HSr;
+
+RecordNew(HSr);
+HSr.SerNr = NextSerNr("tHistSalVc", CurrentDate, -1, false, "");
+HSr.EntCode = ECode;
+HSr.EntStruct = EStruct;
+HSr.EntPost = EPost;
+HSr.EntSalary = ESalary;
+HSr.EntDate = EDate;
+RecordStore(HSr, true);
+end;
+
+global updating
+function LongInt tEntPrVcRecordCheck(var record tEntPrVc EPr, record tEntPrVc EP2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode, RwCnt;
+record UserVc USr;
+row tEntPrVc EPrw, EP2rw;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+
+for(RwCnt = 0; (RwCnt < MatRowCnt(EPr)); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(EPr, RwCnt, EPrw);
+	if EPrw.Salary <> EP2rw.Salary then
+		begin
+		SalHistAdd(EPr.Code, EPrw.Struct, EPrw.Post, EPrw.Salary, EPrw.Date);
+		end;
+	end;
+tEntPrVcRecordCheck = res;
+RETURN;
+end;

@@ -1,0 +1,365 @@
+external procedure VConsumPayGetRate(var record VConsumPayVc);
+
+function boolean VConsumPayDClassCurncyEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+record VConsumPayVc VCPr;
+
+GetWindowRecord(wn,VCPr);
+if (VCPr.OKSign == 0) then 
+begin   
+	DeselectWindow(wn,false);
+	VConsumPayGetRate(VCPr);
+	PutWindowRecord(wn, VCPr);
+end;
+VConsumPayDClassCurncyEFAfter = (VCPr.OKSign == 0);
+RETURN;
+end;
+
+
+
+function boolean VConsumPayDClassConsCodeEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+record VConsumVc VCr;
+record VConsumPayVc VCPr;
+row VConsumPayVc VCPrw;
+string 60 ObjxStr;
+boolean res;
+Integer rwcnt, i;
+val summa;
+
+res = False;
+if (changed!=0) then 
+	begin
+	if (rownr >= 0) then 
+		begin
+		res = True;
+		ObjxStr = "";
+		GetWindowRecord(wn,VCPr);    
+		DeselectWindow(wn,false);
+		MatRowGet(VCPr,rownr,VCPrw);
+		VCr.Code = VCPrw.ConsCode;
+		
+		if ReadFirstMain(VCr, 1, True) then 
+			begin
+			if nonblank(VCr.UserCode) then
+				begin
+				ObjxStr = VCr.UserCode;
+				end;		
+			if nonblank(VCr.ParentObj) then 
+				begin
+				if nonblank(ObjxStr) then begin ObjxStr = ObjxStr & ","; end;
+				ObjxStr = ObjxStr & VCr.ParentObj;
+				end;
+			if nonblank(VCr.Function1) then
+				begin
+				if nonblank(ObjxStr) then begin ObjxStr = ObjxStr & ","; end;
+				ObjxStr = ObjxStr & VCr.Function1;
+				end;
+			VCPrw.ObjStrx = ObjxStr;
+			VCPrw.Account = VCr.Account;
+			VCPrw.Name = VCr.Name;
+			VCPrw.PayVal = VCr.PPrice;
+			if (VCr.Closed == 0) then
+				begin
+				MatRowPut(VCPr,rownr,VCPrw);
+				end else
+				begin
+				MatRowDelete(VCPr, rownr);
+				end;
+			rwcnt = MatRowCnt(VCPr);
+			summa = 0;
+			for (i=0; i < rwcnt; i = i + 1) 
+				begin
+				MatRowGet(VCPr, i, VCPrw);
+				summa = summa + VCPrw.PayVal;
+				end;
+			VCPr.Summa = summa;
+			PutWindowRecord(wn, VCPr);
+			end;
+		end;
+	end;
+VConsumPayDClassConsCodeEFAfter = res;
+RETURN;
+end;
+
+function boolean VConsumPayDClassPayValEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+record VConsumPayVc VCPr;
+row VConsumPayVc VCPrw;
+boolean res;
+Integer rwcnt, i;
+val summa;
+
+res = False;
+if (changed!=0) and (VCPr.OKSign == 0) then 
+	begin
+	if (rownr >= 0) then 
+		begin
+		GetWindowRecord(wn,VCPr);    
+		DeselectWindow(wn,false);
+		res = True;
+		rwcnt = MatRowCnt(VCPr);
+		summa = 0;
+		for (i=0; i < rwcnt; i = i + 1) 
+			begin
+			MatRowGet(VCPr, i, VCPrw);
+			summa = summa + VCPrw.PayVal;
+			end;
+		VCPr.Summa = summa;
+		PutWindowRecord(wn, VCPr);
+		end;
+	end;
+	
+VConsumPayDClassPayValEFAfter = res;	
+RETURN;
+end;
+
+global
+function Boolean VConsumPayDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+Boolean res;
+
+switch (fieldname) 
+	begin
+	case "ConsCode": res = VConsumPayDClassConsCodeEFAfter(wn,fn,rownr,changed);
+	case "Curncy": res = VConsumPayDClassCurncyEFAfter(wn, fn, rownr, changed);
+	case "PayVal": res = VConsumPayDClassPayValEFAfter(wn, fn, rownr, changed);
+	end;
+VConsumPayDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+function Boolean VConsumPayDClassDeleteRowTest(Integer wn,Integer rownr)
+BEGIN
+Boolean res;
+record VConsumPayVc VCPr;
+row VConsumPayVc VCPrw;
+
+res = false;
+if (rownr >= 0) then 
+		begin
+		GetWindowRecord(wn,VCPr);
+		MatRowGet(VCPr,rownr,VCPrw);		
+		DeselectWindow(wn,false);
+		res = True;
+		VCPr.Summa = VCPr.Summa - VCPrw.PayVal;
+		PutWindowRecord(wn, VCPr);
+		end;
+res = res and (VCPr.OKSign == 0);
+VConsumPayDClassDeleteRowTest = res;
+RETURN;
+END;
+
+global
+function boolean VConsumPayDClassUpdateTest(Integer wn)
+BEGIN
+record VConsumPayVc VCPr;
+Boolean res;
+
+res = True;
+GetWindowRecord(wn,VCPr);   
+if (VCPr.OKSign==0) or UserCanAction("UnOKAll",false) then 
+	begin
+    res = True;
+	end else
+	begin
+	res = False;
+	end;   
+VConsumPayDClassUpdateTest = res;
+RETURN;
+END;
+
+global
+function Boolean VConsumPayDClassOKSignButtonAction(Integer wn,Integer value)
+BEGIN
+  Boolean res;
+  record VConsumPayVc VCPr;
+  Integer normalmode,updatemode;
+ 
+res = true;
+normalmode = 0;
+updatemode = 2;
+if (WindowState(wn)==normalmode) then 
+	begin
+    GetWindowRecord(wn,VCPr);
+    if (VCPr.OKSign==0) or UserCanAction("UnOKAll",false) then 
+		begin
+		res = True;
+		end else
+		begin
+		res = False;
+		end;
+    end;  
+if (WindowState(wn)==updatemode) then 
+	begin
+    GetPrevWindowRecord(wn,VCPr);
+    if (VCPr.OKSign==0) or UserCanAction("UnOKAll",false) then 
+		begin
+		res = True;
+		end else
+		begin
+		res = False;
+		end;
+	end;
+VConsumPayDClassOKSignButtonAction = res;
+RETURN;
+END;
+
+
+event DefineWindows
+begin
+   real i,h,h1,h2,h3,h4,h5,v,vs,vm,hl,l;
+   SetLangMode(LangRussian,"RUS",2);
+
+
+WindowBegin("Учет расходных материалов",VConsumPayLClass,CGMlist,RcType)
+    SetWRect (20,80,550,210);
+    Sizeable (-1,-1,0,0);
+    v = 6; vs = 20; h = 100;
+	SpawnClass(VConsumPayDClass);
+	UseView(VConsumPayVc);
+	RecordList(4,17,-21,-39);
+	RlColKey(4,4,"Код",Code,false,Code);
+	RlColKey(81,81,"OK",OKSign,false,OKSign);
+	RlColKey(101,101,"Дата",TransDate,false,TransDate);
+	RlColKey(171,171,"Сумма",Summa,true,"");
+	RlColKey(241,241,"Вал.",Curncy,False,"");
+	RlColKey(291,291,"Коммент.",Comment0,False,"");
+	SearchField("Найти");
+EndWindow;
+
+
+WindowBegin("Вставить РМ",VConsumSClass,CGslist,VConsumType);
+  SpawnClass(VConsumDClass);
+  SetWRect(64,80,500,300);
+  Sizeable(-1,-1,0,0);
+  UseView(VConsumVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,  "Код",Code,false,Code);
+  RlColKey(61,61,"Закрыт",Closed,false,Closed);
+  RlColKey(81,81,"Функция II уровня",Function1,false,Function1);
+  RlColKey(181,181,"Наименование",Name,false,Name);
+  SearchField("Найти");
+EndWindow;
+
+WindowBegin("Карточка РМ",VConsumDClass,CGview,-)
+    SetWRect (60,80,809,372);
+	UseView(VConsumVc);
+	vs=20;
+	Tile(0,100,false,"",Code);
+	EditFieldTL(h=110,v=6,60,"Код",M4Code,Normal,20,Code,false,0);
+	EditFieldTL(h + 180,v=6,360,"Наименование",M4Str,Normal,60,Name,false,0);
+    EditField(h,v+=vs,60,"Функция II уровня",Normal,Function1,false,ObjSClass);
+	EditField(h + 180,v, 80, "Ответств.",Normal,UserCode,false,UserSClass);
+	EditField(h + 360,v, 80, "Отдел",Normal,Department,false,DepSClass);
+	EditField(h,v+=vs,60,"Вн.№",Normal,InternalNumber,false,0);
+	EditField(h + 180,v, 80, "Связ.объект",Normal,ParentObj,false,ObjSClass);
+	EditField(h + 360,v, 80, "Счет списания",Normal,Account,false,AccSClass);
+
+	TileButton(1,"Цены и даты");
+    TileButton(2,"Комментарии");
+
+	Tile(1,165,false,"1",DateIn);
+	v = 6; h = 100;
+	EditField(h,v+=vs,80,"Дата покупки",Normal,DateIn,false,PasteCurDate);
+	EditField(h + 180,v, 80, "Цена покупки",Normal,Price,True,0);
+	EditField(h + 320,v, 60, "Валюта",Normal,Curncy,false,CurncyCodeSClass);
+	EditField(h + 440,v, 80, "Курс",Normal,CurncyRate,true,0);
+	EditField(h,v+=vs,80,"Дата списан",ViewOnly,DateOut,false,0);
+	EditField(h + 180,v, 80, "Цена обслуж",Normal,PPrice,True,0);
+	CheckBox(h, 6+v+=vs,0,"Закрыт",Closed);
+	Tile(2,165,false,"2",Comment0);
+	v = 6; h = 100;
+	EditField(h,v+=vs,600,"Комментарий",Normal,Comment0,false,0);
+	EditField(h,v+=vs,600,"",Normal,Comment1,false,0);
+	EditField(h,v+=vs,600,"",Normal,Comment2,false,0);
+	EditField(h,v+=vs,600,"",Normal,Comment3,false,0);
+   EndWindow;
+
+WindowBegin("Расходные материалы",VConsumLClass,CGMlist,RcType)
+    SetWRect (20,80,550,210);
+    Sizeable (-1,-1,0,0);
+    v = 6; vs = 20; h = 100;
+	SpawnClass(VConsumDClass);
+	UseView(VConsumVc);
+	RecordList(4,17,-21,-39);
+	RlColKey(4,4,"Код",Code,false,Code);
+	RlColKey(81,81,"Функция II уровня",Function1,false,Function1);
+	RlColKey(161,161,"Сотрудник",UserCode,false,UserCode);
+	RlColKey(261,261,"Наименование",Name,false,Name);
+	SearchField("Найти");
+EndWindow;
+
+
+WindowBegin("Учет расходных",VConsumPayDClass,CGview,-);
+  SetWRect(20,80,690,430);
+  Sizeable(-1,-1,0,0);
+  vs=20;
+  UseView(VConsumPayVc);
+  //ActiveFieldOnNew("TransDate");
+  EditField(h=75,v+=vs, 80,"Номер",ViewOnly,Code,false,0);
+  EditField(h + 175,v,80, "Дата",Normal,TransDate,false,PasteCurDate);
+  ActiveFieldOnNew("TransDate");
+  ActiveFieldOnOK("TransDate");
+  EnterSkip(Curncy);
+  EditField(h + 325,v,215, "Объекты",Normal,ObjStr,false,ObjSClass);
+  EditField(h, v+=vs, 52, "Валюта", Normal, Curncy, false, CurncyCodeSClass);
+  EnterSkip(Comment0);
+  EditField(h + 175, v, 52, "Курс", Normal, CurncyRate, True, 0);
+  EditField(h + 325,v,80, "Сумма",ViewOnly,Summa,True,0);
+  EditField(h, v+=vs, 540, "Примечание", Normal, Comment0, False, 0);
+  EnterSkip(Math);
+  CheckBox(20,-20,0,"OK",OKSign);
+
+  MatrixBegin(4,v=vs + 90,-52,-30,VConsumPayRowType,100);
+  DeleteRowTest;
+  InsertRowTest;
+  Flip(0);
+    MatCol(1,24,"Код",0,ConsCode,false,VConsumSClass);
+    MatCol(1,110,"Объекты",0,ObjStrx,false,ObjSClass);
+	MatCol(1,200,"Счет",0,Account,false,AccSClass);
+
+  Flip(1);
+
+	MatCol(1,260,"Наименование",0,Name,False,0);
+	MatCol(1,-80,"Цена",0,PayVal,True,0);
+  Flip(2);
+	MatCol(1,-414,"Комментарий",0,Comment1,false,0);
+	EndMatrix;
+	vs = 20;
+  v = 110; VTab(-35,v,-16,v+vs,ToolFlip,1,"A");
+  v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,2,"B");
+	SpecialMenu("SerNr",' ',0,"SerNr");
+   EndWindow;
+
+WindowBegin("Cерии номеров - Расходные материалы",VConsumPaySerTClass,CGHbl,HBlRecType);
+  SetBlid(VConsumPaySerBlock);
+  SetWRect(20,80,532,357);
+  Sizeable(-1,-1,0,0);
+  h = 8; v = 60;
+  h1=24; h2=h1+60; h3=h2+60; h4=h3+85; h5=h4+85;
+  StaticText(h+h1+5,v-23,"Серии номеров",false);
+  StaticText(h+h3+5,v-23,"Период",false);
+  MatrixBegin(h,v,-31,-20,IVSerRowType,99);
+  MatCol(1,h1,"С номера",0,TSerStart,false,0);
+  MatCol(1,h2,"По номер",0,TSerEnd,false,0);
+  MatCol(1,h3,"С даты",0,StartDate,false,0);
+  MatCol(1,h4,"По дату",0,EndDate,false,0);
+  MatCol(1,h5,"Коммент.",0,TSerCom,false,0);
+  MatCol(1,-70,"Финансы",0,DonotGenTrans,false,SetSClass);
+  EndMatrix;
+  EndWindow;
+
+WindowBegin("Определите отчет по расходным материалам",VConsumTurnoverRClass,CGRcW,RcType);
+  SetWRect(20,80,465,250);
+  vs = 20; h = 170; v=10;
+  PeriodField(h,v+=vs,"Период");
+  EditFieldTL(h,v+=vs ,60,"Код",M4Code,Normal,20,f1,false,VConsumSClass);
+  EditFieldTL(h,v+=vs ,60,"Подразделение",M4Code,Normal,60,f2,false,ObjSClass);
+  EditFieldTL(h,v+=vs ,60,"Функция II",M4Code,Normal,60,f3,false,ObjSClass);
+  EditFieldTL(h,v+=vs ,60,"Отдел",M4Code,Normal,20,f4,false,DepSClass);
+  EndWindow;
+
+return;
+END;

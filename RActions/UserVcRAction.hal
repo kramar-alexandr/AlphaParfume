@@ -1,0 +1,18 @@
+external updating procedure UserToIEmployeeSync(record UserVc); //25.02.13 INAU - Синхронизация UserVc -> IEmployeeVc
+
+global
+updating function LongInt UserVcRecordUpdate(var record UserVc Userr, record UserVc User2r, LongInt long3, LongInt long4)
+begin
+LongInt res;
+
+//res = inner.UserVcRecordUpdate(Userr, User2r, long3, long4);
+UserToIEmployeeSync(Userr); //25.02.13 INAU
+if (Userr.Supervisor <> User2r.Supervisor) then
+	begin
+	SetLangMode(LangRussian, "RUS", 2);
+	RunProgram("./tools/mailsuperior", "it@parfume.ua" & " " & CurrentUser & " " & Userr.Code & " " & User2r.Supervisor & " " & Userr.Supervisor);
+	end;
+UserVcRecordUpdate = res;
+
+RETURN;
+END;

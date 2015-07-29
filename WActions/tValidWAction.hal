@@ -1,0 +1,339 @@
+external procedure AddHelpButton(LongInt, LongInt);
+remote procedure tRunRep(record ValidVc);
+remote procedure tSertPrint(record ValidVc);
+
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+
+WindowBegin("Вопрос для аттестации сотрудников", tQuestionsDClass, CGview, -);
+UseView(tQuestionsVc);
+SetWRect(10, 80, 730, 400);
+ActiveFieldOnNew("QTypeCode");
+vs = 20; h = 50; v = 30; h2 = 180; h3 = 300; h4 = 500; h5 = 620; 
+AddHelpButton(5, 5);
+EditField(h, v, 70, "№", ViewOnly, SerNr, False, 0);
+EditField(h2, v, 70, "Создал", ViewOnly, UserCode, False, 0);
+EditField(h3, v, 70, "Дата", ViewOnly, DateCr, False, 0);
+EditField(h4, v, 70, "Сохранил", ViewOnly, Conserv, False, 0);
+EditField(h5, v, -30, "Дата", ViewOnly, DateCon, False, 0);
+EditField(h,  v += vs, 70, "Тест", Normal, QTypeCode, False, QTypeSClass);
+EnterSkip(Quest);
+EditField(h2 - 50, v, -30, "", ViewOnly, QTypeName, False, 0);
+StaticText(10,v += 30,"Вопрос",false);
+TextField(h, v - 8 , -30, 50, Quest, 0);
+//EditField(h2, v, -30, "Вопрос", Normal, Quest, False, 0);
+MatrixBegin(h-3, 150, -40, -20,-,20);
+MatCol(1, 25, "Ответы", 0, Answer, false, 0);
+MatCol(1, -100, "Балл", 0, Ball, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Вопросы для аттестации сотрудников", tQuestionsLClass, CGmlist, DMView);
+SpawnClass(tQuestionsDClass);
+SetWRect(64, 80, 709, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tQuestionsVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(64, 64, "Тест", QTypeCode, false, QTypeCode);
+RlColKey(124, 124, "Название", QTypeName, false, QTypeName);
+//BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Вопросы для аттестации сотрудников", tQuestionsSClass, CGslist, -);
+SpawnClass(tQuestionsDClass);
+UseView(tQuestionsVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(64, 64, "Тест", QTypeCode, false, QTypeCode);
+RlColKey(124, 124, "Название", QTypeName, false, QTypeName);
+//BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+
+
+WindowBegin("Аттестация сотрудника", ValidDClass, CGview, -);
+UseView(ValidVc);
+BrowseButtons(False);
+//SetWRect(10, 80, 730, 400);
+SetWRect(10, 80, 730, 200);
+ActiveFieldOnNew("QTypeCode");
+vs = 20; h = 50; v = 30; h2 = 180; h3 = 350; h4 = 500; h5 = 550; 
+AddHelpButton(5, 5);
+EditField(h, v, 70, "Номер", ViewOnly, SerNr, False, 0);
+EditField(h2, v, 70, "Создал", ViewOnly, UserCode, False, 0);
+EditField(h3 - 80, v, 250, "", ViewOnly, UserName, False, 0);
+EditField(h5 + 50, v, -30, "Дата", ViewOnly, DateCon, False, 0);
+EditField(h,  v += vs, 70, "Тест", Normal, QTypeCode, False, QTypeSClass);
+EditField(h2 - 50, v, -30, "", ViewOnly, QTypeName, False, 0);
+//CheckBox(20, -30, 0, "ОК", OKFlag);
+EditField(h4-20, -30, 50, "Всего баллов", ViewOnly, SumBall, False, 0);
+EditField(h5+90, -30, 50, "Результат(%)", ViewOnly, Pers, False, 0);
+// MatrixBegin(4, 110, -40, -50,-,20);
+// MatCol(1, 25, "№ Вопроса", 0, QuestNum, false, 0);
+// MatCol(1, 90, "Ответ", 0, Answer, false, 0);
+// MatCol(1, -70, "Балл", 0, Ball, false, 0);
+// EndMatrix;
+SpecialMenu("Пройти тест",'T',0,"tQuestionDsm");
+SpecialMenu("Распечатать сертификат",'S',0,"tSertPrintDsm");
+EndWindow;
+
+WindowBegin("Аттестация", ValidLClass, CGmlist, DMView);
+SpawnClass(ValidDClass);
+SetWRect(64, 80, 500, 300);
+Sizeable(-1, -1, 0, 0);
+UseView(ValidVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(64, 64, "Дата", DateCon, false, DateCon);
+RlColKey(140, 140, "Тест", QTypeName, false, QTypeName);
+RlColKey(-70, -70, "Сотрудник", UserCode, false, UserCode);
+//BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Аттестация", ValidSClass, CGslist, -);
+SpawnClass(ValidDClass);
+UseView(ValidVc);
+SetWRect(64,80,500,300);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);
+RlColKey(64, 64, "Дата", DateCon, false, DateCon);
+RlColKey(140, 140, "Сотрудник", UserCode, false, UserCode);
+RlColKey(-70, -70, "Тест", QTypeName, false, QTypeName);
+//BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Тест", QTypeDClass, CGview, 0);
+UseView(QTypeVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 200, Name, false, 0);
+EditFieldTL(h, v += vs , 80, "Ответственный", M4Code, Normal, 20, UserCode, false, UserSClass);
+EndWindow; 
+
+WindowBegin("Тесты", QTypeLClass, CGmlist, -);
+SpawnClass(QTypeDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(QTypeVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlCol(-100, -100, "Ответственный", UserCode, false);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Тесты",QTypeSClass, CGslist, -);
+SpawnClass(QTypeDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(QTypeVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlCol(-100, -100, "Ответственный", UserCode, false);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+// WindowBegin("Пройти аттестацию", ValidationVClass,CGMnt,RcType);
+// SetWRect(20,80,430,200);
+// vs = 20; v=6; h = 170;
+// EditFieldTL(h, v, 80, "Выберите тест", M4Str, Normal, 20, f1, False, QTypeSClass);
+// EndWindow; 
+
+WindowBegin("Результаты аттестации", tResValidRClass,CGRcW,RcType);
+SetWRect(20,80,450,250);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+PeriodField(h1,v,"Период");
+EditFieldTL(h1, v += 20, 80, "№ Аттестации", M4Long, Normal, 21, long1, false, ValidSClass);
+EditFieldTL(h1, v += 20, 80, "Сотрудник", M4UStr, Normal, 21, f1, false, UserSClass);
+EditFieldTL(h1, v += 20, 80, "Отдел", M4UStr, Normal, 21, f2, false, DepSClass);
+EditFieldTL(h1, v += 20, 80, "Тест", M4UStr, Normal, 21, f3, false, QTypeSClass);
+ButtonFrame(h1, v = 130, 123, 2, "Функция");
+RadioButton(h1, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h1, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+WindowBegin("Статистика по аттестации", tStValidRClass,CGRcW,RcType);
+SetWRect(20,80,450,250);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+EditFieldTL(h1, v += 20, 80, "Тест", M4UStr, Normal, 21, f1, false, QTypeSClass);
+
+EndWindow;
+
+
+Return;
+end;
+
+
+global
+function Boolean tQuestionsDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record QTypeVc QUr;
+record tQuestionsVc Qr;
+boolean res;
+
+if (changed <> 0) and (fieldname == "QTypeCode") then 
+	begin
+	GetWindowRecord(wn, Qr);
+	QUr.Code = Qr.QTypeCode;
+	readfirstmain(QUr, 1, true);
+	Qr.QTypeName = QUr.Name;
+	PutWindowRecord(wn, Qr);
+	end;
+tQuestionsDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+function Boolean ValidDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record QTypeVc QUr;
+record ValidVc Vr;
+boolean res;
+record tQuestionsVc Qr;
+row tQuestionsVc Qrw;
+row ValidVc Vrw;
+integer i,k;
+boolean TrHs;
+
+if (changed <> 0) and (fieldname == "QTypeCode") then 
+	begin
+	GetWindowRecord(wn, Vr);
+	QUr.Code = Vr.QTypeCode;
+	readfirstmain(QUr, 1, true);
+	Vr.QTypeName = QUr.Name;
+	ResetLoop(Qr);		
+	k = 0;
+	TrHs = true;
+	Qr.QTypeCode = Vr.QTypeCode;
+	while (LoopKey("QTypeCode", Qr, 1, TrHs))
+		begin
+		TrHs = (Qr.QTypeCode == Vr.QTypeCode);
+		if TrHs then
+			begin
+			Vrw.QuestNum = Qr.SerNr;
+			//Vrw.Quest = Qr.Quest;
+			MatRowInsert(Vr, k, Vrw);		
+			k = k + 1;
+			end;
+		end;
+	PutWindowRecord(wn, Vr);
+	end;
+ValidDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+updating procedure tQuestionDsm()
+BEGIN
+record ValidVc Vr;
+record RCVc RepSpec;
+Integer wn,nwn;
+
+wn = CurWindow;
+
+if (WindowState(wn) == 0) then 
+	begin
+	GetWindowRecord(wn, Vr);
+	tRunRep(Vr);
+	CloseWindow(wn);
+	end;	
+RETURN;
+end;
+
+global
+updating procedure tSertPrintDsm()
+BEGIN
+record ValidVc Vr;
+record RCVc RepSpec;
+Integer wn,nwn;
+
+wn = CurWindow;
+
+if (WindowState(wn) == 0) then 
+	begin
+	GetWindowRecord(wn, Vr);
+	if Vr.Pers >= 60 then
+		begin
+		tSertPrint(Vr);
+		end;
+	CloseWindow(wn);
+	end;	
+RETURN;
+end;
+
+
+global
+procedure ValidLClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+global
+procedure ValidDClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+global
+function Boolean ValidLClassOnOpenWindow(Integer wn)
+begin
+record tTestAcVc TAr;
+
+TAr.Code = CurrentUser;
+if not(ReadFirstMain(TAr, 1, true)) then
+	begin
+	SetWindowSubset(wn, CurrentUser);
+	UpdateBrowses("");
+	end;
+ValidLClassOnOpenWindow = True;
+RETURN;
+end;
+
+
+global
+function Boolean tResValidRClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record RcVc RepSpec;
+record QTypeVc QUr;
+record tQuestionsVc Qr;
+boolean res;
+
+if (changed <> 0) and (fieldname == "f1") then 
+	begin
+	GetWindowRecord(wn, RepSpec);
+	RepSpec.f2 = "";
+	PutWindowRecord(wn, RepSpec);
+	end;
+if (changed <> 0) and (fieldname == "f2") then 
+	begin
+	GetWindowRecord(wn, RepSpec);
+	RepSpec.f1 = "";
+	PutWindowRecord(wn, RepSpec);
+	end;	
+if (changed <> 0) and (fieldname == "long1") then 
+	begin
+	GetWindowRecord(wn, RepSpec);
+	RepSpec.f1 = "";
+	RepSpec.f2 = "";
+	RepSpec.f3 = "";
+	PutWindowRecord(wn, RepSpec);
+	end;	
+tResValidRClassAfterEditField = res;
+RETURN;
+END;
+

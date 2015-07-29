@@ -1,0 +1,186 @@
+
+//=============================================== tChPrInORVcRecord...
+global
+function Longint tBaseRate2ORVcRecordDefaults(var record tBaseRate2ORVc BRr, record tBaseRate2ORVc BR2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS", 2);
+
+if (SingleUserMode) then
+	begin
+	BRr.SerNr = NextSerNr("tBaseRate2ORVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	BRr.SerNr = -1;
+	end;
+
+tBaseRate2ORVcRecordDefaults = res;
+RETURN;
+end;
+
+//=====================================================
+
+global
+function LongInt tBaseRate2ORVcRecordDuplicate(var record tBaseRate2ORVc BRr, record tBaseRate2ORVc BR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS", 2);
+if (SingleUserMode) then
+  begin
+  BRr.SerNr = NextSerNr("tBaseRate2ORVc", CurrentDate, -1, false, "");
+  end
+else
+  begin
+  BRr.SerNr = -1;
+  end;
+
+tBaseRate2ORVcRecordDuplicate = res;
+RETURN;
+END;
+
+//===================================================
+/*
+global
+updating function LongInt tBaseRate2ORVcRecordRemoveTest(var record tBaseRate2ORVc BRr, record tBaseRate2ORVc BR2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tBaseRate2ORVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,0011"))) then
+  begin
+  tBaseRate2ORVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+*/
+//=====================================================
+
+global
+function LongInt tBaseRate2ORVcRecordCheck(var record tBaseRate2ORVc BRr, record tBaseRate2ORVc BR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+record tBaseRate2ORVc SP1r;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (BRr.SerNr < 1) then
+  begin
+  BRr.SerNr = NextSerNr("tBaseRate2ORVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (BRr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+  tBaseRate2ORVcRecordCheck = res;
+RETURN;
+end;
+
+//=============================================== tChPrInORVcRecord...
+global
+function Longint tChPrInORVcRecordDefaults(var record tChPrInORVc BRr, record tChPrInORVc BR2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS", 2);
+
+if (SingleUserMode) then
+	begin
+	BRr.SerNr = NextSerNr("tChPrInORVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	BRr.SerNr = -1;
+	end;
+
+tChPrInORVcRecordDefaults = res;
+RETURN;
+end;
+
+//=====================================================
+
+global
+function LongInt tChPrInORVcRecordDuplicate(var record tChPrInORVc BRr, record tChPrInORVc BR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS", 2);
+if (SingleUserMode) then
+  begin
+  BRr.SerNr = NextSerNr("tChPrInORVc", CurrentDate, -1, false, "");
+  end
+else
+  begin
+  BRr.SerNr = -1;
+  end;
+
+tChPrInORVcRecordDuplicate = res;
+RETURN;
+END;
+
+//===================================================
+/*
+global
+updating function LongInt tChPrInORVcRecordRemoveTest(var record tChPrInORVc BRr, record tChPrInORVc BR2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tChPrInORVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,0011"))) then
+  begin
+  tChPrInORVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+*/
+//=====================================================
+
+global
+function LongInt tChPrInORVcRecordCheck(var record tChPrInORVc BRr, record tChPrInORVc BR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+record tChPrInORVc SP1r;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (BRr.SerNr < 1) then
+  begin
+  BRr.SerNr = NextSerNr("tChPrInORVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (BRr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+  tChPrInORVcRecordCheck = res;
+RETURN;
+end;

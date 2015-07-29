@@ -1,0 +1,78 @@
+/*
+//===============================================
+//Добавить Подразделение SubBranch и создать связь IBranch.Code->ISubBranch.BranchCode
+global
+updating procedure raIAddSubFromBranch(string BranchCode)
+begin
+  record ISubBranch SBr;
+
+  RecordNew(SBr);
+  SBr.Code = 
+  SBr.BranchCode = BranchCode
+  Return;
+end;
+*/
+
+//===============================================
+//Подразделения филиала
+global
+function Boolean ISubBranchVcRecordCheck(var record ISubBranchVc SBr, record ISubBranchVc SB2r, longint stat, longint check)
+begin
+  record IBranchVc Br;
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(SBr.Code) then
+    begin
+      RecordCheckError(1499, "Не указан код подразделения!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(SBr.Name) then
+    begin
+      RecordCheckError(1499, "Укажите наименование подразделения", -1, "Name");
+      res = -1;
+    end;
+
+  if (res == 0) then
+    begin
+      Br.Code = SBr.BranchCode;
+      if not ReadFirstMain(Br, 1, true) then
+        begin
+          RecordCheckError(1499, "Укажите код филиала", -1, "BranchCode");
+          res = -1;
+        end;
+    end;
+
+  ISubBranchVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+//Филиал
+global
+function Boolean IBranchVcRecordCheck(var record IBranchVc Br, record IBranchVc B2r, longint stat, longint check)
+begin
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(Br.Code) then
+    begin
+      RecordCheckError(1499, "Не указан код филиала!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(Br.Name) then
+    begin
+      RecordCheckError(1499, "Укажите наименование филиала", -1, "Name");
+      res = -1;
+    end;
+
+  IBranchVcRecordCheck = res;
+  Return;
+end;
+

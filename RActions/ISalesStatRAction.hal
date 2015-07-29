@@ -1,0 +1,434 @@
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external inner function val MulRateToBase2(var string,val,val,val,val,val,val,roundmode);
+external function date FirstDayOfMonth(date);
+
+//===============================================
+// Статистика Продавец-Товар
+//===============================================
+//Аккумулируем статистику в записях регистра
+updating procedure AddSellerToItemStat(record IVVc IVr, row IVVc IVrw)
+begin
+  record ISellerToItemStatVc SIr, oldSIr;
+  boolean NewRec;
+  val Qty, Sum;
+
+  Qty = IVrw.Quant;
+  Sum = MulRateToBase1(IVr.CurncyCode, IVrw.Sum, IVr.FrRate, IVr.ToRateB1, IVr.ToRateB2, IVr.BaseRate1, IVr.BaseRate2, DefaultCurRoundOff);
+  if (IVr.InvType == 3) then
+    begin
+    Qty = -Qty;
+    Sum = -Sum;
+    end;
+
+  SIr.Seller = IVr.SalesMan;
+  SIr.DT = FirstDayOfMonth(IVr.InvDate);
+  SIr.Item = IVrw.ArtCode;
+
+  NewRec = not ReadFirstKey("Seller", SIr, 3, true);
+  if (NewRec) then
+    begin
+    RecordNew(SIr);
+    SIr.SerNr = NextSerNr("ISellerToItemStatVc", CurrentDate, -1, false, "");
+    SIr.Seller = IVr.SalesMan;
+    SIr.DT = FirstDayOfMonth(IVr.InvDate);
+    SIr.Item = IVrw.ArtCode;
+    SIr.Qty = Qty;
+    SIr.Sum = Sum;
+    RecordStore(SIr, false);
+    end
+  else
+    begin
+    SIr.Qty = SIr.Qty + Qty;
+    SIr.Sum = SIr.Sum + Sum;
+    RecordCopy(oldSIr, SIr);
+    RecordUpdate(oldSIr, SIr, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Собираем статистику за период
+updating procedure CreateSellerToItemStat(record RcVc RepSpec)
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+  integer i;
+  boolean cont;
+
+  IVr.InvDate = RepSpec.sStartDate;
+  cont = true;
+  while (LoopKey("InvDate", IVr, 1, cont))
+    begin
+      cont = DateInRange(IVr.InvDate, RepSpec.sStartDate, RepSpec.sEndDate);
+      if cont and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and ((IVr.InvType == 1) or (IVr.InvType == 3)) then
+        begin
+          for (i=0; i < MatRowCnt(IVr); i=i+1)
+            begin
+              MatRowGet(IVr, i, IVrw);
+              if (IVrw.stp == 1) then
+                begin
+                AddSellerToItemStat(IVr, IVrw);
+                end;
+            end;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Удаляем статистику за период
+updating procedure ClearSellerToItemStat(record RcVc RepSpec)
+begin
+  record ISellerToItemStatVc SIr;
+  boolean cont;
+  date bd, ed;
+
+  bd = FirstDayOfMonth(RepSpec.sStartDate);
+  ed = FirstDayOfMonth(RepSpec.sEndDate);
+  SIr.DT = bd;
+  cont = true;
+  while LoopKey("DateSeller", SIr, 1, cont)
+    begin
+      cont = DateInRange(SIr.DT, bd, ed);
+      if cont then
+        begin
+        RecordRemove(SIr);
+        StepBack(SIr);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+updating procedure ISellerToItemStatMn(record RcVc RepSpec)
+begin
+  ClearSellerToItemStat(RepSpec);
+  CreateSellerToItemStat(RepSpec);
+  Return;
+end;
+
+
+
+//===============================================
+// Статистика Филиал-Товар
+//===============================================
+//Аккумулируем статистику в записях регистра
+updating procedure AddGroupToItemStat(record IVVc IVr, row IVVc IVrw)
+begin
+  record IGroupToItemStatVc SIr, oldSIr;
+  boolean NewRec;
+  val Qty, Sum;
+
+  Qty = IVrw.Quant;
+  Sum = MulRateToBase1(IVr.CurncyCode, IVrw.Sum, IVr.FrRate, IVr.ToRateB1, IVr.ToRateB2, IVr.BaseRate1, IVr.BaseRate2, DefaultCurRoundOff);
+  if (IVr.InvType == 3) then
+    begin
+    Qty = -Qty;
+    Sum = -Sum;
+    end;
+
+  SIr.SalesGroup = IVr.SalesGroup;
+  SIr.DT = FirstDayOfMonth(IVr.InvDate);
+  SIr.Item = IVrw.ArtCode;
+
+  NewRec = not ReadFirstKey("SalesGroup", SIr, 3, true);
+  if (NewRec) then
+    begin
+    RecordNew(SIr);
+    SIr.SerNr = NextSerNr("IGroupToItemStatVc", CurrentDate, -1, false, "");
+    SIr.SalesGroup = IVr.SalesGroup;
+    SIr.DT = FirstDayOfMonth(IVr.InvDate);
+    SIr.Item = IVrw.ArtCode;
+    SIr.Qty = Qty;
+    SIr.Sum = Sum;
+    RecordStore(SIr, false);
+    end
+  else
+    begin
+    SIr.Qty = SIr.Qty + Qty;
+    SIr.Sum = SIr.Sum + Sum;
+    RecordCopy(oldSIr, SIr);
+    RecordUpdate(oldSIr, SIr, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Собираем статистику за период
+updating procedure CreateGroupToItemStat(record RcVc RepSpec)
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+  integer i;
+  boolean cont;
+
+  IVr.InvDate = RepSpec.sStartDate;
+  cont = true;
+  while (LoopKey("InvDate", IVr, 1, cont))
+    begin
+      cont = DateInRange(IVr.InvDate, RepSpec.sStartDate, RepSpec.sEndDate);
+      if cont and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and ((IVr.InvType == 1) or (IVr.InvType == 3)) then
+        begin
+          for (i=0; i < MatRowCnt(IVr); i=i+1)
+            begin
+              MatRowGet(IVr, i, IVrw);
+              if (IVrw.stp == 1) then
+                begin
+                AddGroupToItemStat(IVr, IVrw);
+                end;
+            end;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Удаляем статистику за период
+updating procedure ClearGroupToItemStat(record RcVc RepSpec)
+begin
+  record IGroupToItemStatVc SIr;
+  boolean cont;
+  date bd, ed;
+
+  bd = FirstDayOfMonth(RepSpec.sStartDate);
+  ed = FirstDayOfMonth(RepSpec.sEndDate);
+  SIr.DT = bd;
+  cont = true;
+  while LoopKey("DateGroup", SIr, 1, cont)
+    begin
+      cont = DateInRange(SIr.DT, bd, ed);
+      if cont then
+        begin
+        RecordRemove(SIr);
+        StepBack(SIr);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+updating procedure IGroupToItemStatMn(record RcVc RepSpec)
+begin
+  ClearGroupToItemStat(RepSpec);
+  CreateGroupToItemStat(RepSpec);
+  Return;
+end;
+
+
+
+//===============================================
+// Статистика Клиент-Товар
+//===============================================
+//Аккумулируем статистику в записях регистра
+updating procedure AddCustomerToItemStat(record IVVc IVr, row IVVc IVrw)
+begin
+  record ICustToItemStatVc SIr, oldSIr;
+  boolean NewRec;
+  val Qty, Sum;
+
+  Qty = IVrw.Quant;
+  Sum = MulRateToBase1(IVr.CurncyCode, IVrw.Sum, IVr.FrRate, IVr.ToRateB1, IVr.ToRateB2, IVr.BaseRate1, IVr.BaseRate2, DefaultCurRoundOff);
+  if (IVr.InvType == 3) then
+    begin
+    Qty = -Qty;
+    Sum = -Sum;
+    end;
+
+  SIr.CustCode = IVr.CustCode;
+  SIr.DT = FirstDayOfMonth(IVr.InvDate);
+  SIr.Item = IVrw.ArtCode;
+
+  NewRec = not ReadFirstKey("CustCode", SIr, 3, true);
+  if (NewRec) then
+    begin
+    RecordNew(SIr);
+    SIr.SerNr = NextSerNr("ICustToItemStatVc", CurrentDate, -1, false, "");
+    SIr.CustCode = IVr.CustCode;
+    SIr.DT = FirstDayOfMonth(IVr.InvDate);
+    SIr.Item = IVrw.ArtCode;
+    SIr.Qty = Qty;
+    SIr.Sum = Sum;
+    RecordStore(SIr, false);
+    end
+  else
+    begin
+    SIr.Qty = SIr.Qty + Qty;
+    SIr.Sum = SIr.Sum + Sum;
+    RecordCopy(oldSIr, SIr);
+    RecordUpdate(oldSIr, SIr, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Собираем статистику за период
+updating procedure CreateCustToItemStat(record RcVc RepSpec)
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+  integer i;
+  boolean cont;
+
+  IVr.InvDate = RepSpec.sStartDate;
+  cont = true;
+  while (LoopKey("InvDate", IVr, 1, cont))
+    begin
+      cont = DateInRange(IVr.InvDate, RepSpec.sStartDate, RepSpec.sEndDate);
+      if cont and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and ((IVr.InvType == 1) or (IVr.InvType == 3)) then
+        begin
+          for (i=0; i < MatRowCnt(IVr); i=i+1)
+            begin
+              MatRowGet(IVr, i, IVrw);
+              if (IVrw.stp == 1) then
+                begin
+                AddCustomerToItemStat(IVr, IVrw);
+                end;
+            end;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Удаляем статистику за период
+updating procedure ClearCustToItemStat(record RcVc RepSpec)
+begin
+  record ICustToItemStatVc SIr;
+  boolean cont;
+  date bd, ed;
+
+  bd = FirstDayOfMonth(RepSpec.sStartDate);
+  ed = FirstDayOfMonth(RepSpec.sEndDate);
+  SIr.DT = bd;
+  cont = true;
+  while LoopKey("DateCust", SIr, 1, cont)
+    begin
+      cont = DateInRange(SIr.DT, bd, ed);
+      if cont then
+        begin
+        RecordRemove(SIr);
+        StepBack(SIr);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+updating procedure ICustToItemStatMn(record RcVc RepSpec)
+begin
+  ClearCustToItemStat(RepSpec);
+  CreateCustToItemStat(RepSpec);
+  Return;
+end;
+
+
+
+//===============================================
+// Статистика Клиент-Месяц (суммарно)
+//===============================================
+//Аккумулируем статистику в записях регистра
+updating procedure AddCustomerToMonthStat(record IVVc IVr)
+begin
+  record ICustToMonthStatVc SIr, oldSIr;
+  boolean NewRec;
+  val Qty, USD, UAH;
+
+  Qty = IVr.TotQty;
+  USD = MulRateToBase1(IVr.CurncyCode, IVr.Sum4, IVr.FrRate, IVr.ToRateB1, IVr.ToRateB2, IVr.BaseRate1, IVr.BaseRate2, DefaultCurRoundOff);
+  UAH = MulRateToBase2(IVr.CurncyCode, IVr.Sum4, IVr.FrRate, IVr.ToRateB1, IVr.ToRateB2, IVr.BaseRate1, IVr.BaseRate2, DefaultCurRoundOff);
+  if (IVr.InvType == 3) then
+    begin
+    Qty = -Qty;
+    USD = -USD;
+    UAH = -UAH;
+    end;
+
+  SIr.CustCode = IVr.CustCode;
+  SIr.DT = FirstDayOfMonth(IVr.InvDate);
+
+  NewRec = not ReadFirstKey("CustCode", SIr, 2, true);
+  if (NewRec) then
+    begin
+    RecordNew(SIr);
+    SIr.SerNr = NextSerNr("ICustToMonthStatVc", CurrentDate, -1, false, "");
+    SIr.CustCode = IVr.CustCode;
+    SIr.SalesGroup = IVr.SalesGroup;
+    SIr.Seller = IVr.SalesMan;
+    SIr.DT = FirstDayOfMonth(IVr.InvDate);
+    SIr.Qty = Qty;
+    SIr.USD = USD;
+    SIr.UAH = UAH;
+    RecordStore(SIr, false);
+    end
+  else
+    begin
+    SIr.Qty = SIr.Qty + Qty;
+    SIr.USD = SIr.USD + USD;
+    SIr.UAH = SIr.UAH + UAH;
+    RecordCopy(oldSIr, SIr);
+    RecordUpdate(oldSIr, SIr, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Собираем статистику за период
+updating procedure CreateCustToMonthStat(record RcVc RepSpec)
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+  integer i;
+  boolean cont;
+
+  IVr.InvDate = RepSpec.sStartDate;
+  cont = true;
+  while (LoopKey("InvDate", IVr, 1, cont))
+    begin
+      cont = DateInRange(IVr.InvDate, RepSpec.sStartDate, RepSpec.sEndDate);
+      if cont and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and ((IVr.InvType == 1) or (IVr.InvType == 3)) then
+        begin
+          AddCustomerToMonthStat(IVr);
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Удаляем статистику за период
+updating procedure ClearCustToMonthStat(record RcVc RepSpec)
+begin
+  record ICustToMonthStatVc SIr;
+  boolean cont;
+  date bd, ed;
+
+  bd = FirstDayOfMonth(RepSpec.sStartDate);
+  ed = FirstDayOfMonth(RepSpec.sEndDate);
+  SIr.DT = bd;
+  cont = true;
+  while LoopKey("DateCust", SIr, 1, cont)
+    begin
+      cont = DateInRange(SIr.DT, bd, ed);
+      if cont then
+        begin
+        RecordRemove(SIr);
+        StepBack(SIr);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+updating procedure ICustToMonthStatMn(record RcVc RepSpec)
+begin
+  ClearCustToMonthStat(RepSpec);
+  CreateCustToMonthStat(RepSpec);
+  Return;
+end;

@@ -1,0 +1,325 @@
+remote inner procedure M4PadString(string,Integer,string,Boolean,var string);
+remote inner procedure StripEndingSpaces(var string);
+external inner procedure GetCurUser(var record UserVc);
+
+//===============================================
+global
+function Boolean ICompProfitValSClassOnOpenWindow(integer wn)
+begin
+  record ICompProfitValBlock ICPVr;
+  row ICompProfitValBlock ICPVrw;
+  longint i;
+  string 255 s;
+  boolean res;
+
+  BlockLoad(ICPVr);
+  for (i=0; i<MatRowCnt(ICPVr); i=i+1)
+    begin
+      MatRowGet(ICPVr,i,ICPVrw);
+      s = ICPVrw.Code;
+      M4PadString(s,20," ",false,s);
+      s = s & ICPVrw.Name;
+      SetListString(wn,i,s,false);
+    end;
+
+  ICompProfitValSClassOnOpenWindow = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICompProfitValSClassOnOKWindow(integer wn)
+begin
+  string 60 s;
+  Integer mwn;
+
+  mwn=MotherWindow(wn);
+  s = left(GetListString(wn,SelectedListLine(wn)), 12);
+  StripEndingSpaces(s);
+  CloseWindow(wn);
+  PasteString(mwn,s);
+  ICompProfitValSClassOnOKWindow = false;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IPodrSClassOnOpenWindow(integer wn)
+begin
+  record ObjVc Objr;
+  longint Pos;
+  string 255 s;
+	string 20 OTCode;
+  boolean res, cont;
+
+  Pos = 0;
+	cont = true;
+	OTCode = "PODR";
+  Objr.Code = "";
+  Objr.OTCode = OTCode;
+  while (LoopKey("OTCode",Objr,1,cont))
+		begin
+			cont = (Objr.OTCode == OTCode);
+			if (cont) then
+				begin    
+					s = Objr.Code;
+					M4PadString(s,20," ",false,s);
+					s = s & Objr.Comment;
+					SetListString(wn,Pos,s,false);
+					Pos = Pos + 1;
+				end;
+		end;
+
+  IPodrSClassOnOpenWindow = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IPodrSClassOnOKWindow(integer wn)
+begin
+  string 60 s;
+  Integer mwn;
+
+  mwn=MotherWindow(wn);
+  s = left(GetListString(wn,SelectedListLine(wn)), 12);
+  StripEndingSpaces(s);
+  CloseWindow(wn);
+  PasteString(mwn,s);
+  IPodrSClassOnOKWindow = false;
+  Return;
+end;
+
+//===============================================
+function boolean CanUnOk
+begin
+  record UserVc Usr;
+
+  GetCurUser(Usr);
+  CanUnOk = UserCanAction("UnOKAll",true) or (Usr.AccessGroup=="ADMIN"); 
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICompProfitPlanDClassCodeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+	record ICompProfitPlanVc ICPPr;
+	row ICompProfitPlanVc ICPPrw;
+	record ICompProfitValBlock ICPVr;
+	row ICompProfitValBlock ICPVrw;
+	integer i, rwcnt;
+	boolean found;
+
+  res = false;
+  SetLangMode(LangRussian, "RUS", 2);
+  if (changed != 0) then
+    begin
+			BlockLoad(ICPVr);
+      GetWindowRecord(wn,ICPPr);
+			MatRowGet(ICPPr, rownr, ICPPrw);
+			rwcnt = MatRowCnt(ICPVr);
+			for (i=0; (i<rwcnt) and not found; i=i+1)
+				begin
+					MatRowGet(ICPVr, i, ICPVrw);
+					found = (ICPPrw.Code == ICPVrw.Code);
+				end;
+
+			if found then
+				begin
+					ICPPrw.Name = ICPVrw.Name;
+				end
+			else
+				begin
+					ICPPrw.Name = blankval;
+				end;
+
+			MatRowPut(ICPPr, rownr, ICPPrw);
+      PutWindowRecord(wn,ICPPr);
+    end;
+
+  ICompProfitPlanDClassCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICompProfitPlanDClassAfterEditField(Integer wn,string FieldName,Integer fn,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record IRetOrdVc IRetOrdR;
+
+  res = true;
+  switch (FieldName)
+    begin
+      case "Code"   : res = ICompProfitPlanDClassCodeEFAfter(wn,fn,rownr,changed);
+    end;
+
+  ICompProfitPlanDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+function boolean IsAllFlagsOpened(record ICompProfitPlanVc ICPPr)
+begin
+	integer Month;
+	boolean res;
+
+	res = true;
+	for (Month=1; (Month<13) and res; Month=Month+1)
+		begin
+			res = res and (StringToLongInt(GetFieldValueByName(ICPPr, "Flag" & Month, -1)) == -1);
+		end;
+	IsAllFlagsOpened = res;
+	Return;
+end;
+
+//===============================================
+global
+function Boolean ICompProfitPlanDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+  Boolean res;
+	record ICompProfitPlanVc ICPPr;
+
+	res = true;
+	GetWindowRecord(wn, ICPPr);
+
+  if (left(FieldName, 3) == "Val") then
+		begin
+			res = StringToLongInt(GetFieldValueByName(ICPPr, "Flag" & right(FieldName, (len(FieldName)-3)), -1)) == -1;
+		end;
+
+	if SetInSet(FieldName, "Code,Name,PlanYear,Objects") then
+		begin
+			res = IsAllFlagsOpened(ICPPr);
+		end;
+
+  ICompProfitPlanDClassActiveEditField = res;
+  Return;
+end;
+
+//===============================================
+function boolean FlagStatusByMonth(integer wn, integer Month)
+begin
+	record ICompProfitPlanVc ICPPr;
+
+  if (WindowState(wn)==0) then
+    begin
+      GetWindowRecord(wn, ICPPr);
+    end;
+    
+  if (WindowState(wn)==2) then
+    begin
+      GetPrevWindowRecord(wn,ICPPr);
+    end;
+
+	FlagStatusByMonth = StringToLongInt(GetFieldValueByName(ICPPr, "Flag" & Month, -1)) == 0;
+	Return;
+end;
+
+//===============================================
+global
+function Boolean ICompProfitPlanDClassFlag1ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag1ButtonAction = (not FlagStatusByMonth(wn, 1)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag2ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag2ButtonAction = (not FlagStatusByMonth(wn, 2)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag3ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag3ButtonAction = (not FlagStatusByMonth(wn, 3)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag4ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag4ButtonAction = (not FlagStatusByMonth(wn, 4)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag5ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag5ButtonAction = (not FlagStatusByMonth(wn, 5)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag6ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag6ButtonAction = (not FlagStatusByMonth(wn, 6)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag7ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag7ButtonAction = (not FlagStatusByMonth(wn, 7)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag8ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag8ButtonAction = (not FlagStatusByMonth(wn, 8)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag9ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag9ButtonAction = (not FlagStatusByMonth(wn, 9)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag10ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag10ButtonAction = (not FlagStatusByMonth(wn, 10)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag11ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag11ButtonAction = (not FlagStatusByMonth(wn, 11)) or CanUnOk;
+  Return;
+end;
+
+global
+function Boolean ICompProfitPlanDClassFlag12ButtonAction(Integer wn,Integer value)
+begin
+  ICompProfitPlanDClassFlag12ButtonAction = (not FlagStatusByMonth(wn, 12)) or CanUnOk;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICompProfitPlanDClassInsertRowTest(Integer wn, Integer rownr)
+begin
+	record ICompProfitPlanVc ICPPr;
+  GetWindowRecord(wn, ICPPr);
+  ICompProfitPlanDClassInsertRowTest = IsAllFlagsOpened(ICPPr);
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICompProfitPlanDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+	record ICompProfitPlanVc ICPPr;
+  GetWindowRecord(wn, ICPPr);
+  ICompProfitPlanDClassDeleteRowTest = IsAllFlagsOpened(ICPPr);
+  Return;
+end;
+

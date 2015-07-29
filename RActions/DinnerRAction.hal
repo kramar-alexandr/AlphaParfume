@@ -1,0 +1,1116 @@
+external function date tGetFirstDayofWN(integer);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+external function string 255 IGetUserName(string);
+
+
+global
+function string 20 tFirstVECode( var string FirstVEName)
+begin
+record tVEDinVc VEDr;
+string 20 res;
+boolean TsHr;
+
+TsHr = true;
+while loopmain(VEDr, 1, TsHr)
+	begin
+	FirstVEName = VEDr.Name;
+	res = VEDr.Code;
+	TsHr = false;
+	end;
+
+tFirstVECode = res;
+
+return;	
+end;
+
+
+//===================================================================================================================================== 
+global
+function Longint tDinnerVcRecordDefaults(var record tDinnerVc Dr, record tDinnerVc D2r, longInt stat, longInt long4)
+begin
+record ObjVc Objr; 
+Longint Res;
+LongInt maxweek;
+date d2;
+string 250 VEName;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+Dr.VECode = tFirstVECode(VEName);	 
+Dr.VEName = VEName;
+
+tDinnerVcRecordDefaults = res;
+RETURN;
+end;
+
+//===============================================
+global
+function integer tVidKompl(string DName, date DErwDate, string DErVECode)
+begin
+record tDinnerVc Dr;
+row tDinnerVc  Drw;
+boolean res;
+integer RwCnt;
+
+Dr.DType = 1; 
+Dr.Date = DErwDate; 
+Dr.VECode = DErVECode;
+if ReadFirstMain(Dr, 3, True) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Dr, RwCnt, Drw);
+		if (Drw.DName == DName) then
+			begin
+			if (RwCnt == 0) or (RwCnt == 3) then
+				begin
+				tVidKompl = 1;
+				RwCnt = MatRowCnt(Dr);
+				end;
+			if (RwCnt == 1) or (RwCnt == 4) then
+				begin
+				tVidKompl = 2;
+				RwCnt = MatRowCnt(Dr);
+				end;	
+			if (RwCnt == 3) or (RwCnt == 5) then
+				begin
+				tVidKompl = 3;
+				RwCnt = MatRowCnt(Dr);
+				end;	
+			end;
+		end;
+	end;
+
+return;
+end;
+
+//===============================================
+global
+function boolean tRepeatDish1(record tDinnerEmpVc DEr, date DErwDate, integer tVidKompl1, integer RwCnt)
+begin
+integer RwCnt1;
+val k;
+row tDinnerEmpVc DErw;
+boolean res;
+
+res = false;
+k = 0;	
+for (RwCnt1 = 0; RwCnt1 < MatRowCnt(DEr); RwCnt1 = RwCnt1 + 1)
+	begin
+	MatRowGet(DEr, RwCnt1, DErw);
+	if (DErw.DType == 1) and (DErw.Date == DErwDate) and  (RwCnt <> RwCnt1) then
+		begin
+		if (tVidKompl1 == tVidKompl(DErw.DName, DErwDate, DEr.VECode)) then
+			begin
+			res = true;
+			RwCnt1 = MatRowCnt(DEr);
+			end;
+		end;	
+	end;
+tRepeatDish1 = res;
+return;	
+end;
+
+//===============================================
+global
+function boolean tRepeatDish( record tDinnerEmpVc DEr, var date MistDate)
+begin
+integer RwCnt1;
+val k;
+row tDinnerEmpVc DErw;
+boolean res;
+
+res = false;
+k = 0;	
+for (RwCnt1 = 0; RwCnt1 < MatRowCnt(DEr); RwCnt1 = RwCnt1 + 1)
+	begin
+	MatRowGet(DEr, RwCnt1, DErw);
+	if (DErw.DType == 1) then 
+		begin
+		if tRepeatDish1(DEr, DErw.Date, tVidKompl(DErw.DName, DErw.Date, DEr.VECode), RwCnt1) then
+			begin
+			res = true;
+			MistDate = DErw.Date;
+			RwCnt1 = MatRowCnt(DEr);
+			end;
+		end;
+	end;
+tRepeatDish = res;
+return;	
+end;
+//===============================================
+global
+function longint tDinnerEmpVcRecordCheck(var record tDinnerEmpVc DEr, record tDinnerEmpVc DE2r, longInt stat, longInt long4)
+begin
+longint res;
+INTEGER RwCnt1, RwCnt;
+val k;
+row tDinnerEmpVc DErw, DE2rw;
+integer insertmode, updatemode,i,sum;
+record tDinnerEmpVc OldDEr;
+date MistDate;
+boolean allTR;
+
+SetLangMode(LangRussian,"RUS",2);
+res = 0;
+
+if (stat == updatemode) and (DEr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+  
+
+if (DEr.OKFlag <> DE2r.OKFlag) and (DEr.OKFlag == 0) and not(setinset(CurrentUser, "TGN,TGOR,DELPHI,LKOROL,INAU,ENI")) then
+	begin
+	res = -1;
+	end;
+	
+if (DE2r.OKFlag == 1) and not(setinset(CurrentUser, "TGN,TGOR,DELPHI,LKOROL,INAU,ENI")) then
+	begin
+	res = -1;
+	end;
+k = 0;	
+for (RwCnt1 = 0; RwCnt1 < MatRowCnt(DEr); RwCnt1 = RwCnt1 + 1)
+	begin
+	MatRowGet(DEr, RwCnt1, DErw);
+	if (DErw.DType == 1) then
+		begin
+		k = k + 1;
+		end;
+	end;
+if mod(k, 3) <> 0 then
+	begin
+	res = -1;
+	messagebox(0, "Количество блюд комплексного обеда должно быть кратно 3 !");
+	end;
+if (DE2r.AOFlag == 1) then //and not(setinset(CurrentUser, "TGOR,DELPHI,LKOROL,INAU"))
+	begin
+	res = -1;
+	end;
+//if (DE2r.AOFlag <> DEr.AOFlag) and not(setinset(CurrentUser, "TGOR,DELPHI,LKOROL,INAU")) then
+	//begin
+	//res = -1;
+	//messagebox(0, "У Вас нет прав изменять галку Запись операций!");
+	//end;
+	
+
+for (RwCnt1 = 0; RwCnt1 < MatRowCnt(DEr); RwCnt1 = RwCnt1 + 1)
+	begin
+	MatRowGet(DEr, RwCnt1, DErw);
+	if ((DErw.DType <> 1) and (DErw.DType <> 3) and  ((DErw.DPrice == 0) or blank(DErw.DPrice))) or blank(DErw.DTypeName)  then
+		begin
+		res = -1;
+		messagebox(0, "Неправильно заполнена строка!");
+		RwCnt1 = MatRowCnt(DEr);
+		end;
+	end;	
+
+if blankdate(DEr.FDayWeek) or blankdate(DEr.LDayWeek)
+	or (DEr.FDayWeek <> DE2r.FDayWeek) or (DEr.LDayWeek <> DE2r.LDayWeek) 
+	or (DEr.NrWeek <> DE2r.NrWeek) then
+		begin
+		DEr.FDayWeek = tGetFirstDayofWN(DEr.NrWeek);
+		DEr.LDayWeek = addday(tGetFirstDayofWN(DEr.NrWeek), 6);
+		DEr.Year = GetYear(DEr.FDayWeek);
+		end;	
+
+OldDEr.NrWeek = DEr.NrWeek;
+OldDEr.VECode = DEr.VECode;
+OldDEr.User = DEr.User;
+if readfirstkey("NoMain", OldDEr, 3, true) and (DEr.SerNr <> OldDEr.SerNr) then
+	begin
+	res = -1;
+	Messagebox(0, "Запись для " & DEr.User & " на неделю № " & DEr.NrWeek & " уже создана!");
+	end;	
+
+if tRepeatDish(DEr, MistDate) then
+	begin
+	res = -1;
+	messagebox(0, "Комплексный обед заказан дважды или не полностью на " & MistDate & "!");
+	end;
+		
+
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(DEr, RwCnt, DErw);
+	MatRowGet(DE2r, RwCnt, DE2rw);
+	if nonblank(DE2rw.TRNr) and (DErw.TRNr <>  DE2rw.TRNr) then
+		begin
+		res = -1;
+		messagebox(0, "Номер записи операций менять нельзя!");
+		end;
+	end;
+if blank(DEr.ObjStr) then
+		begin
+		res = -1;
+		messagebox(0, "В Вашей карточке не заполнено поле объектов!");
+		end;
+
+if res <> -1 then
+	begin
+	if (stat <> updatemode) and (DEr.SerNr < 1) then
+		begin
+		DEr.SerNr = NextSerNr("tDinnerEmpVc", CurrentDate, -1, false, "");
+		end;
+
+	if MatRowCnt(DEr) > 0 then
+		begin
+		allTR = true;	
+		for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(DEr, RwCnt, DErw);
+			if blank(DErw.TRNr) then
+				begin
+				allTR = false;
+				end;
+			end;	
+		// только если все строки заполнены номером записи операций
+		if allTR then
+			begin
+			DEr.AOFlag = 1;
+			end;
+		end;	
+	end;		
+  tDinnerEmpVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+updating function LongInt tDinnerEmpVcRecordRemoveTest(var record tDinnerEmpVc AIr, record tDinnerEmpVc AI2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tDinnerEmpVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+
+if (not UserCanAction("UnOKAll",True)) then 
+  begin
+  tDinnerEmpVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+//===================================================================================================================================== 
+
+// global
+// updating function LongInt tDinnerEmpVcRecordSave(var record tDinnerEmpVc DEr,record tDinnerEmpVc DE2r,LongInt stat,LongInt long4)
+// BEGIN
+// LongInt res;
+
+
+// record Uservc Usr;
+// Usr.Code = CurrentUser;
+// readfirstmain(Usr, 1, true);
+
+
+// tDinnerEmpVcRecordSave = res;
+// RETURN;
+// END;
+//===================================================================================================================================== 
+global
+function Longint tDinnerEmpVcRecordDefaults(var record tDinnerEmpVc DEr, record tDinnerEmpVc DE2r, longInt stat, longInt long4)
+begin
+record ObjVc Objr; 
+Longint Res;
+LongInt maxweek;
+date d2;
+string 250 VEName;
+record IEmployeeVc IEr;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+maxweek = 53;
+d2 = CurrentDate;
+
+if (SingleUserMode) then 
+	begin
+	DEr.SerNr = NextSerNr("tDinnerEmpVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	DEr.SerNr = -1;
+	end;
+	
+	
+DEr.VECode = tFirstVECode(VEName);	
+DEr.VEName = VEName;
+
+DEr.NrWeek = (GetWeekNr(CurrentDate, "", maxweek) + 1);
+DEr.User = CurrentUser; 
+DEr.UsrName = IGetUserName(DEr.User);
+
+IEr.Code = DEr.User;
+readfirstmain(IEr, 1 , true);
+DEr.ObjStr = IEr.tObj;
+
+/*
+Objr.Code = DEr.User;
+readfirstmain(Objr, 1 , true);
+DEr.ObjStr = Objr.AutoObjects;
+
+if DEr.ObjStr <> "" then
+	begin
+	DEr.ObjStr =  DEr.ObjStr & ",";
+	end;
+DEr.ObjStr = DEr.ObjStr  & "NOT" & "," & "ZADM" & "," & "O2" ; // & "," & "" */
+
+tDinnerEmpVcRecordDefaults = res;
+RETURN;
+end;
+
+//==========================================================
+global
+function Longint tDinnerEmpVcRecordDuplicate(var record tDinnerEmpVc DEr, record tDinnerEmpVc DE2r, LongInt stat, LongInt long4)
+begin
+record UserVc USr;
+row tDinnerEmpVc DErw;
+Longint res;
+integer RwCnt;
+
+if (SingleUserMode) then 
+  begin
+  DEr.SerNr = NextSerNr("tDinnerEmpVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  DEr.SerNr = -1;
+  end;
+
+DEr.OKFlag = 0;
+DEr.User = ""; 
+DEr.UsrName = "";
+DEr.ObjStr = "";
+DEr.AOFlag = 0;
+DEr.AONr = -1;
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(DEr, RwCnt, DErw);
+	DErw.TRNr = "";
+	MatRowPut(DEr, RwCnt, DErw);
+	end;
+
+DEr.FDayWeek = tGetFirstDayofWN(DEr.NrWeek);
+DEr.LDayWeek = addday(tGetFirstDayofWN(DEr.NrWeek), 6);
+DEr.Year = GetYear(DEr.FDayWeek);
+tDinnerEmpVcRecordDuplicate = res;
+RETURN;
+end;
+//==========================================================
+
+function val FindDinPrice(string DTypeName, string VECode)
+begin
+Boolean res;
+record tDinPriceVc DPr;
+
+DPr.NameDin = DTypeName;
+DPr.POCode = VECode;
+ReadFirstMain(DPr, 2, true);
+FindDinPrice = DPr.Price;
+
+Return;
+end;
+
+//================================================
+procedure tListDishMenu(var record TempVc Listr, record RcVc RepSpec)
+begin
+record tDinnerVc Dr;
+row tDinnerVc Drw;
+record tDinEvrDayVc DYDr;
+row tDinEvrDayVc DYDrw;
+boolean TrHs;
+row TempVc Listrw;
+integer i, k, rwcnt, ii;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+ii = MatRowCnt(Listr); 
+Listrw.f2 = "МЕНЮ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, ii, Listrw);
+Dr.DType = 0;
+Dr.Date = RepSpec.d1;
+Dr.VECode = RepSpec.f1;
+if ReadFirstMain(Dr, 3, true) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Dr, RwCnt, Drw);
+		ii = MatRowCnt(Listr); 
+		Listrw.f2 = Drw.DName;
+		Listrw.f3 = Drw.DPrice;
+		Listrw.f4 = 0;
+		Listrw.f5 = 0;
+		MatRowInsert(Listr, ii, Listrw);
+		end;
+	end;
+	
+Listrw.f2 = "ЕЖЕДНЕВНОЕ МЕНЮ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, MatRowCnt(Listr), Listrw);
+DYDr.VECode = RepSpec.f1;
+if ReadFirstMain(DYDr, 1, true) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(DYDr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(DYDr, RwCnt, DYDrw);
+		ii = MatRowCnt(Listr); 
+		Listrw.f2 = DYDrw.DName;
+		Listrw.f3 = DYDrw.DPrice;
+		Listrw.f4 = 0;
+		Listrw.f5 = 0;
+		MatRowInsert(Listr, ii, Listrw);
+		end;
+	end;
+	
+Listrw.f2 = "ГАРНИР+МЯСНОЕ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, MatRowCnt(Listr), Listrw);	
+Dr.DType = 2;
+Dr.Date = RepSpec.d1;
+Dr.VECode = RepSpec.f1;
+if ReadFirstMain(Dr, 3, true) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Dr, RwCnt, Drw);
+		ii = MatRowCnt(Listr); 
+		Listrw.f2 = Drw.DName;
+		Listrw.f3 = FindDinPrice("Гарнир+мясное", Dr.VECode); //Drw.DPrice;
+		Listrw.f4 = 2;
+		Listrw.f5 = 0;
+		MatRowInsert(Listr, ii, Listrw);
+		end;
+	end;
+	
+Listrw.f2 = "КОМПЛЕКСНЫЙ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, MatRowCnt(Listr), Listrw);	
+Dr.DType = 1;
+Dr.Date = RepSpec.d1;
+Dr.VECode = RepSpec.f1;
+if ReadFirstMain(Dr, 3, true) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Dr, RwCnt, Drw);
+		ii = MatRowCnt(Listr); 
+		Listrw.f2 = Drw.DName;
+		Listrw.f3 = Drw.DPrice;
+		Listrw.f4 = 1;
+		Listrw.f5 = 0;
+		MatRowInsert(Listr, ii, Listrw);
+		end;
+	end;
+	
+RETURN;
+end;
+//=============================================== 
+
+// procedure tSumDish(var record TempVc Listr, record RcVc RepSpec, integer DType)
+// begin
+// row TempVc Listrw;
+// boolean TrHr, TrHr1;
+// integer i, k, rwcnt, ii;
+// record UserVc USr;
+// record tDinnerEmpVc DEr;
+// row tDinnerEmpVc  DErw;
+// date d1,dfw;
+
+// DEr.NrWeek = RepSpec.AccSpec;
+// DEr.VECode = RepSpec.f1;
+
+
+
+// RETURN;
+// end;
+
+//=============================================== 
+procedure tAddTmpDin(var record TempVc Listr, record RcVc RepSpec)
+begin
+record tDinnerVc Dr;
+row tDinnerVc Drw;
+record tDinEvrDayVc DYDr;
+row tDinEvrDayVc DYDrw;
+boolean TrHs, TrHs1, TrHs2;
+row TempVc Listrw;
+integer i, k, rwcnt, ii;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+Listrw.f2 = "ГАРНИР+МЯСНОЕ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, MatRowCnt(Listr), Listrw);
+ResetLoop(Dr);	
+Dr.DType = 2;
+Dr.Date = RepSpec.sStartDate;
+Dr.VECode = RepSpec.f1;
+TrHs1 = true;
+while LoopMain(Dr, 3, TrHs1)
+	begin
+	TrHs1 = (Dr.Date <= RepSpec.sEndDate);
+	if TrHs1 then
+		begin
+		for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Dr, RwCnt, Drw);
+			ii = MatRowCnt(Listr); 
+			Listrw.f2 = Drw.DName;
+			Listrw.f3 = FindDinPrice("Гарнир+мясное", Dr.VECode); //Drw.DPrice;
+			Listrw.f4 = 2;
+			Listrw.f5 = 0;
+			MatRowInsert(Listr, ii, Listrw);
+			end;
+		end;	
+	end;
+
+RETURN;
+end;
+//=============================================== 
+procedure tAddTmpDin1(var record TempVc Listr, record RcVc RepSpec)
+begin
+record tDinnerVc Dr;
+row tDinnerVc Drw;
+record tDinEvrDayVc DYDr;
+row tDinEvrDayVc DYDrw;
+boolean TrHs, TrHs1, TrHs2;
+row TempVc Listrw;
+integer i, k, rwcnt, ii;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+Listrw.f2 = "КОМПЛЕКСНЫЙ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, MatRowCnt(Listr), Listrw);	
+ResetLoop(Dr);
+Dr.DType = 1;
+Dr.Date = RepSpec.sStartDate;
+Dr.VECode = RepSpec.f1;
+TrHs2 = true;
+while LoopMain(Dr, 3, TrHs2)
+	begin
+	TrHs2 = (Dr.Date <= RepSpec.sEndDate);
+	if TrHs2 then
+		begin
+		for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Dr, RwCnt, Drw);
+			ii = MatRowCnt(Listr); 
+			Listrw.f2 = Drw.DName;
+			Listrw.f3 = Drw.DPrice;
+			Listrw.f4 = 1;
+			Listrw.f5 = 0;
+			MatRowInsert(Listr, ii, Listrw);
+			end;
+		end;
+	end; 
+RETURN;
+end;
+//================================================
+procedure tListDishMenuP(var record TempVc Listr, record RcVc RepSpec)
+begin
+record tDinnerVc Dr;
+row tDinnerVc Drw;
+record tDinEvrDayVc DYDr;
+row tDinEvrDayVc DYDrw;
+boolean TrHs, TrHs1, TrHs2;
+row TempVc Listrw;
+integer i, k, rwcnt, ii;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+ii = MatRowCnt(Listr); 
+ResetLoop(Dr);
+Listrw.f2 = "МЕНЮ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, ii, Listrw);
+Dr.DType = 0;
+Dr.Date = RepSpec.sStartDate;
+Dr.VECode = RepSpec.f1;
+TrHs = true;
+while LoopMain(Dr, 3, TrHs)
+	begin
+	TrHs = (Dr.Date <= RepSpec.sEndDate);
+	if TrHs then
+		begin
+		for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Dr, RwCnt, Drw);
+			ii = MatRowCnt(Listr); 
+			Listrw.f2 = Drw.DName;
+			Listrw.f3 = Drw.DPrice;
+			Listrw.f4 = 0;
+			Listrw.f5 = 0;
+			MatRowInsert(Listr, ii, Listrw);
+			end;
+		end;	
+	end;
+	
+Listrw.f2 = "ЕЖЕДНЕВНОЕ МЕНЮ";
+Listrw.f3 = "";
+Listrw.f4 = "";
+Listrw.f5 = "";
+MatRowInsert(Listr, MatRowCnt(Listr), Listrw);
+DYDr.VECode = RepSpec.f1;
+if ReadFirstMain(DYDr, 1, true) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(DYDr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(DYDr, RwCnt, DYDrw);
+		ii = MatRowCnt(Listr); 
+		Listrw.f2 = DYDrw.DName;
+		Listrw.f3 = DYDrw.DPrice;
+		Listrw.f4 = 0;
+		Listrw.f5 = 0;
+		MatRowInsert(Listr, ii, Listrw);
+		end;
+	end;
+//	"ГАРНИР+МЯСНОЕ"
+
+tAddTmpDin(Listr,RepSpec);
+
+//	"КОМПЛЕКСНЫЙ"
+
+tAddTmpDin1(Listr,RepSpec);
+
+RETURN;
+end; 
+
+//=============================================== 
+global
+procedure tListDinner(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i,rwcnt, ii,RwCnt1;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+LongInt maxweek;
+val k, kp;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+resetLoop(Usr);
+
+
+k = 0;
+maxweek = 53;
+if nonblank(RepSpec.d1) then
+	begin
+	tListDishMenu(Listr, RepSpec);
+	resetloop(DEr);
+	DEr.NrWeek = GetWeekNr(RepSpec.d1, "", maxweek);
+	DEr.VECode = RepSpec.f1;
+	TrHr = true;
+	while (LoopKey("NoMain", DEr, 2, TrHr)) 
+		begin	
+		TrHr = (DEr.NrWeek == GetWeekNr(RepSpec.d1, "", maxweek)) and (DEr.VECode == RepSpec.f1) ;
+		if TrHr and (DEr.Year == RepSpec.long1)  and (DEr.OKFlag == 1) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				for (RwCnt1 = 0; RwCnt1 < MatRowCnt(Listr); RwCnt1 = RwCnt1 + 1)
+					begin
+					MatRowGet(Listr, RwCnt1, Listrw);
+					if (DErw.Date == RepSpec.d1) and (DErw.DName == Listrw.f2) and (DErw.DType == StringToInt(Listrw.f4))  then 
+						begin
+						Listrw.f5 = StringToVal(Listrw.f5, M4Val) + 1;
+						matrowput(Listr, RwCnt1, Listrw);
+						RwCnt1 = MatRowCnt(Listr);
+						if (DErw.DType == 1) then
+							begin
+							k = k + 1;
+							end;
+						end;
+					// if (DErw.Date == RepSpec.d1) and (DErw.DName == Listrw.f2) and (DErw.DType == StringToInt(Listrw.f4)) and (DErw.DType == 1) then 
+						// begin
+						// k = k + 1;
+						// Listrw.f5 = StringToVal(Listrw.f5, M4Val) + 1;
+						// matrowput(Listr, RwCnt1, Listrw);
+						// RwCnt1 = MatRowCnt(Listr);
+						// end;	
+					end;
+				end;	
+			end;
+		end;
+	end	
+else	
+	begin
+	tListDishMenuP(Listr, RepSpec);
+	resetloop(DEr);
+	DEr.FDayWeek = RepSpec.sStartDate;
+	DEr.VECode = RepSpec.f1;
+	TrHr = true;
+	while (Loopkey("FDayWeek", DEr, 1, TrHr)) 
+		begin	
+		TrHr = ((DEr.FDayWeek >= RepSpec.sStartDate) and (DEr.FDayWeek <= RepSpec.sEndDate)) ;
+		if TrHr and (DEr.Year == RepSpec.long1)  and (DEr.OKFlag == 1) and ((DEr.VECode == RepSpec.f1) or blank(RepSpec.f1))  
+		  and ((DEr.LDayWeek >= RepSpec.sStartDate) and (DEr.LDayWeek <= RepSpec.sEndDate)) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				for (RwCnt1 = 0; RwCnt1 < MatRowCnt(Listr); RwCnt1 = RwCnt1 + 1)
+					begin
+					MatRowGet(Listr, RwCnt1, Listrw);
+					if ((DErw.DName == Listrw.f2) and (DErw.DType == StringToInt(Listrw.f4)))  then 
+						begin
+						Listrw.f5 = StringToVal(Listrw.f5, M4Val) + 1;
+						matrowput(Listr, RwCnt1, Listrw);
+						RwCnt1 = MatRowCnt(Listr);
+						if (DErw.DType == 1) then
+							begin
+							k = k + 1;
+							end;
+						end;
+					// if (DErw.Date == RepSpec.d1) and (DErw.DName == Listrw.f2) and (DErw.DType == StringToInt(Listrw.f4)) and (DErw.DType == 1) then 
+						// begin
+						// k = k + 1;
+						// Listrw.f5 = StringToVal(Listrw.f5, M4Val) + 1;
+						// matrowput(Listr, RwCnt1, Listrw);
+						// RwCnt1 = MatRowCnt(Listr);
+						// end;	
+					end;
+				end;	
+			end;
+		end;
+	end;
+k = k / 3;
+kp = k * FindDinPrice("Комплексный", DEr.VECode);
+ii = MatRowCnt(Listr); 
+Listrw.f2 = "Всего по комплексным:" ;
+Listrw.f3 = FindDinPrice("Комплексный", DEr.VECode); //Drw.DPrice;
+Listrw.f4 = "";
+Listrw.f5 = k;
+MatRowInsert(Listr, ii, Listrw);
+return;	
+end;
+
+//=============================================== 
+global
+procedure tListEmpDish(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i,rwcnt, ii,RwCnt1;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+LongInt maxweek;
+val k, kp;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+
+k = 0;
+maxweek = 53;
+
+resetLoop(DEr);
+RepSpec.d1 = LastInRange(RepSpec.f4,20);
+DEr.NrWeek = GetWeekNr(RepSpec.d1, "", maxweek);
+DEr.VECode = FirstInRange(RepSpec.f4,20);
+TrHr = true;
+while (LoopKey("NoMain", DEr, 2, TrHr)) 
+	begin
+	TrHr = (DEr.NrWeek == GetWeekNr(RepSpec.d1, "", maxweek)) and (DEr.VECode == FirstInRange(RepSpec.f4,20)) ;
+	if TrHr  and (DEr.OKFlag == 1) then
+		begin
+		for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(DEr, RwCnt, DErw);
+			if (DErw.Date == RepSpec.d1) and (DErw.DName == RepSpec.f2) then 
+				begin
+				Listrw.f2 = DEr.UsrName;
+				matrowinsert(Listr, MatRowCnt(Listr), Listrw);
+				//RwCnt1 = MatRowCnt(DEr);
+				end;
+			end;	
+		end;	
+	end;
+
+return;	
+end;
+
+//=============================================== 
+global
+procedure tListEmpDishRep(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i,rwcnt, ii,RwCnt1;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+LongInt maxweek;
+val k, kp;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+
+k = 0;
+maxweek = 53;
+
+if nonblank(RepSpec.d1) then
+	begin
+	resetLoop(DEr);
+	DEr.NrWeek = GetWeekNr(RepSpec.d1, "", maxweek);
+	DEr.VECode = RepSpec.f1;
+	TrHr = true;
+	while (LoopKey("NoMain", DEr, 2, TrHr)) 
+		begin	
+		TrHr = (DEr.NrWeek == GetWeekNr(RepSpec.d1, "", maxweek)) and (DEr.VECode == RepSpec.f1) ;
+		if TrHr and (DEr.Year == RepSpec.long1)  and (DEr.OKFlag == 1) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				if (DErw.Date == RepSpec.d1) and (DErw.DName == RepSpec.f5) then 
+					begin
+					Listrw.f2 = DEr.UsrName;
+					matrowinsert(Listr, MatRowCnt(Listr), Listrw);
+					//RwCnt1 = MatRowCnt(DEr);
+					end;
+				end;	
+			end;	
+		end;
+	end	
+else
+	begin
+	resetloop(DEr);
+	DEr.FDayWeek = RepSpec.sStartDate;
+	DEr.VECode = RepSpec.f1;
+	TrHr = true;
+	while (Loopkey("FDayWeek", DEr, 1, TrHr)) 
+		begin	
+		TrHr = ((DEr.FDayWeek >= RepSpec.sStartDate) and (DEr.FDayWeek <= RepSpec.sEndDate)) ;
+		if TrHr and (DEr.Year == RepSpec.long1)  and (DEr.OKFlag == 1) and ((DEr.VECode == RepSpec.f1) or blank(RepSpec.f1))  
+		  and ((DEr.LDayWeek >= RepSpec.sStartDate) and (DEr.LDayWeek <= RepSpec.sEndDate)) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				if (DErw.DName == RepSpec.f5) or blank(RepSpec.f5) then 
+					begin
+					Listrw.f2 = DEr.UsrName;
+					matrowinsert(Listr, MatRowCnt(Listr), Listrw);
+					//RwCnt1 = MatRowCnt(DEr);
+					end;
+				end;	
+			end;
+		end;
+	end;
+return;	
+end;
+
+//=============================================== 
+global
+procedure tListDishForEmp(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i,rwcnt, ii,RwCnt1;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+LongInt maxweek;
+val k, kp;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+
+k = 0;
+maxweek = 53;
+
+resetLoop(DEr);
+if nonblank(RepSpec.d1) then
+	begin
+	DEr.NrWeek = GetWeekNr(RepSpec.d1, "", maxweek);
+	DEr.User = RepSpec.f3;
+	DEr.VECode = RepSpec.f1;
+	TrHr = true;
+	while (LoopKey("NoMain", DEr, 3, TrHr)) 
+		begin	
+		TrHr = (DEr.NrWeek == GetWeekNr(RepSpec.d1, "", maxweek)) and (DEr.User == RepSpec.f3) and (DEr.VECode == RepSpec.f1) ;
+		if TrHr and (DEr.Year == RepSpec.long1) and (DEr.OKFlag == 1) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				if (DErw.Date == RepSpec.d1) then 
+					begin
+					Listrw.f2 = DErw.DName;
+					Listrw.f3 = DErw.DPrice;
+					matrowinsert(Listr, MatRowCnt(Listr), Listrw);
+					//RwCnt1 = MatRowCnt(DEr);
+					end;
+				end;	
+			end;	
+		end;
+	end
+else
+	begin
+	resetloop(DEr);
+	DEr.FDayWeek = RepSpec.sStartDate;
+	DEr.VECode = RepSpec.f1;
+	TrHr = true;
+	while (Loopkey("FDayWeek", DEr, 1, TrHr)) 
+		begin	
+		TrHr = ((DEr.FDayWeek >= RepSpec.sStartDate) and (DEr.FDayWeek <= RepSpec.sEndDate)) ;
+		if TrHr and (DEr.Year == RepSpec.long1)  and (DEr.OKFlag == 1) and ((DEr.VECode == RepSpec.f1) or blank(RepSpec.f1))  
+		  and ((DEr.LDayWeek >= RepSpec.sStartDate) and (DEr.LDayWeek <= RepSpec.sEndDate)) 
+		  and ((DEr.User == RepSpec.f3) or blank(RepSpec.f3))  then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				//if (DErw.Date == RepSpec.d1) then 
+					begin
+					Listrw.f2 = DErw.DName;
+					Listrw.f3 = DErw.DPrice;
+					Listrw.f4 = DErw.Date;
+					matrowinsert(Listr, MatRowCnt(Listr), Listrw);
+					//RwCnt1 = MatRowCnt(DEr);
+					end;
+				end;
+			end;
+		end;		
+	end;
+return;	
+end;
+
+global
+procedure tSetField1(record RcVc RepSpec, string UsrCode, var record TempVc Listr, date dfw)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date d1;
+
+resetLoop(DEr);
+DEr.NrWeek = RepSpec.AccSpec;
+DEr.VECode = RepSpec.f1;
+DEr.User = UsrCode;
+while LoopKey("NoMain", DEr, 3, True) 
+	begin
+	if (DEr.Year == RepSpec.long1) and (DEr.OKFlag == 1) and (DEr.User == UsrCode) and (DEr.VECode == RepSpec.f1) 
+	and (DEr.NrWeek == RepSpec.AccSpec) and (DEr.Summa > 0) then
+		begin	
+		ii = MatRowCnt(Listr); 
+		Listrw.f2 = UsrCode;
+		Listrw.f10 = DEr.Summa;
+		MatRowInsert(Listr, ii, Listrw);
+		//=== day i
+		for(i = 0; i <= 7; i = i + 1)
+			begin
+			k = ii + 1;
+			d1 = addday(dfw, i);
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				if DErw.Date == d1 then
+					begin
+					SetFieldValueByName(Listr, "f" & 3 + i, DErw.DName & ":" & DErw.DPrice, k);  
+					k = k + 1;
+					end;
+				end;	
+			end;
+		//======
+		end;
+	end;
+return;	
+end;
+
+global
+procedure tListDinner2(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+resetLoop(Usr);
+
+while (LoopMain(Usr, 1, true))
+	begin
+	if Usr.TerminatedFlag <> 1 then
+		begin
+		tSetField1(RepSpec, Usr.Code, Listr, dfw);
+		end;
+	end;
+
+return;	
+end;
+
+global
+procedure tListDinner6(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+date d1,dfw;
+
+ii = 0;
+dfw = tGetFirstDayofWN(RepSpec.AccSpec);
+resetLoop(Usr);
+DEr.NrWeek = RepSpec.AccSpec;
+DEr.VECode = RepSpec.f1;
+DEr.User = RepSpec.f3;
+while LoopKey("NoMain", DEr, 3, True) 
+	begin
+	if (DEr.Year == RepSpec.long1) and (DEr.OKFlag == 1) and ((DEr.User == RepSpec.f3)or blank(RepSpec.f3)) then
+		begin	
+		ii = MatRowCnt(Listr); 
+		Listrw.f2 = IGetUserName(DEr.User);
+		Listrw.f10 = DEr.Summa;
+		MatRowInsert(Listr, ii, Listrw);
+		//=== day i
+		for(i = 0; i <= 7; i = i + 1)
+			begin
+			k = ii + 1;
+			d1 = addday(dfw, i);
+			for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(DEr, RwCnt, DErw);
+				if DErw.Date == d1 then
+					begin
+					SetFieldValueByName(Listr, "f" & 3 + i, DErw.DName & ":" & DErw.DPrice, k);  
+					k = k + 1;
+					end;
+				end;	
+			end;
+		end;
+	end;
+return;	
+end;
+

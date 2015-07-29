@@ -1,0 +1,48 @@
+//Регистр товарных стикеров
+//===============================================
+global
+updating function Boolean IStickerVcRecordCheck(var record IStickerVc IStickerr,record IStickerVc IStickerr2, LongInt stat, LongInt check)
+begin
+  longint res;
+  record DocVc Docr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+  
+  if (Blank(IStickerr.ArtCode) or Blank(IStickerr.ArtName)) then //Неверный код товара
+    begin
+      RecordCheckError(1233, "", -1, "ArtCode");
+      res = -1;
+    end;
+
+  Docr.Code = IStickerr.FormCode;
+  if (res == 0) and not ReadFirstMain(Docr, 1, true) then //Неверный код формы печати
+    begin
+      RecordCheckError(1499, "Проверьте правильность заполнения поля Форма печати!", -1, "FormCode");
+      res = -1;
+    end;
+
+  IStickerVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function Longint IStickerVcRecordDuplicate(var record IStickerVc IStickerr, record IStickerVc IStickerr2, LongInt stat, LongInt check)
+begin
+  IStickerr.ArtCode = blankval;
+  IStickerr.ArtName = blankval;
+  IStickerr.Group = blankval;
+  IStickerr.DispGroups = blankval;
+  IStickerVcRecordDuplicate = 0;
+  Return;
+end;
+
+//===============================================
+global
+function Longint IStickerVcRecordDefaults(var record IStickerVc IStickerr, record IStickerVc IStickerr2, LongInt stat, LongInt check)
+begin
+  IStickerr.MaxLineLen = 40;
+  IStickerVcRecordDefaults = 0;
+  Return;
+end;

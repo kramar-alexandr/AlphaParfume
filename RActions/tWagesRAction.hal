@@ -1,0 +1,440 @@
+//=============================================== tWageRateVcRecord...
+global
+function Longint tWageRateVcRecordDefaults(var record tWageRateVc WRr, record tWageRateVc WR2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+if (SingleUserMode) then 
+	begin
+	WRr.SerNr = NextSerNr("tWageRateVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	WRr.SerNr = -1;
+	end;
+
+tWageRateVcRecordDefaults = res;
+RETURN;
+end;
+
+//=====================================================
+
+global
+function LongInt tWageRateVcRecordDuplicate(var record tWageRateVc WRr, record tWageRateVc WR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS",2); 
+if (SingleUserMode) then 
+  begin
+  WRr.SerNr = NextSerNr("tWageRateVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  WRr.SerNr = -1;
+  end;
+  
+tWageRateVcRecordDuplicate = res;
+RETURN;
+END;
+
+//===================================================
+
+global
+updating function LongInt tWageRateVcRecordRemoveTest(var record tWageRateVc WRr, record tWageRateVc WR2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tWageRateVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,FINOA,FINO1"))) then
+  begin
+  tWageRateVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+//=====================================================
+
+global
+function LongInt tWageRateVcRecordCheck(var record tWageRateVc WRr, record tWageRateVc WR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+record tWageRateVc SP1r;
+
+SetLangMode(LangRussian,"RUS",2); 
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (WRr.SerNr < 1) then
+  begin
+  WRr.SerNr = NextSerNr("tWageRateVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (WRr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, true);
+
+  tWageRateVcRecordCheck = res;
+RETURN;
+end;
+
+//=============================================== tMarginVcRecord...
+global
+function Longint tMarginVcRecordDefaults(var record tMarginVc MRr, record tMarginVc MR2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+
+if (SingleUserMode) then
+	begin
+	MRr.SerNr = NextSerNr("tMarginVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	MRr.SerNr = -1;
+	end;
+
+tMarginVcRecordDefaults = res;
+RETURN;
+end;
+
+//=====================================================
+
+global
+function LongInt tMarginVcRecordDuplicate(var record tMarginVc MRr, record tMarginVc MR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then
+  begin
+  MRr.SerNr = NextSerNr("tMarginVc", CurrentDate, -1, false, "");
+  end
+else
+  begin
+  MRr.SerNr = -1;
+  end;
+
+tMarginVcRecordDuplicate = res;
+RETURN;
+END;
+
+//===================================================
+
+global
+updating function LongInt tMarginVcRecordRemoveTest(var record tMarginVc MRr, record tMarginVc MR2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tMarginVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,FINOA,FINO1"))) then
+  begin
+  tMarginVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+//=====================================================
+
+global
+function LongInt tMarginVcRecordCheck(var record tMarginVc MRr, record tMarginVc MR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+record tMarginVc SP1r;
+
+SetLangMode(LangRussian,"RUS",2);
+res = 0;
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (MRr.SerNr < 1) then
+  begin
+  MRr.SerNr = NextSerNr("tMarginVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (MRr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+  tMarginVcRecordCheck = res;
+RETURN;
+end;
+
+//=============================================== tCalcWageVcRecord...
+global
+function Longint tCalcWageVcRecordDefaults(var record tCalcWageVc CWr, record tCalcWageVc CW2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+
+if (SingleUserMode) then
+	begin
+	CWr.SerNr = NextSerNr("tCalcWageVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	CWr.SerNr = -1;
+	end;
+
+	CWr.Motiv = 0;
+
+tCalcWageVcRecordDefaults = res;
+RETURN;
+end;
+
+//=====================================================
+
+global
+function LongInt tCalcWageVcRecordDuplicate(var record tCalcWageVc CWr, record tCalcWageVc CW2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then
+  begin
+  CWr.SerNr = NextSerNr("tCalcWageVc", CurrentDate, -1, false, "");
+  end
+else
+  begin
+  CWr.SerNr = -1;
+  end;
+
+CWr.OKFlag = 0;
+CWr.TRFlag = 0;
+CWr.HasTrans = 0;
+CWr.TRNumber = blankval;
+CWr.TRIntYc = blankval;
+
+tCalcWageVcRecordDuplicate = res;
+RETURN;
+END;
+
+//===================================================
+
+global
+updating function LongInt tCalcWageVcRecordRemoveTest(var record tCalcWageVc CWr, record tCalcWageVc CW2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tCalcWageVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,FINO1,FINOA"))) then
+  begin
+  tCalcWageVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+//=====================================================
+
+global
+function LongInt tCalcWageVcRecordCheck(var record tCalcWageVc CWr, record tCalcWageVc CW2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode, i, sum, RwCnt ;
+record UserVc USr;
+record tCalcWageVc SP1r;
+row tCalcWageVc CWrw,CW2rw;
+
+SetLangMode(LangRussian,"RUS",2);
+res = 0;
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (CWr.SerNr < 1) then
+  begin
+  CWr.SerNr = NextSerNr("tCalcWageVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (CWr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+if ((CW2r.OKFlag == 0) and (CWr.OKFlag == 1)) then
+    begin
+    if blank(CWr.SignMain) or blank(CWr.SignDirStat) or blank(CWr.SignRespStat) or blank(CWr.SignDirWork) or blank(CWr.SignRespWork) then
+        begin
+        res = -1;
+        messagebox(0, "Проверьте наличие всех подписей!");
+        end;
+    end;
+
+if ((CW2r.OKFlag == 0) and (CWr.OKFlag == 1)) and not((nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR,FINO1,FINOA"))) then
+    begin
+    res = -1;
+    messagebox(0, "Недостаточно прав!");
+    end;
+
+if (CW2r.OKFlag == 1) and not((nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR,FINO1,FINOA"))) then
+    begin
+    res = -1;
+    end;
+
+if CW2r.TRFlag == 1 and not((nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR,FINO1,FINOA"))) then
+    begin
+    res = -1;
+    end;
+
+if nonblank(CW2r.SignRespWork) then //nonblank(CW2r.SignDirWork) or
+    begin
+    for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+        begin
+        MatRowGet(CWr, RwCnt, CWrw);
+        MatRowGet(CW2r, RwCnt, CW2rw);
+        if (CWrw.KoefWork <> CW2rw.KoefWork) then
+            begin
+            res = -1;
+            RwCnt = MatRowCnt(CWr);
+            messagebox(0, "Изменить данные о выработке после подписи не возможно!");
+            end;
+        end;
+    end;
+
+
+if  nonblank(CW2r.SignRespStat) then //nonblank(CW2r.SignDirStat) or
+    begin
+    for (RwCnt = 0; RwCnt < MatRowCnt(CWr); RwCnt = RwCnt + 1)
+        begin
+        MatRowGet(CWr, RwCnt, CWrw);
+        MatRowGet(CW2r, RwCnt, CW2rw);
+        if (CWrw.Condition <> CW2rw.Condition) or (CWrw.KoefStat <> CW2rw.KoefStat) then
+            begin
+            res = -1;
+            RwCnt = MatRowCnt(CWr);
+            messagebox(0, "Изменить данные о состоянии статистики после подписи не возможно!");
+            end;
+        end;
+    end;
+
+  tCalcWageVcRecordCheck = res;
+RETURN;
+end;
+
+
+//=============================================== tLoanVcRecord...
+global
+function Longint tLoanVcRecordDefaults(var record tLoanVc Lr, record tLoanVc L2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+
+if (SingleUserMode) then
+	begin
+	Lr.SerNr = NextSerNr("tLoanVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	Lr.SerNr = -1;
+	end;
+
+tLoanVcRecordDefaults = res;
+RETURN;
+end;
+
+//=====================================================
+
+global
+function LongInt tLoanVcRecordDuplicate(var record tLoanVc Lr, record tLoanVc L2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then
+  begin
+  Lr.SerNr = NextSerNr("tLoanVc", CurrentDate, -1, false, "");
+  end
+else
+  begin
+  Lr.SerNr = -1;
+  end;
+
+tLoanVcRecordDuplicate = res;
+RETURN;
+END;
+
+//===================================================
+
+global
+updating function LongInt tLoanVcRecordRemoveTest(var record tLoanVc Lr, record tLoanVc L2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tLoanVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not(SetInSet(USr.AccessGroup, "UCHR,ADMIN,FINOA,FINO1"))) then
+  begin
+  tLoanVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+//=====================================================
+
+global
+function LongInt tLoanVcRecordCheck(var record tLoanVc Lr, record tLoanVc L2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+record tLoanVc SP1r;
+
+SetLangMode(LangRussian,"RUS",2);
+res = 0;
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (Lr.SerNr < 1) then
+  begin
+  Lr.SerNr = NextSerNr("tLoanVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (Lr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+  tLoanVcRecordCheck = res;
+RETURN;
+end;

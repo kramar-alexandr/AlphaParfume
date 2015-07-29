@@ -1,0 +1,868 @@
+remote procedure tCountSWPercent(var record tEmpWSVc, string, var val, var val, var val, var val);
+external inner function string 255 MonthName(Date);
+remote function date tGetFirstDayofWN(integer);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+
+function Boolean IsUserUCHR()
+begin
+record USerVc USr;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+IsUserUCHR = (USr.AccessGroup == "UCHR");
+RETURN;
+end;
+
+event startup 
+begin
+SetLangMode(LangRussian,"RUS",2);
+Register("Табели сотрудников.Неделя", "Табели сотрудников.Неделя", tEmpWSVc, modEmp);
+Report("Табель рабочего времени.Неделя", tEmpWSRClass, tEmpWSRn, 0, modEmp);
+Setting("Рабочие дни.Неделя", tOperSWDaysLClass, modEmp);
+
+RETURN;
+end;
+
+event DefineWindows
+begin
+real v, h, t;
+record UserVc USr; 
+
+  
+SetLangMode(LangRussian, "RUS", 2);
+
+WindowBegin("Рабочие дни.Неделя",  tOperSWDaysDClass, CGview,-);
+SetWRect(20, 80, 380, 260);
+UseView(tOperSWDaysVc);
+v = 6;
+EditFieldTL(100, v, 80, "Год", M4Int, Normal, 4, CYear, True, 0);
+EditFieldTL(100, v += 24, 80, "Неделя", M4Int, Normal, 2, CWeek, True, 0);
+EditFieldTL(100, v += 24, 80, "Рабочих дней", M4Int, Normal, 2, CDay, True, 0);
+EndWindow;
+
+WindowBegin("Рабочие дни.Неделя", tOperSWDaysLClass, CGmlist, -);
+SpawnClass(tOperSWDaysDClass);
+SetWRect(64, 80, 791, 308);
+Sizeable(-1, -1, 0, 0);
+UseView(tOperSWDaysVc);
+RecordList(4, 17, -21, -40);
+RlColKey(4, 4, "Год", CYear, False, YearWeek);
+RlColKey(61, 61, "Неделя", CWeek, False, YearWeek);
+RlCol(120, 120, "Дней", CDay, False);
+SearchField("Найти");
+EndWindow;
+ 
+WindowBegin("Табель сотрудника.Неделя", tEmpWSDClass, CGview,-);
+DynamicWindow;
+SetWRect(20, 80, 860, 660);
+Sizeable(-1, -1, 0, 0);
+BrowseButtons(False);
+UseView(tEmpWSVc);
+v = 6;
+//Tile(0, 130, false, "", Department);
+EditFieldTL(100, v += 24, 50, "Неделя", M4Int, Normal, 2, WorkWeek, True, 0);
+EditFieldTL(300, v, 50, "Год", M4Long, Normal, 4, WorkYear, True, 0);
+EditFieldTL(480, v, 80, "Служба", M4Code, Normal, 20, Department, False, tDepartNewSClass);
+EnterSkip(Comment);
+EditField(100, v += 24, 80, "Руководитель", Normal, Superior, False, UserSClass);
+EditField(300, v, -80, "Группа", Normal, SalesGroup, False, SalesGroupSClass);
+/*EditField(300, v += 24, 80, "Раб.дней/нед", Normal, WDays, True, 0);
+EnterSkip(Comment);
+EditField(480, v, 80, "Раб.час/нед", Normal, WHours, True, 0);
+EnterSkip(Comment);
+EditField(680, v, -80, "Раб.мин/нед", Normal, WMinutes, True, 0);*/
+EditField(100, v += 24, -80, "Комментарий", Normal, Comment, False, 0);
+/*EditField(100, v += 24, 60, "Факт дней", ViewOnly, FDays, True, 0);
+EditField(300, v, 60, "Факт часов", ViewOnly, FHours, True, 0);
+EditField(500, v, 60, "Факт минут", ViewOnly, FMinutes, True, 0);
+EditField(700, v, -80, "% выработки", ViewOnly, Percent, True, 0);*/
+//Tile(1, 660 - 128, False, "1", Math);
+MatrixBegin(20, v += 44, -50, -40, tEmpWStRowType, 199);
+MatColTL(t = 1, 30, "Код", 0, M4Code, Normal, 20, EmpCode, False, UserSClass);
+MatColTL(t = 1, 100, "Дата", 0, M4Date, Normal, 20, cDate, False, PasteCurDate);
+MatColTL(t= 2, 30, "Код", 0, M4Code, Normal, 20, EmpCode, False, UserSClass);
+MatText(t , 100,"Оправдание", True);
+MatColTL(t, 190, "Часов", 0, M4Int, Normal, 2,  aHours, True, 0);
+MatColTL(t, 240, "Минут", 0, M4Int, Normal, 2,  aMinutes, True, 0);
+MatColTL(t, 290, "Тип", 0, M4UStr, Normal, 1,  TimeType, False, DayTypeSWSClass);
+MatColTL(t, 320, "Комментарий", 0, M4Str, Normal, 60,  aComment, False, 0);
+MatColTL(t = 1, 180, "Р.время", 0, M4Time, Normal, 20,  cTime, False, 0);
+EnterSkip(cDate);
+MatColTL(t, 280, "Часов", 0, M4Int, ViewOnly, 2,  cHours, True, 0);
+MatColTL(t, 330, "Минут", 0, M4Int, ViewOnly, 2,  cMinutes, True, 0);
+//MatColTL(t, 380, "Мин/нед", 0, M4Int, Normal, 2,  WMinutes, True, 0);
+MatColTL(t, 380, "Комментарий", 0, M4Str, Normal, 60,  aComment, False, 0);
+MatText(t = 3, 30,"Всего по сотруднику", True);
+MatColTL(t, 200, "Код", 0, M4Code, Normal, 20, EmpCode, False, 0);
+//MatColTL(t, 300, "Факт дней", 0, M4Int, Normal, 2,  FDays, True, 0);
+//MatColTL(t, 380, "Факт часов", 0, M4Int, Normal, 2,  FHours, True, 0);
+//MatColTL(t, 460, "Факт минут", 0, M4Int, Normal, 2,  FMinutes, True, 0);
+MatColTL(t, 320, "% выработки", 0, M4Val, Normal, 2,  Percent, False, 0);
+EndMatrix;
+MatTypedRow(stp);
+MatOverStrike(ovst);
+InsertRowTest;
+DeleteRowTest;
+CheckBox(20, -20, 0, "Руководитель", SuperiorFlag);
+//CheckBox(220, -20, 0, "Инспектор ОК", OKFlag);
+CheckBox(220, -20, 0, "Ответственный", DirFlag);
+SpecialMenu("Добавить строку оправдания", 'I', 0, "tInsertSuperiorSignSWDsm");
+SpecialMenu("Раcсчитать процент выработки", 'W', 0, "InsertPersentWDsm");
+EndWindow;
+
+WindowBegin("Табели сотрудников.Неделя", tEmpWSLClass, CGmlist, -);
+DynamicWindow;
+SpawnClass(tEmpWSDClass);
+SetWRect(20,80,650,298);
+Sizeable(-1, -1, 0, 0);
+UseView(tEmpWSVc);
+RecordList(4, 17, -21, -40);
+RlColKey(4, 2, "Служба", Department, False, Code);
+RlColKey(61, 56, "Год", WorkYear, False, Code);
+RlColKey(120, 120, "Неделя", WorkWeek, False, WorkWeek);//Code
+if IsUserUCHR then
+	begin
+	RlColKey(180, 180, "Оф.", SuperiorFlag, False, SuperiorFlag);
+	RlColKey(200, 200, "Утв.", DirFlag, False, DirFlag);
+	end else
+	begin
+	RlColKey(180, 180, "Оф.", SuperiorFlag, False, SupDep);
+	RlColKey(200, 200, "Утв.", DirFlag, False, SupDep);
+	end;
+//RlCol(220, 220,"Имя", EmpName, False);
+RlCol(220, 220,"Комментарий", Comment, False);
+//BrowseSubsetButton(140, -15);
+SearchField("Найти");
+EndWindow;
+
+
+WindowBegin("Табель рабочего времени.Неделя", tEmpWSRClass, CGRcW, RcType);
+SetWRect(20,80,400,250);
+//PeriodField(150, v = 6, "Период");
+EditFieldTL(150,v = 10, 80, "Неделя",M4Int , Normal, 30, frc, false, 0);
+EditFieldTL(150,v += 25, 80, "Год", M4Long, Normal, 30, long1, false, 0);
+EditFieldTL(150,v += 25, 80, "Служба", M4Code, Normal, 30, f1, false, tDepartNewSClass);
+ButtonFrame(150, v += 60, 100, 2, "Тип");
+RadioButton(150, v += 16, 0, 0, "Сводный", flags[0]);
+RadioButton(150, v += 16, 1, 0, "Подробный", flags[0]);
+ButtonFrame(150, v += 30, 100, 2, "Статус");
+RadioButton(150, v += 16, 0, 0, "Неутвержденные", flags[1]);
+RadioButton(150, v += 16, 1, 0, "Утвержденные", flags[1]);
+
+EndWindow;
+
+WindowBegin("Очистить недельные табели",tCleartEmpWSVcVClass,CGMnt,RcType);
+SetWRect(90,80,518,150);
+EndWindow;
+
+RETURN;
+end;
+/*
+function Boolean tEmpWSDClassCode_EAfter(Integer wn)
+begin
+record tEmpWSVc Er, E2r;
+record UserVc USr;
+record HRInspectorVc Hr;
+Boolean res;
+Integer RwCnt;
+Boolean TrHs;
+
+Hr.Code = CurrentUser;
+TrHs = ReadFirstMain(Hr, 1, True);	
+GetWindowRecord(wn, Er);
+USr.Code = Er.EmpCode;
+if ReadFirstMain(USr, 1, True) then
+	begin
+	if (USr.Supervisor == CurrentUser) or ((USr.Code == CurrentUser) and TrHs) then
+		begin
+		Er.EmpName = USr.Name;
+		Er.Department = USr.Department;
+		Er.SalesGroup = USr.SalesGroup;
+		Er.Superior = CurrentUser;
+		if (nonblank(Er.WorkWeek) and nonblank(Er.WorkYear)) then
+			begin
+			
+			end;
+		end else
+		begin
+		Er.EmpCode = blankval;
+		end;
+	end else
+	begin
+	Er.EmpCode = blankval;
+	end;
+PutWindowRecord(wn, Er);	
+tEmpWSDClassCode_EAfter = res;
+RETURN;
+end;
+*/
+
+
+
+function string 20 tUserOperShed(string UserCode)
+begin
+record tPostUserVc PUr;
+
+PUr.UserCode = UserCode;
+readfirstmain(PUr, 1, true);
+tUserOperShed = PUr.OperShed;
+
+return;
+end;
+
+function Boolean tEmpWSDClassCode_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er, E2r;
+row tEmpWSVc Erw;
+record tPostUserVc USr;
+Integer RwCnt, RwCnt1;
+Boolean TrHs, res;
+record OperShedBlock OSb;
+row OperShedBlock OSbr;
+record tOperSWDaysVc OSDr;
+date d2;
+time t2;
+
+GetWindowRecord(wn, Er);
+matrowget(Er, rownr, Erw);
+
+USr.UserCode = Erw.EmpCode;
+ReadFirstMain(USr, 1, True);
+if (Er.WorkWeek==0) or (Er.WorkYear==-1) or blank(Er.Department) then
+    begin
+    messagebox(0, "Не все поля в шапке документа заполнены!");
+      Erw.EmpCode = blankval;
+      Erw.cDate = d2;
+      Erw.cTime = t2;
+      matrowput(Er, rownr, Erw);
+    end
+  else
+    begin
+    if USr.tDepartNew <> Er.Department  then
+      begin
+      messagebox(0, Erw.EmpCode & " не является сотрудником службы " & Er.Department );
+      Erw.EmpCode = blankval;
+      Erw.cDate = d2;
+      Erw.cTime = t2;
+      matrowput(Er, rownr, Erw);
+      end
+    else
+      begin
+      if (nonblank(Er.WorkYear) and nonblank(Er.WorkWeek)) then
+        begin
+        //Er.Comment = addday(tGetFirstDayofWN(Er.WorkWeek),2) & ":" & addday(tGetFirstDayofWN(Er.WorkWeek), 8);
+        OSDr.CYear = Er.WorkYear;
+        OSDr.CWeek = Er.WorkWeek;
+        if ReadFirstMain(OSDr, 2, True) then
+          begin
+          Erw.WDays = OSDr.CDay;
+          BlockLoad(OSb);
+          for(RwCnt = 0; (RwCnt < MatRowCnt(OSb) and (not TrHs)); RwCnt = RwCnt + 1)
+            begin
+            MatRowGet(OSb, RwCnt, OSbr);
+            TrHs = (OSbr.Comment == tUserOperShed(Erw.EmpCode));
+            end;
+          if TrHs then
+            begin
+            Erw.WHours = OSbr.Hours * Erw.WDays;
+            Erw.WMinutes = OSbr.Minutes * Erw.WDays;
+            end else
+            begin
+            //Er.OperShed = blankval;
+            Erw.WHours = 0;
+            Erw.WMinutes = 0;
+            end;
+          matrowput(Er, rownr, Erw);
+          end;
+        end;
+      end;
+    end;
+PutWindowRecord(wn, Er);
+tEmpWSDClassCode_EAfter = res;
+RETURN;
+end;
+
+function Boolean tEmpWSDClasscDate_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er, E2r;
+row tEmpWSVc Erw;
+record tPostUserVc USr;
+Integer RwCnt, RwCnt1;
+Boolean TrHs, res;
+record OperShedBlock OSb;
+row OperShedBlock OSbr;
+record tOperSWDaysVc OSDr;
+LongInt maxweek;
+date d2;
+
+SetLangMode(LangRussian,"RUS",2);
+
+GetWindowRecord(wn, Er);
+maxweek = 53;
+
+MatRowGet(Er, rownr, Erw);
+
+if (Erw.cDate < addday(tGetFirstDayofWN(Er.WorkWeek),2)) or  (Erw.cDate > addday(tGetFirstDayofWN(Er.WorkWeek), 8)) then
+	begin
+	Erw.cDate = d2;
+	MatRowPut(Er, rownr, Erw);
+	messagebox(0, "Неверная дата");
+	end;
+
+PutWindowRecord(wn, Er);
+tEmpWSDClasscDate_EAfter = res;
+RETURN;
+end;
+
+////////////////////////////////////==================================== надо подумать !!! ))
+/*function Boolean tEmpWSDClassDepartment_EAfter(Integer wn)
+begin
+record tEmpWSVc Er;
+record OperShedBlock OSb;
+row OperShedBlock OSbr;
+record tOperSWDaysVc OSDr;
+Boolean res;
+Integer RwCnt, RwCnt1;
+Boolean TrHs;
+
+GetWindowRecord(wn, Er);
+if (nonblank(Er.WorkYear) and nonblank(Er.WorkWeek)) then
+	begin
+	Er.Comment = addday(tGetFirstDayofWN(Er.WorkWeek),2) & ":" & addday(tGetFirstDayofWN(Er.WorkWeek), 8);
+	OSDr.CYear = Er.WorkYear;
+	OSDr.CWeek = Er.WorkWeek;
+	if ReadFirstMain(OSDr, 2, True) then
+		begin
+		Er.WDays = OSDr.CDay;
+		BlockLoad(OSb);
+		for(RwCnt = 0; (RwCnt < MatRowCnt(OSb) and (not TrHs)); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(OSb, RwCnt, OSbr);
+			TrHs = (OSbr.Comment == tUserOperShed(Erw.UserCode));
+			end;
+		if TrHs then
+			begin
+			Er.WHours = OSbr.Hours * Er.WDays;
+			Er.WMinutes = OSbr.Minutes * Er.WDays;
+			end else
+			begin
+			//Er.OperShed = blankval;
+			Er.WHours = 0;
+			Er.WMinutes = 0;
+			end;
+		PutWindowRecord(wn, Er);
+		end;
+	end;
+tEmpWSDClassDepartment_EAfter = False;
+RETURN;
+end;
+*/
+/*
+function Boolean tEmpWSDClassOperShed_EAfter(Integer wn)
+begin
+record tEmpWSVc Er;
+record OperShedBlock OSb;
+row OperShedBlock OSbr;
+record tOperSWDaysVc OSDr;
+Boolean res;
+Integer RwCnt;
+Boolean TrHs;
+
+GetWindowRecord(wn, Er);
+if (nonblank(Er.WorkYear) and nonblank(Er.WorkWeek)) then
+	begin
+	Er.Comment = MonthName(StringToDate("01:" & Er.WorkWeek & ":" & Er.WorkYear)) & " " & Er.WorkYear;
+	OSDr.CYear = Er.WorkYear;
+	OSDr.CWeek = Er.WorkWeek;
+	if ReadFirstMain(OSDr, 2, True) then
+		begin
+		Er.WDays = OSDr.CDay;		
+		BlockLoad(OSb);
+		for(RwCnt = 0; (RwCnt < MatRowCnt(OSb) and (not TrHs)); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(OSb, RwCnt, OSbr);
+			TrHs = (OSbr.Comment == Er.OperShed);
+			end;
+		if TrHs then
+			begin
+			Er.WHours = OSbr.Hours * Er.WDays;
+			Er.WMinutes = OSbr.Minutes * Er.WDays;
+			end else
+			begin
+			Er.OperShed = blankval;
+			Er.WHours = 0;
+			Er.WMinutes = 0;
+			end;
+		PutWindowRecord(wn, Er);
+		end;
+	end;
+tEmpWSDClassOperShed_EAfter = False;	
+RETURN;
+end;
+*/
+function Boolean tEmpWSDClassTimeType_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+record DayTypeSWBlock DTb;
+row DayTypeSWBlock DTbr;
+Integer RwCnt;
+Boolean TrHs;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if nonblank(Erw.TimeType) then
+	begin
+	BlockLoad(DTb);
+	for(RwCnt = 0; (RwCnt < MatRowCnt(DTb)) and (not TrHs); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(DTb, RwCnt, DTbr);
+		TrHs = (DTbr.Type == Erw.TimeType);
+		end;
+	if TrHs then
+		begin
+		Erw.aComment = DTbr.Comment;
+		end else
+		begin
+		Erw.TimeType = blankval;
+		end;
+	MatRowPut(Er, rownr, Erw);	
+	end else
+	begin
+	MatRowDelete(Er, rownr);
+	end;
+PutWindowRecord(wn, Er);
+tEmpWSDClassTimeType_EAfter = False;	
+RETURN;
+end;
+
+function Boolean tEmpWSDClasscTime_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if (GetSecond(Erw.cTime) >= 30) then
+	begin
+	Erw.cTime = AddMinutes(Erw.cTime, 1);
+	end;
+Erw.cTime = AddSeconds(Erw.cTime, - GetSecond(Erw.cTime));	
+Erw.cHours = GetHour(Erw.cTime);
+Erw.cMinutes = GetMinute(Erw.cTime);
+MatRowPut(Er, rownr, Erw);	
+//CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+tEmpWSDClasscTime_EAfter = False;	
+RETURN;
+end;
+
+function Boolean tEmpWSDClasscaHours_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if (Erw.aHours > 24) then
+	begin
+	Erw.aHours = 0;
+	end;
+MatRowPut(Er, rownr, Erw);	
+//CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+tEmpWSDClasscaHours_EAfter = False;	
+RETURN;
+end;
+
+function Boolean tEmpWSDClasscaMinutes_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if (Erw.aMinutes >= 60) then
+	begin
+	Erw.aHours = Erw.aHours + 1;
+	Erw.aMinutes = Erw.aMinutes - 60;
+	end;
+if (Erw.aHours > 24) then
+	begin
+	Erw.aHours = 0;
+	Erw.aMinutes = 0;
+	end;
+MatRowPut(Er, rownr, Erw);	
+//CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+tEmpWSDClasscaMinutes_EAfter = False;	
+RETURN;
+end;
+
+function Boolean tEmpWSDClasscWDays_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if nonblank(Er.WorkWeek) and nonblank(Er.WorkYear) and (Er.SuperiorFlag <> 1) then	
+	begin
+	Erw.WHours = Erw.WDays * 9;
+	Erw.WMinutes = Erw.WDays * 9 * 60;
+	MatRowPut(Er, rownr, Erw);
+//	CountSWPercent(Er);
+	PutWindowRecord(wn, Er);
+	end;
+tEmpWSDClasscWDays_EAfter = False;	
+RETURN;
+end;
+
+function Boolean tEmpWSDClasscWHours_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if nonblank(Er.WorkWeek) and nonblank(Er.WorkYear) and (Er.SuperiorFlag <> 1) then	
+	begin
+	Erw.WMinutes = Erw.WHours * 60;
+	MatRowPut(Er, rownr, Erw);
+//	CountSWPercent(Er);
+	PutWindowRecord(wn, Er);
+	end;
+tEmpWSDClasscWHours_EAfter = False;	
+RETURN;
+end;
+
+function Boolean tEmpWSDClasscWMinutes_EAfter(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+MatRowGet(Er, rownr, Erw);
+if nonblank(Er.WorkWeek) and nonblank(Er.WorkYear) and (Er.SuperiorFlag <> 1) then	
+	begin
+	Erw.WHours = Erw.WMinutes / 60;
+	MatRowPut(Er, rownr, Erw);
+//	CountSWPercent(Er);
+	PutWindowRecord(wn, Er);
+	end;
+tEmpWSDClasscWMinutes_EAfter = False;	
+RETURN;
+end;
+
+
+function Boolean tEmpWSDClassWorkWeek_EAfter(Integer wn)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+
+GetWindowRecord(wn, Er);
+Er.Comment = addday(tGetFirstDayofWN(Er.WorkWeek),2) & ":" & addday(tGetFirstDayofWN(Er.WorkWeek), 8);
+
+PutWindowRecord(wn, Er);
+
+tEmpWSDClassWorkWeek_EAfter = False;
+RETURN;
+end;
+
+global
+function Boolean tEmpWSDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+Integer RwCnt;
+Boolean res;
+
+if (changed <> 0) then
+	begin
+	switch fieldname
+		begin
+		//case "Department": res = tEmpWSDClassDepartment_EAfter(wn);
+		case "WorkWeek": res = tEmpWSDClassWorkWeek_EAfter(wn);
+		case "EmpCode": res = tEmpWSDClassCode_EAfter(wn, rownr);
+		case "cDate": res = tEmpWSDClasscDate_EAfter(wn, rownr);
+		//case "OperShed": res = tEmpWSDClassOperShed_EAfter(wn);
+		case "TimeType": res = tEmpWSDClassTimeType_EAfter(wn, rownr);
+		case "cTime": res = tEmpWSDClasscTime_EAfter(wn, rownr);
+		case "aHours": res = tEmpWSDClasscaHours_EAfter(wn, rownr);
+		case "aMinutes": res = tEmpWSDClasscaMinutes_EAfter(wn, rownr);
+		case "WDays" : res = tEmpWSDClasscWDays_EAfter(wn, rownr);
+		case "WHours" : res = tEmpWSDClasscWHours_EAfter(wn, rownr);
+		case "WMinutes" : res = tEmpWSDClasscWMinutes_EAfter(wn, rownr);
+		end;
+	end;
+tEmpWSDClassAfterEditField = False;
+RETURN;
+end;
+
+/*
+global
+function Boolean tEmpWSDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record tEmpWSVc Er, E2r;
+row tEmpWSVc Erw, E2rw, E3rw;
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res;
+Boolean TrHs;
+
+if (WindowState(wn) == 2) then 
+	begin
+	GetWindowRecord(wn, Er);
+	//USr.Code = Er.EmpCode;
+	ReadFirstMain(USr, 1, True);
+	Hr.Code = CurrentUser;
+	TrHs = ReadFirstMain(Hr, 1, True);
+	res = ((USr.Supervisor == CurrentUser) or ((Er.EmpCode == CurrentUser) and TrHs)) and (Er.SuperiorFlag <> 1);
+	end;
+tEmpWSDClassDeleteRowTest = res;
+RETURN;
+end;
+*/
+global
+function Boolean tEmpWSDClassOnOverStrike(Integer wn, Integer rownr)
+BEGIN
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+record UserVc USr;
+Boolean res;
+
+if (rownr >= 0) then 
+	begin
+	GetWindowRecord(wn, Er);  
+	MatRowGet(Er, rownr, Erw);
+	USr.Code = CurrentUser;
+	ReadFirstMain(USr, 1, True);
+	res = (USr.AccessGroup == "UCHR") and (Er.SuperiorFlag == 1) and (Erw.stp <> 1);
+	end;
+if (not res) then
+	begin
+	Erw.ovst = 0;
+	MatRowPut(Er, rownr, Erw);
+	end;
+//CountSWPercent(Er);
+PutWindowRecord(wn, Er);
+tEmpWSDClassOnOverStrike = res;
+RETURN;
+end;
+
+global
+function Boolean tEmpWSDClassSuperiorFlagButtonAction(Integer wn, Integer value) //ЗАМЕНИТЬ НА ПРОВЕРКУ РУКОВОДИТЕЛЯ СЛУЖБЫ
+BEGIN
+record tEmpWSVc Er;
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Boolean res;
+Boolean TrHs;
+
+GetWindowRecord(wn, Er);
+//USr.Code = Er.EmpCode;
+ReadFirstMain(USr, 1, True);
+Hr.Code = CurrentUser;
+TrHs = ReadFirstMain(Hr, 1, True);
+res = ((USr.Supervisor == CurrentUser) or (/*(Er.EmpCode == CurrentUser) and */ TrHs)) and (MatRowCnt(Er) > 0);
+tEmpWSDClassSuperiorFlagButtonAction = res;
+RETURN;
+end;
+
+// global
+// function Boolean tEmpWSDClassOKFlagButtonAction(Integer wn, Integer value)
+// BEGIN
+// record tEmpWSVc Er;
+// Boolean res;
+
+// GetWindowRecord(wn, Er);
+// res = (Er.SuperiorFlag == 1) and (Er.DirFlag <> 1);
+// tEmpWSDClassOKFlagButtonAction = res;
+// RETURN;
+// end;
+
+global
+function Boolean tEmpWSDClassDirFlagButtonAction(Integer wn, Integer value)
+BEGIN
+record tEmpWSVc Er, E2r;
+record UserVc USr;
+Boolean res, TrHs;
+
+GetWindowRecord(wn, Er);
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+//E2r.EmpCode = Er.EmpCode;
+E2r.WorkWeek = Er.WorkWeek + 1;
+E2r.WorkYear = Er.WorkYear;
+TrHs = (not ReadFirstMain(E2r, 3, True));
+res = (Er.SuperiorFlag == 1) and ((USr.Code == "EGEY") or (USr.Code == "AOCHER") or (USr.AccessGroup == "UCHR"));// and (TrHs and (E2r.SuperiorFlag <> 1));
+tEmpWSDClassDirFlagButtonAction = res;
+RETURN;
+end;
+
+/*
+global
+function Boolean tEmpWSLClassOnOpenWindow(Integer wn)
+begin
+record UserVc USr;
+string 20 subset;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (USr.AccessGroup <> "UCHR") and not(setinset(currentuser,"AOCHER,TGN")) then
+	begin
+	subset = CurrentUser;
+	SetWindowSubset(wn, subset);
+	UpdateBrowses("tEmpWSLClass");
+	end;
+tEmpWSLClassOnOpenWindow = True;
+RETURN;
+end;
+*/
+
+
+global
+updating procedure tEmpWSDClassOnOpenFromBrowse(Integer wn)
+begin
+record UserVc USr;
+string 20 subset;
+record HRInspectorVc HRr;
+record tEmpWSVc Er;
+boolean res;
+
+GetWindowRecord(wn, Er);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+
+HRr.Code = CurrentUser;
+ReadFirstMain(HRr, 1, True);
+
+
+res = SetInSet(Er.Department, HRr.Department) or (USr.AccessGroup == "UCHR") or SetInSet(currentuser,"AOCHER,EGEY");
+if (not res) then
+	begin
+	CloseWindow(wn);
+	end;
+
+RETURN;
+end;
+
+global
+procedure DbltEmpWSVc(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+record tEmpWSVc Er;
+Integer wn;
+LongInt maxweek;
+
+maxweek = 53;
+
+GetWindowRecord(currepwn, RepSpec);
+	Er.Department = RepSpec.f1;
+	Er.WorkWeek =  RepSpec.frc;//  GetWeekNr(RepSpec.sStartDate, "", maxweek);
+	Er.WorkYear = RepSpec.long1;
+if ReadFirstMain(Er, 3, True) then
+	begin
+	wn = OpenWindow("tEmpWSDClass", 1, currepwn, "", "", Er); 
+	end;
+RETURN;
+end;
+
+global updating
+procedure DblSigntEmpWSVc(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+record tEmpWSVc Er, E2r;
+LongInt maxweek;
+
+maxweek = 53;
+
+GetWindowRecord(currepwn, RepSpec);
+ResetLoop(Er);
+	Er.Department = RepSpec.f1;
+	Er.WorkWeek =  RepSpec.frc;
+	Er.WorkYear = RepSpec.long1;
+
+while LoopMain(Er, 3, True)
+	begin
+	if (Er.Department == RepSpec.f1) and (Er.WorkYear == RepSpec.frc)
+			and (Er.WorkWeek == RepSpec.long1)	and (Er.DirFlag <> 1)
+				and (Er.SuperiorFlag == 1) then
+		begin
+    E2r.Department = RepSpec.f1;
+    E2r.WorkWeek = RepSpec.frc;
+    E2r.WorkYear = RepSpec.long1;
+		ReadFirstMain(E2r, 3, True);
+		Er.DirFlag = 1;
+		RecordUpdate(E2r, Er, False);
+		end;
+	end;
+CloseWindow(currepwn);
+RETURN;
+end;
+
+global
+procedure tInsertSuperiorSignSWDsm()
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+record HRInspectorVc Hr;
+record UserVc USr;
+Integer RwCnt;
+Integer wn;
+Boolean TrHs;
+
+GetWindowRecord(CurWindow, Er);
+matrowget(Er, WindowActiveRow(CurWindow), Erw);
+Erw.stp = 2;
+Erw.EmpCode = Erw.EmpCode;
+MatRowInsert(Er, WindowActiveRow(CurWindow) + 1, Erw);
+PutWindowRecord(CurWindow, Er);
+RETURN;
+end;
+
+global
+procedure InsertPersentWDsm()
+begin
+record tEmpWSVc Er;
+row tEmpWSVc Erw;
+val Minutes;
+val Hours;
+val Days;
+val percent;
+record tPostUserVc PUr;
+
+GetWindowRecord(CurWindow, Er);
+
+while LoopMain(PUr, 1, True)
+    begin
+    if PUr.tDepartNew == Er.Department and PUr.Status == 0 and PUr.SolFlag == 0 then
+        begin
+        Minutes = 0;
+        Hours = 0;
+        Days = 0;
+        tCountSWPercent(Er, PUr.UserCode, Days, Minutes, Hours, percent);
+        Erw.stp = 3;
+        Erw.EmpCode = PUr.UserCode;
+        //Erw.FDays = Days;
+       // Erw.FHours = Hours + (Minutes - Hours * 60) / 60;
+        //Erw.FMinutes = Minutes;
+        //Erw.Percent = Minutes / Erw.WMinutes * 100;
+        Erw.Percent = percent;
+        if (Erw.Percent > 100) then
+          begin
+          Erw.Percent = 100;
+          end;
+        if  Erw.Percent > 0 then
+            begin
+            MatRowInsert(Er, MatRowCnt(Er), Erw);
+            PutWindowRecord(CurWindow, Er);
+            end;
+        end;
+    end;
+
+RETURN;
+end;

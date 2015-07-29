@@ -1,0 +1,139 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+
+//===============================================
+function boolean CheckDepartment(record IMappingBlock IMb, integer rownr)
+begin
+  row IMappingBlock IMrw, IM2rw;
+  record DepVc Depr;
+  integer i, rowcnt;
+  boolean exists;
+
+  MatRowGet(IMb,rownr,IMrw);
+  exists = false;
+  rowcnt = MatRowCnt(IMb);
+  for (i=0; (i<rowcnt) and not exists; i=i+1)
+    begin
+      MatRowGet(IMb,i,IM2rw);
+      exists = (i<>rownr) and (IM2rw.Department == IMrw.Department);
+    end;
+
+  Depr.Code = IMrw.Department;
+  if exists or not ReadFirstMain(Depr,1,true) then
+    begin
+      IMrw.Department = blankval;
+      MatRowPut(IMb,rownr,IMrw);
+    end;
+  CheckDepartment = true;
+  Return;
+end;
+
+//===============================================
+function boolean CheckSalesGroup(record IMappingBlock IMb, integer rownr)
+begin
+  row IMappingBlock IMrw;
+  record SalesGroupVc SalesGroupr;
+
+  MatRowGet(IMb,rownr,IMrw);
+  SalesGroupr.SGroupCode = IMrw.SalesGroup;
+  if not ReadFirstMain(SalesGroupr,1,true) then
+    begin
+      IMrw.SalesGroup = blankval;
+      MatRowPut(IMb,rownr,IMrw);
+    end;
+  CheckSalesGroup = true;
+  Return;
+end;
+
+//===============================================
+function boolean CheckCustCat(record IMappingBlock IMb, integer rownr)
+begin
+  row IMappingBlock IMrw;
+  record CCatVc CCatr;
+
+  MatRowGet(IMb,rownr,IMrw);
+  CCatr.Code = IMrw.CustCat;
+  if not ReadFirstMain(CCatr,1,true) then
+    begin
+      IMrw.CustCat = blankval;
+      MatRowPut(IMb,rownr,IMrw);
+    end;
+  CheckCustCat = true;
+  Return;
+end;
+
+//===============================================
+function boolean CheckObj(record IMappingBlock IMb, integer rownr)
+begin
+  row IMappingBlock IMrw;
+  record ObjVc Objr;
+
+  MatRowGet(IMb,rownr,IMrw);
+  Objr.Code = IMrw.Object;
+  if not (ReadFirstMain(Objr,1,true) and (Objr.OTCode=="PODR")) then
+    begin
+      IMrw.Object = blankval;
+      MatRowPut(IMb,rownr,IMrw);
+    end;
+  CheckObj = true;
+  Return;
+end;
+
+//===============================================
+function boolean CheckLocations(record IMappingBlock IMb, integer rownr)
+begin
+  row IMappingBlock IMrw;
+  record LocationVc Locr;
+  string 200 Loc, LocStr;
+  integer i, cnt;
+
+  MatRowGet(IMb,rownr,IMrw);
+  cnt = IItemCountInStr(IMrw.Locations);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Loc = IGetItemFromStr(IMrw.Locations,i);
+      Locr.Code = Loc;
+      if ReadFirstMain(Locr,1,true) then
+        begin
+          if nonblank(LocStr) then
+            begin
+              LocStr = LocStr & ",";
+            end;
+          LocStr = LocStr & Loc;
+        end;
+    end;
+
+  if (IMrw.Locations<>LocStr) then
+    begin
+      IMrw.Locations = LocStr;
+      MatRowPut(IMb,rownr,IMrw);
+    end;
+
+  CheckLocations = true;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IMappingTClassAfterEditField(Integer wn,string FieldName,Integer fn,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record IMappingBlock IMb;
+
+  res = true;
+  if (changed<>0) then
+    begin
+      GetWindowRecord(wn, IMb);
+      switch (FieldName)
+        begin
+          case "Department": res = CheckDepartment(IMb,rownr);
+          case "SalesGroup": res = CheckSalesGroup(IMb,rownr);
+          case "CustCat": res = CheckCustCat(IMb,rownr);
+          case "Object": res = CheckObj(IMb,rownr);
+//					case "Locations": res = CheckLocations(IMb,rownr);
+        end;
+      PutWindowRecord(wn, IMb);
+    end;
+  IMappingTClassAfterEditField = res;
+  Return;
+end;

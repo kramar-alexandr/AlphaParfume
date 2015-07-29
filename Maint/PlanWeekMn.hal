@@ -1,0 +1,293 @@
+//external inner function Integer DaysInMonth(Integer,Integer);
+external inner function Date DateFromString(string, string);
+external function LongInt tCountWorkingDays(Date,Date,string,string);
+external function Boolean tIsWorkDay(Date);
+
+function val GetIVCoeff(integer InvType)
+begin
+integer coeff;
+
+coeff = 1;
+if (InvType == 3) then
+    begin
+      coeff = -1;
+    end;
+GetIVCoeff = coeff;
+Return;
+end;
+
+
+Function val tFact(string ArtCode, string SubsetKey, string Obj, date bd, date ed)
+begin
+row IVVc IVrw;
+record IVVc IVr;
+boolean cont;
+integer i;
+integer coeff;
+string 60 KeyStr;
+val res;
+res = 0;
+KeyStr = "InvDate";
+if nonblank(SubsetKey) then
+    begin
+    KeyStr = KeyStr & ":" & SubsetKey;
+    end;
+
+IVr.InvDate = bd;
+cont = true;
+while (LoopKey(KeyStr, IVr, 1, cont))
+    begin
+    cont = DateInRange(IVr.InvDate, bd, ed);
+    if (cont) and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and SetInSet(IVr.InvType, "1,3") and (blank(Obj) or SetInSet(Obj, IVr.Objects)) then
+        begin
+        coeff = GetIVCoeff(IVr.InvType);
+        for (i=0; i<MatRowCnt(IVr); i=i+1)
+            begin
+            MatRowGet(IVr, i, IVrw);
+            if (IVrw.ArtCode == ArtCode) then
+                begin
+                res = res + coeff * IVrw.Quant;
+                end;
+            end;
+        end;
+    end;
+tFact = res;
+  RETURN;
+end;
+
+
+global
+updating
+procedure PlanWeekNew(string SalesGroup, string ArtCode, record RcVc RepSpec)
+begin
+record LogPlanDVc LPlDr,LPlD2r;
+row LogPlanDVc LPlDrw;
+record LogPlWVc LPlWr,LPlW2r;
+row LogPlWVc LPlWrw;
+integer i,ii,i1,ic,WD, Pos;
+boolean TrHs;
+string 250 tstr;
+record ShipDayVc SDr;
+date DayX, WeekB, WeekE ;
+integer DayId;
+record TempVc Listr;
+row TempVc Listrw;
+boolean found;
+val Fact, PlanW;
+
+//SalesGroup = RepSpec.f2;
+
+SDr.Code = SalesGroup;
+ReadFirstMain(SDr, 1, true);
+
+
+ResetLoop(LPlDr);	
+SDr.Code = SalesGroup;
+ReadFirstMain(SDr, 1, true);
+LPlDr.SalesGroup = SalesGroup;
+LPlDr.ArtCode = ArtCode;
+
+ReadFirstKey("ArtSalesKey", LPlDr, 2, true)
+RecordNew(LPlWr);
+LPlWr.SerNr = NextSerNr("LogPlWVc", CurrentDate, -1, false, "");;
+LPlWr.SalesGroup = LPlDr.SalesGroup;
+LPlWr.ArtCode = LPlDr.ArtCode;
+LPlWr.ArtName = LPlDr.ArtName;
+for (ii = 0; ii < MatRowCnt(LPlDr); ii = ii + 1) 
+	begin
+	MatRowGet(LPlDr,ii,LPlDrw);
+	//DaysInMonth(LPlDrw.Year,LPlDrw.Month);
+	for (i1 = 1; i1 <= DaysInMonth(StringToInt(LPlDrw.Year), StringToInt(LPlDrw.Month)); i1 = i1 + 1)  
+		begin
+		tstr = i1 & "/" & LPlDrw.Month & "/" &  LPlDrw.Year;
+		DayX = StringToDate(tstr); //DateFromString(tstr, "DD.MM.YYYY");	
+		DayId = GetDateId(DayX);
+		if (DayId == SDr.DayB) then
+			begin
+			wd = 0;
+			LPlWr.WeekB = DayX;
+			if (tIsWorkDay(DayX)) then
+				begin
+				LPlWr.PlanW = LPlDrw.PlanD;
+				LPlWr.WD = 1;
+				end
+			else
+				begin
+				LPlWr.PlanW = 0;
+				LPlWr.WD = 0;
+				end;
+				
+			end;
+		if (DayId <> SDr.DayE) and (DayId <> SDr.DayB) and nonblankdate(LPlWr.WeekB) then
+			begin
+			if (tIsWorkDay(DayX)) then
+				begin
+				LPlWr.PlanW = LPlWr.PlanW + LPlDrw.PlanD;
+				LPlWr.WD = LPlWr.WD + 1;
+				end;
+			end;
+		if (DayId == SDr.DayE) and (tCountWorkingDays(LPlWr.WeekB , DayX, "", "") > 0) and nonblankdate(LPlWr.WeekB) then
+			begin
+			WeekE = DayX;
+			if (tIsWorkDay(DayX)) then
+				begin
+				LPlWr.PlanW = LPlWr.PlanW + LPlDrw.PlanD;
+				LPlWr.WD = LPlWr.WD + 1;
+				end;
+			LPlWrw.WeekB = LPlWr.WeekB; //неделя начало
+			LPlWrw.WeekE = WeekE; //неделя конец
+			
+			// if SDr.DayB == 1 then
+				// begin
+				// LPlWrw.CountDW = tCountWorkingDays(LPlWr.WeekB , WeekE, "", "");  //кол-во рабочих дней в неделе, которая начинается с понедельника
+				// end
+			// else
+				// begin
+				// LPlWrw.CountDW = tCountWorkingDays(LPlWr.WeekB , WeekE, "", "") + 1;  //кол-во рабочих дней в неделе, которая начинается НЕ с понедельника
+				// end;
+			LPlWrw.CountDW = LPlWr.WD;		
+			LPlWrw.PlanW = LPlWr.PlanW; // план/неделя
+			LPlWrw.FactW = tFact(LPlDr.ArtCode, SalesGroup, "", LPlWr.WeekB, WeekE);  // факт
+			LPlWrw.Diff = LPlWrw.FactW - LPlWrw.PlanW;  // разность
+			
+			if (LPlWrw.Diff <= 0) then    // запас
+				begin
+				LPlWrw.Stock = 0;
+				end;
+			if (LPlWrw.Diff > 0) then
+				begin
+				LPlWrw.Stock = LPlWrw.Diff/LPlWrw.PlanW * LPlWrw.CountDW;
+				end;
+			MatRowInsert(LPlWr,MatRowCnt(LPlWr),LPlWrw);	
+			ic = ic + 1;
+			end;
+		end;
+	end;
+RecordStore(LPlWr,true);
+return;
+end;
+
+global
+updating
+procedure PlanWeek(string SalesGroup, string ArtCode, record RcVc RepSpec, record LogPlanDVc LPlDr, integer ii)
+begin
+record LogPlanDVc LPlD2r; //LPlDr,
+row LogPlanDVc LPlDrw;
+record LogPlWVc LPlWr,LPlW2r;
+row LogPlWVc LPlWrw;
+integer i,i1,ic,WD, Pos;//ii,
+boolean TrHs;
+string 250 tstr;
+record ShipDayVc SDr;
+date DayX, WeekB, WeekE ;
+integer DayId;
+record TempVc Listr;
+row TempVc Listrw;
+boolean found, Exist;
+val Fact, PlanW;
+
+// LPlWr.SalesGroup = SalesGroup;
+// LPlWr.ArtCode = ArtCode;
+// if (ReadFirstKey("ArtSalesKey", LPlWr, 2, true)) then 
+	// begin
+	// Exist = False;
+	// for (ii = 0; ii < MatRowCnt(LPlWr); ii = ii + 1) 
+		// begin
+		// MatRowGet(LPlWr,ii,LPlWrw);
+		// if nonblank(LPlWrw.WeekE) and (LPlWrw.WeekE >= RepSpec.sStartDate) then //(LPlWrw.WeekE < LPlWr.WeekB) and 
+			// begin
+			// Exist = true;
+			// end;
+		// end;
+	// if (Exist == False) then
+		begin
+		SDr.Code = SalesGroup;
+		ReadFirstMain(SDr, 1, true);
+		
+		// LPlDr.SalesGroup = SalesGroup;
+		// LPlDr.ArtCode = ArtCode;
+		// ReadFirstKey("ArtSalesKey", LPlDr, 2, true)
+		// for (ii = 0; ii < MatRowCnt(LPlDr); ii = ii + 1) 
+			begin
+			MatRowGet(LPlDr,ii,LPlDrw);
+			if  (StringToInt(LPlDrw.Month) == GetMonth(RepSpec.sStartDate)) and (StringToInt(LPlDrw.Year) == GetYear(RepSpec.sStartDate)) then
+				begin
+				LPlWr.SalesGroup = SalesGroup;
+				LPlWr.ArtCode = ArtCode;
+				ReadFirstKey("ArtSalesKey", LPlWr, 2, true);
+				//DaysInMonth(LPlDrw.Year,LPlDrw.Month);
+				for (i1 = 1; i1 <= DaysInMonth(StringToInt(LPlDrw.Year), StringToInt(LPlDrw.Month)); i1 = i1 + 1)  
+					begin
+					tstr = i1 & "/" & LPlDrw.Month & "/" &  LPlDrw.Year;
+					DayX = StringToDate(tstr); //DateFromString(tstr, "DD.MM.YYYY");	
+					DayId = GetDateId(DayX);
+					if (DayId == SDr.DayB) then
+						begin
+						LPlWr.WeekB = DayX;
+						if (tIsWorkDay(DayX)) then
+							begin
+							LPlWr.PlanW = LPlDrw.PlanD;
+							LPlWr.WD = 1;
+							end
+						else
+							begin
+							LPlWr.PlanW = 0;
+							LPlWr.WD = 0;
+							end;
+						end;
+					if (DayId <> SDr.DayE) and (DayId <> SDr.DayB) and nonblankdate(LPlWr.WeekB) 	then
+						begin
+						if (tIsWorkDay(DayX)) then
+							begin
+							LPlWr.PlanW = LPlWr.PlanW + LPlDrw.PlanD;
+							LPlWr.WD = LPlWr.WD + 1;
+							end;
+						end;
+					if (DayId == SDr.DayE) and (tCountWorkingDays(LPlWr.WeekB , DayX, "", "") > 0) and nonblankdate(LPlWr.WeekB) then
+						begin
+						WeekE = DayX;
+						if (tIsWorkDay(DayX)) then
+							begin
+							LPlWr.PlanW = LPlWr.PlanW + LPlDrw.PlanD;
+							LPlWr.WD = LPlWr.WD + 1;
+							end;
+						LPlWrw.WeekB = LPlWr.WeekB; //неделя начало
+						LPlWrw.WeekE = WeekE; //неделя конец
+						// if SDr.DayB == 1 then
+							// begin
+							// LPlWrw.CountDW = tCountWorkingDays(LPlWr.WeekB , WeekE, "", "");  //кол-во рабочих дней в неделе, которая начинается с понедельника
+							// end
+						// else
+							// begin
+							// LPlWrw.CountDW = tCountWorkingDays(LPlWr.WeekB , WeekE, "", "") + 1;  //кол-во рабочих дней в неделе, которая начинается НЕ с понедельника
+							// end;
+						LPlWrw.CountDW = LPlWr.WD;	
+						LPlWrw.PlanW =  LPlWr.PlanW; // план/неделя
+						LPlWrw.FactW = tFact(LPlDr.ArtCode, SalesGroup, "", LPlWr.WeekB, WeekE);  // факт
+						LPlWrw.Diff = LPlWrw.FactW - LPlWrw.PlanW;  // разность
+						
+						if (LPlWrw.Diff <= 0) then    // запас
+							begin
+							LPlWrw.Stock = 0;
+							end;
+						if (LPlWrw.Diff > 0) then
+							begin
+							LPlWrw.Stock = LPlWrw.Diff/LPlWrw.PlanW * LPlWrw.CountDW;
+							end;
+						MatRowInsert(LPlWr,MatRowCnt(LPlWr),LPlWrw);	
+						ic = ic + 1;
+						end;
+					end;
+				end;
+			end;	
+		recordCopy(LPlW2r,LPlWr);
+		RecordUpdate(LPlW2r, LPlWr, true);
+		end;
+	// end
+// else
+	// begin
+	// PlanWeekNew(SalesGroup, ArtCode, RepSpec);
+	// end;
+return;	
+end;	
+	

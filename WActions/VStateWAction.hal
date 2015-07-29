@@ -1,0 +1,385 @@
+external function boolean InRange(string,string);
+external inner procedure ExtractObj(string,var Integer,var string);
+
+function boolean StateDClassFunc2EFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+record StateVc SVr;
+record ObjVc Objr;
+boolean res;
+
+
+res = False;
+GetWindowRecord(wn,SVr);    
+DeselectWindow(wn,false);
+Objr.Code = SVr.Func2;
+if ReadFirstMain(Objr, 1, True) then 
+	begin
+	SVr.Func1 = Objr.AutoObjects;
+	Res = True;
+	PutWindowRecord(wn, SVr);
+	end;
+
+StateDClassFunc2EFAfter = res;
+RETURN;
+end;
+
+function boolean StateDClassActionTypeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+record StateVc SVr;
+row StateVc SVrw;
+record ActTypeVc AcTr;
+boolean res;
+Integer rwcnt, i;
+
+res = False;
+if (changed!=0) then 
+	begin
+	if (rownr >= 0) then 
+		begin
+		res = True;
+		GetWindowRecord(wn,SVr);    
+		DeselectWindow(wn,false);
+		MatRowGet(SVr,rownr,SVrw);
+		AcTr.Code = SVrw.ActionType;
+		
+		if ReadFirstMain(AcTr, 1, True) then 
+			begin
+			SVrw.ActionName = AcTr.Comment;
+			MatRowPut(SVr,rownr,SVrw);
+			Res = True;
+			end else
+			begin
+			MatRowDelete(SVr, rownr);
+			end;
+			PutWindowRecord(wn, SVr);
+		end;
+	end;
+StateDClassActionTypeEFAfter = res;
+RETURN;
+end;
+
+function boolean DocsDClassActionTypeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+record DocsVc DVr;
+record ActTypeVc AcTr;
+boolean res;
+
+res = False;
+//if (changed!=0) then 
+	begin
+	GetWindowRecord(wn, DVr);
+	AcTr.Code = DVr.ActionType;
+	if ReadFirstMain(AcTr, 1, True) then 
+		begin
+		//StopAlert(AcTr.ActTypeGr);
+		DVr.ActionClass = AcTr.ActTypeGr;
+		PutWindowRecord(wn, DVr);
+		res = True;
+		end;
+	end;
+DocsDClassActionTypeEFAfter = res;
+RETURN;
+end;
+
+global
+function Boolean StateDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+Boolean res;
+
+switch (fieldname) 
+	begin
+	case "ActionType": res = StateDClassActionTypeEFAfter(wn,fn,rownr,changed);
+	case "Func2": res = StateDClassFunc2EFAfter(wn, fn, rownr, changed);
+	//case "PayVal": res = VConsumPayDClassPayValEFAfter(wn, fn, rownr, changed);
+	end;
+StateDClassAfterEditField = res;
+RETURN;
+END;
+
+
+global
+function Boolean DocsDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+Boolean res;
+
+switch (fieldname) 
+	begin
+	case "ActionType": res = DocsDClassActionTypeEFAfter(wn,fn,rownr,changed);
+	//case "Curncy": res = VConsumPayDClassCurncyEFAfter(wn, fn, rownr, changed);
+	//case "PayVal": res = VConsumPayDClassPayValEFAfter(wn, fn, rownr, changed);
+	end;
+DocsDClassAfterEditField = res;
+RETURN;
+END;
+  
+event startup
+begin
+
+SetLangMode(LangRussian,"RUS",2);
+  
+Register("Штатное расписание","Штатное расписание",StateVc,modHALE);
+Register("Документы","Документы",DocsVc,modHALE);
+Setting("Типы документов",DocTypeLClass,modHALE);
+/*Register("Рабочее время","Рабочее время",VActionVc,modHALE);
+Setting("Cерии номеров - Рабочее время",VActionSerTClass,modHALE);*/
+
+RETURN;
+end;
+
+function string 255 ReplaceClassString(string Instr, string NewClass)
+begin
+Integer pos;
+string 20 TmpClass;
+record DIVc Dir;
+record DIVc DirNew;
+string 255 Res;
+
+DirNew.Code = NewClass;
+if ReadFirstMain(DirNew, 1, True) then
+	begin
+	if (nonblank(Instr) and nonblank(NewClass)) then 
+		begin
+		pos = 0;
+		ExtractObj(Instr, pos, TmpClass);
+		//StopAlert("TmpClass " & TmpClass);
+		while nonblank(TmpClass)
+			begin
+			Dir.Code = TmpClass;
+			if ReadFirstMain(Dir, 1, true) then 
+				begin
+				if (Dir.CType <> DirNew.CType) then 
+					begin
+					if blank(Res) then
+						begin
+						Res = Dir.Code;
+						end else
+						begin
+						Res = Res & "," & Dir.Code;
+						end;
+					end;
+				end;
+			ExtractObj(Instr, pos, TmpClass);
+			end;
+		//StopAlert("Instr " & Instr & "TmpClass " & TmpClass & "Res " & Res);
+		end;  
+	ReplaceClassString = Res & "," & NewClass;
+	end;
+	
+RETURN;
+end;
+
+global
+updating procedure VITUpdateMn (record RcVc RepSpec)
+begin
+record InVc Inr;
+record InVc Inrold;
+record DIVc Dir;
+Integer i;
+Boolean TrHs;
+Integer key;
+string 20 keyname;
+
+SetLangMode(LangRussian,"RUS",2);
+
+Dir.Code = RepSpec.f5;
+if nonblank(RepSpec.f5) and ReadFirstMain(Dir, 1, True) then
+	begin
+	
+	if nonblank(RepSpec.f3) then
+		begin
+		key = 2;
+		keyname = "Code:" & RepSpec.f3;
+		end else
+		begin
+		key = 1;
+		keyname = "Code";
+		end;
+		
+	ResetLoop(Inr);
+	while LoopKey(keyname, Inr, key, True)
+		begin
+		if (InRange(INr.Code, RepSpec.f1) or blank(RepSpec.f1)) and
+			(SetInSet(RepSpec.ObjStr, INr.Objects) or blank(RepSpec.ObjStr)) and
+			 (SetInSet(RepSpec.f4, INr.DispGroups) or blank(RepSpec.f4)) then
+				begin
+				Inrold.Code = Inr.Code;
+				ReadFirstMain(Inrold, 1, True);
+				/*if (blank(Inr.DispGroups) or (Right(Inr.DispGroups, 1) == ",")) then
+					begin
+					Inr.DispGroups = RepSpec.f5;
+					end else
+					begin
+					Inr.DispGroups = Inr.DispGroups & "," & RepSpec.f5;
+					end;*/
+				
+				Inr.DispGroups = ReplaceClassString(Inr.DispGroups, RepSpec.f5);
+				RecordStore(Inr, True);
+				end;
+		end;
+	//MessageBox(0, "Готово!");
+	end;/* else
+	begin
+	MessageBox(0, "Нечего добавлять!");
+	end;*/
+RETURN;
+end;
+
+
+event DefineWindows
+begin
+  real i,h,h1,h2,h3,h4,h5,v,vs,vm,hl,l, my;
+  SetLangMode(LangRussian,"RUS",2);
+   
+
+  WindowBegin("Штатное расписание",StateLClass,CGMlist,-) //Пятиступенчатая оценка. Т.е. 5 полей "%"!
+  SetWRect (20,80,550,210);
+  Sizeable (-1,-1,0,0);
+  v = 6; vs = 20; h = 100;
+  SpawnClass(StateDClass);
+  UseView(StateVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,"Код",Code,false,Code);
+  RlColKey(81,81,"Зкр",Closed,false,Closed);
+  RlColKey(101,101,"Отдел",Department,False,Department);
+  RlColKey(171,171,"Наименов.",Name,false,Name);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Штатная должность",StateDClass,CGview,-)
+  SetWRect (60,80,800,372);
+  Sizeable(-1,-1,0,0);
+  UseView(StateVc);
+  vs=20;
+  ActiveFieldOnNew("Code");
+
+  EditFieldTL(h=130,v=6,60,"Код",M4Code,Normal,20,Code,false,0);
+  CheckBox(h + 110, v,0,"Закрыт",Closed);
+  EditFieldTL(h,v+=vs,420,"Наименование",M4Str,Normal,200,Name,false,0);
+  EditFieldTL(h,v+=vs,60,"Отдел",M4Code,Normal,20,Department,false,DepSClass);
+  EditFieldTL(h + 180,v,60,"Руководитель",M4Code,Normal,20,Superior,false,StateSClass);
+  EditField(h + 340,v,60,"Ставка",Normal,Price,True,0);
+  EditField(h + 460,v, 60, "Единиц",Normal,Quant,True,0);
+  EditFieldTL(h,v+=vs,60,"Функция 1",M4Code,Normal,20,Func1,false,ObjSClass);
+  EditFieldTL(h + 180,v,60,"Функция 2",M4Code,Normal,20,Func2,false,ObjSClass);
+  EditField(h + 340,v,150,"№ телефона",Normal,Contact,False,0);
+  EditField(h,v+=vs, 420, "Комментарий",Normal,Comment,false,0);
+  EnterSkip(Math);
+  //
+
+  MatrixBegin(h=4,v=150,-50,-24,-,100);
+
+  Flip(1);
+  MatCol(1,24,"Вид деятельности",0,ActionType,false,ActTypeSClass);
+  EnterSkip(ActionType);
+  MatCol(1,110,"%",0,Percent,true,0);
+  //MatCol(1,160,"Наименование",0,ActionName,False,0);
+  MatColTL(1,160,"Наименование",0,M4Str,ViewOnly,0,ActionName,false,0);
+  MatCol(1,400,"Комментарий",0,ActionComment,False,0);
+  //MatCol(1,-459,"Наименование",0,ActionName,False,0);
+  Flip(2);
+  MatCol(1,24,"Вид деятельности",0,ActionType,false,ActTypeSClass);
+  EnterSkip(ActionType);
+  MatCol(1,110,"%",0,Percent,true,0);
+  //MatCol(1,160,"Наименование",0,ActionName,False,0);
+  MatColTL(1,160,"Наименование",0,M4Str,ViewOnly,0,ActionName,false,0);
+  MatCol(1,400,"%-1",0,Criteria1,True,0);
+  MatCol(1,450,"%-2",0,Criteria2,True,0);
+  MatCol(1,500,"%-3",0,Criteria3,True,0);
+  MatCol(1,550,"%-4",0,Criteria4,True,0);
+  MatCol(1,600,"%-5",0,Criteria5,True,0);
+  //MatCol(5,-209,"Наименование",0,ActionName,False,0);
+  //Flip(3);
+  DeleteRowTest;
+  InsertRowTest;
+  EndMatrix;
+  vs = 20;
+  VTab(-35,v,-16,v+vs,ToolFlip,1,"A");
+  v= v + vs;
+  VTab(-35,v,-16,v+vs,ToolFlip,2,"B");
+  //SpecialMenu("Создать перемещения",' ',1,"MakeStockMove");
+  EndWindow;
+
+  WindowBegin("Вставить должность",StateSClass,CGslist,StateType);
+  SpawnClass(StateDClass);
+  SetWRect(64,80,500,300);
+  Sizeable(-1,-1,0,0);
+  UseView(StateVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,  "Код",Code,false,Code);
+  RlColKey(61,61,"Закрыт",Closed,false,Closed);
+  RlColKey(81,81,"Отдел",Department,false,Department);
+  RlColKey(181,181,"Наименование",Name,false,Name);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Типы документов",DocTypeLClass,CGMlist,-)
+  SetWRect (20,80,550,210);
+  Sizeable (-1,-1,0,0);
+  v = 6; vs = 20; h = 100;
+  SpawnClass(DocTypeDClass);
+  UseView(DocTypeVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,"Код",Code,false,Code);
+  //RlColKey(81,81,"Зкр",Closed,false,Closed);
+  RlColKey(101,101,"Иерархия",Parent,False,Parent);
+  RlColKey(171,171,"Наименов.",Comment,false,Name);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Тип документа",DocTypeDClass,CGview,-)
+  SetWRect (60,80,609,172);
+  UseView(DocTypeVc);
+  vs=20;
+  EditFieldTL(h=110,v=6,60,"Код",M4Code,Normal,20,Code,false,0);
+  EditFieldTL(h + 130,v=6,60,"Иерархия",M4Code,Normal,20,Parent,false,DocTypeSClass);
+  EditFieldTL(h,v+=vs,420,"Наименование",M4Str,Normal,200,Comment,false,0);
+  EndWindow;
+
+  WindowBegin("Вставить тип документа",DocTypeSClass,CGslist,StateType);
+  SpawnClass(DocTypeDClass);
+  SetWRect(64,80,500,300);
+  Sizeable(-1,-1,0,0);
+  UseView(DocTypeVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,  "Код",Code,false,Code);
+  RlColKey(81,81,"Иерархия",Parent,false,Parent);
+  RlColKey(181,181,"Наименование",Comment,false,Name);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Документ",DocsDClass,CGview,-)
+  SetWRect (60,80,809,200);
+  UseView(DocsVc);
+  vs=20;
+  EditFieldTL(h=110,v=6,80,"Код",M4Code,Normal,20,Code,false,0);
+  EditFieldTL(h + 180,v,80,"Тип",M4Code,Normal,20,DocType,false,DocTypeSClass);
+  EditField(h + 460,v,80,"Дата последнего изменения: ",Normal,DateCh,false,PasteCurDate);
+  EditFieldTL(h,v+=vs,-98,"Наименование",M4Str,Normal,200,Name,false,0);
+  EditFieldTL(h,v+=vs,80,"Должность",M4Code,Normal,20,Post,false,StateSClass);
+  EditFieldTL(h + 180,v,80,"Вид деят.",M4Code,Normal,20,ActionType,false,ActTypeSClass);
+  EnterSkip(Department);
+  EditFieldTL(h + 340,v,60,"Класс", M4Code,ViewOnly, 20,ActionClass,False,ActTypeGrSClass);
+  EditFieldTL(h + 460,v, 80, "Отдел", M4Code, Normal, 20, Department, False, DepSClass);
+  EditField(h,v+=vs, -98, "Описание",Normal,Comment,false,0);
+  SpecialMenu("Создать задачу",'Q',0,"NewQADocDsm");
+  EndWindow;
+
+  WindowBegin("Документы",DocsLClass,CGMlist,-)
+  SetWRect (20,80,750,210);
+  Sizeable (-1,-1,0,0);
+  v = 6; vs = 20; h = 100;
+  SpawnClass(DocsDClass);
+  UseView(DocsVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,"Код",Code,false,Code);
+  RlColKey(80,80,"Тип",DocType,false,DocType);
+  RlColKey(160,160,"Должн.",Post,False,Post);
+  RlColKey(240,240,"Вид.Д.",ActionType,false,ActionType);
+  RlCol(320,320,"Дата посл.изм.",DateCh,false);
+  RlColKey(420,420,"Наименование",Name,false,Name);
+  SearchField("Найти");
+  EndWindow;
+
+
+return;
+END;

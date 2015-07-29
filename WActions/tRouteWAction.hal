@@ -1,0 +1,661 @@
+external procedure AddHelpButton(LongInt, LongInt);
+remote function val tSumLength(record tRouteVc);
+remote function  Time tSumDuration(record tRouteVc);
+external inner function Time TimeDiff(Time,Time);
+external function Longint IGetMinutesBetween(date, time, date, time);
+external function val ABS(val);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2, t;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+
+WindowBegin("Маршрут доставки", tRouteDClass, CGview, -);
+UseView(tRouteVc);
+SetWRect(10, 80, 800, 450);
+FormName(PrintRouteD);
+vs = 20; h = 50; v = 30; h2 = 200; h3 = 300; h4 = 450; h5 = 610; 
+AddHelpButton(5, 5);
+Tile(0,80,false,"",Code);
+EditField(h, v, 60, "Код", Normal, Code, False, 0);
+EditField(h2, v, -80, "Наименование", Normal, Name, False, 0);
+CheckBox(-50, v, 0, "OK", OKFlag);
+TileButton(1,"Характеристики");
+TileButton(2,"Подробно");
+TileButton(3,"Пункты");
+Tile(1,470,false,"1",TypeTr);
+v = 40;
+ButtonFrame(h - 20, v,700,2,"Вид транспорта");
+RadioButton(h, v, 1, 0, "Пешеходный", TypeTr);
+RadioButton(h + 150, v, 2, 0, "Водный", TypeTr);
+RadioButton(h + 300, v, 3, 0, "Автомобильный", TypeTr);
+RadioButton(h + 450, v, 4, 0, "Авиационный", TypeTr);
+RadioButton(h + 600, v, 5, 0, "Железнодорожный", TypeTr);
+ButtonFrame(h - 20, v += 40, 700, 2,"География маршрута");
+RadioButton(h, v, 1, 0, "Международный", GeoRou);
+RadioButton(h + 150, v, 2, 0, "Межобластной", GeoRou);
+RadioButton(h + 300, v, 3, 0, "Межрайонный", GeoRou);
+RadioButton(h + 450, v, 4, 0, "Городской", GeoRou);
+ButtonFrame(h - 20, v += 40, 700, 2,"Направленность");
+RadioButton(h , v, 1, 0, "Транзитный", Direct);
+RadioButton(h + 150, v, 2, 0, "В одну сторону", Direct);
+RadioButton(h + 300, v, 3, 0, "Кольцевой", Direct);
+ButtonFrame(h - 20, v += 40, 700, 2,"Периодичность");
+RadioButton(h, v, 1, 0, "2 раза в неделю", Rhythm);
+RadioButton(h + 150, v, 2, 0, "1 раз в неделю", Rhythm);
+RadioButton(h + 300, v, 3, 0, "1 раз в 2 недели", Rhythm);
+RadioButton(h + 450, v, 4, 0, "1 раз в месяц", Rhythm);
+RadioButton(h + 600, v, 5, 0, "Ежедневно", Rhythm);
+Tile(2,470,false,"2",Start);
+v = 10;
+EditField(h2, v, 80, "День начала", Normal, Start, False, JourSClass);
+EditField(h4, v, 80, "День окончания", Normal, Final, False, JourSClass);
+EditField(h2, v += vs, 80, "Основной перевозчик", Normal, Carrier, False, IVehicleSClass);
+EditField(h4, v, -30, "Дополнительные перевозчики", Normal, AddCar, False, IVehicleSClass);
+EditField(h2, -30, 80, "Протяженность", Normal, Length, False, 0);
+EditField(h4, -30, 80, "Продолжительность, часы", Normal, Duration, False, 0);
+MatrixBegin(10, 80, -40, -50,-,99);
+MatColTL(t = 1, 30, "Тип", 0, M4Int, Normal, 20, stpt, false, 0);
+MatColTL(t = 1, 60, "Код", 0, M4Code, Normal, 20, IVCode, False, IVSClass);
+MatColTL(t, 160, "Наименование", 0, M4Str, Normal, 100, StrName, False, 0);
+MatColTL(t, 400,  "Адрес", 0, M4Str, Normal, 200, Adr, False, 0);
+MatColTL(t, -230,  "Дата", 0, M4Date, Normal, 200, DateV, False, PasteCurDate);
+MatColTL(t, -150, "Время визита", 0, M4Time, Normal, 20, PlanTime, false, PasteCurTime);
+MatColTL(t, -70,  "Расст.до точки", 0, M4Val, Normal, 20, Distance, False, 0);
+MatColTL(t = 2, 30, "Тип", 0, M4Int, Normal, 20, stpt, false, 0);
+MatColTL(t = 2, 60, "Код", 0, M4Code, Normal, 20, SMCode, False, tStockMovSClass);
+MatColTL(t, 160, "Наименование", 0, M4Str, Normal, 100, StrName, False, 0);
+MatColTL(t, 400,  "Адрес", 0, M4Str, Normal, 200, Adr, False, 0);
+MatColTL(t, -230,  "Дата", 0, M4Date, Normal, 200, DateV, False, PasteCurDate);
+MatColTL(t, -150, "Время визита", 0, M4Time, Normal, 20, PlanTime, false, PasteCurTime);
+MatColTL(t, -70,  "Расст.до точки", 0, M4Val, Normal, 20, Distance, False, 0);
+MatColTL(t = 3, 30, "Тип", 0, M4Int, Normal, 20, stpt, false, 0);
+MatColTL(t = 3, 60, "Код", 0, M4Code, Normal, 20, PRCode, False, tParkingSClass);
+MatColTL(t, 160, "Наименование", 0, M4Str, Normal, 100, StrName, False, 0);
+MatColTL(t, 400,  "Адрес", 0, M4Str, Normal, 200, Adr, False, 0);
+MatColTL(t, -230,  "Дата", 0, M4Date, Normal, 200, DateV, False, PasteCurDate);
+MatColTL(t, -150, "Время визита", 0, M4Time, Normal, 20, PlanTime, false, PasteCurTime);
+MatColTL(t, -70,  "Расст.до точки", 0, M4Val, Normal, 20, Distance, False, 0);
+MatColTL(t = 4, 30, "Тип", 0, M4Int, Normal, 20, stpt, false, 0);
+MatColTL(t = 4, 60, "Код", 0, M4Code, Normal, 20, STCode, False, LocationSClass);
+MatColTL(t, 160, "Наименование", 0, M4Str, Normal, 100, StrName, False, 0);
+MatColTL(t, 400,  "Адрес", 0, M4Str, Normal, 200, Adr, False, 0);
+MatColTL(t, -230,  "Дата", 0, M4Date, Normal, 200, DateV, False, PasteCurDate);
+MatColTL(t, -150, "Время визита", 0, M4Time, Normal, 20, PlanTime, false, PasteCurTime);
+MatColTL(t, -70,  "Расст.до точки", 0, M4Val, Normal, 20, Distance, False, 0);
+EndMatrix;
+MatTypedRow(stpt);
+InsertRowTest;
+DeleteRowTest;
+Tile(3,470,false,"3",DepCountry);
+v = 10;
+StaticText(10,v += 10,"Пункт отгрузки:",false);
+EditField(h, v += 10 , 80, "Страна", Normal, DepCountry, False, tCountrySClass);
+EditField(h2, v, 120, "Город", Normal, DepCity, False, tCitySClass);
+EditField(h4, v, -30, "Комментарий", Normal, DepKoord, False, 0);
+StaticText(10,v += 45,"Пункт назначения:",false);
+EditField(h, v += 10 , 80, "Страна", Normal, DesCountry, False, tCountrySClass);
+EditField(h2, v, 120, "Город", Normal, DesCity, False, tCitySClass);
+EditField(h4, v, -30, "Комментарий", Normal, DesKoord, False, 0);
+StaticText(10,v += 45,"Пограничный переход страны назначения:",false);
+EditField(h, v += 10 , 80, "Страна", Normal, BordCountry, False, tCountrySClass);
+EditField(h2, v, 120, "Город", Normal, BordCity, False, tCitySClass);
+EditField(h4, v, -30, "Комментарий", Normal, BordKoord, False, 0);
+StaticText(10,v += 45,"Основной пункт перегрузки:",false);
+EditField(h, v += 10 , 80, "Страна", Normal, OverCountry, False, tCountrySClass);
+EditField(h2, v, 120, "Город", Normal, OverCity, False, tCitySClass);
+EditField(h4, v, -30, "Комментарий", Normal, OverKoord, False, 0);
+StaticText(10,v += 45,"Дополнительные пункты перегрузки:",false);
+EditField(h, v += 10 , 80, "Страна", Normal, AOverCountry, False, tCountrySClass);
+EditField(h2, v, 120, "Город", Normal, AOverCity, False, tCitySClass);
+EditField(h4, v, -30, "Комментарий", Normal, AOverKoord, False, 0);
+EndWindow;
+
+WindowBegin("Маршруты доставки", tRouteLClass, CGmlist, DMView);
+SpawnClass(tRouteDClass);
+SetWRect(64, 80, 750, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tRouteVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);//---
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(250, 250, "Перевозчик", Carrier, false, Carrier);
+RlColKey(400, 400, "Город отгр.", DepCity, false, DepCity);
+RlColKey(550, 550, "Город назн.", DesCity, false, DesCity);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Маршруты доставки", tRouteSClass, CGslist, -);
+SpawnClass(tRouteDClass);
+UseView(tRouteVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);//---
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(250, 250, "Перевозчик", Carrier, false, Carrier);
+RlColKey(400, 400, "Город отгр.", DepCity, false, DepCity);
+RlColKey(550, 550, "Город назн.", DesCity, false, DesCity);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+
+// ================ Страны
+WindowBegin("Страна", tCountryDClass, CGview, -);
+UseView(tCountryVc);
+SetWRect(10, 80, 650, 200);
+ActiveFieldOnNew("Code");
+vs = 20; h = 60; v = 30; h2 = 260; 
+EditField(h, v, 70, "Код", Normal, Code, False, 0);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+EndWindow;
+
+WindowBegin("Страны", tCountryLClass, CGmlist, DMView);
+SpawnClass(tCountryDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tCountryVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Страны", tCountrySClass, CGslist, -);
+SpawnClass(tCountryDClass);
+UseView(tCountryVc);
+SetWRect(64,80,650,250);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;   
+
+// ================ Стоянки
+WindowBegin("Стоянка", tParkingDClass, CGview, -);
+UseView(tParkingVc);
+SetWRect(10, 80, 650, 200);
+ActiveFieldOnNew("Code");
+vs = 20; h = 60; v = 30; h2 = 260; 
+EditField(h, v, 70, "Код", Normal, Code, False, 0);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+EditField(h, v + 40, -30, "Адрес", Normal, Adr, False, 0);
+EndWindow;
+
+WindowBegin("Стоянки", tParkingLClass, CGmlist, DMView);
+SpawnClass(tParkingDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tParkingVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Стоянки", tParkingSClass, CGslist, -);
+SpawnClass(tParkingDClass);
+UseView(tParkingVc);
+SetWRect(64,80,650,250);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;   
+
+
+WindowBegin("Отчёт по маршруту доставки", tRouteRClass, CGRcW, RcType);
+SetWRect(10, 80, 800, 280);
+vs = 20; h = 50; v = 10; h2 = 200; h3 = 300; h4 = 450; h5 = 610; 
+EditField(h + 300, v, 80, "Код", Normal, f1, False, tRouteSClass);
+PeriodField(h + 100, v += 20, "Период");
+EditField(h + 300, v, 80, "Город", Normal, f2, False, tCitySClass);
+EditField(h + 450, v, 80, "Страна", Normal, f3, False, tCountrySClass);
+h = 50;
+ButtonFrame(h - 20, v += 50,700,2,"Вид транспорта");
+RadioButton(h, v, 1, 0, "Пешеходный", flags[1]);
+RadioButton(h + 150, v, 2, 0, "Водный", flags[1]);
+RadioButton(h + 300, v, 3, 0, "Автомобильный", flags[1]);
+RadioButton(h + 450, v, 4, 0, "Авиационный", flags[1]);
+RadioButton(h + 600, v, 5, 0, "Железнодорожный", flags[1]);
+ButtonFrame(h - 20, v += 40, 700, 2,"География маршрута");
+RadioButton(h, v, 1, 0, "Международный", flags[2]);
+RadioButton(h + 150, v, 2, 0, "Межобластной", flags[2]);
+RadioButton(h + 300, v, 3, 0, "Межрайонный", flags[2]);
+RadioButton(h + 450, v, 4, 0, "Городской", flags[2]);
+ButtonFrame(h - 20, v += 40, 700, 2,"Направленность");
+RadioButton(h , v, 1, 0, "Транзитный", flags[3]);
+RadioButton(h + 150, v, 2, 0, "В одну сторону", flags[3]);
+RadioButton(h + 300, v, 3, 0, "Кольцевой", flags[3]);
+ButtonFrame(h - 20, v += 40, 700, 2,"Периодичность");
+RadioButton(h, v, 1, 0, "2 раза в неделю", flags[4]);
+RadioButton(h + 150, v, 2, 0, "1 раз в неделю", flags[4]);
+RadioButton(h + 300, v, 3, 0, "1 раз в 2 недели", flags[4]);
+RadioButton(h + 450, v, 4, 0, "1 раз в месяц", flags[4]);
+RadioButton(h + 600, v, 5, 0, "Ежедневно", flags[4]);
+
+ButtonFrame(h + 450, v =-85, 123, 2, "Функция");
+RadioButton(h + 450, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h + 450, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+
+
+// ================ Города
+WindowBegin("Город", tCityDClass, CGview, -);
+UseView(tCityVc);
+SetWRect(10, 80, 500, 200);
+ActiveFieldOnNew("Code");
+vs = 20; h = 100; v = 30; h2 = 260; 
+EditField(h, v , 80, "Код", Normal, Code, False, 0);
+EditField(h, v += vs, -30, "Наименование", Normal, Name, False, 0);
+EditField(h, v += vs, -30, "Область", Normal, Obl, False, 0);
+EditField(h, v += vs, 80, "Страна", Normal, Country, False, 0);
+EndWindow;
+
+WindowBegin("Города", tCityLClass, CGmlist, DMView);
+SpawnClass(tCityDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tCityVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Область", Obl, false, Obl);
+RlColKey(500, 500, "Страна", Country, false, Country);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Города", tCitySClass, CGslist, -);
+SpawnClass(tCityDClass);
+UseView(tCityVc);
+SetWRect(64,80,650,250);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Область", Obl, false, Obl);
+RlColKey(500, 500, "Страна", Country, false, Country);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;   
+
+return;
+end;
+//====================================================================
+global
+procedure tRouteRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "tRouteRClass");  
+RepSpec.flags[1] = -1;
+RepSpec.flags[2] = -1;
+RepSpec.flags[3] = -1;
+RepSpec.flags[4] = -1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+//====================================================================
+function Longint MinutesBetween(date d1, time t1, date d2, time t2)
+begin
+  MinutesBetween = ABS(IGetMinutesBetween(d1, t1, d2, t2));
+  Return;
+end;
+
+//====================================================================
+//конвертим Longint в строку в формате "00".."99"
+function string 2 Num2Str2(Longint i) 
+begin
+  string 2 res;
+  res = "";
+  if i < 10 then 
+    begin
+      res = "0";
+    end;
+  Num2Str2 = res & i;
+  Return;
+end;
+
+//====================================================================
+function string 20 tMinutesAsTimeStr(Longint Minutes)
+begin
+  Longint hh, mm;
+  
+  hh = minutes / 60;
+  mm = minutes - (hh * 60);  
+  tMinutesAsTimeStr = hh & ":" & Num2Str2(mm);
+  Return;
+end;
+
+function boolean tFindParkingBef(integer RwCnt, record tRouteVc Rr, var date Date1, var time Time1)
+begin
+row tRouteVc Rrw;
+boolean res;
+
+matRowGet(Rr, RwCnt-1 , Rrw);
+if Rrw.stpt == 3 then
+	begin
+	Time1 = Rrw.PlanTime;
+	Date1 = Rrw.DateV;
+	res = true;
+	end;
+tFindParkingBef = res;
+Return;
+end;
+
+global
+function val tFindParking(record tRouteVc Rr)
+begin
+row tRouteVc Rrw;
+integer RwCnt, nr, ii;
+date Date1, Date2;
+time Time1, Time2;
+val res;
+
+res = 0;
+for (RwCnt = 1; RwCnt < MatRowCnt(Rr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(Rr, RwCnt , Rrw);
+	if Rrw.stpt == 3 then
+		begin
+		if tFindParkingBef(RwCnt, Rr, Date1, Time1) then
+			begin
+			Time2 = Rrw.PlanTime;
+			Date2 = Rrw.DateV;
+			res = res + MinutesBetween(date1, time1, date2, time2); //
+			end;
+		end;
+	end;
+tFindParking = res;
+  Return;
+end;
+
+
+procedure EFIVCode(integer wn, integer rownr, integer changed)
+begin
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, Rr);
+	MatRowGet(Rr, rownr, Rrw);
+	IVr.SerNr = Rrw.IVCode;
+	ReadFirstMain(IVr, 1, true);
+	Rrw.StrName = IVr.Addr0;
+	Rrw.Adr = IVr.Addr1;
+	MatRowPut(Rr, rownr, Rrw);
+	PutWindowRecord(wn, Rr);
+	end;
+return;
+end;
+
+procedure EFSMCode(integer wn, integer rownr, integer changed)
+begin
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, Rr);
+	MatRowGet(Rr, rownr, Rrw);
+	SMr.SerNr = Rrw.SMCode;
+	ReadFirstMain(SMr, 1, true);
+	Lr.Code = SMr.ToLocation;
+	ReadFirstMain(Lr, 1, true);
+	Rrw.StrName = Lr.Name;
+	Rrw.Adr = Lr.Addr0;
+	MatRowPut(Rr, rownr, Rrw);
+	PutWindowRecord(wn, Rr);
+	end;
+return;
+end;
+
+procedure EFSTCode(integer wn, integer rownr, integer changed)
+begin
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, Rr);
+	MatRowGet(Rr, rownr, Rrw);
+	Lr.Code = Rrw.STCode;
+	ReadFirstMain(Lr, 1, true);
+	Rrw.StrName = Lr.Name;
+	Rrw.Adr = Lr.Addr0;
+	MatRowPut(Rr, rownr, Rrw);
+	PutWindowRecord(wn, Rr);
+	end;
+return;
+end;
+
+procedure EFPRCode(integer wn, integer rownr, integer changed)
+begin
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, Rr);
+	MatRowGet(Rr, rownr, Rrw);
+	Pr.Code = Rrw.PRCode;
+	ReadFirstMain(Pr, 1, true);
+	Rrw.StrName = Pr.Name;
+	Rrw.Adr = Pr.Adr;
+	MatRowPut(Rr, rownr, Rrw);
+	PutWindowRecord(wn, Rr);
+	end;
+return;
+end;
+
+procedure EFPlanTime(integer wn, integer changed)
+begin
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, Rr);
+	matRowGet(Rr, 0 , Rrw);
+	Time1 = Rrw.PlanTime;
+	Date1 = Rrw.DateV;
+	matRowGet(Rr, MatRowCnt(Rr) - 1 , Rrw);
+	Time2 = Rrw.PlanTime;
+	Date2 = Rrw.DateV;
+	Minutes = MinutesBetween(date1, time1, date2, time2) - tFindParking(Rr);
+	Rr.Duration = tMinutesAsTimeStr(Minutes);
+	PutWindowRecord(wn, Rr);
+	end;
+return;
+end;
+
+procedure EFDistance(integer wn, integer changed)
+begin
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, Rr);
+	//MatRowGet(Rr, rownr, Rrw);
+	Sum = 0;
+	for (RwCnt = 0; RwCnt < MatRowCnt(Rr); RwCnt = RwCnt + 1)
+		begin	  
+		matRowGet(Rr, RwCnt , Rrw);
+		Sum = Sum + Rrw.Distance;
+		end;
+	Rr.Length = Sum;	
+	PutWindowRecord(wn, Rr);
+	end;
+return;
+end;
+
+function string 20 tDay(date DateV)
+begin
+switch (GetDateId(DateV))
+	begin	
+	case 1: tDay = "Понедельник";
+	case 2: tDay = "Вторник";
+	case 3: tDay = "Среда";
+	case 4: tDay = "Четверг";
+	case 5: tDay = "Пятница";
+	case 6: tDay = "Суббота";
+	case 7: tDay = "Воскресенье";
+	end;
+return;
+end;
+
+procedure EFDateV(integer wn, integer changed)
+begin
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, Rr);
+	MatRowGet(Rr, 0, Rrw);
+	Rr.Start = tDay(Rrw.DateV);	
+	MatRowGet(Rr, MatRowCnt(Rr) - 1, Rrw);
+	Rr.Final = tDay(Rrw.DateV);	
+	PutWindowRecord(wn, Rr);
+	end;
+return;
+end;
+
+global
+function Boolean tRouteDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;
+
+
+switch (fieldname) 
+	begin
+    case "IVCode": EFIVCode(wn,rownr,changed);
+    case "SMCode": EFSMCode(wn,rownr,changed);
+    case "STCode": EFSTCode(wn,rownr,changed);
+    case "PRCode": EFPRCode(wn,rownr,changed);
+    case "Distance": EFDistance(wn,changed);
+	case "PlanTime": EFPlanTime(wn,changed);
+    case "DateV": EFDateV(wn,changed);
+	end;
+	
+tRouteDClassAfterEditField = true;	
+return;
+end;
+
+
+
+global
+updating 
+function Boolean tRouteDClassDeleteRowTest(Integer wn,Integer rownr)
+begin
+Boolean res;
+record tRouteVc Rr;
+row tRouteVc Rrw;
+integer RwCnt,nr, ii;
+val Sum;
+record IVVc IVr;
+record StockMovVc SMr;
+Time Time1, Time2;
+Date  Date1, Date2;
+Longint Minutes;
+record LocationVc Lr;
+record tParkingVc Pr;  
+
+res = true;
+if (WindowState(wn)==2) then 
+	begin
+  	GetWindowRecord(wn,Rr);    
+    if (Rr.OKFlag == 1) then 
+		begin 
+		res = false;
+		end;
+	end;  
+
+  tRouteDClassDeleteRowTest = res;
+  return;
+end;
+

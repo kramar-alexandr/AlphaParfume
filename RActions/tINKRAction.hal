@@ -1,0 +1,254 @@
+external inner procedure Base2ToBase1(var val,Date,var val);
+external inner procedure Base1ToBase2(var val,Date,var val);
+
+//=================================================
+global
+function Longint tINKVcRecordDefaults(var record tINKVc INKr, record tINKVc INK2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+
+INKr.Group = "KA";
+INKr.Curncy = "UAH";
+
+tINKVcRecordDefaults = res;
+RETURN;
+end;
+
+// global
+// function LongInt tINKVcRecordDuplicate(var record tINKVc INKr, record tINKVc INK2r, LongInt stat, LongInt long4)
+// BEGIN
+// LongInt res;
+// record UserVc USr;
+// integer i;
+// SetLangMode(LangRussian,"RUS",2);
+
+// tINKVcRecordDuplicate = res; 
+// RETURN;
+// END;
+
+global
+updating function LongInt tINKVcRecordRemoveTest(var record tINKVc INKr, record tINKVc INK2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+tINKVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (not UserCanAction("UnOKAll",True)) then // not(SetInSet(CurrentUser, "DELPHI,INAU,TGOR"))
+  begin
+  tINKVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+updating
+procedure tUpdateINR(record tINKVc INKr)
+begin
+record INVc INr, IN2r;
+val UPrice1;
+
+INr.Code = INKr.Code;
+ReadFirstMain(INr, 1, true);
+INr.Name = INKr.Name;
+INr.Group = INKr.Group;
+UPrice1 = INKr.Price;
+Base2ToBase1(UPrice1,CurrentDate,UPrice1);
+INr.UPrice1 = UPrice1;
+INr.DispGroups = INKr.DispGroups; 
+INr.Terminated = INKr.Terminated;
+INr.Unittext = INKr.Unittext;
+INr.Objects = "KA";
+INr.InPrice = UPrice1;
+	//INr.BarCode = INErw.BarCode;
+	//INr.AlternativeCode = INErw.AlternativeCode;
+	// INr.ItemType = 1;
+	// INr.SerNrf = 0;
+	// INr.Terminated = 0;
+	// INr.WarrantyLength = 0;
+	// INr.ChangePrice = 0;
+	// INr.ExplodeRec = 0;
+	// INr.ItemMaterial = 0;
+	// INr.Internal = 0;
+	// INr.InclItemFreight = 0;
+	// INr.colnr = 0;
+	// INr.PrimaryCostModel = 0;
+	// INr.QueuedCostModel = 0;
+	// INr.FIFOPerSerialNr = 0;
+	// INr.FIFOPerLocation = 0;
+	// INr.WAPerLocation = 0;
+	// INr.CostPricePerLocation = 0;
+	// INr.NotForSales = 0;
+	// INr.SRUpdateCost = 0;
+	//INr.UpdateCost = 0;
+IN2r.Code = INKr.Code;
+ReadFirstMain(IN2r, 1, true);
+RecordUpdate(IN2r, INr, true);
+RETURN;
+END;
+
+updating
+procedure tNewINR(record tINKVc INKr)
+begin
+record INVc INr, IN2r;
+val UPrice1;
+
+RecordNew(INr);
+INr.Code = INKr.Code;
+INr.Name = INKr.Name;
+INr.Group = INKr.Group;
+UPrice1 = INKr.Price;
+Base2ToBase1(UPrice1,CurrentDate,UPrice1);
+INr.UPrice1 = UPrice1;
+INr.DispGroups = INKr.DispGroups; 
+INr.Terminated = INKr.Terminated;
+INr.UpdateCost = 1;
+INr.Unittext = INKr.Unittext;
+INr.Objects = "KA";
+INr.InPrice = UPrice1;
+	//INr.UPrice1 = INErw.UPrice1;
+	//INr.BarCode = INErw.BarCode;
+	//INr.AlternativeCode = INErw.AlternativeCode;
+	INr.ItemType = 1;
+	INr.SerNrf = 0;
+	INr.Terminated = 0;
+	INr.WarrantyLength = 0;
+	INr.ChangePrice = 0;
+	INr.ExplodeRec = 0;
+	INr.ItemMaterial = 0;
+	INr.Internal = 0;
+	INr.InclItemFreight = 0;
+	INr.colnr = 0;
+	INr.PrimaryCostModel = 0;
+	INr.QueuedCostModel = 0;
+	INr.FIFOPerSerialNr = 0;
+	INr.FIFOPerLocation = 0;
+	INr.WAPerLocation = 0;
+	INr.CostPricePerLocation = 0;
+	INr.NotForSales = 0;
+	INr.SRUpdateCost = 0;
+RecordStore(INr, true);
+RETURN;
+END;
+
+global
+updating
+function LongInt tINKVcRecordCheck(var record tINKVc INKr, record tINKVc INK2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode,i,sum;
+record UserVc USr;
+record INVc INr, IN2r;
+
+SetLangMode(LangRussian,"RUS",2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if INKr.Group == "KA" and left(INKr.Code,2) == "KA" then
+	begin
+	INr.Code = INKr.Code;
+	if readfirstmain(INr, 1, true) then
+		begin
+		tUpdateINR(INKr);
+		end
+	else
+		begin
+		tNewINR(INKr);
+		end;
+	end;
+
+INKr.UserCode = CurrentUser;
+INKr.DateCh = CurrentDate;
+
+tINKVcRecordCheck = res;
+RETURN;
+end;
+
+// global
+// updating
+// procedure tUpINK(record INVc INr)
+// begin
+// record tINKVc INKr,INK2r;
+// val UPrice1;
+ 
+
+ 
+// INKr.Code = INr.Code;
+// if readfirstmain(INKr, 1, true) then
+	// begin
+	// INKr.Name = INr.Name;
+	// INKr.Group = INr.Group;
+	// UPrice1 = INr.UPrice1;
+	// Base1ToBase2(UPrice1,CurrentDate,UPrice1);
+	// INKr.Price = UPrice1;
+	// INKr.DispGroups = INr.DispGroups; 
+	// INKr.Terminated = INr.Terminated;
+	// INK2r.Code = INKr.Code;
+	// ReadFirstMain(INK2r, 1, true);
+	// RecordUpdate(INK2r, INKr, false);
+	// end;
+
+
+// return;
+// end;
+
+
+// global
+// updating function LongInt INVcRecordUpdate(var record INVc INr,record INVc IN2r,LongInt stat,LongInt long4)
+// begin
+  // LongInt res;
+
+  // res = inner.INVcRecordUpdate(INr,IN2r,stat,long4);
+  
+  // if INr.Group == "KA" then
+	  // begin
+	  // tUpINK(INr);
+	  // end;
+  // INVcRecordUpdate = res; 
+  // return;
+// end;
+
+// global
+// updating
+// procedure tNewINK(record INVc INr)
+// begin
+// record tINKVc INKr,INK2r;
+// val UPrice1;
+ 
+// RecordNew(INKr); 
+// INKr.Code = INr.Code;
+// INKr.Name = INr.Name;
+// INKr.Group = INr.Group;
+// UPrice1 = INr.UPrice1;
+// Base1ToBase2(UPrice1,CurrentDate,UPrice1);
+// INKr.Price = UPrice1;
+// INKr.DispGroups = INr.DispGroups; 
+// INKr.Terminated = INr.Terminated;
+// RecordStore(INKr, true);
+
+// return;
+// end;
+
+// global
+// updating function LongInt INVcRecordSave(var record INVc INr,record INVc IN2r,LongInt stat,LongInt long4)
+// begin
+  // LongInt res;
+  
+  // res = inner.INVcRecordSave(INr,IN2r,stat,long4);
+  // if INr.Group == "KA" then
+	  // begin
+	  // tNewINK(INr);
+	  // end;
+  // INVcRecordSave = res; 
+  // return;
+// end;
+
+
+//=================================================

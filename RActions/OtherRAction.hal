@@ -1,0 +1,151 @@
+global
+procedure MailLogPasswd(string Who, string Whom)
+begin
+
+RunProgram("./tools/mailpasswd", "it@parfume.ua" & " " & Who & " " & Whom);
+RETURN;
+end;
+
+
+global
+updating
+procedure tNewCUHistVcRec(string Field, string CUrCode)
+begin
+record tCUHistVc CUHr;
+
+RecordNew(CUHr);
+CUHr.SerNr = NextSerNr("tCUHistVc", CurrentDate, -1, false, "");
+CUHr.ChDate = currentdate;
+CUHr.UserCode = currentuser;
+CUHr.CUCode = CUrCode;
+CUHr.ChField = Field;
+RecordStore(CUHr, false);
+
+RETURN;
+end;
+
+
+
+global
+updating
+function boolean tHistCU(var record CUVc CUr, record CUVc CU2r)
+begin
+SetLangMode(LangRussian, "RUS", 2);
+
+if CUr.PayDeal <> CU2r.PayDeal then
+    begin
+    tNewCUHistVcRec("Условие опл", CUr.Code);
+    end;
+
+if CUr.tCreditLimit <> CU2r.tCreditLimit then
+    begin
+    tNewCUHistVcRec("Лимит кредита", CUr.Code);
+    end;
+
+if CUr.CurncyCode <> CU2r.CurncyCode then
+    begin
+    tNewCUHistVcRec("Валюта", CUr.Code);
+    end;
+
+if CUr.SalesMan <> CU2r.SalesMan then
+    begin
+    tNewCUHistVcRec("Продавец", CUr.Code);
+    end;
+
+if CUr.Classification <> CU2r.Classification then
+    begin
+    tNewCUHistVcRec("Классификация", CUr.Code);
+    end;
+
+if CUr.Blacklist <> CU2r.Blacklist then
+    begin
+    tNewCUHistVcRec("В черном списке", CUr.Code);
+    end;
+
+RETURN;
+end;
+
+
+global
+updating procedure tChangeSupMn (record RcVc RepSpec)
+begin
+record UserVc USr, US2r;
+Boolean TrHs;
+integer x;
+
+x = 0;
+
+SetLangMode(LangRussian,"RUS",2);
+
+if nonblank(RepSpec.f1) and nonblank(RepSpec.f2)  then
+	begin
+	ResetLoop(USr);
+	USr.Closed = 0;
+	TrHs = True;
+	while LoopKey("ActCode", USr, 1, TrHs)
+		begin
+		TrHs = (USr.Closed == 0);
+		if (USr.Supervisor == RepSpec.f1) and TrHs then
+				begin
+				USr.Supervisor = RepSpec.f2;
+
+				US2r.Code = USr.Code;
+				ReadFirstMain(US2r, 1, True);
+        recordupdate(US2r, USr, True);
+        x = x + 1;
+				end;
+		end;
+	end;
+	MessageBox(0, "Замена осуществленна у " & x & " сотрудников");
+RETURN;
+end;
+
+global
+updating procedure tDelFlagInPrice1Mn (record RcVc RepSpec, string PLDrCode, var longint x)
+begin
+record PLVc PLr, PL2r, PL3r;
+Boolean TrHs;
+
+	ResetLoop(PLr);
+	PLr.PLCode = PLDrCode;
+	TrHs = true;
+	while Loopmain(PLr, 1, TrHs)
+		begin
+		TrHs = (PLr.PLCode == PLDrCode);
+		if PLr.NoOtherPricing == 1 and TrHs then
+		    begin
+		    PLr.NoOtherPricing = 0;
+
+		    PL2r.ArtCode = PLr.ArtCode;
+		    PL2r.PLCode = PLr.PLCode;
+        //PL2r.CustCode = PLr.CustCode;
+				ReadFirstkey("ArtCode", PL2r, 2, True);
+				recordupdate(PL2r, PLr, True) ;
+				x = x + 1;
+ 				end;
+		end;
+
+
+RETURN;
+end;
+
+global
+updating procedure tDelFlagInPriceMn (record RcVc RepSpec)
+begin
+Boolean TrHs;
+longint x;
+record PLDefVc PLDr;
+
+x = 0;
+
+SetLangMode(LangRussian,"RUS",2);
+
+	ResetLoop(PLDr);
+	while Loopmain(PLDr, 1, true)
+		begin
+		tDelFlagInPrice1Mn(RepSpec, PLDr.Code, x);
+		end;
+
+	MessageBox(0, "Галки сняты в " & x & " записях!" );
+RETURN;
+end;

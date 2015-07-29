@@ -1,0 +1,686 @@
+event DefineWindows
+begin
+record tVTicketsVc TVr;
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+v = 6; h = 180;  vs = 20; h1 = 250;  h2 = 350;
+//=================================================================================== Налоги
+WindowBegin("Налоги",tTaxesDClass,CGview,-);
+SetWRect(20,80,550,350);
+UseView(tTaxesVc);
+EditFieldTL(h, v = 15 , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 250, "Классификация", M4UStr, Normal, 250, ListCl, false, tTaxesClSClass);
+EditFieldTL(h, v += vs, 80, "Ставка", M4Val, Normal, 20, Rates, false, 0);
+EditFieldTL(h + 170, v , 80, "Сроки уплаты", M4Int, Normal, 20, Terms, false, TermsSClass);
+StaticText(25,v+=35,"Комментарии:",false);
+TextField(25, v += 5, -21, -20, Math, 0);
+EndWindow;
+
+WindowBegin("Налоги",tTaxesLClass, CGmlist, -);
+SpawnClass(tTaxesDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTaxesVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Ставка", Rates, false, Rates);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Налоги",tTaxesSClass, CGslist, -);
+SpawnClass(tTaxesDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTaxesVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Ставка", Rates, false, Rates);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Налоги. Классификация", tTaxesClDClass, CGview, 0);
+UseView(tTaxesClVc);
+SetWRect(64, 80, 550, 300);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, tTaxesGrSClass);
+StaticText(25,v+=35,"Примечания",false);
+TextField(25, v += 5, -21, -20, Math, 0);
+EndWindow; 
+
+WindowBegin("Налоги. Классификация",tTaxesClLClass, CGmlist, -);
+SpawnClass(tTaxesClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTaxesClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Налоги. Классификация",tTaxesClSClass, CGslist, -);
+SpawnClass(tTaxesClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTaxesClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Налоги. Группы классификаций", tTaxesGrDClass, CGview, 0);
+UseView(tTaxesGrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Налоги. Группы классификаций", tTaxesGrLClass, CGmlist, -);
+SpawnClass(tTaxesGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTaxesGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Налоги. Группы классификаций",tTaxesGrSClass, CGslist, -);
+SpawnClass(tTaxesGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTaxesGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Сроки уплаты", TermsSClass, CGother,-);
+SetWRect (20,80,450,200);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,-10);
+EndWindow;
+//=================================================================================== Финансовые схемы
+WindowBegin("Финансовые схемы",tFinSchDClass,CGview,-);
+SetWRect(20,80,850,400);
+UseView(tFinSchVc);
+h = 150;
+EditFieldTL(h, v = 15 , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h + 200, v, 300, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 500, "Классификация", M4UStr, Normal, 200, ListCl, false, tFinSchClSClass);
+StaticText(10,v+=35,"Матрица участников",false);
+MatrixBegin(10, v+=25, -20, -20,-,200);
+MatCol(1, 25, "Участник 1", 0, Member1, false, tEntPrSClass);
+MatCol(1, 125, "Участник 2", 0, Member2, false, tEntPrSClass);
+MatCol(1, 225, "Участник 3", 0, Member3, false, tEntPrSClass);
+MatCol(1, 325, "Участник 4", 0, Member4, false, tEntPrSClass);
+MatCol(1, 425, "Дата начала", 0, DateB, false, PasteCurDate);
+MatCol(1, 525, "Дата окончания", 0, DateE, false, PasteCurDate);
+MatCol(1, 625, "Причина закрытия", 0, Reason, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Финансовые схемы",tFinSchLClass, CGmlist, -);
+SpawnClass(tFinSchDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tFinSchVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Финансовые схемы",tFinSchSClass, CGslist, -);
+SpawnClass(tFinSchDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tFinSchVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Финансовые схемы. Классификация", tFinSchClDClass, CGview, 0);
+UseView(tFinSchClVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, tFinSchGrSClass);
+EndWindow; 
+
+WindowBegin("Финансовые схемы. Классификация",tFinSchClLClass, CGmlist, -);
+SpawnClass(tFinSchClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tFinSchClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Финансовые схемы. Классификация",tFinSchClSClass, CGslist, -);
+SpawnClass(tFinSchClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tFinSchClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Финансовые схемы. Группы классификаций", tFinSchGrDClass, CGview, 0);
+UseView(tFinSchGrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Финансовые схемы. Группы классификаций", tFinSchGrLClass, CGmlist, -);
+SpawnClass(tFinSchGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tFinSchGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Финансовые схемы. Группы классификаций",tFinSchGrSClass, CGslist, -);
+SpawnClass(tFinSchGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tFinSchGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+//============================================================================ Предприятия ГК
+WindowBegin("Предприятия ГК",tEntPrDClass,CGview,-);
+DynamicWindow;
+SetWRect(20,80,800,450);
+UseView(tEntPrVc);
+h = 150;  h1 = 350; h2 = 450;
+Tile(0, 130, false, "", Code);
+
+EditFieldTL(h, v = 15 , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h + 200, v, -70, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h2 + 175,  v += vs, -70, "Регион", M4Code, Normal, 20, Reg, false, tRegionSClass);
+// StaticText(h1-25, 50, "Тип:",false);
+// RadioButton(h1, v = 40, 1, 0, "Официальное", EType);
+// RadioButton(h1 + 100, v = 40, 2, 0, "Управленческое", EType);
+StaticText(h-45, 50, "Тип:",false);
+RadioButton(h, v = 40, 1, 0, "Юр.лицо", EType);
+RadioButton(h1 - 85, v = 40, 2, 0, "Физ.лицо", EType);
+RadioButton(h2 - 100, v = 40, 3, 0, "ГК", EType);
+StaticText(h-45, 70, "Статус:",false);
+RadioButton(h, v = 60, 1, 0, "Действующее", Status);
+RadioButton(h1 - 85, v = 60, 2, 0, "Спящее", Status);
+RadioButton(h2 - 100, v = 60, 3, 0, "Закрытое", Status);
+EditFieldTL(h, v += vs, -70, "Классификация", M4UStr, Normal, 200, ListCl, false, tEntPrClSClass);
+TileButton(1, "Реквизиты");
+TileButton(2, "Банки");
+TileButton(3, "Печати");
+TileButton(4, "Структура");
+Tile(1, 350, false, "", LowAdr);
+v = 6;
+EditFieldTL(h, v += 10, 200, "Юридический адрес", M4Str, Normal, 250, LowAdr, false, 0);
+EditFieldTL(h1+160, v, -70, "Фактический адрес", M4Str, Normal, 250, FacAdr, false, 0);
+//EditFieldTL(h, v += vs, 120, "Регион", M4Str, Normal, 250, Reg, false, 0);
+EditFieldTL(h, v += vs , 120, "Дата открытия", M4Date, Normal, 20, DateO, false, PasteCurDate);
+EditFieldTL(h1 + 20, v , 120, "Дата закрытия", M4Date, Normal, 20, DateC, false, PasteCurDate);
+EditFieldTL(h, v += vs, 120, "Код ЕДРПОУ", M4Str, Normal, 250, EDRPOU, false, 0);
+EditFieldTL(h1 + 20, v , 120, "ОКПО", M4Str, Normal, 20, OKPO, false, 0);
+EditFieldTL(h2 + 140, v , -70, "ИНН", M4Str, Normal, 20, INN, false, 0);
+EditFieldTL(h, v += vs, 120, "Номер и серия паспорта", M4Str, Normal, 250, PasNo, false, 0);
+StaticText(h1-55, 90, "Статус НДС:",false);
+RadioButton(h1+20, v = 80, 1, 0, "Есть", NDSStat);
+RadioButton(h1 + 100, v = 80, 2, 0, "Нет", NDSStat);
+//EditFieldTL(h2 + 140, v , -70, "Статус НДС", M4Str, Normal, 20, NDSStat, false, 0);
+EditFieldTL(h, v += 30, -70, "Налоги", M4Str, Normal, 250, Taxes, false, tTaxesSClass);
+Tile(2, 350, false, "", Bank1);
+v = 6;
+h1 = 50; h2 = 300; h3 = 440; h4 = 545; h5 = 680;
+EditFieldTL(h1, v += 20, 200, "Банк", M4Str, Normal, 250, Bank1, false, 0);
+EditFieldTL(h2, v, 80, "Счет", M4Str, Normal, 50, Acc1, false, 0);
+EditFieldTL(h3,  v, 50, "Валюта", M4Str, Normal, 20, Curr1, false, CurncyCodeSClass);
+EditFieldTL(h4, v, 80, "Открыт", M4Date, Normal, 20, Open1, false, PasteCurDate);
+EditFieldTL(h5, v, 80, "Закрыт", M4Date, Normal, 20, Close1, false, PasteCurDate);
+EditFieldTL(h1, v += 30, 200, "Банк", M4Str, Normal, 250, Bank2, false, 0);
+EditFieldTL(h2, v, 80, "Счет", M4Str, Normal, 50, Acc2, false, 0);
+EditFieldTL(h3,  v, 50, "Валюта", M4Str, Normal, 20, Curr2, false, CurncyCodeSClass);
+EditFieldTL(h4, v, 80, "Открыт", M4Date, Normal, 20, Open2, false, PasteCurDate);
+EditFieldTL(h5, v, 80, "Закрыт", M4Date, Normal, 20, Close2, false, PasteCurDate);
+EditFieldTL(h1, v += 30, 200, "Банк", M4Str, Normal, 250, Bank3, false, 0);
+EditFieldTL(h2, v, 80, "Счет", M4Str, Normal, 50, Acc3, false, 0);
+EditFieldTL(h3,  v, 50, "Валюта", M4Str, Normal, 20, Curr3, false, CurncyCodeSClass);
+EditFieldTL(h4, v, 80, "Открыт", M4Date, Normal, 20, Open3, false, PasteCurDate);
+EditFieldTL(h5, v, 80, "Закрыт", M4Date, Normal, 20, Close3, false, PasteCurDate);
+EditFieldTL(h1, v += 30, 200, "Банк", M4Str, Normal, 250, Bank4, false, 0);
+EditFieldTL(h2, v, 80, "Счет", M4Str, Normal, 50, Acc4, false, 0);
+EditFieldTL(h3,  v, 50, "Валюта", M4Str, Normal, 20, Curr4, false, CurncyCodeSClass);
+EditFieldTL(h4, v, 80, "Открыт", M4Date, Normal, 20, Open4, false, PasteCurDate);
+EditFieldTL(h5, v, 80, "Закрыт", M4Date, Normal, 20, Close4, false, PasteCurDate);
+EditFieldTL(h1, v += 30, 200, "Банк", M4Str, Normal, 250, Bank5, false, 0);
+EditFieldTL(h2, v, 80, "Счет", M4Str, Normal, 50, Acc5, false, 0);
+EditFieldTL(h3,  v, 50, "Валюта", M4Str, Normal, 20, Curr5, false, CurncyCodeSClass);
+EditFieldTL(h4, v, 80, "Открыт", M4Date, Normal, 20, Open5, false, PasteCurDate);
+EditFieldTL(h5, v, 80, "Закрыт", M4Date, Normal, 20, Close5, false, PasteCurDate);
+
+Tile(3, 350, false, "", Stamp1);
+v = 6;
+h1 = 80; h2 = 300; h3 = 450; h4 = 670;
+EditFieldTL(h1, v += 20 , 120, "Печать №1", M4Str, Normal, 250, Stamp1, false, 0);
+EditFieldTL(h2, v, 60, "Ответственный", M4Code, Normal, 20, RespSt1, false, UserSClass);
+EditFieldTL(h3, v, 120, "Печать №2", M4Str, Normal, 250, Stamp2, false, 0);
+EditFieldTL(h4, v, 60, "Ответственный", M4Code, Normal, 20, RespSt2, false, UserSClass);
+EditFieldTL(h1, v += 30 , 120, "Печать №3", M4Str, Normal, 250, Stamp3, false, 0);
+EditFieldTL(h2, v, 60, "Ответственный", M4Code, Normal, 20, RespSt3, false, UserSClass);
+EditFieldTL(h3, v, 120, "Печать №4", M4Str, Normal, 250, Stamp4, false, 0);
+EditFieldTL(h4, v, 60, "Ответственный", M4Code, Normal, 20, RespSt4, false, UserSClass);
+EditFieldTL(h1, v += 30 , 120, "Печать №5", M4Str, Normal, 250, Stamp5, false, 0);
+EditFieldTL(h2, v, 60, "Ответственный", M4Code, Normal, 20, RespSt5, false, UserSClass);
+EditFieldTL(h3, v, 120, "Печать №6", M4Str, Normal, 250, Stamp6, false, 0);
+EditFieldTL(h4, v, 60, "Ответственный", M4Code, Normal, 20, RespSt6, false, UserSClass);
+EditFieldTL(h1, v += 30 , 120, "Печать №7", M4Str, Normal, 250, Stamp7, false, 0);
+EditFieldTL(h2, v, 60, "Ответственный", M4Code, Normal, 20, RespSt7, false, UserSClass);
+EditFieldTL(h3, v, 120, "Печать №8", M4Str, Normal, 250, Stamp8, false, 0);
+EditFieldTL(h4, v, 60, "Ответственный", M4Code, Normal, 20, RespSt8, false, UserSClass);
+
+
+Tile(4, 350, false, "", Math);
+v = 6;
+MatrixBegin(10, v+=25, -20, -20,-,200);
+MatCol(1, 25, "Структурные подразделения", 0, Struct, false, ttStPodrSClass);// tStPodrSClass
+MatCol(1, 125, "Должность", 0, Post, false, tPositionSClass);
+MatCol(1, 225, "Наименование", 0, NamePost, false, 0);
+MatCol(1, 325, "Открыта", 0, Open, false, PasteCurDate);
+MatCol(1, 425, "Закрыта", 0, Close, false, PasteCurDate);
+MatCol(1, 525, "Оклад", 0, Salary, false, 0);
+MatCol(1, 625, "Дата", 0, Date, false, PasteCurDate);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Предприятия ГК",tEntPrLClass, CGmlist, -);
+SpawnClass(tEntPrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tEntPrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(400, 400, "Регион", Reg, false, Reg);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Предприятия ГК",tEntPrSClass, CGslist, -);
+SpawnClass(tEntPrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tEntPrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(400, 400, "Регион", Reg, false, Reg);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Предприятия ГК. Классификация", tEntPrClDClass, CGview, 0);
+UseView(tEntPrClVc);
+SetWRect(64, 80, 550, 250);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, tEntPrGrSClass);
+EndWindow; 
+
+WindowBegin("Предприятия ГК. Классификация",tEntPrClLClass, CGmlist, -);
+SpawnClass(tEntPrClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tEntPrClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Предприятия ГК. Классификация",tEntPrClSClass, CGslist, -);
+SpawnClass(tEntPrClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tEntPrClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Предприятия ГК. Группы классификаций", tEntPrGrDClass, CGview, 0);
+UseView(tEntPrGrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Предприятия ГК. Группы классификаций", tEntPrGrLClass, CGmlist, -);
+SpawnClass(tEntPrGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tEntPrGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Предприятия ГК. Группы классификаций",tEntPrGrSClass, CGslist, -);
+SpawnClass(tEntPrGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tEntPrGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+//===================================================================== Подразделения для Предприятий ГК
+
+WindowBegin("Подразделения для Предприятий ГК", tStPodrDClass, CGview, 0);
+UseView(tStPodrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Подразделения для Предприятий ГК", tStPodrLClass, CGmlist, -);
+SpawnClass(tStPodrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tStPodrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Подразделения для Предприятий ГК",tStPodrSClass, CGslist, -);
+SpawnClass(tStPodrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tStPodrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Оклады", tSalRClass,CGRcW,RcType);
+SetWRect(20,80,450,250);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+// EditFieldTL(h1, v += 20, 80, "Клиент", M4UStr, Normal, 21, f1, false, CUSClass);
+// EditFieldTL(h1, v += 20, 80, "Торг.представ.", M4UStr, Normal, 21, f2, false, UserSClass);
+// EditFieldTL(h1, v += 20, 80, "Категория", M4UStr, Normal, 21, f3, false, CCatSClass);
+// PeriodField(h1,v += 20,"Период");
+// CheckBox(h2 + 60, v, 0, "по периоду", flags[2]);
+// //EditFieldTL(h1, v += 20, 80, "Дата", M4Date, Normal, 21, d1, false, PasteCurDate);
+// ButtonFrame(h, v = 130, 123, 2, "Функция");
+// RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+// RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+// ButtonFrame(h2, v = 130, 123, 2, "Статус клиента");
+// RadioButton(h2, v, 0, 0, "Все",flags[1]);
+// RadioButton(h2, v += 20, 1, 0, "ФЛП",flags[1]);
+// RadioButton(h2, v += 20, 2, 0, "Юр.лица",flags[1]);
+// CheckBox(h1, v += 20, 0, "с закрытыми", flags[0]);
+EndWindow;    
+
+WindowBegin("Подразделения", ttStPodrSClass, CGother,-);
+SetWRect (20,80,450,200);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,-10);
+EndWindow;
+
+//===================================================================== Регионы для Предприятий ГК
+
+WindowBegin("Регионы для Предприятий ГК", tRegionDClass, CGview, 0);
+UseView(tRegionVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Регионы для Предприятий ГК", tRegionLClass, CGmlist, -);
+SpawnClass(tRegionDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRegionVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Регионы для Предприятий ГК",tRegionSClass, CGslist, -);
+SpawnClass(tRegionDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tRegionVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Должности", tPositionSClass, CGother,-);
+SetWRect (20,80,450,200);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,-10);
+EndWindow;
+
+
+return;
+end;
+
+
+global
+function Boolean TermsSClassOnOpenWindow(integer wn)
+begin
+Boolean res;
+integer i;
+
+i = 0;
+while (i <= 30)
+    begin
+	i = i + 1;
+	SetListString(wn, i , i, false);
+	end;
+TermsSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean TermsSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+TermsSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean ttStPodrSClassOnOpenWindow(integer wn)
+begin
+record tEntPrVc EPr;
+record StPodrVc SPr;
+record tStPodrVc tSPr;
+Boolean res;
+integer i, pwn;
+
+pwn =  MotherWindow(wn);
+GetWindowRecord(pwn, EPr);
+if EPr.EType == 3 then
+	begin
+	i = 0;
+	while (LoopMain(SPr, 1, true)) 
+		begin 
+		i = i + 1;
+		SetListString(wn, i , SPr.Code & ": " & SPr.Name, false);
+		end;
+	end
+else
+	begin
+	i = 0;
+	while (LoopMain(tSPr, 1, true)) 
+		begin 
+		i = i + 1;
+		SetListString(wn, i , tSPr.Code & ": " & tSPr.Name, false);
+		end;
+	end;
+ 
+ttStPodrSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean ttStPodrSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+ttStPodrSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean tPositionSClassOnOpenWindow(integer wn)
+begin
+record tEntPrVc EPr;
+record VPositionVc SPr;
+record ProfClassVc tSPr;
+Boolean res;
+integer i, pwn;
+
+pwn =  MotherWindow(wn);
+GetWindowRecord(pwn, EPr);
+if EPr.EType == 3 then
+	begin
+	i = 0;
+	while (LoopMain(SPr, 1, true)) 
+		begin 
+		i = i + 1;
+		SetListString(wn, i , SPr.Code & ": " & SPr.Name, false);
+		end;
+	end
+else
+	begin
+	i = 0;
+	while (LoopMain(tSPr, 1, true)) 
+		begin 
+		i = i + 1;
+		SetListString(wn, i , tSPr.KP & ": " & tSPr.PNR, false);
+		end;
+	end;
+ 
+tPositionSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean tPositionSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+tPositionSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+global
+function Boolean tEntPrDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record VPositionVc SPr;
+record ProfClassVc tSPr;
+record tEntPrVc EPr;
+row tEntPrVc EPrw;
+Boolean res;
+
+
+if (changed <> 0) and (fieldname == "Post") then 
+	begin
+	
+	GetWindowRecord(wn, EPr);
+	MatRowGet(EPr, rownr, EPrw);
+	if EPr.EType == 3 then
+		begin
+		SPr.Code = EPrw.Post;
+		ReadFirstMain(SPr, 1, true); 
+		EPrw.NamePost = SPr.Name;
+		end
+	else
+		begin
+		tSPr.KP = EPrw.Post;	
+		ReadFirstKey("KP", tSPr, 1, true); 
+		EPrw.NamePost = tSPr.PNR; 
+		end;
+	MatRowPut(EPr,rownr,EPrw);	
+	PutWindowRecord(wn, EPr);
+	end;
+tEntPrDClassAfterEditField = res;
+RETURN;
+END;

@@ -1,0 +1,129 @@
+external inner procedure GetItemVATCode(string,Integer,var string,Boolean);
+external inner function val MulWithRateToBase2(var string,Date,val,RoundMode);
+external inner function val FindVAT(string,val,Integer,Integer);
+external inner function val GetStockQty(string,string,Date,Boolean);
+external inner procedure GetItemVATCode(string,Integer,var string,Boolean);
+external inner procedure Base1ToBase2(var val,Date,var val);
+
+procedure ExportHeader
+begin
+  record PLDefVc PLDr;
+  integer i,cnt;
+
+	ExportString ("ArtCode");
+	ExportString ("ArtName");
+	ResetLoop(PLDr);
+  PLDr.Code=""; 
+	cnt = CountRecords("PLDefVc");
+	for (i=0; i<cnt; i=i+1)
+	  begin
+		  LoopMain(PLDr,1,true);
+		  ExportString(PLDr.Code);
+		end;
+  Return;
+end;
+
+
+function val GetItemPrice(record INVc INr, string PriceCode)
+begin
+  val res;
+  record PLVc PLr;  
+  record PLDefVc PLDr;
+  record AccBlock Accb;
+	string 10 curncycode;
+  string 5 vatc, vatflag;
+				
+	PLDr.Code = PriceCode;
+  if (ReadFirstMain(PLDr,1,true)) then
+  	begin
+      vatflag = PLDr.InclVAT;
+      curncycode = PLDr.CurncyCode;
+    end  
+  else
+  	begin
+      BlockLoad(accb);
+      vatflag = accb.BasePriceInclVAT;
+    end;
+
+	Base1ToBase2(INr.UPrice1, CurrentDate, res);
+	
+  GetItemVATCode(INr.Code,0,vatc,false);
+		
+	PLr.PLCode = PriceCode;
+	PLr.ArtCode = INr.Code;
+  if ReadFirstMain(PLr,2,true) then
+	  begin 
+      res = MulWithRateToBase2(curncycode,CurrentDate,PLr.ExVatPrice,DefaultCurRoundOff);
+      if (vatflag=="0") then
+				begin
+					res = res + FindVAT(vatc,res,0,0);
+				end 
+			else
+  			begin
+					res = res - FindVAT(vatc,res,1,0);
+        end;
+		end;		
+	
+	GetItemPrice = res;
+  Return;
+end;
+
+
+procedure ExportItemPrices(record INVc INr)
+begin
+  record PLDefVc PLDr;
+  integer i,cnt;
+
+	ResetLoop(PLDr);
+  PLDr.Code=""; 
+	cnt = CountRecords("PLDefVc");
+	for (i=0; i<cnt; i=i+1)
+	  begin
+		  LoopMain(PLDr,1,true);
+		  ExportString (GetItemPrice(INr, PLDr.Code));
+		end;
+  Return;
+end;
+	
+	
+global
+procedure IItemsExportRn(record RcVc RepSpec)
+begin
+  record INVc INr;
+	Boolean TrHs;
+	string 5 frgrp, togrp;
+	boolean testf;
+	
+	SetLangMode(LangRussian,"RUS",2);
+	StartReportNoHeaderJob("Экспорт товаров и цен");
+	SetExportCodePage("CP1251"); 
+	
+	frgrp = FirstInRange(RepSpec.f1, 5);
+	togrp = LastInRange(RepSpec.f1, 5);
+	
+	ExportHeader;
+	
+	TrHs = true;
+	INr.Group = frgrp;
+	while (LoopKey("Group",INr,1,TrHs)) 
+		begin
+			TrHs = blank(frgrp) or ((INr.Group>=frgrp) and (INr.Group<=togrp));
+			if (TrHs) and (INr.Terminated==0) and (INr.NotForSales==0) then
+  			begin
+	        testf = blank(RepSpec.f2); //(RepSpec.flags[1]==0);
+					if not testf then //Вынес проверку отдельным каскадом, ибо в случае единого логического выражения GetStockQty тормозит без необходимости
+					  begin
+							testf = (GetStockQty(INr.Code,RepSpec.f2,CurrentDate,false)>0);
+						end;
+          if testf then
+					  begin
+							ExportString(INr.Code);
+							ExportString(INr.Name);
+							ExportItemPrices(INr);
+							NewLine;
+						end;
+				end;
+		end;
+	EndJob;
+	Return;
+end;

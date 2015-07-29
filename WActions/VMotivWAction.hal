@@ -1,0 +1,1177 @@
+remote inner procedure GetUserAccessGroup(string,var string);
+
+//10.01.13 INAU - Возвращаем тип критерия (ежемесячный/квартальный/...)
+function integer GetCrMotType(string CrMotCode)
+begin
+  record CrMotVc Cr;
+
+  Cr.Code = CrMotCode;
+  ReadFirstMain(Cr, 1, true);
+  GetCrMotType = Cr.CrType;
+  Return;
+end;
+
+function boolean VCrMotStateDClassCodeEFAfter(Integer wn, Integer changed)
+begin
+record CrMotStateVc CMr;
+record StateVc Sr;
+
+if (changed <> 0) then
+  begin
+  GetWindowRecord(wn, CMr);
+  Sr.Code = CMr.Code;
+  if ReadFirstMain(Sr, 1, True) then
+    begin
+    CMr.Name = Sr.Name;
+    CMr.Department = Sr.Department;
+    PutWindowRecord(wn, CMr);
+    VCrMotStateDClassCodeEFAfter = True;
+    end else
+    begin
+    VCrMotStateDClassCodeEFAfter = False;
+    end;
+  end;
+RETURN;
+end;
+
+function boolean VCrMotStateDClassCrCodeEFAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record CrMotStateVc CMr;
+row CrMotStateVc CMrw;
+record CrMotVc Cr;
+
+if (changed <> 0) then
+  begin
+  GetWindowRecord(wn, CMr);
+  MatRowGet(CMr, rownr, CMrw);
+  Cr.Code = CMrw.CrCode;
+  if ReadFirstMain(Cr, 1, True) then
+    begin
+    CMrw.CrName = Cr.Name;
+    CMrw.CrWeight = 0;
+    CMrw.PC0 = 0;
+    CMrw.PC25 = 0;
+    CMrw.PC50 = 0;
+    CMrw.PC75 = 0;
+    CMrw.PC100 = 0;
+    MatRowPut(CMr, rownr, CMrw);
+    PutWindowRecord(wn, CMr);
+    VCrMotStateDClassCrCodeEFAfter = True;
+    end else
+    begin
+    VCrMotStateDClassCrCodeEFAfter = False;
+    end;
+  end;
+RETURN;
+end;
+
+global
+function boolean VCrMotStateDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+Boolean res;
+record CrMotStateVc CMr;
+string 20 accgroup;
+
+if (changed <> 0) then
+  begin
+  GetWindowRecord(wn, CMr);
+  if (CMr.OKFlag <> 0) then 
+    begin
+    GetUserAccessGroup(CurrentUser,accgroup);
+    if not SetInSet(accgroup,"ADMIN,UCHR") then 
+      begin
+      res = false;
+      end;
+    end else
+    begin
+    switch (fieldname) 
+      begin
+      case "Code": res = VCrMotStateDClassCodeEFAfter(wn, changed);             
+      case "CrCode": res = VCrMotStateDClassCrCodeEFAfter(wn, rownr, changed);
+      end;
+    end;
+  end;
+  
+VCrMotStateDClassAfterEditField = res;
+
+RETURN;
+end;
+
+function boolean GetMotField(Integer wn, Integer RowNr)
+begin
+record CrMotStateVc CMr;
+record VMotivVc Mr;
+row VMotivVc Mrw;
+row CrMotStateVc CMrw;
+Integer i;
+boolean res;
+integer CrMotType, coeff;
+
+res = False;
+GetWindowRecord(wn, Mr);
+MatRowGet(Mr, RowNr, Mrw);
+CMr.Code = Mr.StateJob;
+if ReadFirstMain(CMr, 1, True) then
+  begin
+  for (i = 0; i < MatRowCnt(CMr); i= i + 1) 
+    begin
+    MatRowGet(CMr, i, CMrw);
+    CrMotType = GetCrMotType(CMrw.CrCode);
+    switch (CrMotType)
+      begin
+        case 0: coeff = 1; //Месяц
+        case 1: coeff = 3; //Квартал
+      end;
+
+    if (CMrw.CrCode == Mrw.CrCode) then
+      begin
+      if (CMrw.PC0 <= CMrw.PC100) then
+        begin
+        Mrw.PC = CMrw.PC0;
+        if (Mrw.Fact <= CMrw.PC100) and (Mrw.Fact > 0) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 1;//CMrw.PC100 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC75) and (Mrw.Fact > 0) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.75;//CMrw.PC75 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC50) and (Mrw.Fact > 0) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.5;//CMrw.PC50 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC25) and (Mrw.Fact > 0) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.25;//CMrw.PC25 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC0) and (Mrw.Fact > 0) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0;//CMrw.PC0 / 100;
+          end;
+        if (Mrw.Fact <= 0) then
+          begin
+          Mrw.SumF = 0;
+          end;
+        end 
+      else
+        begin
+        Mrw.PC = CMrw.PC100;
+        if (Mrw.Fact <= CMrw.PC0) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0;//CMrw.PC0 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC25) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.25;//CMrw.PC25 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC50) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.50;//CMrw.PC50 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC75) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.75;//CMrw.PC75 / 100;
+          end;
+        if (Mrw.Fact <= CMrw.PC100) then
+          begin
+          Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 1;//CMrw.PC100 / 100;
+          end;
+          
+        end;
+        
+      res = True;
+      Mrw.SumF = Mrw.SumF * coeff;
+      MatRowPut(Mr, RowNr, Mrw);      
+      end;
+    end;
+  if res then
+    begin
+    Mr.Summa = 0;
+    for (i = 0; i < MatRowCnt(Mr); i = i + 1)
+      begin
+      MatRowGet(Mr, i, Mrw);
+      Mr.Summa = Mr.Summa + Mrw.SumF;
+      end;
+    PutWindowRecord(wn, Mr);
+    end;
+  end;
+GetMotField = res;  
+RETURN;
+end;
+
+function boolean GetMotFieldPc(Integer wn, Integer RowNr)
+begin
+record CrMotStateVc CMr;
+record VMotivVc Mr;
+row VMotivVc Mrw;
+row CrMotStateVc CMrw;
+Integer i;
+boolean res;
+integer CrMotType, coeff;
+
+res = False;
+GetWindowRecord(wn, Mr);
+MatRowGet(Mr, RowNr, Mrw);
+CMr.Code = Mr.StateJob;
+if ReadFirstMain(CMr, 1, True) then
+  begin
+  for (i = 0; i < MatRowCnt(CMr); i= i + 1) 
+    begin
+    MatRowGet(CMr, i, CMrw);
+    CrMotType = GetCrMotType(CMrw.CrCode);
+    switch (CrMotType)
+      begin
+        case 0: coeff = 1; //Месяц
+        case 1: coeff = 3; //Квартал
+      end;
+
+    if (CMrw.CrCode == Mrw.CrCode) then
+      begin
+      Mrw.SumF = 0;
+      Mrw.PC = CMrw.PC0;
+      if (Mrw.Fact > CMrw.PC0) then
+        begin
+        Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * (Mrw.Fact - CMrw.PC0) / (100 - CMrw.PC0);
+        end;  
+      res = True;
+      Mrw.SumF = Mrw.SumF * coeff;
+      MatRowPut(Mr, RowNr, Mrw);      
+      end;
+    end;
+  if res then
+    begin
+    Mr.Summa = 0;
+    for (i = 0; i < MatRowCnt(Mr); i = i + 1)
+      begin
+      MatRowGet(Mr, i, Mrw);
+      Mr.Summa = Mr.Summa + Mrw.SumF;
+      end;
+    PutWindowRecord(wn, Mr);
+    end;
+  end;
+GetMotFieldPc = res;  
+RETURN;
+end;
+
+
+function boolean VMotivDClassFillMat(Integer wn, record VMotivVc Mr)
+begin
+record CrMotStateVc CMr;
+row VMotivVc Mrw;
+row CrMotStateVc CMrw;
+record VMotivAutoBlock MAr;
+row VMotivAutoBlock MArw;
+Integer i, j, RowCnt, Pos;
+boolean Yes;
+integer CrMotType, coeff;
+
+while (MatRowCnt(Mr) > 0) //10.01.13 INAU - Чистим матрицу
+  begin
+    MatRowDelete(Mr, 0); 
+  end;
+
+Mr.Summa = 0;
+
+BlockLoad(MAr);
+CMr.Code = Mr.StateJob;
+if ReadFirstMain(CMr, 1, True) then
+  begin
+  Pos = 0;
+  RowCnt = MatRowCnt(CMr);
+  for (i = 0; i < RowCnt; i= i + 1) 
+    begin
+    MatRowGet(CMr, i, CMrw);
+    CrMotType = GetCrMotType(CMrw.CrCode);
+    
+//    if (CrMotType == Mr.MotType) then //10.01.13 INAU - Тип критерия соответствует типу документа
+    if (CrMotType <= Mr.MotType) then //15.01.13 INAU - Тип критерия меньше либо равен типу документа (квартальные док-ты включают ежемесячные показатели)
+      begin
+        switch (CrMotType)
+          begin
+            case 0: coeff = 1; //Месяц
+            case 1: coeff = 3; //Квартал
+          end;
+        Mrw.CrCode = CMrw.CrCode;
+        Mrw.CrName = CMrw.CrName;
+        Mrw.CrWeight = CMrw.CrWeight;
+        Mrw.Fact = 0;
+        Mrw.SumF = 0;
+        Yes = False;
+        for (j = 0; j < MatRowCnt(MAr); j = j + 1)
+          begin
+          MatRowGet(MAr, j, Marw);
+          if ((MArw.CrCode == Mrw.CrCode) and ((MArw.Department == Mr.Department) or blank(MArw.Department))) then
+            begin
+            Mrw.Fact = MArw.Fact;
+            if (CMrw.PC0 <= CMrw.PC100) then
+              begin
+              Mrw.PC = CMrw.PC0;
+              if (Mrw.Fact <= CMrw.PC100) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 1;//CMrw.PC100 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC75) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.75;//CMrw.PC75 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC50) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.5;//CMrw.PC50 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC25) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.25;//CMrw.PC25 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC0) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0;//CMrw.PC0 / 100;
+                end;
+              if (Mrw.Fact <= 0) then
+                begin
+                Mrw.SumF = 0;
+                end;
+              end
+            else
+              begin
+              Mrw.PC = CMrw.PC100;
+              if (Mrw.Fact <= CMrw.PC0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0;//CMrw.PC0 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC25) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.25;//CMrw.PC25 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC50) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.50;//CMrw.PC50 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC75) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.75;//CMrw.PC75 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC100) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 1;//CMrw.PC100 / 100;
+                end;
+              end;
+            end;
+          end;
+        Mrw.SumF = Mrw.SumF * coeff;
+        MatRowPut(Mr, Pos, Mrw);
+        Pos = Pos + 1;
+        Mr.Summa = Mr.Summa + Mrw.SumF;
+      end;
+    end;
+
+    PutWindowRecord(wn, Mr);
+  end;
+RETURN;
+end;
+
+
+function boolean VMotivDClassFillMatPc(Integer wn, record VMotivVc Mr)
+begin
+record CrMotStateVc CMr;
+row VMotivVc Mrw;
+row CrMotStateVc CMrw;
+record VMotivAutoBlock MAr;
+row VMotivAutoBlock MArw;
+Integer i, j, RowCnt, Pos;
+boolean Yes;
+integer CrMotType, coeff;
+
+while (MatRowCnt(Mr) > 0) //10.01.13 INAU - Чистим матрицу
+  begin
+    MatRowDelete(Mr, 0); 
+  end;
+
+Mr.Summa = 0;
+
+BlockLoad(MAr);
+CMr.Code = Mr.StateJob;
+if ReadFirstMain(CMr, 1, True) then
+  begin
+  Pos = 0;
+  RowCnt = MatRowCnt(CMr);
+  for (i = 0; i < RowCnt; i= i + 1) 
+    begin
+    MatRowGet(CMr, i, CMrw);
+    CrMotType = GetCrMotType(CMrw.CrCode);
+    
+//    if (CrMotType == Mr.MotType) then //10.01.13 INAU - Тип критерия соответствует типу документа
+    if (CrMotType <= Mr.MotType) then //15.01.13 INAU - Тип критерия меньше либо равен типу документа (квартальные док-ты включают ежемесячные показатели)
+      begin
+        switch (CrMotType)
+          begin
+            case 0: coeff = 1; //Месяц
+            case 1: coeff = 3; //Квартал
+          end;
+        Mrw.CrCode = CMrw.CrCode;
+        Mrw.CrName = CMrw.CrName;
+        Mrw.CrWeight = CMrw.CrWeight;
+        Mrw.Fact = 0;
+        Mrw.SumF = 0;
+        Yes = False;
+        for (j = 0; j < MatRowCnt(MAr); j = j + 1)
+          begin
+          MatRowGet(MAr, j, Marw);
+            if ((MArw.CrCode == Mrw.CrCode) and ((MArw.Department == Mr.Department) or blank(MArw.Department))) then
+            begin
+            Mrw.Fact = MArw.Fact;
+            Mrw.SumF = 0;
+            if Mrw.Fact > 120 then
+              begin
+              Mrw.Fact = 120;
+              end;
+            if (Mrw.Fact > CMrw.PC0) then
+              begin
+              Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * (Mrw.Fact - CMrw.PC0) / (100 - CMrw.PC0);//CMrw.PC100 / 100;
+              end;
+            end;
+          end;
+        //HERE PC
+        Mrw.PC = CMrw.PC0;
+        Mrw.SumF = Mrw.SumF * coeff;
+        MatRowPut(Mr, Pos, Mrw);
+        Pos = Pos + 1;
+        Mr.Summa = Mr.Summa + Mrw.SumF;
+      end;
+    end;
+
+    PutWindowRecord(wn, Mr);
+  end;
+RETURN;
+end;
+
+global 
+function Boolean VMotivDClassDeleteRowTest(Integer wn,Integer rownr)
+begin
+record VMotivVc Mr;
+Boolean res;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+  begin
+    GetPrevWindowRecord(wn, Mr);    
+    if (Mr.OKFlag != 0) then 
+    begin 
+    res = false; 
+    end;
+  end;
+VMotivDClassDeleteRowTest = res;
+RETURN;
+end;
+
+
+
+function boolean VMotiv1DClassCodeEFAfter(Integer wn, Integer changed)
+begin
+record VMotivVc Mr;
+record VMotivVc Mrold;
+record UserVc Usr;
+record DepVc Depr;
+record StateVc Sr;
+record VSetSetBlock VSet;
+boolean res;
+
+if (changed <> 0) then
+  begin
+  BlockLoad(VSet);
+  GetWindowRecord(wn, Mr);
+  GetPrevWindowRecord(wn, Mrold);
+  Usr.Code = Mr.UserCode;
+  if (Mr.OKFlag == 0) and (Mr.ConfirmFlag == 0) then 
+    begin
+    if ReadFirstMain(Usr, 1, True) then 
+      begin
+      Mr.UsrName = Usr.Name;
+      Mr.StateJob = Usr.StateJob;
+      Mr.Department = Usr.Department;
+      Mr.BonusFound = Usr.BonusFound;
+      Mr.MotiveCoeff = Usr.MotiveCoeff;
+      Depr.Code = Usr.Department;
+      ReadFirstKey("Code", Depr, 1, True);
+      Mr.DepName = Depr.Description;
+      Mr.UsrName = Usr.Name;
+      Sr.Code = Usr.StateJob;
+      ReadFirstMain(Sr, 1, True);
+      Mr.StateName = Sr.Name;
+      if VSet.StepCountMotiv <> 0 then
+          begin
+          VMotivDClassFillMat(wn, Mr);
+          end else
+          begin
+          VMotivDClassFillMatPc(wn, Mr);
+          end;    
+      PutWindowRecord(wn, Mr);
+      res = True;
+      end;
+    end
+  else
+    begin
+
+    //PutWindowRecord(wn, Mrold);
+    res = False;
+    end;
+  end;
+
+VMotiv1DClassCodeEFAfter = res;
+
+RETURN;
+end;
+
+
+function boolean VMotiv1DClassSumFEFAfter(Integer wn, integer rownr, Integer changed)
+begin
+record VMotivVc Mr;
+row VMotivVc Mrw;
+integer i;
+boolean res;
+
+if (changed <> 0) then
+  begin
+  GetWindowRecord(wn, Mr);
+  Mr.Summa = 0;
+  for (i = 0; i < MatRowCnt(Mr); i = i + 1)
+    begin
+    MatRowGet(Mr, i, Mrw);
+    Mr.Summa = Mr.Summa + Mrw.SumF;
+    end;
+  PutWindowRecord(wn, Mr);
+  end;
+
+VMotiv1DClassSumFEFAfter = res;
+RETURN;
+end;
+
+
+global
+function boolean VMotiv1DClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+Boolean res;
+record VMotivVc Mr;
+record VMotivVc Mrold;
+record VSetSetBlock VSet;
+string 20 accgroup;
+
+if (changed <> 0) then
+  begin
+  BlockLoad(VSet);
+  GetWindowRecord(wn, Mr);
+  res = False;
+  if (Mr.OKFlag == 0) and (Mr.ConfirmFlag == 0) then
+    begin
+    switch (fieldname) 
+      begin
+      case "UserCode": res = VMotiv1DClassCodeEFAfter(wn, changed);
+      case "Fact": 
+        begin
+        if (VSet.StepCountMotiv <> 0) then
+          begin
+          res = GetMotField(wn, rownr);
+          end else
+          begin
+          GetMotFieldPc(wn, rownr);
+          end;
+        end;
+      case "SumF": res = VMotiv1DClassSumFEFAfter(wn, rownr, changed);        
+      end;
+    end 
+  else
+    begin
+    GetPrevWindowRecord(wn, Mrold);
+    PutWindowRecord(wn, Mrold);
+    res = False;
+    end;
+  end;
+
+VMotiv1DClassAfterEditField = res;
+
+RETURN;
+end;
+
+//22.08.12 INAU
+global
+function boolean VMotiv1DClassActiveEditField(Integer wn, string fieldname, Integer fn, Integer wnst, Integer rownr, Integer changed)
+begin
+  boolean res;
+  record VMotivVc Mr;
+  record UserVc Usr, MUsr;
+  
+  GetWindowRecord(wn, Mr);
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  MUsr.Code = Mr.UserCode;
+
+  res = (nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR"))
+        or
+          ((not SetInSet(FieldName, "Curncy,CurncyRate,BonusFound,MotiveCoeff,CrCode,CrName,CrWeight,PC,SumF"))
+          and 
+          ((not ReadFirstMain(MUsr, 1, true)) or (MUsr.MotivRespCode == CurrentUser)));
+
+  VMotiv1DClassActiveEditField = res;
+  Return;
+end;
+
+//global
+//function Boolean VMotiv1DClassUpdateTest(Integer wn)
+//BEGIN
+//  record VMotivVc Mr;
+//  record VMotivVc Mrold;
+//  
+//  GetPrevWindowRecord(wn, Mrold);
+//  GetWindowRecord(wn, Mr);
+//  VMotiv1DClassUpdateTest = ((Mr.OKFlag==0) or UserCanAction("UnOKBud",false));
+//  
+//  RETURN;
+//END;
+
+global 
+function Boolean VMotiv1DClassDeleteRowTest(Integer wn, Integer rownr)
+BEGIN
+  Boolean res;
+  record VMotivVc Mr;
+  record UserVc Usr;
+  
+  GetWindowRecord(wn, Mr);
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+
+  res = (Mr.OKFlag == 0) and (Mr.ConfirmFlag == 0) and nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR");
+
+  VMotiv1DClassDeleteRowTest = res;
+  RETURN;
+END;
+
+global 
+function Boolean VMotiv1DClassInsertRowTest(Integer wn, Integer rownr)
+BEGIN
+  Boolean res;
+  record VMotivVc Mr;
+  record UserVc Usr;
+  
+  GetWindowRecord(wn, Mr);
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+
+  res = (Mr.OKFlag == 0) and (Mr.ConfirmFlag == 0) and nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR");
+
+  VMotiv1DClassInsertRowTest = res;
+  RETURN;
+END;
+
+global
+function Boolean VMotiv1DClassHasTransButtonAction(Integer wn,Integer value) //13.05.10 INAU
+begin
+  VMotiv1DClassHasTransButtonAction = false; //ReadOnly
+  Return;
+end;
+
+
+global
+function Boolean VMotiv1DClassOKFlagButtonAction(Integer wn,Integer value)
+begin
+  record VMotivVc Mr;
+  record VMotivVc oldMr;
+  record UserVc Usr;
+  record UserVc MotUsr;
+  boolean res;
+
+  GetWindowRecord(wn, Mr);
+  GetPrevWindowRecord(wn, oldMr);    
+
+  MotUsr.Code = Mr.UserCode;
+  ReadFirstMain(MotUsr, 1, true);
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+
+  //Установка флага - только ответственным лицом или финансовым директором
+  res = (Mr.OKFlag == 0) and ((MotUsr.MotivRespCode == CurrentUser) or SetInSet(Usr.AccessGroup,"UCHR"));
+  //Снятие флага - только финансовым директором при сброшенном флаге ConfirmFlag и отсутствии записи операции
+  res = res or ((Mr.OKFlag == 1) and (Mr.ConfirmFlag == 0) and (Mr.HasTrans == 0) and ((oldMr.OKFlag == 0) or SetInSet(Usr.AccessGroup,"UCHR")));
+
+  if res then //Подпись OK/UnOK
+    begin
+      Mr.OKUser = CurrentUser;
+      PutWindowRecord(wn, Mr);
+    end;
+  	
+  VMotiv1DClassOKFlagButtonAction = res;
+  Return;
+end;
+
+
+global
+function Boolean VMotiv1DClassConfirmFlagButtonAction(Integer wn,Integer value)
+begin
+  record VMotivVc Mr;
+  record VMotivVc oldMr;
+  record UserVc Usr;
+  boolean res;
+
+  GetWindowRecord(wn, Mr);
+  GetPrevWindowRecord(wn, oldMr);    
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+
+  //Установка флага - только финансовым директором при установленном OKFlag
+  res = (Mr.ConfirmFlag == 0) and (Mr.OKFlag == 1) and SetInSet(Usr.AccessGroup,"UCHR");
+  //Снятие флага - только финансовым директором при отсутствии записи операции
+  res = res or ((Mr.ConfirmFlag == 1) and (Mr.HasTrans == 0) and ((oldMr.ConfirmFlag == 0) or SetInSet(Usr.AccessGroup,"UCHR")));
+
+  if res then //Подпись Confirm/UnConfirm
+    begin
+      Mr.ConfirmUser = CurrentUser;
+      PutWindowRecord(wn, Mr);
+    end;
+
+  VMotiv1DClassConfirmFlagButtonAction = res;
+  Return;
+end;
+
+//========= 27.11.12 TGOR	
+global
+function Boolean VMotiv1DClassOKUchrButtonAction(Integer wn,Integer value)
+begin
+  record VMotivVc Mr;
+  record VMotivVc oldMr;
+  record UserVc Usr;
+  record UserVc MotUsr;
+  boolean res;
+
+  GetWindowRecord(wn, Mr);
+  GetPrevWindowRecord(wn, oldMr);    
+
+  MotUsr.Code = Mr.UserCode;
+  ReadFirstMain(MotUsr, 1, true);
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, True);
+
+  //Установка флага - только ZINOVIY
+  res = (Mr.OKUchr == 0) and (Mr.ConfirmFlag == 1) and (Mr.OKFlag == 1) and (CurrentUser == "ZINOVIY");
+  //Снятие флага - только ZINOVIY при отсутствии записи операции
+  res = res or ((Mr.OKUchr == 1) and (Mr.HasTrans == 0) and ((oldMr.OKUchr == 0) or (CurrentUser == "ZINOVIY")));
+  
+  VMotiv1DClassOKUchrButtonAction = res;
+  Return;
+end;
+
+//===================================================
+//22.08.12 INAU
+global
+function Boolean VMotiv1DClassOnOpenFromBrowse(Integer wn)
+begin
+  record VMotivVc Mr;
+  record UserVc Usr, MUsr;
+  
+  GetWindowRecord(wn, Mr);
+  
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  MUsr.Code = Mr.UserCode;
+  ReadFirstMain(MUsr, 1, true);
+  
+  if not SetInSet(Usr.AccessGroup, "ADMIN,UCHR") and (MUsr.MotivRespCode <> CurrentUser) then
+    begin
+      CloseWindow(wn);
+    end;
+
+  Return;
+end;
+
+//===================================================
+//10.01.13 INAU - Тип критерия (ежемесячный/квартальный)
+global
+function string 255 CrMotLClassCrType(var record CrMotVc Cr)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (Cr.CrType)
+    begin
+      case 0: CrMotLClassCrType = "месяц";
+      case 1: CrMotLClassCrType = "квартал";
+    end;
+  Return;
+end;
+
+//===================================================
+//10.01.13 INAU - Тип документа (ежемесячный/квартальный)
+global
+function string 255 VMotivLClassMotType(var record VMotivVc Mr)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (Mr.MotType)
+    begin
+      case 0: VMotivLClassMotType = "месяц";
+      case 1: VMotivLClassMotType = "квартал";
+    end;
+  Return;
+end;
+
+global
+function boolean VMotiv1DClassMotTypeButtonAction(integer wn, integer Value)
+begin
+  record VMotivVc Mr;
+  record UserVc Usr;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  GetWindowRecord(wn, Mr);
+  VMotiv1DClassMotTypeButtonAction = (Mr.OKFlag == 0) and (Mr.ConfirmFlag == 0);
+  Return;
+end;
+
+global
+function boolean VMotiv1DClassMotTypeButtonAfter(integer wn, boolean changedf) //Пересчитываем критерии
+begin
+  record VMotivVc Mr;
+  record VSetSetBlock VSet;
+
+  if (changedf) then
+    begin
+      BlockLoad(VSet);  
+      GetWindowRecord(wn, Mr);
+      if VSet.StepCountMotiv <> 0 then
+        begin
+          VMotivDClassFillMat(wn, Mr);
+        end
+      else
+        begin
+          VMotivDClassFillMatPc(wn, Mr);
+        end;    
+    end;
+  VMotiv1DClassMotTypeButtonAfter = true;
+  Return;
+end;
+
+global
+function boolean VMotivFillFromDepVClassAccSpecButtonAction(integer wn, integer Value) //Проверка прав на выбор критериев
+begin
+  record UserVc Usr;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  VMotivFillFromDepVClassAccSpecButtonAction = (Usr.AccessGroup == "UCHR");
+  Return;
+end;
+
+//29.08.12 INAU
+global
+procedure VMotivLClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+  duplOK = false;
+  Return;
+end;
+
+
+global
+procedure VMotiv1DClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+  duplOK = false;
+  //newOK = false;
+  //restOK = false;
+  //saveOK = false;
+  return;
+end;
+
+
+//===============================================
+// Special Menu для VMotivVc
+//===============================================
+global
+updating procedure VMotivMakeAllTransLsm()
+begin
+  record RcVc RepSpec;
+  integer wn;
+
+  ReportDefaults(RepSpec, "VMotivMakeTransVClass");
+  RepSpec.repname = "VMotivMakeTransMn";
+  RepSpec.d1 = CurrentDate;
+  RepSpec.flags[0] = 1;
+  wn = OpenWindow("VMotivMakeTransVClass", 1, 0, "", "", RepSpec);
+  Return;
+end;
+
+//===============================================
+global
+updating procedure VMotivMakeTransDsm()
+begin
+  record VMotivVc Mr;
+  record RcVc RepSpec;
+  integer wn, mwn;
+
+  wn = CurWindow;
+  if (WindowState(wn) == 0) then
+    begin
+      GetWindowRecord(wn, Mr);
+      ReportDefaults(RepSpec, "VMotivMakeTransVClass");
+      RepSpec.repname = "VMotivMakeTransMn";
+      RepSpec.d1 = CurrentDate;
+      RepSpec.flags[0] = 0;
+      RepSpec.long1 = Mr.SerNr;
+      mwn = OpenWindow("VMotivMakeTransVClass", 1, 0, "", "", RepSpec);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure VMotivOpenTransDsm() //11.05.10 INAU
+begin
+  record VMotivVc Mr;
+  record TRVc TRr;
+
+  GetWindowRecord(CurWindow, Mr);
+  ReadFirstMain(Mr,1,true);
+  TRr.Number = Mr.TRNumber;
+  TRr.IntYc = Mr.TRIntYc;
+  if ReadFirstMain(TRr,2,true) then
+    begin
+      OpenWindow("TRDClass",1,0,"","",TRr);
+    end;
+  Return;
+end;
+
+//===============================================
+//Формируем записи мотивации по отделам
+global
+procedure VMotivFillFromDepLsm() //13.05.10 INAU
+begin
+  record RcVc RepSpec;
+
+  RepSpec.repname = "VMotivFillFromDepMn";
+  OpenWindow("VMotivFillFromDepVClass",0,0,"","",RepSpec);
+  Return;
+end;
+
+//===============================================
+global
+procedure tMotivMakeSignDepLsm() //27.11.12 TGOR
+begin
+record RcVc RepSpec;
+
+if (CurrentUser == "ZINOVIY") then
+	begin
+    RepSpec.repname = "tMotivSignDepMn";
+    OpenWindow("VMotivSignDepVClass",0,0,"","",RepSpec);
+	end;
+  Return;
+end;
+
+//===============================================
+
+event DefineWindows
+
+begin
+  real v,v1,v3,vm,vs;
+  real h,h1,h2,h3,h4,h5,h6,hs;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Критерии мотивации", VCrMotDClass, CGview, -);
+  SetWRect(64, 80, 660, 260);
+  UseView(CrMotVc);
+  vs = 20; h = 80; h2 = 260;
+  EditField(h, v = 6, 80, "Код", Normal, Code, false, 0);
+  EditField(h2, v, -45, "Наименование", Normal, Name, false, 0);
+  EditField(h, v += vs, -45, "Комментарий", Normal, Comment, false, 0);
+  ButtonFrame(h, v+=40, 150, 2, "Тип");
+  RadioButton(h, v, 0, 0, "Ежемесячный", CrType);
+  RadioButton(h, v+=16, 1, 0, "Квартальный", CrType);
+  EndWindow;
+
+  WindowBegin("Критерии мотивации", VCrMotLClass, CGmlist, -);
+  SpawnClass(VCrMotDClass);
+  SetWRect(20,80,800,400);
+  Sizeable(-1,-1,0,0);
+  UseView(CrMotVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,1, "Код", Code, false, Code);
+  RlColKey(70,70,"Наименование",Name,false,Name);
+  CalculatedColumn(-240, -240, "Тип", "CrMotLClassCrType", false); //10.01.13 INAU - тип критерия
+  RlColKey(-190,-190,"Комментарий",Comment,false,Comment);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Критерии мотивации", VCrMotSClass, CGslist, StateType);
+  SpawnClass(VCrMotDClass);
+  SetWRect(64,80,600,298);
+  Sizeable(-1,-1,0,0);
+  UseView(CrMotVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,1, "Код", Code, false, Code);
+  RlColKey(70,70,"Наименование",Name,false,Name);
+  RlColKey(-190,-190,"Комментарий",Comment,false,Comment);
+  SearchField("Найти");
+  EndWindow;
+
+
+
+  WindowBegin("Mотивация по должностям",VCrMotStateDClass,CGview,-);
+  SetWRect(64,80,850,450);
+  UseView(CrMotStateVc);
+  Sizeable(-1,-1,0,0);
+  vs=20; h=80; h2=280; h3=400;
+  EditField(h,v=6,80,"Код",Normal,Code,false,StateSClass);
+  EnterSkip(Math);
+  EditField(h2,v,-40,"Hаименование",ViewOnly,Name,false,0);
+  EditField(h,v+=vs,120,"Oтдел",ViewOnly,Department,false,0);
+  h = 15; v = v+40;
+  MatrixBegin(h,v,-50,-30,-,30);
+  MatCol(1,24,"Критерий",0,CrCode,false,VCrMotSClass);
+  EnterSkip(CrWeight);
+  MatCol(1,124,"Hаименование",0,CrName,False,0);
+
+  MatCol(1, -310, "Bес", 0, CrWeight, True, 0);
+  MatCol(1, -260, "0%", 0, PC0, True, 0);
+  MatCol(1, -210, "25%", 0, PC25, True, 0);
+  MatCol(1, -160, "50%", 0, PC50, True, 0);
+  MatCol(1, -110, "75%", 0, PC75, True, 0);
+  MatCol(1, -60, "100%", 0, PC100, True, 0);
+  EndMatrix;
+  CheckBox(20,-20,0,"OK",OKFlag);
+  EndWindow;
+
+  WindowBegin("Mотивация по должностям", VCrMotStateLClass, CGmlist, -);
+  SpawnClass(VCrMotStateDCLass);
+  SetWRect(64,80,600,298);
+  Sizeable(-1,-1,0,0);
+  UseView(CrMotStateVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,1, "Код", Code, false, Code);
+  RlColKey(70,70,"Наименование",Name,false,Name);
+  RlColKey(-100,-100,"Oтдел",Department,false,Department);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Mотивация работников", VMotivLClass, CGmlist, -);
+  SpawnClass(VMotiv1DClass);
+  SetWRect(20,80,700,400);
+  Sizeable(-1,-1,0,0);
+  UseView(VMotivVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,1, "Hомер", SerNr, false, SerNr);
+  RlColKey(70,70, "OK", OKFlag, false, SerNr); //02.06.10 INAU
+  RlColKey(90,90, "Утв", ConfirmFlag, false, SerNr); //02.06.10 INAU
+  RlColKey(110,110, "Учр", OKUchr, false, SerNr); //27.11.12 TGOR
+  RlColKey(130,130, "пр", HasTrans, false, SerNr); //02.06.10 INAU
+
+  RlColKey(150,150,"Дата",Date,false,Date);
+  RlColKey(240,240,"Kод работника",UserCode,false,UserCode);
+  RlColKey(370,370,"Oтдел",Department,false,Department);
+  RlColKey(-150,-150,"Должность",StateJob,false,"");
+  CalculatedColumn(-50, -50, "Тип", "VMotivLClassMotType", false); //10.01.13 INAU - тип (ежемесячный/квартальный)
+  SearchField("Найти");
+  SpecialMenu("Подписать мотивацию по отделам",'',0,"tMotivMakeSignDepLsm"); //27.11.12 TGOR
+  SpecialMenu("Создать проводки по отделам",'',0,"VMotivMakeAllTransLsm"); //11.05.10 INAU
+  SpecialMenu("Заполнить сотрудниками отдела",'',0,"VMotivFillFromDepLsm"); //13.05.10 INAU
+  EndWindow;
+
+  WindowBegin("Mотивация работника",VMotiv1DClass,CGview,-);
+  SetWRect(64,80,950,650);
+  UseView(VMotivVc);
+  Sizeable(-1,-1,0,0);
+  BrowseButtons(false);
+
+  ActiveFieldOnNew("Date");
+  vs=30; h=100; h2=250; h3=485; h4 = 630;
+
+  EditField(h,v=6,80,"Hомер",ViewOnly,SerNr,false,0);
+  EditFieldTL(h2, v, 80, "Дата", M4Date, Normal, 10, Date, false, PasteCurDate);
+  EditField(h3, v, 80, "Дата операции", ViewOnly, TransDate, false, 0);
+
+  vm = v;
+  ButtonFrame(h4, v+=10, 100, 2, "Тип");
+  RadioButton(h4, v, 0, 0, "Ежемесячный", MotType);
+  RadioButton(h4, v+=16, 1, 0, "Квартальный", MotType);
+  v = vm;
+
+  EditField(h,v += vs,80,"Cотрудник", Normal, UserCode, false, UserSClass);
+  vs=20;
+  EnterSkip(Math);
+  h2 = 200;
+  EditField(h2,v,220,"", ViewOnly, UsrName, false, 0);//Фамилия
+  EditField(h3, v, 80, "Cоздал", ViewOnly, OperCode, false,0);
+  EditField(h,v += vs, 80, "Oтдел", ViewOnly, Department, false, 0);
+  EditField(h2,v,220,"",ViewOnly,DepName,false,0);
+  EditField(h3, v, 80, "Bалюта", Normal, Curncy, false, CurncyCodeSClass);
+  EditField(h4, v, 80, "Kурс", Normal, CurncyRate, True,0);
+  EnterSkip(Math);
+  EditField(h, v += vs, 80, "Должность", ViewOnly, StateJob, false,0);
+  EditField(h2, v, 220, "", ViewOnly, StateName, false, 0);
+  EditField(h3, v, 80, "Фонд", ViewOnly, BonusFound, True, 0);
+  EditField(h4, v, 80, "Kоэф.", ViewOnly, MotiveCoeff, True, 0);
+  EditField(h, v += vs, 320, "Объекты", Normal, ObjStr, True, ObjSClass);
+  //EditField(h3,v,80,"Oтдел",ViewOnly,Department,false,0);
+ // EditField(h4,v,80,"Должность",ViewOnly,StateJob,false,0);
+  EditField(h,v += vs,-25,"Kомментарий", Normal, Comment0, false, 0);
+  EnterSkip(Math);
+  h = 15; v = v+40;
+
+  MatrixBegin(h,v,-50,-30,-,30);
+  InsertRowTest;
+  DeleteRowTest;
+  Flip(1);
+  MatCol(1,24,"Критерий",0,CrCode,false,VCrMotSClass);
+  EnterSkip(Fact);
+  MatCol(1,104,"Hаименование",0,CrName,False,0);
+  //MatCol(1, -310, "Bес", 0, CrWeight, True, 0);
+  MatCol(1, 380, "Bес", 0, CrWeight, True, 0);
+  MatCol(1, 420, "План", 0, PC, True, 0);
+  MatCol(1, 480, "Факт", 0, Fact, True, 0);
+  MatCol(1, 540, "Cумма", 0, SumF, True, 0);
+  MatCol(1, 600, "Kомментарий", 0, Comment, False, 0);
+  Flip(2);
+  MatCol(1,24,"Критерий",0,CrCode,false,VCrMotSClass);
+  //EnterSkip(Fact);
+  MatCol(1,84,"Hаименование",0,CrName,False,0);
+
+  MatCol(1, 280, "Kомментарий", 0, Comment, False, 0);
+  //MatCol(1, -200, "Kомментарий", 0, Comment2, False, 0);
+  Flip(3);
+  MatCol(1,24,"Критерий",0,CrCode,false,VCrMotSClass);
+  //EnterSkip(Fact);
+  MatCol(1,84,"Hаименование",0,CrName,False,0);
+
+  MatCol(1, 280, "Kомментарий", 0, Comment1, False, 0);
+  //MatCol(1, -200, "Kомментарий", 0, Comment2, False, 0);
+  EndMatrix;
+  VTab(-35,v,-16,v+vs,ToolFlip,1,"A");
+  v=v+ vs;
+  VTab(-35,v,-16,v+vs,ToolFlip,2,"B");
+  v=v+ vs;
+  VTab(-35,v,-16,v+vs,ToolFlip,3,"C");
+
+  CheckBox(20, -20, 0, "OK", OKFlag);
+  CheckBox(200, -20, 0, "Утверждено", ConfirmFlag); //30.08.12 INAU
+  CheckBox(430, -20, 0, "Учредитель", OKUchr); //27.11.12 TGOR
+  EditField(60, -20, 100, "", ViewOnly, OKUser, False, 0); //30.08.12 INAU
+  EditField(290, -20, 100, "", ViewOnly, ConfirmUser, False, 0); //30.08.12 INAU
+
+//  CheckBox(100,-20,0,"Проводка",HasTrans);  //12.05.10 INAU
+  EditField(-180,-20, -40,"Cумма",ViewOnly,Summa,True,0);
+  SpecialMenu("Создать проводку по сотруднику",'',0,"VMotivMakeTransDsm"); //05.05.10 INAU
+  SpecialMenu("Открыть запись операции",'',0,"VMotivOpenTransDsm"); //11.05.10 INAU
+  EndWindow;
+
+  WindowBegin("Cерии номеров - Mотивация",VMotivSerTClass,CGHbl,HBlRecType);
+  SetBlid(MotivSerBlock);
+  SetWRect(20,80,532,357);
+  Sizeable(-1,-1,0,0);
+  h = 8; v = 60;
+  h1=24; h2=h1+60; h3=h2+60; h4=h3+85; h5=h4+85;
+  StaticText(h+h1+5,v-23,"Cерии номеров",false);
+  StaticText(h+h3+5,v-23,"Период",false);
+  MatrixBegin(h,v,-31,-20,IVSerRowType,99);
+  MatCol(1,h1,"C номера",0,TSerStart,false,0);
+  MatCol(1,h2,"По номер",0,TSerEnd,false,0);
+  MatCol(1,h3,"C даты",0,StartDate,false,0);
+  MatCol(1,h4,"По дату",0,EndDate,false,0);
+  MatCol(1,h5,"Kоммент.",0,TSerCom,false,0);
+  MatCol(1,-70,"Финансы",0,DonotGenTrans,false,SetSClass);
+  EndMatrix;
+  EndWindow;
+
+  return;
+end;

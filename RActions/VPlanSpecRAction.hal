@@ -1,0 +1,746 @@
+external function string 5 GetMonthName(Integer);
+
+
+//Коэффициент товара по заданной группе продажи и году
+function val GetSalesGroupPercent(string ArtCode, string SalesGroup, integer Year)
+begin
+  record IVPlanSetSGVc VSSGr;
+  row IVPlanSetSGVc VSSGrw;
+  integer i;
+  val res;
+
+  res = 0;
+  VSSGr.ArtCode = ArtCode;
+  VSSGr.Year = Year;
+  if ReadFirstMain(VSSGr, 2, true) then
+    begin
+      for (i=0; i < MatRowCnt(VSSGr); i=i+1)
+        begin
+          MatRowGet(VSSGr, i, VSSGrw);
+          if (VSSGrw.SalesGroup == SalesGroup) then
+            begin
+              res = VSSGrw.Percent;
+            end;
+        end;
+    end;
+  GetSalesGroupPercent = res;
+  Return;
+end;
+
+
+procedure VPlanSpecSumUp(var record VPlanSpecVc VPr)
+begin
+  row VPlanSpecVc VPrw;
+  integer i, m;
+  val v;
+
+  for (m = 1; m < 13; m = m + 1)
+    begin
+      SetFieldValueByName(VPr, "Sum" & GetMonthName(m) & "P", 0, -1); //Обнуляем
+    end;
+  VPr.Sum1P = 0;
+  VPr.Sum2P = 0;
+  VPr.Sum3P = 0;
+  VPr.Sum4P = 0;
+  VPr.SumYeaP = 0;
+
+  for (i=0; i < MatRowCnt(VPr); i=i+1)
+    begin
+      for (m = 1; m < 13; m = m + 1)
+        begin
+          v = StringToVal(GetFieldValueByName(VPr, "Sum" & GetMonthName(m) & "P", -1), M4Val);
+          v = v+ StringToVal(GetFieldValueByName(VPr, GetMonthName(m) & "P", i), M4Val);
+          SetFieldValueByName(VPr, "Sum" & GetMonthName(m) & "P", v, -1);
+        end;
+      MatRowGet(VPr, i, VPrw);
+      VPr.Sum1P = VPr.Sum1P + VPrw.Qua1P;
+      VPr.Sum2P = VPr.Sum2P + VPrw.Qua2P;
+      VPr.Sum3P = VPr.Sum3P + VPrw.Qua3P;
+      VPr.Sum4P = VPr.Sum4P + VPrw.Qua4P;
+      VPr.SumYeaP = VPr.SumYeaP + VPrw.YeaP;
+      MatRowGet(VPr, i, VPrw);
+    end;
+  Return;
+end;
+
+
+global
+updating procedure CountPlanUp(var record VPlanSpecVc VPr, record VPlanSpecVc VP2r)
+begin
+record VPlanSpecVc VPPr, VPP2r;
+row VPlanSpecVc VPPrw, VPP2rw, VPrw, VP2rw;
+Integer Cnt, RwCnt, RowCnt;
+Boolean TrHs;
+
+VPPr.SerNr = VPr.ParentSerNr;
+VPP2r.SerNr = VPr.ParentSerNr;
+ReadFirstMain(VPPr, 1, True);
+ReadFirstMain(VPP2r, 1, True);
+for (RwCnt = 0; RwCnt < MatRowCnt(VPr); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(VPr, RwCnt, VPrw);
+  MatRowGet(VP2r, RwCnt, VP2rw);
+  MatRowGet(VPPr, RwCnt, VPPrw);
+  MatRowGet(VPPr, RwCnt, VPP2rw);
+  if (VPr.OK1Flag == 0) and (VPr.Manual1Flag == 0) then
+    begin
+      VPPrw.JanP = VPPrw.JanP + (VPrw.JanP - VP2rw.JanP);
+      VPPrw.FebP = VPPrw.FebP + (VPrw.FebP - VP2rw.FebP);
+      VPPrw.MarP = VPPrw.MarP + (VPrw.MarP - VP2rw.MarP);
+    end;
+  if (VPr.OK2Flag == 0) and (VPr.Manual2Flag == 0) then
+    begin
+      VPPrw.AprP = VPPrw.AprP + (VPrw.AprP - VP2rw.AprP);
+      VPPrw.MayP = VPPrw.MayP + (VPrw.MayP - VP2rw.MayP);
+      VPPrw.JunP = VPPrw.JunP + (VPrw.JunP - VP2rw.JunP);
+    end;
+  if (VPr.OK3Flag == 0) and (VPr.Manual2Flag == 0) then
+    begin
+      VPPrw.JulP = VPPrw.JulP + (VPrw.JulP - VP2rw.JulP);
+      VPPrw.AugP = VPPrw.AugP + (VPrw.AugP - VP2rw.AugP);
+      VPPrw.SepP = VPPrw.SepP + (VPrw.SepP - VP2rw.SepP);
+    end;
+  if (VPr.OK4Flag == 0) and (VPr.Manual4Flag == 0) then
+    begin
+      VPPrw.OctP = VPPrw.OctP + (VPrw.OctP - VP2rw.OctP);
+      VPPrw.NovP = VPPrw.NovP + (VPrw.NovP - VP2rw.NovP);
+      VPPrw.DecP = VPPrw.DecP + (VPrw.DecP - VP2rw.DecP);
+    end;
+  VPPrw.Qua1P = VPPrw.JanP + VPPrw.FebP + VPPrw.MarP;
+  VPPrw.Qua2P = VPPrw.AprP + VPPrw.MayP + VPPrw.JunP;
+  VPPrw.Qua3P = VPPrw.JulP + VPPrw.AugP + VPPrw.SepP;
+  VPPrw.Qua4P = VPPrw.OctP + VPPrw.NovP + VPPrw.DecP;
+  VPPrw.YeaP = VPP2rw.Qua1P + VPPrw.Qua2P + VPPrw.Qua3P + VPPrw.Qua4P;
+  MatRowPut(VPPr, RwCnt, VPPrw);
+  end;
+VPlanSpecSumUp(VPPr); //09.04.12 INAU
+RecordUpdate(VPP2r, VPPr, False);
+RETURN;
+end;
+
+
+function val GetPlanPercent(record VPlanSpecVc VPPr)
+begin
+record VPlanSpecVc VPr;
+val res;
+Boolean TrHs;
+
+res = 0;
+TrHs = True;
+VPr.ParentSerNr = VPPr.SerNr;
+VPr.Year = VPPr.Year;
+while LoopKey("CustCatParent", VPr, 2, TrHs)
+  begin
+  TrHs = (VPPr.SerNr == VPr.ParentSerNr);
+  if TrHs then
+    begin
+    Res = Res + 1;
+    end;
+  end;
+
+if (res <> 0) then
+  begin
+    res = res / 100.0; // %
+  end;
+
+GetPlanPercent = Res;
+RETURN;
+end;
+
+
+global
+updating procedure CountPlanDown(record VPlanSpecVc VPPr, record VPlanSpecVc VPP2r)
+begin
+record VPlanSpecVc VPr, VP2r;
+row VPlanSpecVc VPPrw, VPrw, VP2rw, VPP2rw;
+Integer Cnt, RwCnt, RowCnt;
+Boolean TrHs;
+
+TrHs = True;
+Cnt = 0;
+VPr.ParentSerNr = VPPr.SerNr;
+VPr.CustCat = VPPr.CustCat;
+VPr.Year = VPPr.Year;
+while LoopKey("CustCatParent", VPr, 3, TrHs)
+  begin
+  TrHs = (VPPr.SerNr == VPr.ParentSerNr);
+  if TrHs then
+    begin
+    Cnt = Cnt + 1;
+    end;
+  end;
+TrHs = True;
+ResetLoop(VPr);
+VPr.ParentSerNr = VPPr.SerNr;
+VPr.CustCat = VPPr.CustCat;
+VPr.Year = VPPr.Year;
+while LoopKey("CustCatParent", VPr, 3, TrHs)
+  begin
+  TrHs = (VPPr.SerNr == VPr.ParentSerNr);
+  if TrHs then
+    begin
+    VP2r.SerNr = VPr.SerNr;
+    ReadFirstMain(VP2r, 3, True);
+    for (RwCnt = 0; RwCnt < MatRowCnt(VPr); RwCnt = RwCnt + 1)
+      begin
+      MatRowGet(VPr, RwCnt, VPrw);
+      MatRowGet(VP2r, RwCnt, VP2rw);
+      MatRowGet(VPPr, RwCnt, VPPrw);
+      MatRowGet(VPP2r, RwCnt, VPP2rw);
+//      VPrw.JanP = VP2rw.JanP + Round(((VPPrw.JanP - VPP2rw.JanP) / Cnt), 0);
+//      VPrw.FebP = VP2rw.FebP + Round(((VPPrw.FebP - VPP2rw.FebP) / Cnt), 0);
+//      VPrw.MarP = VP2rw.MarP + Round(((VPPrw.MarP - VPP2rw.MarP) / Cnt), 0);
+//      VPrw.AprP = VP2rw.AprP + Round(((VPPrw.AprP - VPP2rw.AprP) / Cnt), 0);
+//      VPrw.MayP = VP2rw.MayP + Round(((VPPrw.MayP - VPP2rw.MayP) / Cnt), 0);
+//      VPrw.JunP = VP2rw.JunP + Round(((VPPrw.JunP - VPP2rw.JunP) / Cnt), 0);
+//      VPrw.JulP = VP2rw.JulP + Round(((VPPrw.JulP - VPP2rw.JulP) / Cnt), 0);
+//      VPrw.AugP = VP2rw.AugP + Round(((VPPrw.AugP - VPP2rw.AugP) / Cnt), 0);
+//      VPrw.SepP = VP2rw.SepP + Round(((VPPrw.SepP - VPP2rw.SepP) / Cnt), 0);
+//      VPrw.OctP = VP2rw.OctP + Round(((VPPrw.OctP - VPP2rw.OctP) / Cnt), 0);
+//      VPrw.NovP = VP2rw.NovP + Round(((VPPrw.NovP - VPP2rw.NovP) / Cnt), 0);
+//      VPrw.DecP = VP2rw.DecP + Round(((VPPrw.DecP - VPP2rw.DecP) / Cnt), 0);
+      if (VPr.OK1Flag == 0) and (VPr.Manual1Flag == 0) then
+        begin
+          VPrw.JanP = VP2rw.JanP + ((VPPrw.JanP - VPP2rw.JanP) / Cnt);
+          VPrw.FebP = VP2rw.FebP + ((VPPrw.FebP - VPP2rw.FebP) / Cnt);
+          VPrw.MarP = VP2rw.MarP + ((VPPrw.MarP - VPP2rw.MarP) / Cnt);
+        end;
+      if (VPr.OK2Flag == 0) and (VPr.Manual2Flag == 0) then
+        begin
+          VPrw.AprP = VP2rw.AprP + ((VPPrw.AprP - VPP2rw.AprP) / Cnt);
+          VPrw.MayP = VP2rw.MayP + ((VPPrw.MayP - VPP2rw.MayP) / Cnt);
+          VPrw.JunP = VP2rw.JunP + ((VPPrw.JunP - VPP2rw.JunP) / Cnt);
+        end;
+      if (VPr.OK3Flag == 0) and (VPr.Manual3Flag == 0) then
+        begin
+          VPrw.JulP = VP2rw.JulP + ((VPPrw.JulP - VPP2rw.JulP) / Cnt);
+          VPrw.AugP = VP2rw.AugP + ((VPPrw.AugP - VPP2rw.AugP) / Cnt);
+          VPrw.SepP = VP2rw.SepP + ((VPPrw.SepP - VPP2rw.SepP) / Cnt);
+        end;
+      if (VPr.OK4Flag == 0) and (VPr.Manual4Flag == 0) then
+        begin
+          VPrw.OctP = VP2rw.OctP + ((VPPrw.OctP - VPP2rw.OctP) / Cnt);
+          VPrw.NovP = VP2rw.NovP + ((VPPrw.NovP - VPP2rw.NovP) / Cnt);
+          VPrw.DecP = VP2rw.DecP + ((VPPrw.DecP - VPP2rw.DecP) / Cnt);
+        end;
+      VPrw.Qua1P = VPrw.JanP + VPrw.FebP + VPrw.MarP;
+      VPrw.Qua2P = VPrw.AprP + VPrw.MayP + VPrw.JunP;
+      VPrw.Qua3P = VPrw.JulP + VPrw.AugP + VPrw.SepP;
+      VPrw.Qua4P = VPrw.OctP + VPrw.NovP + VPrw.DecP;
+      VPrw.YeaP = VPrw.Qua1P + VPrw.Qua2P + VPrw.Qua3P + VPrw.Qua4P;
+      MatRowPut(VPr, RwCnt, VPrw);
+      end;
+    VPlanSpecSumUp(VPr); //09.04.12 INAU
+    RecordUpdate(VP2r, VPr, False);
+    end;
+  end;
+RETURN;
+end;
+
+
+global
+procedure CountPlanPodr(var record VPlanSpecVc VPr, record VPlanSpecVc VPPr)
+begin
+row VPlanSpecVc VPPrw, VPrw;
+Integer Cnt, RwCnt;
+val Percent;
+Boolean TrHs;
+
+for (RwCnt = 0; RwCnt < MatRowCnt(VPr); RwCnt = RwCnt + 1)
+  begin
+    MatRowGet(VPr, RwCnt, VPrw);
+    MatRowGet(VPPr, RwCnt, VPPrw);
+    Percent = GetSalesGroupPercent(VPrw.ArtCode, VPr.CustCat, VPr.Year);
+    if (Percent <= 0) then
+      begin
+      Percent = GetPlanPercent(VPPr);
+      end;
+    if (VPr.OK1Flag == 0) and (VPr.Manual1Flag == 0) then
+      begin
+        VPrw.JanP = VPPrw.JanP * Percent / 100.0;
+        VPrw.FebP = VPPrw.FebP * Percent / 100.0;
+        VPrw.MarP = VPPrw.MarP * Percent / 100.0;
+      end;
+    if (VPr.OK2Flag == 0) and (VPr.Manual2Flag == 0) then
+      begin
+        VPrw.AprP = VPPrw.AprP * Percent / 100.0;
+        VPrw.MayP = VPPrw.MayP * Percent / 100.0;
+        VPrw.JunP = VPPrw.JunP * Percent / 100.0;
+      end;
+    if (VPr.OK3Flag == 0) and (VPr.Manual3Flag == 0) then
+      begin
+        VPrw.JulP = VPPrw.JulP * Percent / 100.0;
+        VPrw.AugP = VPPrw.AugP * Percent / 100.0;
+        VPrw.SepP = VPPrw.SepP * Percent / 100.0;
+      end;
+    if (VPr.OK4Flag == 0) and (VPr.Manual4Flag == 0) then
+      begin
+        VPrw.OctP = VPPrw.OctP * Percent / 100.0;
+        VPrw.NovP = VPPrw.NovP * Percent / 100.0;
+        VPrw.DecP = VPPrw.DecP * Percent / 100.0;
+      end;
+    VPrw.Qua1P = VPrw.JanP + VPrw.FebP + VPrw.MarP;
+    VPrw.Qua2P = VPrw.AprP + VPrw.MayP + VPrw.JunP;
+    VPrw.Qua3P = VPrw.JulP + VPrw.AugP + VPrw.SepP;
+    VPrw.Qua4P = VPrw.OctP + VPrw.NovP + VPrw.DecP;
+    VPrw.YeaP = VPrw.Qua1P + VPrw.Qua2P + VPrw.Qua3P + VPrw.Qua4P;
+    MatRowPut(VPr, RwCnt, VPrw);
+  end;
+RETURN;
+end;
+
+
+global
+procedure CountPlanObj(var record VPlanSpecVc VPr, record VPlanSpecVc VPPr)
+begin
+row VPlanSpecVc VPPrw, VPrw;
+record IVPlanSetObjVc Sr;
+row IVPlanSetObjVc Srw;
+Integer Cnt, RwCnt, RowCnt, Percent;
+Boolean TrHs, contSr, found;
+
+Sr.Obj = VPr.Objects;
+Sr.Year = VPr.Year;
+contSr = true;
+if ReadFirstKey("Obj", Sr, 2, contSr) then
+  begin
+  for (RwCnt = 0; RwCnt < MatRowCnt(VPr); RwCnt = RwCnt + 1)
+    begin
+    MatRowGet(VPr, RwCnt, VPrw);
+    found = false;
+    for (Cnt = 0; (Cnt < MatRowCnt(Sr)) and (not found); Cnt = Cnt + 1)
+      begin
+      MatRowGet(Sr, Cnt, Srw);
+      found = (Srw.ArtCode == VPrw.ArtCode);
+      if (found) then
+        begin
+//        if (Srw.Percent > 0) then
+//          begin
+//          Percent = Srw.Percent;
+//          end else
+//          begin
+//          Percent = GetPlanPercent(VPPr);
+//          end;
+        MatRowGet(VPPr, RwCnt, VPPrw);
+        if (VPr.OK1Flag == 0) and (VPr.Manual1Flag == 0) then
+          begin
+            VPrw.JanP = VPPrw.JanP * Srw.Percent / 100.0;
+            VPrw.FebP = VPPrw.FebP * Srw.Percent / 100.0;
+            VPrw.MarP = VPPrw.MarP * Srw.Percent / 100.0;
+          end;
+        if (VPr.OK2Flag == 0) and (VPr.Manual2Flag == 0) then
+          begin
+            VPrw.AprP = VPPrw.AprP * Srw.Percent / 100.0;
+            VPrw.MayP = VPPrw.MayP * Srw.Percent / 100.0;
+            VPrw.JunP = VPPrw.JunP * Srw.Percent / 100.0;
+          end;
+        if (VPr.OK3Flag == 0) and (VPr.Manual3Flag == 0) then
+          begin
+            VPrw.JulP = VPPrw.JulP * Srw.Percent / 100.0;
+            VPrw.AugP = VPPrw.AugP * Srw.Percent / 100.0;
+            VPrw.SepP = VPPrw.SepP * Srw.Percent / 100.0;
+          end;
+        if (VPr.OK4Flag == 0) and (VPr.Manual4Flag == 0) then
+          begin
+            VPrw.OctP = VPPrw.OctP * Srw.Percent / 100.0;
+            VPrw.NovP = VPPrw.NovP * Srw.Percent / 100.0;
+            VPrw.DecP = VPPrw.DecP * Srw.Percent / 100.0;
+          end;
+        VPrw.Qua1P = VPrw.JanP + VPrw.FebP + VPrw.MarP;
+        VPrw.Qua2P = VPrw.AprP + VPrw.MayP + VPrw.JunP;
+        VPrw.Qua3P = VPrw.JulP + VPrw.AugP + VPrw.SepP;
+        VPrw.Qua4P = VPrw.OctP + VPrw.NovP + VPrw.DecP;
+        VPrw.YeaP = VPrw.Qua1P + VPrw.Qua2P + VPrw.Qua3P + VPrw.Qua4P;
+        MatRowPut(VPr, RwCnt, VPrw);
+        end;
+      end;
+    end;
+  end;
+RETURN;
+end;
+
+
+updating function Boolean MakePlanObj(record VPlanSpecVc VPPr, string Objects, Boolean SaveRec)
+begin
+record VPlanSpecVc VPr;
+record VPlanSpecVc VP2r;
+row VPlanSpecVc VPrw, VPPrw;
+Integer wn, nwm, Cnt;
+Boolean res;
+
+VPr.ParentSerNr = VPPr.SerNr;
+VPr.CustCat = VPPr.CustCat;
+VPr.Year = VPPr.Year;
+VPr.Objects = Objects;
+if (not ReadFirstKey("CustCatParent", VPr, 4, True)) then
+  begin
+  res = True;
+  RecordNew(VPr);
+  VPr.SerNr = NextSerNr("VPlanSpecVc", CurrentDate, -1, false, "");
+  VPr.Year = VPPr.Year;
+  VPr.ParentSerNr = VPPr.SerNr;
+  VPr.CustCat = VPPr.CustCat;
+  VPr.Objects = Objects;
+  VPr.SMFlag = 0;
+  VPr.SuFlag = 0;
+  VPr.OKFlag = 0;
+  VPr.Manual1Flag = 0;
+  VPr.Manual2Flag = 0;
+  VPr.Manual3Flag = 0;
+  VPr.Manual4Flag = 0;
+  end else
+  begin
+  VP2r.SerNr = VPr.SerNr;
+  ReadFirstMain(VP2r, 1, True);
+  end;
+for (Cnt = 0; Cnt < MatRowCnt(VPPr); Cnt = Cnt + 1)
+  begin
+  MatRowGet(VPPr, Cnt, VPPrw);
+  MatRowGet(VPr, Cnt, VPrw);
+  VPrw.ArtCode = VPPrw.ArtCode;
+  VPrw.ArtName = VPPrw.ArtName;
+  MatRowPut(VPr, Cnt, VPrw);
+  end;
+if SaveRec then
+  begin
+  VPr.SMFlag = VPPr.SMFlag;
+  VPr.SuFlag = VPPr.SuFlag;
+  VPr.OKFlag = VPPr.OKFlag;
+  VPr.Manual1Flag = VPPr.Manual1Flag;
+  VPr.Manual2Flag = VPPr.Manual2Flag;
+  VPr.Manual3Flag = VPPr.Manual3Flag;
+  VPr.Manual4Flag = VPPr.Manual4Flag;
+  VPr.OK1Flag = VPPr.OK1Flag;
+  VPr.OK2Flag = VPPr.OK2Flag;
+  VPr.OK3Flag = VPPr.OK3Flag;
+  VPr.OK4Flag = VPPr.OK4Flag;
+  VPr.OK1User = VPPr.OK1User;
+  VPr.OK2User = VPPr.OK2User;
+  VPr.OK3User = VPPr.OK3User;
+  VPr.OK4User = VPPr.OK4User;
+  CountPlanObj(VPr, VPPr);
+  VPlanSpecSumUp(VPr); //09.04.12 INAU
+  if res then
+    begin
+    RecordStore(VPr, True);
+    CreateRecordLink(VPPr, CurrentCompany, VPr, CurrentCompany);
+    end else
+    begin
+    RecordUpdate(VP2r, VPr, False);
+    end;
+  CreateRecordLink(VPPr, CurrentCompany, VPr, CurrentCompany);
+//  UpdateBrowses("VPlanSpecVc");
+  end;
+MakePlanObj = res;
+RETURN;
+end;
+
+
+updating function Boolean MakePlanPodr(record VPlanSpecVc VPPr, string CustCat, Boolean SaveRec)
+begin
+record VPlanSpecVc VPr;
+record VPlanSpecVc VP2r;
+row VPlanSpecVc VPrw, VPPrw;
+record ObjVc OBJr;
+record IVPlanSetObjVc VSOr;
+//row IVPlanSetObjVc VSOrw;
+Integer wn, nwm, Cnt, RwCnt;
+Boolean res, TrHs, contVSOr;
+
+VPr.ParentSerNr = VPPr.SerNr;
+VPr.CustCat = CustCat;
+VPr.Year = VPPr.Year;
+if (not ReadFirstKey("CustCatParent", VPr, 3, True)) and blank(VPPr.Objects) then
+  begin
+  res = True;
+  RecordNew(VPr);
+  VPr.SerNr = NextSerNr("VPlanSpecVc", CurrentDate, -1, false, "");
+  VPr.Year = VPPr.Year;
+  VPr.ParentSerNr = VPPr.SerNr;
+  VPr.CustCat = CustCat;
+  VPr.SMFlag = 0;
+  VPr.SuFlag = 0;
+  VPr.OKFlag = 0;
+  VPr.Manual1Flag = 0;
+  VPr.Manual2Flag = 0;
+  VPr.Manual3Flag = 0;
+  VPr.Manual4Flag = 0;
+  VPr.OK1Flag = 0;
+  VPr.OK2Flag = 0;
+  VPr.OK3Flag = 0;
+  VPr.OK4Flag = 0;
+  end
+else
+  begin
+  VP2r.SerNr = VPr.SerNr;
+  ReadFirstMain(VP2r, 1, True);
+  end;
+
+for(Cnt = 0; Cnt < MatRowCnt(VPPr); Cnt = Cnt + 1)
+  begin
+  MatRowGet(VPPr, Cnt, VPPrw);
+  MatRowGet(VPr, Cnt, VPrw);
+  VPrw.ArtCode = VPPrw.ArtCode;
+  VPrw.ArtName = VPPrw.ArtName;
+  MatRowPut(VPr, Cnt, VPrw);
+  end;
+if SaveRec then
+  begin
+  VPr.SMFlag = VPPr.SMFlag;
+  VPr.SuFlag = VPPr.SuFlag;
+  VPr.OKFlag = VPPr.OKFlag;
+  VPr.Manual1Flag = VPPr.Manual1Flag;
+  VPr.Manual2Flag = VPPr.Manual2Flag;
+  VPr.Manual3Flag = VPPr.Manual3Flag;
+  VPr.Manual4Flag = VPPr.Manual4Flag;
+  VPr.OK1Flag = VPPr.OK1Flag;
+  VPr.OK2Flag = VPPr.OK2Flag;
+  VPr.OK3Flag = VPPr.OK3Flag;
+  VPr.OK4Flag = VPPr.OK4Flag;
+  VPr.OK1User = VPPr.OK1User;
+  VPr.OK2User = VPPr.OK2User;
+  VPr.OK3User = VPPr.OK3User;
+  VPr.OK4User = VPPr.OK4User;
+  CountPlanPodr(VPr, VPPr);
+  VPlanSpecSumUp(VPr); //09.04.12 INAU
+  if res then
+    begin
+    RecordStore(VPr, True);
+    CreateRecordLink(VPPr, CurrentCompany, VPr, CurrentCompany);
+    end else
+    begin
+    RecordUpdate(VP2r, VPr, False);
+    end;
+
+  VSOr.SalesGroup = CustCat;
+  VSOr.Year = VPPr.Year;
+  contVSOr = true;
+  while (LoopKey("SalesGroup", VSOr, 2, contVSOr))
+    begin
+      contVSOr = (VSOr.SalesGroup == CustCat);
+      if (contVSOr) and (VSOr.Year == VPPr.Year) then
+        begin
+          MakePlanObj(VPr, VSOr.Obj, True);
+        end;
+    end;
+
+//  UpdateBrowses("VPlanSpecVc");
+  end;
+MakePlanPodr = res;
+RETURN;
+end;
+
+
+global
+function Longint VPlanSpecVcRecordDefaults(var record VPlanSpecVc VPr, record VPlanSpecVc VP2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+
+//if (SingleUserMode) then
+//  begin
+//  VPr.SerNr = NextSerNr("VPlanSpecVc", CurrentDate, -1, false, "");
+//  end;
+VPr.Year = GetYear(CurrentDate);
+VPr.SMFlag = 0;
+VPr.SuFlag = 0;
+VPr.OKFlag = 0;
+VPr.Manual1Flag = 0;
+VPr.Manual2Flag = 0;
+VPr.Manual3Flag = 0;
+VPr.Manual4Flag = 0;
+VPr.OK1Flag = 0;
+VPr.OK2Flag = 0;
+VPr.OK3Flag = 0;
+VPr.OK4Flag = 0;
+VPr.OK1User = blankval;
+VPr.OK2User = blankval;
+VPr.OK3User = blankval;
+VPr.OK4User = blankval;
+VPr.CustCat = blankval;
+VPr.ParentSerNr = blankval;
+VPlanSpecVcRecordDefaults = res;
+RETURN;
+end;
+
+
+global
+updating function LongInt VPlanSpecVcRecordCheck(var record VPlanSpecVc VPr, record VPlanSpecVc VP2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record VPlanSpecVc VPNr, VPN2r;
+row VPlanSpecVc VPNrw;
+record UserVc USr;
+row VPlanSpecVc VPrw;
+record ObjVc OBJr;
+record INVc INr;
+record PLVc PLr;
+record SalesGroupVc SGr;
+Integer RwCnt, RowCnt, Cnt;
+Integer insertmode, updatemode;
+Boolean TrHs;
+
+res = 0;
+insertmode = 1;
+updatemode = 2;
+VPlanSpecSumUp(VPr); //09.04.12 INAU
+TrHs = True;
+if (stat <> updatemode) and (VPr.SerNr < 1) then
+  begin
+  VPr.SerNr = NextSerNr("VPlanSpecVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (VPr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+VPlanSpecVcRecordCheck = res;
+RETURN;
+end;
+
+
+global
+updating function LongInt VPlanSpecVcRecordSaveAfter(var record VPlanSpecVc VPr, record VPlanSpecVc VP2r, LongInt stat, LongInt long4)
+begin
+record SalesGroupVc SGr;
+Integer res;
+if ((VPr.ParentSerNr < 1) and blank(VPr.CustCat)) then
+  begin
+  ResetLoop(SGr);
+  while LoopMain(SGr, 1, True)
+    begin
+    if (SGr.Closed <> 1) then
+      begin
+      MakePlanPodr(VPr, SGr.SGroupCode, True);
+      end;
+    end;
+  end;
+VPlanSpecVcRecordSaveAfter = res;
+RETURN;
+end;
+
+
+global
+updating function LongInt VPlanSpecVcRecordUpdateAfter(var record VPlanSpecVc VPr, record VPlanSpecVc VP2r, LongInt stat, LongInt long4)
+begin
+record SalesGroupVc SGr;
+record VPlanSpecVc VPPr, VPP2r;
+row VPlanSpecVc VPPrw, VPP2rw;
+row VPlanSpecVc VPrw, VP2rw;
+Integer res;
+
+if ((VPr.ParentSerNr < 1) and blank(VPr.CustCat)) then
+  begin
+  ResetLoop(SGr);
+  while LoopMain(SGr, 1, True)
+    begin
+    if (SGr.Closed <> 1) then
+      begin
+      MakePlanPodr(VPr, SGr.SGroupCode, True);
+      end;
+    end;
+  end;
+if ((VPr.ParentSerNr > 0) and blank(VPr.Objects))
+  begin
+    CountPlanUp(VPr, VP2r);
+    CountPlanDown(VPr, VP2r);
+  end;
+
+
+if ((VPr.ParentSerNr > 0) and nonblank(VPr.Objects)) then
+begin
+VPP2r.SerNr = VPr.ParentSerNr;
+ReadFirstMain(VPP2r, 1, True);
+CountPlanUp(VPr, VP2r);
+VPPr.SerNr = VPr.ParentSerNr;
+ReadFirstMain(VPPr, 1, True);
+CountPlanUp(VPPr, VPP2r);
+end;
+
+VPlanSpecVcRecordUpdateAfter = res;
+RETURN;
+end;
+
+
+global
+updating procedure VPlanSpecDelete(Longint SerNr)
+begin
+record VPlanSpecVc VPr;
+
+ResetLoop(VPr);
+VPr.SerNr = blankval;
+while LoopMain(VPr, 1, True)
+  begin
+  if (VPr.ParentSerNr == SerNr) then
+    begin
+    RecordDelete(VPr);
+    StepBack(VPr);
+    end;
+  end;
+RETURN;
+end;
+
+
+global
+updating function LongInt VPlanSpecVcRecordRemoveTest(var record VPlanSpecVc VPr, record VPlanSpecVc VP2r, LongInt long3, LongInt long4)
+begin
+record VPlanSpecVc VRr, VR2r;
+LongInt res;
+
+if ((VPr.OK1Flag + VPr.OK2Flag + VPr.OK3Flag + VPr.OK4Flag) <> 0) then
+  begin
+  res = 0;
+  end
+else
+  begin
+  res = 1;
+  if (VPr.ParentSerNr < 1) then
+    begin
+    ResetLoop(VRr);
+    VRr.ParentSerNr = VPr.SerNr;
+    while LoopKey("CustCatParent", VRr, 1, True)
+      begin
+      if (VRr.ParentSerNr == VPr.SerNr) then
+        begin
+        VPlanSpecDelete(VRr.SerNr);
+        RecordDelete(VRr);
+        StepBack(VRr);
+        end;
+      end;
+    end
+  else
+    begin
+    VPlanSpecDelete(VPr.SerNr);
+    end;
+  end;
+VPlanSpecVcRecordRemoveTest = res;
+RETURN;
+END;
+
+
+global
+updating function LongInt IVPlanSetObjVcRecordCheck(var record IVPlanSetObjVc VSOr, record IVPlanSetObjVc VSO2r, LongInt stat, LongInt long4)
+begin
+  LongInt res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+  if blank(VSOr.Obj) then
+    begin
+      RecordCheckError(1499,"Укажите объект",-1,"Obj");
+      res = -1;
+    end;
+
+  if (res <> -1) and (VSOr.Year < 2010) then
+    begin
+      RecordCheckError(1499,"Неверно указан год",-1,"Year");
+      res = -1;
+    end;
+
+  if (res <> -1) and blank(VSOr.SalesGroup) then
+    begin
+      RecordCheckError(1499,"Укажите группу продажи",-1,"SalesGroup");
+      res = -1;
+    end;
+
+  IVPlanSetObjVcRecordCheck = res;
+  Return;
+end;

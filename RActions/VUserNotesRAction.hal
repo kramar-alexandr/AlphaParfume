@@ -1,0 +1,34 @@
+global
+function LongInt VUserNoteVcRecordDefaults(var record VUserNoteVc VUNr,record VUserNoteVc VUN2r, LongInt long3, LongInt long4)
+begin
+record UserVc USr;
+Longint res;
+
+	Usr.Code = CurrentUser;
+	ReadFirstMain(Usr, 1, True);
+	VUNr.SerNr = -1;
+	VUNr.Date = CurrentDate;
+	VUNr.SalesMan = CurrentUser;
+	if (SingleUserMode) then
+		begin
+		VUNr.SerNr = NextSerNr("VUserNoteVc", VUNr.Date, -1, false, "");
+		end;
+	VUserNoteVcRecordDefaults = res;
+RETURN;
+END;
+
+
+global
+updating function longint VUserNoteVcRecordCheck(var record VUserNoteVc VUNr,record VUserNoteVc VUN2r, LongInt stat, LongInt long4)
+begin
+Longint res;
+
+if (VUNr.SerNr <= 0) then
+	begin
+	VUNr.SerNr = NextSerNr("VUserNoteVc", VUNr.Date, -1, false, "");
+	end;
+VUNr.DateUpdate = CurrentDate;
+
+VUserNoteVcRecordCheck = RecordUpdate(VUN2r, VUNr, False);
+RETURN;
+end;

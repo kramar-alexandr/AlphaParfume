@@ -1,0 +1,85 @@
+external function Boolean OfficialSerNrDefined(string);
+external function Boolean EarlierReservationsExists(record ORVc);
+external function LongInt GetCurUserLastNr(string);
+external updating function Integer PasteOrdInShip(var Array record StockMovVc,var Integer,record ORVc,var record SHVc,Boolean,string,Integer,string,string,array string,var array string,var array string,array val,Integer);
+
+
+global
+updating function Integer PasteOrdInShip_Redefined(var Array record StockMovVc aStockMovr,var Integer asmcnt,record ORVc ORr,var record SHVc SHp,Boolean checklimitf,string planneddelivery,Integer skipzerorows,string onlyforitems,string location,array string aincode,var array string aloc,var array string aserialnr,array val aqty,Integer acnt)
+BEGIN
+  integer res;
+
+  res = PasteOrdInShip(aStockMovr, asmcnt, ORr, SHp, checklimitf, planneddelivery, skipzerorows, onlyforitems, location, aincode, aloc, aserialnr, aqty, acnt);
+  SHp.PlanSendDate = ORr.PlanShip;
+  SHp.PlanSendTime = ORr.PlanShipTime;
+  SHp.PlanArrDate = ORr.DespatchDate;
+  SHp.PlanArrTime = ORr.DespatchTime;
+
+  PasteOrdInShip_Redefined = res;
+  RETURN;
+END;
+
+
+global
+updating function Integer RecordAction_raPasteOrdInShip(var record SHVc SHp,LongInt ordnr,var string warning)
+BEGIN
+  record SRBlock SRRec;
+  Integer res;
+  LongInt newnr;
+  string 255 tstr;
+  Boolean testf;
+  Array record StockMovVc aStockMovr;
+  Integer asmcnt;
+  record ORVc ORr;
+  array string 40 aincode;
+  array string 40 aloc;
+  array string 40 aserialnr;
+  array val aqty;
+  Integer acnt;
+  
+  res = -1;
+  RecordNew(SHp);
+  SHp.SerNr = -1;
+  SHp.OrderNr = ordnr;
+  if (SHp.SerNr==-1) then begin
+    BlockLoad(SRRec);
+    newnr = GetCurUserLastNr("SHVc");
+    if (newnr!=-1) then begin
+      newnr = SRRec.LastShipNr;
+    end;
+    SHp.SerNr = NextSerNr("SHVc",SHp.ShipDate,newnr,false,"");
+    if (SHp.SerNr==-1) then begin
+      res = 1747;
+      goto LRecordAction_raPasteOrdInShip;
+    end;
+  end;
+  ORr.SerNr = SHp.OrderNr;
+  if (ReadFirstMain(ORr,1,true)) then begin end; //## what if not found?
+/*JJDS  
+  if (ORr.OrderType!=kOrderTypeNormal) then begin 
+    goto LRecordAction_raPasteOrdInShip;
+  end;
+*/  
+  if (ORr.OKFlag==0) then begin
+    if (OfficialSerNrDefined("ORVc")) then begin
+      res = 2069;
+      goto LRecordAction_raPasteOrdInShip;
+    end;
+  end;
+
+  res = PasteOrdInShip_Redefined(aStockMovr,asmcnt,ORr,SHp,true,"",0,"","",aincode,aloc,aserialnr,aqty,acnt);
+  if (EarlierReservationsExists(ORr)) then begin
+    warning = USetStr(20562);
+  end;
+  if ((MatRowCnt(SHp)>0) and (SHp.SerNr!=-1) and (res==0)) then begin
+    if (RecordInsert(SHp,false)==false) then begin
+      res = 1;
+    end else begin
+      CreateRecordLink(ORr,CurrentCompany,SHp,CurrentCompany);  
+      CreateRecordLink(SHp,CurrentCompany,ORr,CurrentCompany);  
+    end;
+  end;
+LRecordAction_raPasteOrdInShip:;
+  RecordAction_raPasteOrdInShip = res;
+  RETURN;
+END;

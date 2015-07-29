@@ -1,0 +1,452 @@
+external updating function integer CheckStockMovRecord(var record StockMovVc, record StockMovVc, longInt, longint, boolean);
+remote inner function Boolean StockMovVc_PasteArtCode(var record StockMovVc, Integer, Integer, Boolean);
+//external inner function Integer DaysInMonth(Integer, Integer);
+
+//===============================================
+//Возвращаем текущий остаток товара на складе
+function val GetInStockQty(string ArtCode, string Location)
+begin
+  record ItemStatusVc ISr;
+  integer KeyNum;
+
+  ISr.Code = ArtCode;
+  if blank(Location) then
+    begin
+      KeyNum = 1;
+    end
+  else
+    begin
+      ISr.Location = Location;
+      KeyNum = 2;
+    end;
+
+  ReadFirstMain(ISr, KeyNum, true);
+
+  GetInStockQty = ISr.Instock; 
+  Return;
+end;
+
+//===============================================
+//План по б/н
+function val GetBLPlan(record RcVc RepSpec, string ArtCode)
+begin
+  record BNPlanVc BNPr;
+  row BNPlanVc BNPrw;
+  integer i;
+  date bd, ed, dt;
+  integer CurYear;
+  boolean cont, found;
+  val res;
+
+  bd = RepSpec.sStartDate;
+  bd.Day = 1;
+  ed = RepSpec.sEndDate;
+  ed.Day = DaysInMonth(ed.Year, ed.Month);
+
+  res = 0;
+  cont = true;
+  dt = bd;
+  CurYear = -1;
+  while (dt <= ed)
+    begin
+      found = false;
+      if (CurYear <> dt.Year) then
+        begin
+          CurYear = dt.Year;
+          BNPr.Year = CurYear;
+          cont = ReadFirstMain(BNPr, 1 , true);
+        end;
+        
+      for (i=0; (i<MatRowCnt(BNPr)) and cont and not found; i=i+1)
+        begin
+          MatRowGet(BNPr, i, BNPrw);
+          found = (BNPrw.ArtCode == ArtCode);
+          if found then
+            begin
+              switch(dt.Month)
+                begin
+                  case 1: res = BNPrw.Jan;
+                  case 2: res = BNPrw.Feb; 
+                  case 3: res = BNPrw.Mar; 
+                  case 4: res = BNPrw.Apr; 
+                  case 5: res = BNPrw.May; 
+                  case 6: res = BNPrw.Jun; 
+                  case 7: res = BNPrw.Jul; 
+                  case 8: res = BNPrw.Aug; 
+                  case 9: res = BNPrw.Sept; 
+                  case 10: res = BNPrw.Oct; 
+                  case 11: res = BNPrw.Nov; 
+                  case 12: res = BNPrw.Dec; 
+                end;
+            end;
+        end;
+
+      dt = AddMonth(dt, 1);
+    end;
+end;
+
+//===============================================
+procedure InsertItemIntoStockMov(var record StockMovVc SMr, string ArtCode, val Qty)
+begin
+  row StockMovVc SMrw;
+  integer rownr;
+
+  if (Qty > 0) then
+    begin
+      rownr = MatRowCnt(SMr);
+      SMrw.ArtCode = ArtCode;
+//      SMrw.Spec = ...;
+      SMrw.OrdQuant = Qty;
+      SMrw.Quant = Qty;
+      MatRowPut(SMr, rownr, SMrw);
+      StockMovVc_PasteArtCode(SMr, rownr, 1, false);
+      SMr.TotQty = SMr.TotQty + Qty;
+    end;
+  Return;
+end;
+
+//===============================================
+updating procedure StockMovStore(var record StockMovVc SMr, string FrLocation, string ToLocation)
+begin
+  if (MatRowCnt(SMr) > 0) then
+    begin
+      SMr.SerNr = NextSerNr("StockMovVc", CurrentDate, -1, false, "");
+      SMr.FrLocation = FrLocation;
+      SMr.ToLocation = ToLocation;
+      SMr.LogNewUser = CurrentUser;
+      SMr.LogNewDate = CurrentDate;
+      SMr.LogNewTime = CurrentTime;
+      SMr.LogSaveUser = CurrentUser;
+      SMr.LogSaveDate = CurrentDate;
+      SMr.LogSaveTime = CurrentTime;
+      RecordStore(SMr, true);
+    end;
+  Return;
+end;
+
+//===============================================
+//Распределение товаров с временного склада
+global
+updating procedure ITempLocationDispatchItems(record RcVc RepSpec)
+begin
+  record StockMovVc CashSMr;
+  record StockMovVc NoncashSMr;
+  record VSetSetBlock VSb;
+  record INVc INr;
+  integer i;
+  val Qty, CashQty, NoncashQty;
+
+  BlockLoad(VSb);
+  while LoopMain(INr, 1, true)
+    begin
+      Qty = GetInStockQty(INr.Code, VSb.TempLocation);
+      if (Qty > 0) then
+        begin
+          NoncashQty = GetBLPlan(RepSpec, INr.Code);
+          if NoncashQty > Qty then //Кол-во на складе меньше запланированного б/н
+            begin
+              NoncashQty = Qty;
+              Qty = 0;
+            end
+          else
+            begin
+              Qty = Qty - NoncashQty;
+            end;
+
+          InsertItemIntoStockMov(NoncashSMr, INr.Code, NoncashQty);
+          InsertItemIntoStockMov(CashSMr, INr.Code, Qty);
+        end;
+    end;
+  
+  StockMovStore(NoncashSMr, VSb.TempLocation, VSb.NoncashLocation);
+  StockMovStore(CashSMr, VSb. TempLocation, VSb.CashLocation);
+  Return;
+end;
+
+//===============================================
+//Установка "белого" склада для безнальных продаж
+global
+procedure ISetOrderNoncashLocation(var record ORVc ORr)
+begin
+  record VSetSetBlock VSb;
+  
+  BlockLoad(VSb);
+  if (ORr.CCDFlag == 1) and nonblank(ORr.Location) and(ORr.Location <> VSb.NoncashLocation) then //устанавливаем "белый" склад
+    begin
+      ORr.OrigLocation = ORr.Location;
+      ORr.Location = VSb.NoncashLocation;
+    end;
+  Return;
+end;
+
+//===============================================
+//Виртуальное перемещение со складв филиала на склад Максан при "белой" отгрузке
+global 
+updating function boolean IMakeStockMovForNoncash(var record SHVc SHr)
+begin
+  record ORVc ORr;
+  record StockMovVc SMr, SM2r;
+  row StockMovVc SMrw;
+  row SHVc SHrw;
+  record VSetSetBlock VSb;
+  integer i;
+  boolean res;
+  
+  res = true;
+  ORr.SerNr = SHr.OrderNr;
+  if ReadFirstMain(ORr, 1, true) and (ORr.CCDFlag == 1) then
+    begin
+      BlockLoad(VSb);
+      RecordNew(SMr);
+      SMr.SerNr = NextSerNr("StockMovVc", CurrentDate, -1, false, "");
+      SMr.TotQty = SHr.TotQty;
+      SMr.FrLocation = ORr.OrigLocation;
+      SMr.ToLocation = VSb.CashLocation;
+      SMr.Gather = SHr.Gather;
+      SMr.LogNewUser = CurrentUser;
+      SMr.LogNewDate = CurrentDate;
+      SMr.LogNewTime = CurrentTime;
+      SMr.LogSaveUser = CurrentUser;
+      SMr.LogSaveDate = CurrentDate;
+      SMr.LogSaveTime = CurrentTime;
+      for (i=0; i<MatRowCnt(SHr); i=i+1)
+        begin
+          MatRowGet(SHr, i, SHrw);
+          SMrw.ArtCode = SHrw.ArtCode;
+          SMrw.Spec = SHrw.Spec;
+          SMrw.OrdQuant = SHrw.Ship;
+          SMrw.Quant = SHrw.Ship;
+          MatRowPut(SMr, i, SMrw);
+          StockMovVc_PasteArtCode(SMr, i, 1, false);
+        end;
+      
+      RecordCopy(SM2r, SMr);
+      res = (CheckStockMovRecord(SMr, SM2r, 2, 1, true) <> -1);
+      if res then
+        begin
+          RecordStore(SMr, true);
+          CreateRecordLink(SHr, CurrentCompany, SMr, CurrentCompany);  
+          CreateRecordLink(SMr, CurrentCompany, SHr, CurrentCompany);  
+        end;
+    end;
+  IMakeStockMovForNoncash = res;
+  Return;
+end;
+
+//===============================================
+//Установка флага ГТД в счете из карточки клиента
+global
+procedure ISetCCDFlagToOR(var record ORVc ORr)
+begin
+  record CUVc CUr;
+
+  CUr.Code = ORr.CustCode;
+  ReadFirstMain(CUr, 1, true);
+  ORr.CCDFlag = CUr.CCDFlag;
+  Return;
+end;
+
+//===============================================
+//Суммарный остаток товара по ГТД
+global
+function val IGetCCDRest(string ArtCode)
+begin
+  record ICCDeclarationVc ICCDr;
+  row ICCDeclarationVc ICCDrw;
+  integer i, rwcnt;
+  val Rest;
+
+  Rest = 0;
+  ICCDr.ArtCode = ArtCode;
+  ReadFirstMain(ICCDr, 1, true);
+  rwcnt = MatRowCnt(ICCDr);
+  for (i=0; i<rwcnt; i=i+1)
+    begin
+      MatRowGet(ICCDr, i, ICCDrw);
+      Rest = Rest + ICCDrw.Rest;
+    end;
+  IGetCCDRest = Rest;
+  Return;
+end;
+
+//===============================================
+//Добавить Код товара, Код ГТД, Списываемое кол-во в список
+//f2 - ArtCode, f3 - CCDCode, f4 - Qnt
+procedure AddToCCDList(var record TempVc Listr, string ArtCode, string CCDCode, val Qnt)
+begin
+  row TempVc Listrw;
+  integer i, Pos, NewPos, rwcnt;
+  boolean found, cont;
+
+  Pos = 0;
+  NewPos = Pos;
+  found = false;
+  cont = true;
+  rwcnt = MatRowCnt(Listr);
+  for (i=0; (i<rwcnt) and cont and not found; i=i+1)
+    begin
+      MatRowGet(Listr, i, Listrw);
+      found = (Listrw.f2 == ArtCode) and (Listrw.f3 == CCDCode);
+      cont = (ArtCode > Listrw.f2) or
+             ((ArtCode == Listrw.f2) and (CCDCode > Listrw.f3));
+      if cont then
+        begin
+          NewPos = i + 1;
+        end;
+      Pos = i;
+    end;
+
+  if found then //Суммируем
+    begin
+      Listrw.f4 = StringToVal(Listrw.f4, M4Val) + Qnt;
+      MatRowPut(Listr, Pos, Listrw);
+    end
+  else //Добавляем
+    begin
+      Listrw.f2 = ArtCode;
+      Listrw.f3 = CCDCode;
+      Listrw.f4 = Qnt;
+      MatRowInsert(Listr, NewPos, Listrw);
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Декрементация остатков ГТД на заданное кол-во по коду товара
+//CCDListr - список использованных ГТД (f2 - Код товара, f3 - Код ГТД, f3 - Использованное кол-во)
+updating procedure DecCCDRestByArtCode(var record TempVc CCDListr, string ArtCode, val Qnt)
+begin
+  record ICCDeclarationVc ICCDr, ICCD2r;
+  row ICCDeclarationVc ICCDrw;
+  integer rwcnt, i;
+  val Qty, t;
+
+  if (Qnt > 0) then
+    begin
+      Qty = Qnt;
+      ICCDr.ArtCode = ArtCode;
+      if ReadFirstMain(ICCDr, 1, true) then
+        begin
+          rwcnt = MatRowCnt(ICCDr);
+          for (i=0; (i<rwcnt) and (Qty <> 0); i=i+1)
+            begin
+              MatRowGet(ICCDr, i, ICCDrw);
+              if (ICCDrw.Rest > 0) then
+                begin
+                  t = ICCDrw.Rest - Qty;
+                  if (t < 0) then //ГТД содержит меньшее кол-во товара
+                    begin
+                      AddToCCDList(CCDListr, ArtCode, ICCDrw.CCDCode, ICCDrw.Rest); //Списываем весь остаток
+                      ICCDrw.Rest = 0;
+                      Qty = Qty + t;
+                    end
+                  else //ГТД содержит большее либо равное количество товара
+                    begin
+                      AddToCCDList(CCDListr, ArtCode, ICCDrw.CCDCode, Qty); //Списываем требуемое кол-во
+                      ICCDrw.Rest = t;
+                      Qty = 0;
+                    end;
+                  MatRowPut(ICCDr, i, ICCDrw);
+                end;
+            end;
+          RecordCopy(ICCD2r, ICCDr);
+          RecordUpdate(ICCD2r, ICCDr, false);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Изменение остатков ГТД из отгрузки
+global
+updating procedure IDecCCDRestFromSH(record SHVc SHr)
+begin
+  record TempVc CCDListr;
+  row TempVc CCDListrw;
+  record ORVc ORr;
+  row SHVc SHrw;
+  record ISHCCDVc SHCCDr;
+  row ISHCCDVc SHCCDrw;
+  integer i, rwcnt;
+
+  ORr.SerNr = SHr.OrderNr;
+  ReadFirstMain(ORr, 1, true);
+  rwcnt = MatRowCnt(SHr);
+  for (i=0; (i<rwcnt) and (ORr.CCDFlag == 1); i=i+1)
+    begin
+      MatRowGet(SHr, i, SHrw);
+      DecCCDRestByArtCode(CCDListr, SHrw.ArtCode, SHrw.Ship);
+    end;
+
+  rwcnt = MatRowCnt(CCDListr);
+  if (rwcnt > 0) then //Записываем "историю"
+    begin
+      SHCCDr.SHNr = SHr.SerNr;
+      for (i=0; i<rwcnt; i=i+1)
+        begin
+          MatRowGet(CCDListr, i, CCDListrw);
+          SHCCDrw.ArtCode = CCDListrw.f2;
+          SHCCDrw.CCDCode = CCDListrw.f3;
+          SHCCDrw.Qnt = StringToVal(CCDListrw.f4, M4Qty);
+          MatRowPut(SHCCDr, i, SHCCDrw);
+        end;
+      RecordStore(SHCCDr, false);
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверка отгрузки по ГТД
+global
+function boolean ICheckCCDFromSH(record SHVc SHr, var string ErrMsg, var integer ErrRow)
+begin
+  record ORVc ORr;
+  row SHVc SHrw;
+  integer i, rwcnt;
+  boolean res;
+  val CCDQnt;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = true;
+  ORr.SerNr = SHr.OrderNr;
+  ReadFirstMain(ORr, 1, true);
+  if (ORr.CCDFlag == 1) then //использовать ГТД
+    begin
+      rwcnt = MatRowCnt(SHr);
+      for (i=0; (i<rwcnt) and res; i=i+1)
+        begin
+          MatRowGet(SHr, i, SHrw);
+          CCDQnt = IGetCCDRest(SHrw.ArtCode);
+          if (SHrw.Ship > CCDQnt) then
+            begin
+              ErrMsg = "Превышено допустимое кол-во по ГТД (" & CCDQnt & ")";
+              ErrRow = i;
+              res = false;
+            end;
+        end;
+    end;
+  ICheckCCDFromSH = res;
+  Return;
+end;
+
+//===============================================
+//Распределить товары с временного склада
+global
+updating procedure ITempLocDispItemsMn(record RcVc RepSpec)
+begin
+  record VSetSetBlock VSb;
+  
+  SetLangMode(LangRussian,"RUS",2);
+  BlockLoad(VSb);
+  if nonblank(VSb.NoncashLocation) and nonblank(VSb.CashLocation) and nonblank(VSb.TempLocation) then
+    begin
+      ITempLocationDispatchItems(RepSpec);
+    end
+  else
+    begin
+      MessageBox(0, "Проверьте настройку складов (временный, нал, безнал)");
+    end;
+  Return;
+end;

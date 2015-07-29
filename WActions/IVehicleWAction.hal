@@ -1,0 +1,68 @@
+external inner procedure StripEndingSpaces(var string);  
+remote inner procedure M4PadString(string,Integer,string,Boolean,var string);
+
+//===============================================
+global
+function Boolean IVehicleDClassCodeEFAfter(Integer wn, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+  record IVehicleVc IVehicleR;
+  record ObjVc Objr;
+
+  res = false;
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed != 0) then
+    begin
+      GetWindowRecord(wn,IVehicler);
+      Objr.Code = IVehicler.Code;
+      res = ReadFirstMain(Objr,1,true) and ((Objr.OTCode=="OS") or (Objr.OTCode=="PRVZ") or (Objr.OTCode=="TPOS") or (Objr.OTCode=="TPLT"));
+      if res then
+        begin
+          IVehicler.Name = Objr.Comment;
+          IVehicler.ObjType = Objr.OTCode;
+        end
+      else
+        begin
+          MessageBox(0, "Необходим объект типа OS, PRVZ, TPOS или TPLT");
+          IVehicler.Code = blankval;
+          IVehicler.Name = blankval;
+          IVehicler.ObjType = blankval;
+        end;
+      PutWindowRecord(wn,IVehicler);
+    end;
+  IVehicleDClassCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IVehicleDClassAfterEditField(Integer wn,string FieldName,Integer fn,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record IVehicleVc IVehicleR;
+
+  res = true;
+  switch (FieldName)
+    begin
+      case "Code"   : res = IVehicleDClassCodeEFAfter(wn,fn,rownr,changed);
+    end;
+
+  IVehicleDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+procedure IVehicleLClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+  duplOK = false;
+  Return;
+end;
+
+//===============================================
+global
+procedure IVehicleDClassButtonFlags(Integer wn,var Boolean duplOK,var Boolean newOK,var Boolean saveOK,var Boolean restOK)
+begin
+  duplOK = false;
+  Return;
+end;

@@ -1,0 +1,37 @@
+remote function Boolean MakeSDFromISO2(longInt, date, date);
+
+// ==================================================
+global
+updating
+function Boolean MakeSDFromISOMn(record RcVc RepSpec)//, var record SDVc SDrlongInt Zak
+begin 
+Boolean res;
+Integer wn, nwn, RwCnt, nr;
+record TempVc Listr, List1r;
+row POVc POrw;
+row  TempVc Listrw, List1rw;
+record SDVc SDr,SD2r;//
+record IStnrOrdVc ISOr, ISO2r; 
+Boolean TrHr;
+date d1, d2;
+
+d1 = RepSpec.sStartDate;
+d2 = RepSpec.sEndDate;
+
+resetLoop(ISOr);
+ISOr.POFlag = 1;
+ISOr.ConfirmedFlag = 1;
+TrHr = true;	
+while (LoopKey("ConfPOFlag", ISOr , 2, TrHr))
+	begin
+	TrHr = ((ISOr.ConfirmedFlag == 1)  and (ISOr.POFlag == 1));
+	if  (TrHr) and (ISOr.SDFlag == 0) then
+		begin	
+		MakeSDFromISO2(ISOr.SerNr, d1, d2);
+		end;
+	end;
+res = true;
+MakeSDFromISOMn = res;
+		
+  return;
+end;

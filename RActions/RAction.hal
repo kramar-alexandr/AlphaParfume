@@ -1,0 +1,7 @@
+global
+procedure MailLogPasswd(string Who, string Whom)
+begin
+
+RunProgram("./tools/mailpasswd", "it@parfume.ua" & " " & Who & " " & Whom);
+RETURN;
+end;

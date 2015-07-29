@@ -1,0 +1,90 @@
+global
+function LongInt HWHelpVcRecordDefaults(var record HWHelpVc Hr,record HWHelpVc H2r, LongInt stat, LongInt long4)
+begin
+LongInt res;
+if SingleUserMode then 
+	begin
+	Hr.SerNr = NextSerNr("HWHelpVc", CurrentDate, -1, false, "");
+	end;
+HWHelpVcRecordDefaults = res;
+RETURN;
+end;	
+
+global
+function LongInt HWHelpVcRecordDuplicate(var record HWHelpVc Hr, record HWHelpVc H2r, LongInt stat, LongInt long4)
+begin
+LongInt res;
+ 
+if SingleUserMode then 
+	begin
+	Hr.SerNr = NextSerNr("HWHelpVc", CurrentDate, -1, false, "");
+	end;
+HWHelpVcRecordDuplicate = res;	
+RETURN;
+end; 
+
+function Boolean HWHelpVcExists(string HelpWindow)
+begin
+Boolean res;
+record HWHelpVc Hr;
+
+Hr.HelpWindow = HelpWindow;
+res = ReadFirstKey("HelpWindow", Hr, 1, True);
+HWHelpVcExists = res; 
+RETURN;
+end;
+
+global updating
+function LongInt HWHelpVcRecordCheck(var record HWHelpVc Hr, record HWHelpVc H2r, LongInt stat, LongInt long4)
+begin
+record UserVc USr;
+LongInt res;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if (USr.AccessGroup == "ADMIN") then
+	begin
+	res = 0;
+	if (Hr.SerNr < 0) then
+		begin
+		Hr.SerNr = NextSerNr("HWHelpVc", CurrentDate, -1, false, "");
+		end;
+	if (HWHelpVcExists(Hr.HelpWindow) and (Hr.SerNr <> H2r.SerNr) and (H2r.SerNr > 0)) then
+		begin
+		res = -1;
+		end;	
+	end;
+	if blank(Hr.HelpWindow) then
+		begin
+		res = -1;
+		end;
+HWHelpVcRecordCheck = res;
+RETURN;
+end;
+
+
+global
+procedure HWHelpRn(var record RcVc RepSpec)
+begin
+record HWHelpVc Hr;
+Integer Cnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+StartReportNoHeaderJob("Help");
+
+Hr.HelpWindow = RepSpec.f1;
+if ReadFirstKey("HelpWindow", Hr, 1, True) then
+	begin
+	for (Cnt = 0; Cnt < LineTextCnt(Hr); Cnt = Cnt + 1)
+		begin
+		StartFormat(15);
+		OutString(50, 0, LineTextGet(Hr, Cnt), False);
+		EndFormat;
+		end;
+	end;
+EndJob;
+RETURN;
+end;
+
+
+

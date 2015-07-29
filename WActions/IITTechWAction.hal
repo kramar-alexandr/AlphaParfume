@@ -1,0 +1,183 @@
+external function string 255 IGetCUName(string);
+external function string 255 IGetUserName(string);
+external function string 255 IGetDepName(string);
+
+//===============================================
+function Boolean IITTechDClassVECodeEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IITTechVc ITTr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ITTr);
+      ITTr.VEName = IGetCUName(ITTr.VECode);
+      if blank(ITTr.VEName) then
+        begin
+          ITTr.VECode = blankval;
+        end;
+      PutWindowRecord(wn, ITTr);
+    end;
+
+  IITTechDClassVECodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean IITTechDClassRespCodeEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IITTechVc ITTr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ITTr);
+      ITTr.RespName = IGetUserName(ITTr.RespCode);
+      if blank(ITTr.RespName) then
+        begin
+          ITTr.RespCode = blankval;
+        end;
+      PutWindowRecord(wn, ITTr);
+    end;
+
+  IITTechDClassRespCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function Boolean IITTechDClassDepCodeEFAfter(Integer wn, Integer changed)
+begin
+  boolean res;
+  record IITTechVc ITTr;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ITTr);
+      ITTr.DepName = IGetDepName(ITTr.DepCode);
+      if blank(ITTr.DepName) then
+        begin
+          ITTr.DepCode = blankval;
+        end;
+      PutWindowRecord(wn, ITTr);
+    end;
+
+  IITTechDClassDepCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IITTechDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "VECode": res = IITTechDClassVECodeEFAfter(wn, changed);
+          case "RespCode": res = IITTechDClassRespCodeEFAfter(wn, changed);
+          case "DepCode": res = IITTechDClassDepCodeEFAfter(wn, changed);
+        end;
+    end;
+  IITTechDClassAfterEditField = res;
+  Return;
+end;
+
+event DefineWindows
+begin
+  real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классы технических средств", IClassITTechLClass, CGmlist, -);
+  SpawnClass(IClassITTechDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassITTechVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, True, Code);
+  RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+  RlColKey(204, 204, "Наименование", Description, false, Description);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классы технических средств", IClassITTechDClass, CGview, -);
+  SetWRect(20, 80, 600, 180);
+  //Sizeable(-1, -1, -1, -1);
+  UseView(IClassITTechVc);
+  v = 16; vs = 20; h = 100; h2 = 300;
+  EditFieldTL(h, v, 80, "Код", M4Code, Normal, 20, Code, False, 0);
+  EditFieldTL(h2, v, 80, "Иерархия", M4Code, Normal, 20, Hierarchy, false, IClassITTechSClass);
+  EditField(h, v += vs, -40,"Наименование", Normal, Description, false, 0);
+  EndWindow;
+
+  WindowBegin("Классы технических средств", IClassITTechSClass, CGslist, -);
+  SpawnClass(IClassITTechDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassITTechVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, True, Code);
+  RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+  RlColKey(204, 204, "Наименование", Description, false, Description);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Список технических средств", IITTechLClass, CGmlist, -);
+  SpawnClass(IITTechDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IITTechVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Инвентарный №", InventoryNr, true, InventoryNr);
+  RlColKey(104, 104, "Наименование", Description, false, Description);
+  RlColKey(-300, -300, "Серийный №", SerialNr, true, SerinalNr);
+  RlColKey(-200, -200, "Отдел", DepCode, true, DepCode);
+  RlColKey(-150, -150, "Отв.", RespCode, true, RespCode);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Технические средства", IITTechDClass, CGview, -);
+  SetWRect(20,80,600,415);
+  Sizeable(0,-1,0,0);
+  UseView(IITTechVc);
+  Tile(0, 90, false, "", InventoryNr);
+  vs = 20; h = 150; h1 = 260; h2 = 420;
+  EditField(h, v=6, 120, "Инвентарный №", Normal, InventoryNr, false, 0);
+  EditField(h2, v, 120, "Серийный №", Normal, SerialNr, false, 0);
+  EditField(h, v+=vs, -40, "Наименование", Normal, Description, false, 0);
+  EditField(h, v+=vs, 120, "Модель", Normal, Model, false, 0);
+  EditField(h2, v, -40, "Классификация", Normal, Classification, false, IClassITTechSClass);
+  TileButton(1, "Данные");
+  TileButton(2, "Ответственный");
+  TileButton(3, "Комментарии");
+  Tile(1, 170, false, "1", VECode);
+  EditField(h, v=6, 120, "Используется с", Normal, StartDate, false, PasteCurDate);
+  EditField(h2, v, 120, "Дата окончания", Normal, EndDate, false, PasteCurDate);
+  EditField(h, v+=vs, 120, "Поставщик", Normal, VECode, false, VESClass);
+  EnterSkip(VISerNr);
+  EditField(h2, v, 120, "Наименование", Normal, VEName, false, 0);
+  EditField(h, v+=vs, 120, "№ счета-фактуры", Normal, VISerNr, false, 0);
+  EditField(h2, v, 120, "Дата покупки", Normal, PurchaseDate, false, PasteCurDate);
+  EditField(h, v+=vs, 120, "Перв. стоимость", Normal, PurchVal, true, 0);
+  EditField(h2, v, 120, "Остат. стоимость", Normal, ResVal, true, 0);
+  EditField(h, v+=vs, 120, "Дата выпуска", Normal, ProdDate, false, PasteCurDate);
+  EditField(h2, v, 120, "Грантия до", Normal, WarrantyEndDate, false, PasteCurDate);
+
+  Tile(2, 170, false, "2", DepCode);
+  EditField(h, v=6, 120, "Отдел", Normal, DepCode, false, DepSClass);
+  EnterSkip(RespCode);
+  EditField(h2, v, 120, "Наименование", Normal, DepName, false, 0);
+  EditField(h, v+=vs, 120, "Сотрудник", Normal, RespCode, false, UserSClass);
+  EditField(h2, v, 120, "Имя", Normal, RespName, false, 0);
+
+  Tile(3, 170, false, "3", Comment);
+  TextField(4, v=6, -4, -4, Comment, 0);
+  EndWindow;
+
+  Return;
+end;

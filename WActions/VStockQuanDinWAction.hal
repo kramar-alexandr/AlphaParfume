@@ -1,0 +1,282 @@
+external procedure RegMovAddRec(record RcVc);
+remote inner function Boolean StockMovVc_PasteArtCode(var record StockMovVc,Integer, Integer,	Boolean);
+
+
+global
+procedure DblVRemOrd(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+
+RepSpec.sEndDate = CurrentDate;
+RepSpec.sStartDate = AddMonth(RepSpec.sEndDate, -1);
+RepSpec.AccStr = LastInRange(l, 20);
+RepSpec.LastAcc = FirstInRange(l, 20);
+RepSpec.ArtMode = 0;
+RepSpec.flags[1] = 1;
+RepSpec.flags[2] = 1;
+RepSpec.flags[4] = 1;
+RepSpec.flags[5] = 0;
+RepSpec.flags[12] = 0;
+RepSpec.Media = mtScreen;
+RepSpec.repname = "OrdRn";
+RunReport(RepSpec, 0);
+RETURN;
+end;
+
+
+global
+procedure DblVRemStock(string dblstr,string l,Integer currepwn)
+begin
+record INVc INr;
+record ItemStatusVc ISr;
+record LocationVc Lcr;
+val Quant;
+
+SetLangMode(LangRussian,"RUS",2);
+
+StartReportJob("Остатки на складах");
+EndHeader;
+StartFormat(15);
+OutString(50, 0, "Код", False);
+OutString(100, 0, "Наименование", False);
+OutString(400, 0, "Кол-во", True); 
+EndFormat;
+Black_Divider(0, 400);
+StartFormat(15);
+OutString(0, 0, l, False);
+INr.Code = FirstInRange(l, 20);
+ReadFirstMain(INr, 1, True);
+OutString(50, 0, INr.Name, False);
+EndFormat;
+ResetLoop(ISr);
+ISr.Code = INr.Code;
+ReadFirstMain(ISr, 1, True);
+Quant = ISr.Instock;
+while LoopMain(ISr, 1, (ISr.Code == INr.Code))
+  begin
+  Lcr.Code = ISr.Location;
+  ReadFirstMain(Lcr, 1, True);
+  if ((ISr.Code == INr.Code) and (ISr.Instock > 0) and (ISr.Location != ";;;")) then
+    begin
+    StartFormat(15);
+    OutStringID(50,"DblRegMovAddRec", Lcr.Code, False, l);
+    //OutString(50, 0, Lcr.Code, False);
+    OutString(100, 0, Lcr.Name, False);
+    OutVal(400, 0, ISr.Instock, M4UVal, True);
+    //OutStringID(480,"DblRegMovAddRec", ValToString(ISr.Instock, M4UVal, " ", ".", 1),true,l);
+    EndFormat;
+    end;
+  end;
+Black_Divider(350, 400);
+StartFormat(15);
+OutVal(400, 0, Quant, M4UVal, True);
+EndFormat;
+
+EndJob;
+RETURN;
+end;
+
+
+global
+procedure DblRegMovAddRec(string dblstr,string l,Integer currepwn)
+begin
+record ORVc ORr;
+record RcVc RepSpec;
+record RcVc RepSpec1;
+Integer wn;
+
+ORr.SerNr = LastInRange(l, 20); //№ счета
+ReadFirstMain(ORr, 1, True);
+
+RepSpec.AccStr = FirstInRange(l, 20); // код товара
+RepSpec.FirstVer = ORr.SerNr;
+RepSpec.FirstAcc = ORr.SalesMan;
+RepSpec.TransStr = dblstr;
+RepSpec.f1 = "Перемещение для " & ORr.Addr0;
+RegMovAddRec(RepSpec);
+RETURN;
+end;
+
+
+global
+updating function boolean MakeStockMove()
+begin
+record RegMovVc RMr;
+row RegMovVc RMrw;
+Integer wn, Cnt, SMCnt, i;
+record StockMovVc SMr;
+row StockMovVc SMrw;
+record UserVc Usr;
+record ORVc ORr;
+Boolean Looper;
+string 255 Numers;
+
+
+Numers = "0";
+GetWindowRecord(CurWindow, RMr);
+if (RMr.DoneFlag == 0) then
+  begin
+  CreateFile(RMr.SerNr & ".txt");
+  CloseFile;
+  OpenExportFile(RMr.SerNr & ".txt", True);
+  begin
+  ExportString("Перемещение к счету № " & RMr.ORNr);
+  NewLine;
+  NewLine;
+  ExportString("№ ");
+  ExportString("Склад");
+  ExportString("Код");
+  ExportString("Наименование");
+  ExportString("Кол-во");
+  NewLine;
+  Usr.Code = RMr.SalesMan;
+  ReadFirstMain(Usr, 1, True);
+
+  Cnt = MatRowCnt(RMr);
+  for (i=0; i < Cnt; i = i + 1)
+    begin
+    MatRowGet(RMr, i, RMrw);
+    if NonBlank(RMrw.ArtCode) then
+      begin
+      Looper = True;
+      SMr.Comment = RMr.Comment & " / " & Usr.Name & " / " & RMr.ORNr;
+      ResetLoop(SMr);
+      while LoopBackKey("Comment", SMr, 1, Looper)
+        begin
+        Looper = not((SMr.RegDate == CurrentDate) and (SMr.FrLocation == RMrw.FromStock) and (SMr.OrdFlag == 0)
+        and (SMr.Comment == RMr.Comment & " / " & Usr.Name & " / " & RMr.ORNr));
+        end;
+
+      if Looper then
+        begin
+        RecordNew(SMr);
+        SMr.FrLocation = RMrw.FromStock;
+        SMr.ThrouLocation = "G002";
+        SMr.TransDate = "";
+        SMCnt = 0;
+        SMr.RegDate = CurrentDate;
+        SMr.SerNr = NextSerNr("StockMovVc",SMr.RegDate,-1,false,"");
+        SMr.Comment = RMr.Comment & " / " & Usr.Name & " / " & RMr.ORNr;
+        SMr.FrLocation = RMrw.FromStock;
+        SMr.ToLocation = RMr.Location;
+        end else
+        begin
+        SMCnt = MatRowCnt(SMr);
+        end;
+
+      SMrw.ArtCode = RMrw.ArtCode;
+      SMrw.OrdQuant = RMrw.Quant;
+      MatRowPut(SMr, SMCnt, SMrw);
+      if (StockMovVc_PasteArtCode(SMr, SMCnt, 1, False)) then
+        begin
+        MakeStockMove = RecordStore(SMr, True);
+        CreateRecordLink(SMr, CurrentCompany, RMr, CurrentCompany);
+        ExportString(SMr.SerNr);
+        ExportString(SMr.FrLocation);
+        ExportString(SMrw.ArtCode);
+        ExportString(RMrw.ArtName);
+        ExportString(SMrw.OrdQuant);
+        NewLine;
+        end else
+        begin
+        MakeStockMove = False;
+        Beep;
+        end;
+      SMr.SerNr = "";
+      end;
+    end;
+  ResetLoop(SMr);
+  Looper = True;
+  while LoopBackKey("Comment", SMr, 1, Looper)
+    begin
+    Looper = (SMr.Comment == RMr.Comment & " / " & Usr.Name & " / " & RMr.ORNr);
+    SMr.OrdFlag = 1;
+    RecordStore(SMr, True);
+    end;
+  MessageBox(0, "Перемещения созданы");
+  CloseFile;
+  RunProgram("c:\\Program Files\\OpenOffice.org 3\\program\\scalc.exe", RMr.SerNr & ".txt");
+  end;
+  end else
+  begin
+  MessageBox(0, "Нельзя создать перемещения!!!");
+  end;
+ 
+RETURN;
+end;
+
+
+global
+procedure VStockMovList(record RcVc RepSpec)
+begin
+//
+RETURN;
+end;
+
+
+event DefineWindows
+begin
+  real i,h,h1,h2,h3,h4,h5,v,vs,vm,hl,l, my;
+  SetLangMode(LangRussian,"RUS",2);
+
+  WindowBegin("Заказы на перемещения",RegMovLClass,CGMlist,RcType)
+  SetWRect (20,80,550,210);
+  Sizeable (-1,-1,0,0);
+  v = 6; vs = 20; h = 100;
+  SpawnClass(RegMovDClass);
+  UseView(RegMovVc);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,4,"Код",SerNr,false,SerNr);
+  RlColKey(81,81,"OK",DoneFlag,false,DoneFlag);
+  RlColKey(101,101,"Дата",RegDate,false,"");
+  RlColKey(171,171,"Продавец",SalesMan,False,SalesMan);
+  RlColKey(241,241,"Счет.",ORNr,False,ORNr);
+  RlColKey(291,291,"Коммент.",Comment,False,"");
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Заказ на перемещение",RegMovDClass,CGview,-)
+  SetWRect (60,80,809,372);
+  UseView(RegMovVc);
+  vs=20;
+  EditFieldTL(h=110,v=6,60,"Код",M4Long,ViewOnly,20,SerNr,false,0);
+  EditFieldTL(h+180,v=6,60,"Дата",M4Date,ViewOnly,20,RegDate,false,PasteCurDate);
+  EditFieldTL(h,v+=vs,60,"Счет",M4Long,ViewOnly,60,ORNr,false,0);
+  EditField(h + 180,v,80,"Продавец",ViewOnly,SalesMan,false,UserSClass);
+  EditField(h + 360,v, 60, "На склад",Normal,Location,false,LocationSClass);
+  EditField(h,v+=vs, 420, "Комментарий",Normal,Comment,false,0);
+  CheckBox(h=4, -20,0,"OK",DoneFlag);
+  EnterSkip(Math);
+  MatrixBegin(4,v=90,-52,-30,RegMovRowType,100);
+  DeleteRowTest;
+  InsertRowTest;
+  MatCol(1,24,"Код",0,ArtCode,false,INSClass);
+  MatCol(1,110,"Кол-во",0,Quant,True,0);
+  EnterSkip(Quant);
+  MatCol(1,200,"Наименование",0,ArtName,false,0);
+  MatCol(1,-70,"Склад",0,FromStock,false,LocationSClass);
+  EndMatrix;
+  SpecialMenu("Создать перемещения",' ',1,"MakeStockMove");
+  EndWindow;
+
+  WindowBegin("Cерии номеров - Заказы на перемещение",RegMovSerTClass,CGHbl,HBlRecType);
+  SetBlid(RegMovSerBlock);
+  SetWRect(20,80,532,357);
+  Sizeable(-1,-1,0,0);
+  h = 8; v = 60;
+  h1=24; h2=h1+60; h3=h2+60; h4=h3+85; h5=h4+85;
+  StaticText(h+h1+5,v-23,"Серии номеров",false);
+  StaticText(h+h3+5,v-23,"Период",false);
+  MatrixBegin(h,v,-31,-20,IVSerRowType,99);
+  MatCol(1,h1,"С номера",0,TSerStart,false,0);
+  MatCol(1,h2,"По номер",0,TSerEnd,false,0);
+  MatCol(1,h3,"С даты",0,StartDate,false,0);
+  MatCol(1,h4,"По дату",0,EndDate,false,0);
+  MatCol(1,h5,"Коммент.",0,TSerCom,false,0);
+  MatCol(1,-70,"Финансы",0,DonotGenTrans,false,SetSClass);
+  EndMatrix;
+  EndWindow;
+ 
+return;
+END;
+

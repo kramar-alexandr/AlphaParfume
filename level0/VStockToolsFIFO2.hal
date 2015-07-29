@@ -1,0 +1,78 @@
+//By DELPHI
+// забавная история: если добавить inner, то считается неверно, т.е. TestArtCode все время возвращает 0
+external function val FindCostPrice(string,string,string,val,val,Boolean);
+external function Boolean TestArtCode(string,string,record INVc);
+external function Boolean ReadFirstItem(string,var record INVc,Boolean,Boolean);
+external function roundmode SetRoundModeD(Integer);
+
+procedure CalculateSDRowFIFO(record CostAccBlock CostAccRec,string location,record SDVc SDp,row SDVc SDrw,Integer currow)
+BEGIN
+  val adjstockv;
+  row SDVc SD2rw;
+  Integer j;
+  string 10 loc1,loc2;
+  record INVc INr;
+
+  if (nonblank(SDrw.Location)) then begin
+    loc1 = SDrw.Location;
+  end else begin
+    loc1 = location;
+  end;
+  if (ReadFirstItem(SDrw.ArtCode,INr,true,false)) then begin end;
+  adjstockv = 0;
+  for (j=0;j<currow;j=j+1) begin
+    MatRowGet(SDp,j,SD2rw);
+    if (nonblank(SD2rw.Location)) then begin
+      loc2 = SD2rw.Location;
+    end else begin
+      loc2 = location;
+    end;
+    if (TestArtCode(SD2rw.ArtCode,SDrw.ArtCode,INr)) and (loc1==loc2) then begin
+      adjstockv = adjstockv + SD2rw.Qty;
+    end;
+  end;
+  SDrw.FIFORowVal = FindCostPrice(SDrw.ArtCode,location,SDrw.SerialNr,SDrw.Qty,adjstockv,false);
+  if (SDrw.FIFORowVal == 0) then //Проверка на 0 цену FIFO
+  begin
+  INr.Code = SDrw.ArtCode;    //Если FIFO == 0, берем средневзвешенную из карточки товара
+  ReadFirstMain(INr, 1, True);
+  SDRw.FIFORowVal = INr.WeighedAvPrice;
+  end;            // End By DELPHI
+  SDrw.FIFORowVal = Round(SDrw.FIFORowVal,SetRoundModeD(5));
+  SDrw.FIFO = SDrw.FIFORowVal/SDrw.Qty;
+  RETURN;
+END;
+
+global
+procedure UpdateSDFIFO(record SDVc SDp)
+BEGIN
+  record MainStockBlock MainStockRec;
+  record CostAccBlock CAb;
+  row SDVc SDrw;
+  row SDVc SD2rw;
+  Integer i,rwcnt,j;
+  val t,adjstockv;
+  string 10 location;
+  string 10 loc2;
+
+  BlockLoad(MainStockRec);
+  BlockLoad(CAb);
+  location = SDp.Location;
+  if (blank(location)) then begin
+    location = MainStockRec.MainStock;
+  end;
+  rwcnt = MatRowCnt(SDp);
+  for (i=0;i<rwcnt;i=i+1) begin
+    MatRowGet(SDp,i,SDrw);
+    if (nonblank(SDrw.Location)) then begin
+      loc2 = SDrw.Location;
+    end else begin
+      loc2 = location;
+    end;
+    if (nonblank(SDrw.ArtCode)) then begin//INRS strcuture
+      CalculateSDRowFIFO(CAb,loc2,SDp,SDrw,i);
+      MatRowPut(SDp,i,SDrw);
+    end;
+  end;
+  RETURN;
+END;

@@ -1,0 +1,797 @@
+remote updating procedure ActAfterTicket(record VTicketVc) ;
+remote function LongInt tUserInVTicketSet(string);
+remote updating function Boolean MakeQAFromQA(var record tVTicketsVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromCU(var record CUVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromDoc(var record DocsVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromIV(var record IVVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromSM(var record StockMovVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromIRO(var record IRetOrdVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromTT(var record TTVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromIBD(var record IBudgetDiffVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromAI(var record AutoInvVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromPU(var record PUVc, var record tVTicketsVc);
+remote updating function Boolean MakeQAFromSD(var record SDVc, var record tVTicketsVc);
+external function string 255 ReplaceSubstrFromStr(string, string, string);
+external function string 200 tExclude(string, string);
+//external function boolean CanViewtVTickets();
+remote updating procedure TicketPrew(LongInt);
+
+global
+function Boolean CanViewtVTickets()
+begin
+record tVTicketsVc VTr, VT2r;
+record UserVc USr;
+boolean res;
+Integer wn;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+if (GetWindowClass(CurWindow) == "tVTicketsDClass") then
+    begin
+    GetWindowRecord(CurWindow, VTr);
+    res = (VTr.SerNr == -1);
+    if (not res) then
+		begin
+		res = ((((USr.Department == VTr.ServDepart) and (nonblank(VTr.ServDepart))) 
+		or ((USr.Department == VTr.UsrDepart) and (nonblank(VTr.UsrDepart)))) and (VTr.Privacy <> 1)) or (CurrentUser == VTr.UsrCode)
+		or (CurrentUser == "ZINOVIY") or (SetinSet(CurrentUser, VTr.Copy) and nonblank(VTr.Copy)) or (VTr.ServCode == CurrentUser);
+		end;
+    end;
+CanViewtVTickets = res;	
+RETURN;
+end;
+
+global
+ function boolean tOver(record tVTicketsVc VTr)
+begin
+row tVTicketsVc VTrw;
+integer rwcnt;
+
+rwcnt = MatRowCnt(VTr);
+MatRowGet(VTr, rwcnt-1, VTrw);
+tOver = ((nonblanktime(VTr.TimeDes)and (VTr.TimeDes  < CurrentTime) and blankdate(VTr.DateRec) and (VTr.UsrCode == CurrentUser))
+	  and (((AddHours(VTrw.SmsTime, 2) < CurrentTime) and (VTrw.SmsDate == CurrentDate)) or (VTrw.SmsDate < CurrentDate)));
+RETURN;	  
+end; 
+ 
+
+global
+updating procedure tVTicketsDClassOnOpenFromBrowse(Integer wn)
+begin
+record tVTicketsVc VTr, VT2r;
+record UserVc USr;
+boolean res;
+string 250 tstr;
+row tVTicketsVc VTrw;
+integer rwcnt,i;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+GetWindowRecord(wn, VTr);
+res = CanViewtVTickets;
+	
+if (not res) then
+	begin
+	CloseWindow(wn);
+	// end
+// else
+	// begin	
+	// if (setinset(CurrentUser,VTr.Copy) and VTr.Copy <> "")  or (CurrentUser == "ZINOVIY")  then
+		// begin
+		// VTr.Status = -1;
+		// PutWindowRecord(wn, VTr);
+		// end;
+	end;
+
+// if (res) then
+	// begin
+
+	// rwcnt = MatRowCnt(VTr);
+	// MatRowGet(VTr, rwcnt-1, VTrw);
+	// if (tOver(VTr)) then
+		// begin
+		// GetPrevWindowRecord	(wn, VT2r);
+		// AddToText(Chr(13), VTr);
+		// AddToText(Chr(13) & "<СРОК ОТВЕТА НАРУШЕН!>", VTr);
+		// tstr = "<" & VTr.ServCode  & "  " & CurrentDate & "  " & CurrentTime & ">" ;
+		// AddToText(Chr(13) & tstr,VTr);
+		// AddToText(Chr(13),VTr);
+		// AddToText("--------------------------------------------------",VTr);
+		
+		// VTr.Status = 1;
+		// VTrw.SmsDate = CurrentDate;
+		// VTrw.SmsTime =  CurrentTime;
+		// VTrw.Sign = VTr.ServCode;
+		// VTrw.CurStatus = VTr.Status;
+		// VTrw.PrStatus = 1;
+		// MatRowInsert(VTr, rwcnt, VTrw);
+		// VTr.SendFlag = 1;
+		// VTr.DateRec = CurrentDate;
+		// VTr.TimeRec = CurrentTime;
+		// VTr.RecFlag = 1;
+		// RecordUpdate(VT2r, VTr, False)
+		// UpdateBrowses("tVTicketsVc");
+		// end;
+	// end;
+
+RETURN;
+end;
+
+// global
+// updating function boolean tVTicketsDClassOnClose(Integer wn,Integer wn2)
+// begin
+// record tVTicketsVc VTr, VT2r;
+// record UserVc USr;
+// boolean res, bool;
+// string 250 tstr;
+// row tVTicketsVc VTrw;
+// integer rwcnt, i, stat;
+
+// SetLangMode(LangRussian, "RUS", 2);
+
+// GetWindowRecord(wn, VTr);
+
+// if VTr.SerNr > 0 then
+	// begin
+	// TicketPrew(VTr.SerNr);
+	// end;
+// //RecordStore(VTr,true);
+// //UpdateBrowses("tVTicketsVc");
+// tVTicketsDClassOnClose = false;	
+// RETURN;
+// end;
+
+
+global updating
+function Boolean tVTicketsDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+Boolean res;
+record tVTicketsVc VTr, VT2r;
+record UserVc USr;
+string 255 tstr;
+record DepVc Depr;
+record VTicketTypeblock VTb;
+row VTicketTypeblock VTbr;
+Integer RwCnt;
+Time TimeStart;
+Date DateStart;
+
+// if fieldname == "ServDepart" and (WindowState(wn) <> 0) then
+	// begin
+	// GetWindowRecord(wn, VTr);
+	// GetWindowRecord(wn, VT2r);
+	// Depr.Code = VTr.ServDepart;
+	// ReadFirstMain(Depr, 1, True);
+	// if (Depr.Code <> VTr.ServDepart) then
+		// begin
+		// VTr.ServDepart = "";
+		// end;
+	// RecordUpdate(VT2r, VTr, True);
+	// PutWindowRecord(wn, VTr);
+	// end;
+
+// if fieldname == "CastCode" and (WindowState(wn) <> 0) then
+	// begin
+	// GetWindowRecord(wn, VTr);
+	// GetWindowRecord(wn, VT2r);
+	// Usr.Code = VTr.CastCode;
+	// ReadFirstMain(Usr, 1, True);
+	// VTr.CastName = USr.Name;
+	// VTr.CastAppoint = USr.StateJob;
+	// VTr.CastDepart = USr.Department;
+	// VTr.UsrGroup = USr.SalesGroup;
+	// RecordUpdate(VT2r, VTr, True);
+	// PutWindowRecord(wn, VTr);
+	// end;
+	
+if  fieldname == "ServCode" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, VTr);
+	GetWindowRecord(wn, VT2r);
+	Usr.Code = VTr.ServCode;
+	ReadFirstMain(Usr, 1, True);
+	VTr.ServName = USr.Name;
+	VTr.ServAppoint = USr.StateJob;
+	VTr.ServDepart = USr.Department;
+	//RecordUpdate(VT2r, VTr, True);
+	PutWindowRecord(wn, VTr);
+	end;	
+	
+if  (fieldname == "TypeOfTicket") and (WindowState(wn) <> 0) then
+	begin
+	Usr.Code = CurrentUser;
+	ReadFirstMain(Usr, 1, True);
+	GetWindowRecord(wn, VTr);
+	GetPrevWindowRecord(wn, VT2r);
+	// BlockLoad(VTb);
+	// for (RwCnt = 0; RwCnt < MatRowCnt(VTb); RwCnt = RwCnt + 1)
+	  // begin
+	  // MatRowGet(VTb, RwCnt, VTbr);
+	// if (VTbr.Department <> VTr.ServDepart) and (VTbr.Code == VTr.TypeOfTicket) then
+	if nonblank(VT2r.TypeOfTicket) and (VTr.TypeOfTicket == "201") then
+		begin
+		VTr.TypeOfTicket = VT2r.TypeOfTicket;
+		//RecordUpdate(VT2r, VTr, True);
+		PutWindowRecord(wn, VTr);
+		end;
+	 // end;
+	// if VTr.ServDepart <> Usr.Department then
+		// begin
+		// VTr.TypeOfTicket = "";
+		// RecordUpdate(VT2r, VTr, True);
+		// PutWindowRecord(wn, VTr);
+		// end;
+	end;
+// if  (fieldname == "Copy") and (WindowState(wn) <> 0) then
+	// begin
+	// GetWindowRecord(wn, VTr);
+	// GetPrevWindowRecord(wn, VT2r);
+	// if ((setinset(VTr.ServCode,VTr.Copy) or (setinset(VTr.UsrCode,VTr.Copy))) and VTr.Copy <> "") 	then //or blank(VTr.ServCode)	
+		// begin
+		// VTr.Copy = VT2r.Copy;
+		// RecordUpdate(VT2r, VTr, True);
+		// PutWindowRecord(wn, VTr);
+		// end;	
+	// end;	
+
+
+
+// if (fieldname == "DateDes") and (WindowState(wn)  <>  0) then 
+	// begin
+	// GetWindowRecord(wn, VTr);
+	// if VTr.DateDes <= CurrentDate then 
+		// begin
+		// VTr.DateDes = DateStart;
+		// PutWindowRecord(wn, VTr);
+		// end;	
+	// end;		
+	
+// if (fieldname == "TimeDes") and (WindowState(wn)  <>  0) then 
+	// begin
+	// GetWindowRecord(wn, VTr);
+	// //if VTr.TimeDes < AddHours(CurrentTime,2) then 
+	// if VTr.TimeDes <= CurrentTime and (VTr.DateDes <= CurrentDate)  then 
+		// begin
+		// VTr.TimeDes = TimeStart;
+		// PutWindowRecord(wn, VTr);
+		// end;	
+	// end;		
+	
+tVTicketsDClassAfterEditField = True;
+RETURN;
+end;
+
+global  
+function Boolean tVTicketsDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+record tVTicketsVc VTr, VT2r;
+record UserVc USr;
+Boolean res;
+
+GetWindowRecord(wn, VTr);
+
+res = True;
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if nonblank(VTr.ServDepart) and (Usr.Department <> VTr.ServDepart) or (CurrentUser == "ZINOVIY") or (setinset(CurrentUser,VTr.Copy) and VTr.Copy <> "") then
+	begin
+	res = False;
+	end;
+if nonblank(VTr.ServDepart) and (Usr.Department == VTr.UsrDepart) or (CurrentUser == "ZINOVIY") or (setinset(CurrentUser,VTr.Copy) and VTr.Copy <> "") then
+	begin
+	res = True;
+	end; 
+if nonblank(VTr.ServDepart) and (Usr.Department == VTr.UsrDepart) or (CurrentUser == "ZINOVIY") or (setinset(CurrentUser,VTr.Copy) and VTr.Copy <> "") then
+	begin
+	res = True;
+	end; 	
+// if (VTr.SendFlag == 1) or (VTr.RecFlag == 1) then
+	// begin
+	// res = False;
+	// end;
+	
+if (nonblank(VTr.UsrCode) and (fieldname == "UsrCode")) then
+	begin
+	res = False;
+	end;
+if (nonblank(VTr.ServDepart) and (fieldname == "ServDepart")) then
+	begin
+	res = False;
+	end;
+if ((nonblank(VTr.TypeOfTicket) and (VTr.TypeOfTicket == "201")) and (fieldname == "TypeOfTicket")) then
+	begin
+	res = False;
+	end;	
+if (VTr.UsrCode <> CurrentUser) and ((fieldname == "ServCode") or (fieldname == "Copy")) then
+	begin
+	res = False;
+	end;	
+if (VTr.SendFlag == 1) and (fieldname == "ServCode") then
+	begin
+	res = False;
+	end;	
+if ((fieldname == "TimeDes") or (fieldname == "DateDes")) and nonblankdate(VTr.DateRec) then 
+	begin
+	res = False;
+	end;		
+tVTicketsDClassActiveEditField = res;
+end;
+
+global updating
+function Boolean qtDefectRClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+record RcVc RepSpec, RepSpecOld;
+record UserVc USr;
+
+if  fieldname == "f1" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	Usr.Code = RepSpec.f1;
+	ReadFirstMain(Usr, 1, True);
+	if ((USr.Supervisor <> CurrentUser) and (RepSpec.f1 <> CurrentUser)) then
+		begin
+		RepSpec.f1 = CurrentUser;
+		end;
+	RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;	
+	
+qtDefectRClassAfterEditField = True;
+RETURN;
+end;
+
+global updating
+function Boolean tRatingRClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+record RcVc RepSpec, RepSpecOld;
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+string 20 SupServ;
+longint RwCnt;
+
+if  fieldname == "f1" and (WindowState(wn) <> 0) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	Usr.Code = RepSpec.f1;
+	ReadFirstMain(Usr, 1, True);
+	if ((USr.Supervisor <> CurrentUser) and (RepSpec.f1 <> CurrentUser) and (CurrentUser <> "ZINOVIY") and (RepSpec.f1 <> "")) then
+		begin
+		RepSpec.f1 = CurrentUser;
+		end;
+	RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;	
+	
+if  fieldname == "f2" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	BlockLoad(Bossb);
+	for (RwCnt = 0; RwCnt < MatRowCnt(Bossb); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Bossb, RwCnt, Bossbw);
+		if Bossbw.Department == RepSpec.f2 then
+			begin
+			SupServ = Bossbw.Boss;	
+			end;	
+		end;
+	if ((SupServ <> CurrentUser) and (CurrentUser <> "ZINOVIY")) then
+		begin
+		RepSpec.f2 = "";
+		end;
+	RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;		
+tRatingRClassAfterEditField = True;
+RETURN;
+end;
+
+global
+procedure AddErrButton(LongInt x0, LongInt y0)
+begin
+SetLangMode(LangRussian, "RUS", 2);
+ColourPushButton(x0, y0, x0 + 80, y0 + 20, "AddErrQA", "Претензия", 1);
+RETURN;
+end;
+
+global updating
+procedure AddErrQA()
+begin
+record tVTicketsVc VTr, VT2r;
+Integer wn;
+
+wn = CurWindow;
+GetWindowRecord(wn, VTr);
+GetPrevWindowRecord	(wn, VT2r);
+if (VTr.SendFlag == 1) and (VTr.UsrCode ==CurrentUser) then
+	begin
+	DeselectWindow(wn, true);
+	VTr.Err = VTr.Err + 1;
+	AddToText(Chr(13), VTr);
+	AddToText(Chr(13) & "<ПРЕТЕНЗИЯ>", VTr);
+	PutWindowRecord(wn, VTr);
+	SelectWindow(wn);
+	end;
+RETURN;
+end;
+
+global
+updating procedure QAFromQADsm()
+BEGIN
+record tVTicketsVc VTvr,VTv2r;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, VTvr);
+GetPrevWindowRecord	(wn, VTv2r);
+if VTvr.ServCode == CurrentUser then
+	begin
+	if MakeQAFromQA(VTvr, VTr) then 
+		begin	
+		nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+		WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+		// VTvr.SendFlag = 1;
+		// AddToText(Chr(13) & "<ПЕРЕАДРЕСАЦИЯ> Задача№" & VTr.SerNr, VTvr);
+		// RecordUpdate(VTv2r, VTvr, True);
+		CloseWindow	(wn);
+		end;
+	end;
+RETURN;
+end;
+
+global
+updating procedure NewQACUDsm()
+BEGIN
+record CUVc CUr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, CUr);
+if MakeQAFromCU(CUr, VTr) then 
+	begin	
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+	end;
+RETURN;
+end;
+
+global
+updating procedure NewQADocDsm()
+BEGIN
+record DocsVc Docr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, Docr);
+if MakeQAFromDoc(Docr, VTr) then 
+	begin	
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+	end;
+RETURN;
+end;
+
+global updating
+function Boolean tQualityRClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+record RcVc RepSpec, RepSpecOld;
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+string 20 SupServ;
+longint RwCnt;
+
+if  fieldname == "f1" and (WindowState(wn) <> 0) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	Usr.Code = RepSpec.f1;
+	ReadFirstMain(Usr, 1, True);
+	if ((USr.Supervisor <> CurrentUser) and (RepSpec.f1 <> CurrentUser) and (CurrentUser <> "ZINOVIY") and (RepSpec.f1 <> "")) then
+		begin
+		RepSpec.f1 = CurrentUser;
+		end;
+	RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;	
+	
+tQualityRClassAfterEditField = True;
+RETURN;
+end;
+
+
+global
+updating procedure NewQAIVDsm()
+BEGIN
+record IVVc IVr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, IVr);
+if MakeQAFromIV(IVr, VTr) then 
+	begin	
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+	end;
+RETURN;
+end;
+
+global
+updating procedure NewQASMDsm()
+BEGIN
+record StockMovVc SMr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, SMr);
+if MakeQAFromSM(SMr, VTr) then 
+	begin	
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+	end;
+RETURN;
+end;
+
+global
+updating procedure NewQAIRODsm()
+BEGIN
+record IRetOrdVc IROr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, IROr);
+if MakeQAFromIRO(IROr, VTr) then 
+	begin	
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+	end;
+RETURN;
+end;
+
+
+
+global updating
+function Boolean ttMyTicketRClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+record RcVc RepSpec, RepSpecOld;
+
+if  fieldname == "f1" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	RepSpec.f3 = "";
+	RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;	
+if  fieldname == "f3" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	RepSpec.f1 = "";
+	RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;	
+	
+ttMyTicketRClassAfterEditField = True;
+RETURN;
+end;
+
+global
+updating procedure NewQATTDsm()
+BEGIN
+record TTVc TTr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, TTr);
+if MakeQAFromTT(TTr, VTr) then 
+	begin	
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+	end;
+RETURN;
+end;
+
+global
+procedure tVTicketsLClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;
+
+// global
+// procedure tVTicketsDClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+// begin
+// duplOK = true;
+// RETURN;
+// end;
+
+
+global
+procedure AddFreeButton(LongInt x0, LongInt y0)
+begin
+SetLangMode(LangRussian, "RUS", 2);
+ColourPushButton(x0, y0, x0 + 180, y0 + 20, "AddFree", "Отказаться от оповещений", 2);
+RETURN;
+end;
+
+global
+procedure AddSignButton(LongInt x0, LongInt y0)
+begin
+SetLangMode(LangRussian, "RUS", 2);
+ColourPushButton(x0, y0, x0 + 180, y0 + 20, "AddSign", "Подписаться на оповещения", 1);
+RETURN;
+end;
+
+global updating
+procedure AddFree()
+begin
+record tVTicketsVc VTr, VT2r;
+row tVTicketsVc VTrw;
+Integer wn,i;
+boolean bool;
+
+wn = CurWindow;
+GetWindowRecord(wn, VTr);
+GetPrevWindowRecord	(wn, VT2r);
+bool = false;
+if nonblank(VTr.Copy) and SetInSet(CurrentUser, VTr.Copy) and not(SetInSet(CurrentUser, VTr.Free)) then // (WindowState(wn) == 0)  and
+	begin
+	DeselectWindow(wn, true);
+	if StringInText(CurrentUser,VTr)  then
+		begin
+		bool = true;
+		end;
+	if (bool) then
+		begin
+		if nonblank(VT2r.Free) then
+			begin
+			VTr.Free = VT2r.Free & "," & CurrentUser;
+			end
+		else
+			begin
+			VTr.Free = CurrentUser;
+			end;
+		end;
+	PutWindowRecord(wn, VTr);
+	SelectWindow(wn);
+	end;
+
+RETURN;
+end;
+
+global updating
+procedure AddSign()
+begin
+record tVTicketsVc VTr, VT2r;
+row tVTicketsVc VTrw;
+Integer wn,i;
+boolean bool;
+
+wn = CurWindow;
+GetWindowRecord(wn, VTr);
+GetPrevWindowRecord	(wn, VT2r);
+bool = false;
+if nonblank(VTr.Copy) and SetInSet(CurrentUser, VTr.Copy) and (SetInSet(CurrentUser, VTr.Free)) then //(WindowState(wn) == 0) and 
+	begin
+	DeselectWindow(wn, true);
+	VTr.Free = ReplaceSubstrFromStr(VTr.Free, CurrentUser, "");
+	PutWindowRecord(wn, VTr);
+	SelectWindow(wn);
+	end;
+
+RETURN;
+end;
+
+global
+updating procedure IBudgetDiffToQADsm()
+BEGIN
+record IBudgetDiffVc IBDr;
+record tVTicketsVc VTr;
+Integer wn, nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, IBDr);
+if MakeQAFromIBD(IBDr, VTr) then 
+  begin 
+  nwn = OpenWindow("tVTicketsDClass", 1, 0, "", "", VTr);
+  WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+  end;
+RETURN;
+end;
+
+global
+updating procedure CreateQAFromAIDsm()
+BEGIN
+record AutoInvVc AIr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+  
+  wn = CurWindow;
+  if (WindowState(wn)==0) then 
+	  begin
+		GetWindowRecord(wn,AIr);  
+		if (MakeQAFromAI(AIr,VTr)) then 
+			begin
+			nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+			//CreateRecordLink(VTr,curcomp,ORp,curcomp);  
+			end;
+	  end;
+  RETURN;
+END;
+
+global updating
+function Boolean FreeAlarmDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+Boolean res;
+record FreeAlarmVc FAlr;
+record UserVc USr;
+
+if  fieldname == "Code" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, FAlr);
+	Usr.Code = FAlr.Code;
+	ReadFirstMain(Usr, 1, True);
+	FAlr.Name = USr.Name;
+	PutWindowRecord(wn, FAlr);
+	end;	
+	
+FreeAlarmDClassAfterEditField = True;
+RETURN;
+end;
+
+
+
+global
+updating procedure QAFromPUDsm()
+BEGIN
+record PUVc PUr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+  
+  wn = CurWindow;
+  if (WindowState(wn)==0) then 
+	  begin
+		GetWindowRecord(wn,PUr);  
+		if (MakeQAFromPU(PUr,VTr)) then 
+			begin
+			nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+			//CreateRecordLink(VTr,curcomp,ORp,curcomp);  
+			end;
+	  end;
+  RETURN;
+END;
+
+global
+updating procedure QAFromSDDsm()
+BEGIN
+record SDVc SDr;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+  
+  wn = CurWindow;
+  if (WindowState(wn)==0) then 
+	  begin
+		GetWindowRecord(wn,SDr);  
+		if (MakeQAFromSD(SDr,VTr)) then 
+			begin
+			nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+			//CreateRecordLink(VTr,curcomp,ORp,curcomp);  
+			end;
+	  end;
+  RETURN;
+END;

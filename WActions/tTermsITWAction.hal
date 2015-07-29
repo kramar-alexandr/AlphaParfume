@@ -1,0 +1,184 @@
+external procedure AddHelpButton(LongInt, LongInt);
+//external inner procedure Base1ToBase2(var val,Date,var val);
+remote procedure tCrRepList(longInt, var record TempVc);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+//===============================================================
+WindowBegin("Реклама по группам товара", tTermsITDClass, CGview, -);
+//DynamicWindow;
+UseView(tTermsITVc);
+SetWRect(10, 80, 750, 210);
+BrowseButtons(True);
+vs = 20; h1 = 120; v = 30; h2 = 275; h3 = 400; h4 = 630; 
+AddHelpButton(5, 5);
+EditField(h1, v, 60, "Код группы товара", Normal, ITCode, False, ITSClass);
+EnterSkip(ITQnt);
+EditField(h2, v, 100, "Наименование", Normal, ITName, False, 0);
+EditField(h3 + 100, v, 50, "Классификаторы", Normal, ITClass, False, DISClass);
+EditField(h4, v, -30, "Количество", Normal, ITQnt, False, 0);
+EditField(h1, v+= vs, 60, "Рекламный товар", Normal, RekCode, False, INSClass);
+EnterSkip(RekQnt);
+EditField(h2, v, 220, "Наименование", Normal, RekName, False, 0);
+EditField(h4, v, -30, "Количество", Normal, RekQnt, False, 0);
+CheckBox(-100, v += 40, 0, "Многократно", MultFlag);
+EndWindow;
+
+WindowBegin("Реклама по группам товара", tTermsITLClass, CGmlist, DMView);
+SpawnClass(tTermsITDClass);
+SetWRect(64, 80, 700, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tTermsITVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код группы", ITCode, false, ITCode);
+RlColKey(80, 80, "Наименование", ITName, false, ITName);
+RlColKey(250, 250, "Количество", ITQnt, false, ITQnt);
+RlColKey(300, 300, "Код рек", RekCode, false, ITCode);
+RlColKey(380, 380, "Наименование", RekName, false, ITName);
+RlColKey(-50, -50, "Количество", RekQnt, false, ITQnt);
+//BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Реклама по группам товара", tTermsITSClass, CGslist, -);
+SpawnClass(tTermsITDClass);
+UseView(tTermsITVc);
+SetWRect(64,80,700,25);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код группы", ITCode, false, ITCode);
+RlColKey(80, 80, "Наименование", ITName, false, ITName);
+RlColKey(250, 250, "Количество", ITQnt, false, ITQnt);
+RlColKey(300, 300, "Код рекламы", RekCode, false, ITCode);
+RlColKey(380, 380, "Наименование", RekName, false, ITName);
+RlColKey(-50, -50, "Количество", RekQnt, false, ITQnt);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Реклама по сумме", tTermsTClass, CGHbl, HBlRecType);
+SetBlid(tTermsBlock);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1,-1,-1,0);
+v = 20; vs = 20; h = 10; 
+MatrixBegin(h, v, -21, -10, tTermsRowType, 999);
+MatCol(1, h = 30, "От суммы", 60, SummS, false, 0);
+MatCol(1, h = 80, "до суммы", 60, SummF, false, 0);
+MatCol(1, h = 130, "Код рекламы", 60, RekCode, false, INSClass);
+MatCol(1, h = 220, "Наименование", 60, RekName, false, 0);
+MatCol(1, h = -50, "Количесво", 60, RekQnt, false, 0);
+EndMatrix;
+EndWindow;   
+return;
+End;
+
+//===============================================
+
+global
+procedure tTermsTClassCodeEFAfter(integer wn, Integer rownr, integer changed)
+begin
+record tTermsBlock Tb;
+record INVc INr;
+val UPrice1;
+row tTermsBlock Tbw;
+
+GetWindowRecord(wn, Tb);
+
+MatRowGet(Tb, rownr, Tbw); 
+INr.Code = Tbw.RekCode;
+if readfirstmain(INr, 1, true) then
+	begin
+	Tbw.RekName = INr.Name;
+	matrowput(Tb, rownr, Tbw); 
+	end;
+
+PutWindowRecord(wn, Tb);
+Return;
+end;
+//===============================================
+global
+function boolean tTermsTClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tTermsBlock Tb;
+res = true;
+GetWindowRecord(wn, Tb);
+
+if (changed <> 0) then
+    begin
+    switch (fieldname)
+        begin
+		case "RekCode":tTermsTClassCodeEFAfter(wn, rownr, changed);	
+		end;
+    end;                                                              
+
+  tTermsTClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+procedure TITrDClassCodeEFAfter(integer wn,  integer changed)
+begin
+record tTermsITVc TITr;
+record ITVc ITr;
+val UPrice1;
+ 
+GetWindowRecord(wn, TITr);
+
+ITr.Code = TITr.ITCode;
+if readfirstmain(ITr, 1, true) then
+	begin
+	TITr.ITName = ITr.Comment;
+	end;
+
+PutWindowRecord(wn, TITr);
+Return;
+end;
+//===============================================
+
+global
+procedure TITrDClassRekCodeEFAfter(integer wn,  integer changed)
+begin
+record tTermsITVc TITr;
+record INVc INr;
+val UPrice1;
+ 
+GetWindowRecord(wn, TITr);
+
+INr.Code = TITr.RekCode;
+if readfirstmain(INr, 1, true) then
+	begin
+	TITr.RekName = INr.Name;
+	end;
+
+PutWindowRecord(wn, TITr);
+Return;
+end;
+//===============================================
+global
+function boolean tTermsITDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tTermsITVc TITr;
+
+GetWindowRecord(wn, TITr);
+
+if (changed <> 0) then
+    begin
+    switch (fieldname)
+        begin
+		case "ITCode":TITrDClassCodeEFAfter(wn, changed);	
+		case "RekCode":TITrDClassRekCodeEFAfter(wn, changed);			
+		end;
+    end;                                                              
+
+  tTermsITDClassAfterEditField = res;
+  Return;
+end;
+
+

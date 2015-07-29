@@ -1,0 +1,954 @@
+external inner function Integer GetIntYc(Date);
+external inner procedure TRUpdateDebRows(var row TrVc, Date); 
+external inner procedure TRUpdateCredRows(var row TrVc, Date);
+external inner procedure AutoObj(var string);
+external inner procedure NormalizeObjstr(string);
+external function string 255 ReplaceSubstrFromStr(string, string, string);
+external inner procedure ExtractObj(string, var Integer, var string);
+external inner function longint MonthDiff(Date, Date);
+external function string 255 IAddToSet(string, string);
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function string 60 IGetObjByType(string, string);
+external function string 20 IGetObjType(string);
+external inner function LongInt TRVcRecordCheck(record TRVc, record TRVc, LongInt, LongInt);
+external function string 255 IGetAccName(string);
+external inner function Integer CheckObjs(string,string,var string);
+
+//===============================================
+//Автосоздание объекта ОС при необходимости
+updating procedure AutoCreateASObj(var record ASVc ASr)
+begin
+  record ObjVc Objr, Obj2r;
+  record VSetSetBlock VSet;
+
+  BlockLoad(VSet);
+  if blank(ASr.ASObj) and (VSet.AutoCreateASObjects == 1) then
+    begin
+      Objr.Code = VSet.AutoCreateASObjOTCode & ASr.Code;
+      if not ReadFirstMain(Objr, 1, True) then
+        begin
+          Objr.Code = VSet.AutoCreateASObjOTCode & ASr.Code;
+          Objr.Comment = ASr.Name;
+          Objr.OTCode = VSet.AutoCreateASObjOTCode;
+          Objr.TerminateFlag = 0;
+          Objr.AutoObjects = blankval;
+          RecordStore(Objr, True);
+        end
+      else
+        begin
+          Obj2r.Code = Objr.Code;
+          ReadFirstMain(Obj2r, 1, True);
+          Objr.Comment = ASr.Name;
+          Objr.OTCode = VSet.AutoCreateASObjOTCode;
+          Objr.TerminateFlag = 0;
+          RecordUpdate(Obj2r, Objr, True);
+        end;
+      ASr.ASObj = Objr.Code;
+    end;
+  Return;
+end;
+
+//===============================================
+//Собираем балансовую стоимость ОС
+global
+function val IGetASInCost(string Obj, string Acc, date dt)
+begin
+  record ObjBalVc ObjBalr;
+  val res;
+  
+  ObjBalr.AccNumber = Acc;
+  ObjBalr.Object = Obj;
+  if ReadFirstMain(ObjBalr, 2, true) then
+    begin
+    res = GetBalance(ObjBalr, "transdebit", dt) - GetBalance(ObjBalr, "transcredit", dt);
+    end;
+  IGetASInCost = res;
+  Return;
+end;
+
+//===============================================
+//Остаточная стоимость актива AT2Unit
+global
+function val IGetAT2UnitCost(string AT2UnitCode, date dt)
+begin
+  record AT2DprVc AT2Dpr;
+  record AT2UnitVc AT2Ur;
+  record InvrsVc Invrsr;
+  boolean cont;
+  val res;
+
+  AT2Ur.InventoryNr = AT2UnitCode;
+  ReadFirstMain(AT2Ur, 1, true);
+  res = AT2Ur.PurchVal;
+
+  cont = true;
+  Invrsr.InventoryNr = AT2UnitCode;
+  Invrsr.FileName = "AT2DprVc";
+  Invrsr.TransDate = dt;
+  while LoopBackKey("FileName", Invrsr, 3, cont)
+    begin
+      cont = (Invrsr.InventoryNr == AT2UnitCode) and (Invrsr.FileName == "AT2DprVc") and (Invrsr.TransDate <= dt);
+      if (cont) then
+        begin
+          AT2Dpr.SerNr = Invrsr.TransNr;
+          ReadFirstMain(AT2Dpr, 1, true);
+          res = AT2Dpr.StartVal;
+          cont = false;
+        end;
+    end;    
+
+  IGetAT2UnitCost = res;
+  Return;      
+end;      
+
+//===============================================
+//Счет указан, он существует и не закрыт
+function boolean AccExists(string Acc)
+begin
+  record AccVc ACr;
+
+  ACr.AccNumber = Acc;
+  AccExists = ReadFirstMain(ACr, 1, true) and (ACr.blockedFlag == 0);
+  Return;
+end;
+
+//===============================================
+function string 255 GetMonthName(Date InDate)
+begin
+  Integer Month;
+  string 20 MName;
+
+  Month = GetMonth(InDate);
+  SetLangMode(LangRussian, "RUS", 2);
+  switch Month
+    begin
+      case 1: MName = "январь";
+      case 2: MName = "февраль";
+      case 3: MName = "март";
+      case 4: MName = "апрель";
+      case 5: MName = "май";
+      case 6: MName = "июнь";
+      case 7: MName = "июль";
+      case 8: MName = "август";
+      case 9: MName = "сентябрь";
+      case 10: MName = "октябрь";
+      case 11: MName = "ноябрь";
+      case 12: MName = "декабрь";
+    end;
+  GetMonthName = MName;
+  Return;
+end;
+
+//===============================================
+//Добавляем объекты или заменяем, если присутствуют того же типа
+global
+procedure ASChangeObjects(var string ObjStr, string NewObjStr)
+begin
+  string 20 OTCode;
+  string 200 OldObj, NewObj;
+  integer cnt, i;
+  
+  cnt = IItemCountInStr(NewObjStr);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      NewObj = IGetItemFromStr(NewObjStr, i);
+      OTCode = IGetObjType(NewObj);
+      OldObj = IGetObjByType(ObjStr, OTCode);
+      if blank(OldObj) then
+        begin
+          ObjStr = IAddToSet(ObjStr, NewObj);
+        end
+      else
+        begin
+          ObjStr = ReplaceSubstrFromStr(ObjStr, OldObj, NewObj);
+        end;
+    end;
+  NormalizeObjstr(ObjStr);
+  Return;
+end;
+
+//===============================================
+//История проводок ОС
+global
+updating procedure ASVc_WriteHistTR(record ASVc ASr, record TRVc TRr, string operation)
+begin
+  record ASHistVc AHr;
+
+  RecordNew(AHr);
+  AHr.Code = ASr.Code;
+  AHr.SerNr = NextSerNr("ASHistVc", CurrentDate, -1, false, "");
+  AHr.Department = ASr.Department;
+  AHr.EmpCode = ASr.EmpCode;
+  AHr.SalesGroup = ASr.SalesGroup;
+  AHr.TransDate = TRr.TransDate;
+  AHr.Comment = operation;
+  AHr.Cost = ASr.Cost;
+  AHr.TRNumber = TRr.Number;
+  AHr.TRIntYc = TRr.IntYc;
+  RecordInsert(AHr, False);
+  Return;
+end;
+
+//===============================================
+//История ОС
+global
+updating procedure ASVc_WriteHist(record ASVc ASr, date dt, string operation)
+begin
+  record ASHistVc AHr;
+
+  RecordNew(AHr);
+  AHr.Code = ASr.Code;
+  AHr.SerNr = NextSerNr("ASHistVc", CurrentDate, -1, false, "");
+  AHr.Department = ASr.Department;
+  AHr.EmpCode = ASr.EmpCode;
+  AHr.SalesGroup = ASr.SalesGroup;
+  AHr.TransDate = dt;
+  AHr.Comment = operation;
+  AHr.Cost = ASr.Cost;
+  RecordInsert(AHr, False);
+  Return;
+end;
+
+//===============================================
+//Ввод в эксплуатацию
+global
+updating function Longint MakeASTransIn(var record ASVc ASr)
+begin
+  record TRVc TRr, TR2r;
+  record BaseERVc BRr;
+  row TrVc TRrw;
+  val debval, baserate;
+  string 60 ObjStr;
+  longint res;
+
+  SetLangMode(LangRussian,"RUS",2);
+  RecordNew(TRr);
+  TRr.RegDate = ASr.StartDate;
+  TRr.TransDate = ASr.StartDate;
+  TRr.Comment = "Ввод в эксплуатацию инв.№" & ASr.Code;
+  TRr.Number = NextSerNr("TRVc", CurrentDate, -1, false, "");
+  TRr.IntYc = GetIntYc(TRr.TransDate);
+  TRr.RegTime = CurrentTime;
+  TRr.LastChangeDate = CurrentDate;
+  TRrw.VATCode = "";
+  TRrw.CompCode = "";
+  TRrw.SerNr = 0;
+  TRrw.Curncy = "USD";
+  TRrw.BaseRate1 = 1;
+  BRr.Date = CurrentDate;
+  ReadLastMain(BRr, 1, False);
+  TRrw.BaseRate2 = BRr.Rate2;
+  ObjStr = ASr.Objects;
+  AutoObj(ObjStr);
+  TRrw.Objects = ObjStr;
+  TRrw.SerNr = "";
+  TRrw.DebVal = ASr.CostIn;
+  debval = TRrw.DebVal;
+  TRrw.AccNumber = ASr.ASAcc;
+  TRrw.Comment = IGetAccName(TRrw.AccNumber);
+  TRrw.CredVal = blankval;
+  TRrw.CredVal2 = blankval;
+  TRUpdateDebRows(TRrw, TRr.TransDate);
+  TRr.DSum =  TRr.DSum + TRrw.DebVal;
+  TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+  MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+  TRrw.AccNumber = ASr.PurchaseAcc;
+  TRrw.Comment = IGetAccName(TRrw.AccNumber);
+  TRrw.DebVal = blankval;
+  TRrw.DebVal2 = blankval;
+  TRrw.CredVal = debval;
+  TRUpdateCredRows(TRrw, TRr.TransDate);
+  TRr.CSum =  TRr.CSum - TRrw.CredVal;
+  TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+  MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+  TRr.DiffVal = TRr.DSum + TRr.CSum;
+  TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+
+  SetRecordCheckVc("TRVc");
+  res = TRVcRecordCheck(TRr, TR2r, 1, 1);
+  if (res == 0) then
+    begin
+      RecordStore(TRr, false);
+      ASr.TransDate = ASr.StartDate;
+      ASVc_WriteHistTR(ASr, TRr, "Ввод ОС");
+    end;
+
+  MakeASTransIn = res;
+  OpenWindow("TRDClass", 1, 0, "", "", TRr);
+  Return;
+end;
+
+//===============================================
+//Износ за период
+function val GetValAmortization(record ASVc ASr, val Mul, var Integer Closed)
+begin
+  val res;
+
+  Closed = 0;
+  res = ASr.PerMonWOff * Mul;
+  if (res > ASr.Cost) then
+    begin
+    res = ASr.Cost;
+    Closed = 1;
+    end;
+  GetValAmortization = res;
+  Return;
+end;
+
+//===============================================
+//Амортизация
+global
+updating function Longint MakeASTransAmortization(var record ASVc ASr, val Mul)
+begin
+  record TRVc TRr, TR2r;
+  record BaseERVc BRr;
+  row TrVc TRrw;
+  val debval, baserate;
+  string 60 ObjStr;
+  Integer Closed;
+  longint res;
+
+  res = -1;
+  if (ASr.InExpl == 1) and (ASr.Closed == 0) then
+    begin
+      SetLangMode(LangRussian,"RUS",2);
+      RecordNew(TRr);
+      TRr.RegDate = CurrentDate;
+      TRr.TransDate = CurrentDate;
+      TRr.Comment = "Начисление амортизации за " & GetMonthName(CurrentDate) & " " & GetYear(CurrentDate) & " инв.№" & ASr.Code;
+      TRr.Number = NextSerNr("TRVc", CurrentDate, -1, false, "");
+      TRr.IntYc = GetIntYc(TRr.TransDate);
+      TRr.RegTime = CurrentTime;
+      TRr.LastChangeDate = CurrentDate;
+      TRrw.VATCode = "";
+      TRrw.CompCode = "";
+      TRrw.SerNr = 0;
+      TRrw.Curncy = "USD";
+      TRrw.BaseRate1 = 1;
+      BRr.Date = CurrentDate;
+      ReadLastMain(BRr, 1, False);
+      TRrw.BaseRate2 = BRr.Rate2;
+      ObjStr = ASr.Objects;
+      AutoObj(ObjStr);
+      TRrw.Objects = ObjStr;
+      TRrw.SerNr = "";
+      TRrw.DebVal = GetValAmortization(ASr, Mul, Closed);
+      debval = TRrw.DebVal;
+      TRrw.AccNumber = ASr.AmortizationAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.CredVal = blankval;
+      TRrw.CredVal2 = blankval;
+      TRUpdateDebRows(TRrw, TRr.TransDate);
+      TRr.DSum =  TRr.DSum + TRrw.DebVal;
+      TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      TRrw.AccNumber = ASr.DeprecationAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.DebVal = blankval;
+      TRrw.DebVal2 = blankval;
+      TRrw.CredVal = debval;
+      TRUpdateCredRows(TRrw, TRr.TransDate);
+      TRr.CSum =  TRr.CSum - TRrw.CredVal;
+      TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      TRr.DiffVal = TRr.DSum + TRr.CSum;
+      TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+
+      SetRecordCheckVc("TRVc");
+      res = TRVcRecordCheck(TRr, TR2r, 1, 1);
+      if (res == 0) then
+        begin
+          RecordStore(TRr, false);
+          ASr.Cost = ASr.Cost - debval;
+          ASr.TransDate = CurrentDate;
+          ASVc_WriteHistTR(ASr, TRr, "Начисление износа");
+    //      ASr.Closed = Closed;
+        end;   
+    end;
+
+  MakeASTransAmortization = res;
+  Return;
+end;
+
+//===============================================
+//Списание
+global
+updating function Longint MakeASTransWOff(var record ASVc ASr)
+begin
+  record TRVc TRr, TR2r;
+  record BaseERVc BRr;
+  row TrVc TRrw;
+  val debval, baserate;
+  string 60 ObjStr;
+  val DeprecatedSum; //Сумма начисленного износа
+  longint res;
+
+  res = -1;
+  if (ASr.InExpl == 1) and (ASr.Closed == 0) then
+    begin
+      SetLangMode(LangRussian,"RUS",2);
+      DeprecatedSum = ASr.CostIn - ASr.Cost;
+      RecordNew(TRr);
+      TRr.RegDate = ASr.EndDate;
+      TRr.TransDate = ASr.EndDate;
+      TRr.Comment = "Списание ОС от " & GetMonthName(CurrentDate) & " " & GetYear(CurrentDate) & " инв.№" & ASr.Code;
+      TRr.Number = NextSerNr("TRVc", CurrentDate, -1, false, "");
+      TRr.IntYc = GetIntYc(TRr.TransDate);
+      TRr.RegTime = CurrentTime;
+      TRr.LastChangeDate = CurrentDate;
+      TRrw.VATCode = "";
+      TRrw.CompCode = "";
+      TRrw.SerNr = 0;
+      TRrw.Curncy = "USD";
+      TRrw.BaseRate1 = 1;
+      BRr.Date = CurrentDate;
+      ReadLastMain(BRr, 1, False);
+      TRrw.BaseRate2 = BRr.Rate2;
+      ObjStr = ASr.Objects;
+      AutoObj(ObjStr);
+      TRrw.Objects = ObjStr;
+      TRrw.SerNr = "";
+      //Списание суммы начисленного износа
+      TRrw.AccNumber = ASr.DeprecationAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.DebVal = DeprecatedSum;
+      TRrw.CredVal = blankval;
+      TRrw.CredVal2 = blankval;
+      TRUpdateDebRows(TRrw, TRr.TransDate);
+      TRr.DSum =  TRr.DSum + TRrw.DebVal;
+      TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      TRrw.AccNumber = ASr.ASAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.DebVal = blankval;
+      TRrw.DebVal2 = blankval;
+      TRrw.CredVal = DeprecatedSum;
+      TRUpdateCredRows(TRrw, TRr.TransDate);
+      TRr.CSum =  TRr.CSum - TRrw.CredVal;
+      TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      //Списание остаточной стоимости
+      if (ASr.Cost > 0) then
+        begin
+          TRrw.AccNumber = ASr.CostAcc;
+          TRrw.Comment = IGetAccName(TRrw.AccNumber);
+          TRrw.DebVal = ASr.Cost;
+          TRrw.CredVal = blankval;
+          TRrw.CredVal2 = blankval;
+          TRUpdateDebRows(TRrw, TRr.TransDate);
+          TRr.DSum =  TRr.DSum + TRrw.DebVal;
+          TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+          MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+          TRrw.AccNumber = ASr.ASAcc;
+          TRrw.Comment = IGetAccName(TRrw.AccNumber);
+          TRrw.DebVal = blankval;
+          TRrw.DebVal2 = blankval;
+          TRrw.CredVal = ASr.Cost;
+          TRUpdateCredRows(TRrw, TRr.TransDate);
+          TRr.CSum =  TRr.CSum - TRrw.CredVal;
+          TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+          MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+        end;
+      //
+      TRr.DiffVal = TRr.DSum + TRr.CSum;
+      TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+
+      SetRecordCheckVc("TRVc");
+      res = TRVcRecordCheck(TRr, TR2r, 1, 1);
+      if (res == 0) then
+        begin
+          RecordStore(TRr, false);
+          ASVc_WriteHistTR(ASr, TRr, "Списание ОС");
+          ASr.Cost = 0;
+          ASr.Closed = 1;
+        end;   
+    end;
+
+  MakeASTransWOff = res;
+  Return;
+end;
+
+//===============================================
+//Продажа
+global
+updating function Longint MakeASTransSale(var record ASVc ASr)
+begin
+  record TRVc TRr, TR2r;
+  record BaseERVc BRr;
+  row TrVc TRrw;
+  val debval, baserate;
+  string 60 ObjStr;
+  val DeprecatedSum; //Сумма начисленного износа
+  longint res;
+
+  res = -1;
+  if (ASr.InExpl == 1) and (ASr.Closed == 0) then
+    begin
+      SetLangMode(LangRussian,"RUS",2);
+      DeprecatedSum = ASr.CostIn - ASr.Cost;
+      RecordNew(TRr);
+      TRr.RegDate = ASr.EndDate;
+      TRr.TransDate = ASr.EndDate;
+      TRr.Comment = "Продажа ОС от " & GetMonthName(CurrentDate) & " " & GetYear(CurrentDate) & " инв.№" & ASr.Code;
+      TRr.Number = NextSerNr("TRVc", CurrentDate, -1, false, "");
+      TRr.IntYc = GetIntYc(TRr.TransDate);
+      TRr.RegTime = CurrentTime;
+      TRr.LastChangeDate = CurrentDate;
+      TRrw.VATCode = "";
+      TRrw.CompCode = "";
+      TRrw.SerNr = 0;
+      TRrw.Curncy = "USD";
+      TRrw.BaseRate1 = 1;
+      BRr.Date = CurrentDate;
+      ReadLastMain(BRr, 1, False);
+      TRrw.BaseRate2 = BRr.Rate2;
+      ObjStr = ASr.Objects;
+      AutoObj(ObjStr);
+      TRrw.Objects = ObjStr;
+      TRrw.SerNr = "";
+      //Списание суммы начисленного износа
+      TRrw.AccNumber = ASr.DeprecationAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.DebVal = DeprecatedSum;
+      TRrw.CredVal = blankval;
+      TRrw.CredVal2 = blankval;
+      TRUpdateDebRows(TRrw, TRr.TransDate);
+      TRr.DSum =  TRr.DSum + TRrw.DebVal;
+      TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      TRrw.AccNumber = ASr.ASAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.DebVal = blankval;
+      TRrw.DebVal2 = blankval;
+      TRrw.CredVal = DeprecatedSum;
+      TRUpdateCredRows(TRrw, TRr.TransDate);
+      TRr.CSum =  TRr.CSum - TRrw.CredVal;
+      TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      //Списание остаточной стоимости
+      if (ASr.Cost > 0) then
+        begin
+          TRrw.AccNumber = ASr.RevenueAcc;
+          TRrw.Comment = IGetAccName(TRrw.AccNumber);
+          TRrw.DebVal = ASr.Cost;
+          TRrw.CredVal = blankval;
+          TRrw.CredVal2 = blankval;
+          TRUpdateDebRows(TRrw, TRr.TransDate);
+          TRr.DSum =  TRr.DSum + TRrw.DebVal;
+          TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+          MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+          TRrw.AccNumber = ASr.ASAcc;
+          TRrw.Comment = IGetAccName(TRrw.AccNumber);
+          TRrw.DebVal = blankval;
+          TRrw.DebVal2 = blankval;
+          TRrw.CredVal = ASr.Cost;
+          TRUpdateCredRows(TRrw, TRr.TransDate);
+          TRr.CSum =  TRr.CSum - TRrw.CredVal;
+          TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+          MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+        end;
+      //Проводка продажи (дебет указанного счета кассы)
+      TRrw.AccNumber = ASr.SaleAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.DebVal = ASr.SaleSum;
+      TRrw.CredVal = blankval;
+      TRrw.CredVal2 = blankval;
+      TRUpdateDebRows(TRrw, TRr.TransDate);
+      TRr.DSum =  TRr.DSum + TRrw.DebVal;
+      TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      TRrw.AccNumber = ASr.RevenueAcc;
+      TRrw.Comment = IGetAccName(TRrw.AccNumber);
+      TRrw.DebVal = blankval;
+      TRrw.DebVal2 = blankval;
+      TRrw.CredVal = ASr.SaleSum;
+      TRUpdateCredRows(TRrw, TRr.TransDate);
+      TRr.CSum =  TRr.CSum - TRrw.CredVal;
+      TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+      MatRowPut(TRr, MatRowCnt(TRr), TRrw);
+      //
+      TRr.DiffVal = TRr.DSum + TRr.CSum;
+      TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+
+      SetRecordCheckVc("TRVc");
+      res = TRVcRecordCheck(TRr, TR2r, 1, 1);
+      if (res == 0) then
+        begin
+          RecordStore(TRr, false);
+          ASVc_WriteHistTR(ASr, TRr, "Продажа ОС");
+          ASr.Cost = 0;
+          ASr.Closed = 1;
+        end;   
+    end;
+
+  MakeASTransSale = res;
+  Return;
+end;
+
+//===============================================
+global
+updating function LongInt ASVcRecordRemoveTest(var record ASVc ASr, record ASVc AS2r, LongInt long3, LongInt long4)
+begin
+  longint res;
+
+  res = 1;
+  if (ASr.InExpl == 1) and (CurrentUser <> "DELPHI") then 
+    begin
+    res = 0;
+    end;
+  ASVcRecordRemoveTest = res;
+  Return;
+end;
+
+//===============================================
+//Проверка счетов
+procedure ASVcCheckAcc(record ASVc ASr, var longint res)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+
+  if (res == 0) and not AccExists(ASr.PurchaseAcc) then
+    begin
+      RecordCheckError(1007, ASr.PurchaseAcc, -1, "PurchaseAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASr.ASAcc) then
+    begin
+      RecordCheckError(1007, ASr.ASAcc, -1, "ASAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASr.AmortizationAcc) then
+    begin
+      RecordCheckError(1007, ASr.AmortizationAcc, -1, "AmortizationAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASr.DeprecationAcc) then
+    begin
+      RecordCheckError(1007, ASr.DeprecationAcc, -1, "DeprecationAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASr.RevenueAcc) then
+    begin
+      RecordCheckError(1007, ASr.RevenueAcc, -1, "RevenueAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(ASr.CostAcc) and not AccExists(ASr.CostAcc) then
+    begin
+      RecordCheckError(1007, ASr.CostAcc, -1, "CostAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(ASr.SaleAcc) and not AccExists(ASr.SaleAcc) then
+    begin
+      RecordCheckError(1007, ASr.SaleAcc, -1, "SaleAcc");
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Контроль типов объектов
+procedure ASVcCheckObjects(record ASVc ASr, var longint res)
+begin
+  string 200 ErrStr;
+  integer ErrCode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  if (res == 0) and blank(ASr.Objects) then
+    begin
+      RecordCheckError(1499, "Не указаны объекты", -1, "Objects");
+      res = -1;
+    end;
+    
+  if (res == 0) then
+    begin
+      ErrCode = CheckObjs(ASr.ASAcc, ASr.Objects, ErrStr);
+
+      if (ErrCode == 0) then
+        begin
+          ErrCode = CheckObjs(ASr.PurchaseAcc, ASr.Objects, ErrStr);
+        end;
+
+      if (ErrCode == 0) then
+        begin
+          ErrCode = CheckObjs(ASr.AmortizationAcc, ASr.Objects, ErrStr);
+        end;
+
+      if (ErrCode == 0) then
+        begin
+          ErrCode = CheckObjs(ASr.DeprecationAcc, ASr.Objects, ErrStr);
+        end;
+
+      if (ErrCode == 0) then
+        begin
+          ErrCode = CheckObjs(ASr.RevenueAcc, ASr.Objects, ErrStr);
+        end;
+
+      if (ErrCode == 0) and nonblank(ASr.CostAcc) then
+        begin
+          ErrCode = CheckObjs(ASr.CostAcc, ASr.Objects, ErrStr);
+        end;
+
+      if (ErrCode == 0) and nonblank(ASr.SaleAcc) then
+        begin
+          ErrCode = CheckObjs(ASr.SaleAcc, ASr.Objects, ErrStr);
+        end;
+
+      if (ErrCode <> 0) then
+        begin
+          RecordCheckError(ErrCode, ErrStr, -1, "Objects");      
+          res = -1;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+global
+updating function LongInt ASVcRecordCheck(var record ASVc ASr, record ASVc AS2r, LongInt stat, LongInt long4)
+begin
+  record ASCatVc ASCatr;
+  record UserVc USr;
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if (AS2r.Closed == 1) then
+    begin
+      res = -1;
+    end;
+
+  if (res == 0) and blank(ASr.Code) then
+    begin
+      RecordCheckError(1499, "Требуется инвентарный номер", -1, "Code");
+      res = -1;
+    end;
+
+  AutoCreateASObj(ASr);
+  ASChangeObjects(ASr.Objects, ASr.ASObj);
+  if (res == 0) and blank(ASr.ASObj) then
+    begin
+      RecordCheckError(1499, "Требуется объект ОС", -1, "ASObj");
+      res = -1;
+    end;
+  
+  if (res == 0) and blank(ASr.ASType) then
+    begin
+      RecordCheckError(1499, "Укажите категорию ОС", -1, "ASType");
+      res = -1;
+    end;
+  
+  ASVcCheckAcc(ASr, res); //Проверяем счета
+  ASVcCheckObjects(ASr, res); //Проверяем объекты
+
+  if (res == 0) and nonblank(ASr.EmpCode) then
+    begin
+      USr.Code = ASr.EmpCode;
+      ReadFirstMain(USr, 1, True);
+      ASr.SalesGroup = USr.SalesGroup;
+    end;
+
+  if blankdate(AS2r.PurchaseDate) and nonblankdate(ASr.PurchaseDate) then
+    begin
+      ASVc_WriteHist(ASr, ASr.PurchaseDate, "Приход ОС");
+    end;
+
+  if (AS2r.EmpCode <> ASr.EmpCode) or (AS2r.Department <> ASr.Department) then
+    begin
+      ASVc_WriteHist(ASr, CurrentDate, "Передача ОС");
+    end;
+
+
+  //=== Ввод в эксплуатацию
+  if (res == 0) and (ASr.InExpl == 1) and ((stat == 1) or ((stat == 2) and (AS2r.InExpl == 0))) then
+    begin
+      if blankdate(ASr.PurchaseDate) then
+        begin
+          RecordCheckError(1499, "Некорректная дата приобретения", -1, "PurchaseDate");
+          res = -1;
+        end;
+
+      if blankdate(ASr.StartDate) or (ASr.StartDate < ASr.PurchaseDate) then
+        begin
+          RecordCheckError(1499, "Некорректная дата ввода", -1, "StartDate");
+          res = -1;
+        end;
+        
+      if (res == 0) then
+        begin
+          if (ASr.CostIn == 0) then
+            begin
+              ASr.CostIn = IGetASInCost(ASr.ASObj, ASr.PurchaseAcc, ASr.StartDate);
+            end;
+          ASr.Cost = ASr.CostIn;
+          if (ASr.CostIn <= 0) then
+            begin
+              RecordCheckError(1499, "Некорректная балансовая стоимость", -1, "CostIn");
+              res = -1;
+            end;
+        end;
+        
+      if (res == 0) and blank(ASr.AT2UnitCode) then
+        begin
+          res = MakeASTransIn(ASr);
+        end;
+    end;
+
+
+  //=== Списание
+  if (res == 0) and (ASr.Closed == 0) and (ASr.WOff == 1) and ((stat == 1) or ((stat == 2) and (AS2r.WOff == 0))) then
+    begin
+      if blankdate(ASr.EndDate) or (ASr.EndDate < ASr.StartDate) or (ASr.EndDate < ASr.TransDate) then
+        begin
+          RecordCheckError(1499, "Некорректная дата списания", -1, "EndDate");
+          res = -1;
+        end;
+
+      if (res == 0) and (ASr.Cost > 0) and blank(ASr.CostAcc) then
+        begin
+          RecordCheckError(1499, "Укажите счет списания остаточной стоимости", -1, "CostAcc");
+          res = -1;
+        end;
+
+      if (res == 0) then
+        begin
+          res = MakeASTransWOff(ASr);
+        end;
+    end;
+
+    
+  //=== Продажа
+  if (res == 0) and (ASr.Closed == 0) and (ASr.Sold == 1) and ((stat == 1) or ((stat == 2) and (AS2r.Sold == 0))) then
+    begin
+      if blankdate(ASr.EndDate) or (ASr.EndDate < ASr.StartDate) or (ASr.EndDate < ASr.TransDate) then
+        begin
+          RecordCheckError(1499, "Некорректная дата продажи", -1, "EndDate");
+          res = -1;
+        end;
+
+      if (res == 0) and blank(ASr.SaleAcc) then
+        begin
+          RecordCheckError(1499, "Укажите счет кассы", -1, "CostAcc");
+          res = -1;
+        end;
+
+      if (res == 0) and (ASr.SaleSum <= 0) then
+        begin
+          RecordCheckError(1499, "Укажите сумму продажи", -1, "SaleSum");
+          res = -1;
+        end;
+
+      if (res == 0) then
+        begin
+          res = MakeASTransSale(ASr);
+        end;
+    end;
+
+  ASVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function Longint ASVcRecordDefaults(var record ASVc ASr, record ASVc AS2r, LongInt stat, LongInt long4)
+begin
+  Longint res;
+
+  ASr.TermWOff = 0;
+  ASr.CostIn = 0;
+  ASr.Cost = 0;
+  ASr.InExpl = 0;
+  ASr.WOff = 0;
+  ASr.Sold = 0;
+  ASr.Closed = 0;
+  Return;
+end;
+
+//===============================================
+global
+function LongInt ASCatVcRecordCheck(var record ASCatVc ASCatr, record ASCatVc ASCat2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+  if blank(ASCatr.Code) then
+    begin
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASCatr.ASAcc) then
+    begin
+      RecordCheckError(1007, ASCatr.ASAcc, -1, "ASAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASCatr.PurchaseAcc) then
+    begin
+      RecordCheckError(1007, ASCatr.PurchaseAcc, -1, "PurchaseAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASCatr.AmortizationAcc) then
+    begin
+      RecordCheckError(1007, ASCatr.AmortizationAcc, -1, "AmortizationAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASCatr.DeprecationAcc) then
+    begin
+      RecordCheckError(1007, ASCatr.DeprecationAcc, -1, "DeprecationAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and not AccExists(ASCatr.RevenueAcc) then
+    begin
+      RecordCheckError(1007, ASCatr.RevenueAcc, -1, "RevenueAcc");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(ASCatr.CostAcc) and not AccExists(ASCatr.CostAcc) then
+    begin
+      RecordCheckError(1007, ASCatr.CostAcc, -1, "CostAcc");
+      res = -1;
+    end;
+
+  ASCatVcRecordCheck = res;
+  Return;
+end;
+  
+//===============================================
+global
+updating procedure ASAmortizationMn(record RcVc RepSpec)
+begin
+  record ASVc ASr, AS2r;
+
+  if nonblankdate(RepSpec.d1) then
+    begin
+      ResetLoop(ASr);
+      while LoopMain(ASr, 1, True)
+        begin
+          if (ASr.InExpl == 1) and (ASr.Closed == 0) and (ASr.TransDate <= RepSpec.d1)  then
+            begin
+              AS2r.Code = ASr.Code;
+              ReadFirstMain(AS2r, 1, True); //здесь цикл помесячный.
+              if (GetMonth(AS2r.TransDate) <> GetMonth(CurrentDate)) then
+                begin
+                  MakeASTransAmortization(ASr, MonthDiff(AS2r.TransDate, CurrentDate));
+                  RecordUpdate(AS2r, ASr, False);
+                end;
+            end;
+        end;
+    end;
+    
+  Return;
+end;

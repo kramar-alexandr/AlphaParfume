@@ -1,0 +1,137 @@
+remote inner procedure MatchIPRowSums(string, string, Date, string,var val, var string, var val, string,var val,
+                         Boolean, Boolean, Boolean);
+remote inner procedure IPInvsum(record IPVc, LongInt, string, var val);
+remote inner function Boolean GetPMCurrency(string,var string);
+remote inner procedure CurValToOtherCur(Date,string,val,string,var val,roundmode);
+
+function Boolean PasteInvInIPr(var record IPVc IPp,row IPVc iprp,Integer rownr,Integer rowtype)
+BEGIN
+  Boolean res;
+  record ARVc ARr;
+  record IVVc IVr;
+  row IPVc iprw2;
+  record CUVc CUr;
+  val tv,rv;
+  val fr,to1,to2,br1,br2;
+  string 20 curncycode,thepm,bankcurncy;
+  row IPVc IPrw;
+  record AccBlock ARAccRec;
+  string 10 invcur,bankcur,reccur;
+  val invval,bankval,recval;
+  
+  res = true;
+  ClearRow(IPp,IPrw,rowtype);
+  BlockLoad(ARAccRec);
+  MatRowGet(IPp,rownr-1,iprw2);
+  IPrw.InvoiceNr = iprw2.InvoiceNr;
+  IVr.SerNr = iprw2.InvoiceNr;
+  if (ReadFirstMain(IVr,1,true)) then begin
+    IPInvsum(IPp,iprw2.InvoiceNr,IVr.CurncyCode,tv);
+    if (IVr.Invalid==0) then begin
+      IPrw.CustCode = IVr.CustCode;
+      IPrw.CustName = IVr.Addr0;
+      IPrw.CredManNr = IVr.CredManNr;
+      if (ARAccRec.ARUseObj!=0) then begin
+        IPrw.Objects = IVr.Objects;
+      end;    
+      curncycode = IVr.CurncyCode;
+      fr = IVr.FrRate;
+      to1 = IVr.ToRateB1;
+      to2 = IVr.ToRateB2;
+      br1 = IVr.BaseRate1;
+      br2 = IVr.BaseRate2;
+    end else begin
+      res = false;
+      goto LPasteInvInIPr;
+    end;
+  end else begin
+    if (IPrw.stp==7) then begin
+      CUr.Code = iprw2.CustCode;
+      if (ReadFirstMain(CUr,1,true)) then begin
+        IPrw.CustCode = CUr.Code;
+        IPrw.Comment = CUr.Name;
+        curncycode = CUr.CurncyCode;
+      end else begin
+        res = false;
+        goto LPasteInvInIPr;
+      end;
+    end else begin
+      res = false;
+      goto LPasteInvInIPr;
+    end;
+  end;
+  IPrw.PayDate = IPp.TransDate;
+  if (nonblank(IPrw.PayMode)) then begin
+    thepm = IPrw.PayMode;
+  end else begin
+    thepm = IPp.PayMode;
+  end;
+  if (GetPMCurrency(thepm,bankcurncy)) then begin end;
+  ARr.InvoiceNr = iprw2.InvoiceNr;
+  if (IPrw.stp==7) then begin curncycode = bankcurncy; end;
+  IPrw.BankCurncy = bankcurncy;
+  IPrw.RecCurncy = curncycode;
+  IPrw.InvCurncy = curncycode;
+  if ((ReadFirstMain(ARr,1,true)) or (IPrw.stp==7)) then begin
+    rv = ARr.RVal - tv;
+    IPrw.BankCurncy = bankcurncy;
+    IPrw.RecCurncy = curncycode;
+    IPrw.InvCurncy = curncycode;
+    if (IPrw.stp==7) then begin rv = 0; end;
+    IPrw.InvVal = rv;
+    IPrw.RecVal = rv;
+    if (bankcurncy!=curncycode) then begin
+      CurValToOtherCur(IPp.TransDate,curncycode,rv,bankcurncy,tv,DefaultCurRoundOff);
+      IPrw.BankVal = tv;
+    end else begin
+      IPrw.BankVal = rv;
+    end;
+    invcur = IPrw.InvCurncy;
+    invval = IPrw.InvVal;
+    bankcur = IPrw.BankCurncy;
+    bankval = IPrw.BankVal;
+    reccur = IPrw.RecCurncy;
+    recval = IPrw.RecVal;  
+    MatchIPRowSums(IPp.PayMode,IPrw.PayMode,IPp.TransDate,invcur,invval,bankcur,bankval,reccur,recval,true,true,true);
+    IPrw.InvCurncy = invcur;
+    IPrw.InvVal = invval;
+    IPrw.BankCurncy = bankcur;
+    IPrw.BankVal = bankval;
+    IPrw.RecCurncy = reccur;
+    IPrw.RecVal = recval;
+	IPrw.Objects = iprp.Objects & "," & IPp.Objects;
+    MatRowInsert(IPp,rownr,IPrw);
+  end;
+LPasteInvInIPr:;
+  PasteInvInIPr = res;
+  RETURN;
+END;
+
+global
+procedure NewWriteoffIPDsmV()
+BEGIN
+  Integer wn,rownr;
+  record IPVc IPr;
+  row IPVc IPrw;  
+  
+  wn = CurWindow;
+  rownr = WindowActiveRow(wn);
+  if (rownr>=0) then begin
+    if (WindowState(wn)==0) then begin//Rs_normal
+      DeselectWindow(wn,false);
+      GetWindowRecord(wn,IPr);  
+      PutWindowRecord(wn,IPr);
+    end;
+    if (WindowState(wn)!=0) then begin//Rs_normal
+      GetWindowRecord(wn,IPr);  
+      DeselectWindow(wn,false);
+      MatRowGet(IPr,rownr,IPrw);
+      if (PasteInvInIPr(IPr,IPrw,rownr+1,6)) then begin
+        PutWindowRecord(wn,IPr);
+      end else begin
+        Beep;
+      end;
+    end;
+  end;
+  RETURN;
+END;

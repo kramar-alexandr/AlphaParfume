@@ -1,0 +1,187 @@
+external inner function Boolean PUDClassArtCodeEFAfter(Integer,Integer,Integer,Integer);
+
+global 
+function Boolean PUDClassCostPriceEFAfter(Integer wn,Integer fn,Integer rownr,Integer changedf)
+begin
+  record PUVc PUr;
+  row PUVc PUrw;
+  record INVc INr;
+  boolean res;
+
+  if (changedf!=0) then 
+    begin
+      GetWindowRecord(wn,PUr);
+      DeselectWindow(wn,false);
+      MatRowGet(PUr,rownr,PUrw);    
+      if (PUrw.UPrice == 0) or blank(PUrw.UPrice) then
+        begin
+          INr.Code = PUrw.ArtCode;
+          ReadFirstMain(INr, 1, True);
+          PUrw.UPrice = INr.WeighedAvPrice;
+        end;
+    end;
+
+  res = inner.PUDClassCostPriceEFAfter(wn, fn, rownr, changedf); //Постообработка
+
+  PUDClassCostPriceEFAfter = res;
+  Return;
+end;
+
+
+function Boolean PUDClassCustomsObjEFAfter(Integer wn,Integer fn,Integer rownr,Integer changedf)
+begin
+  Boolean chsum,chrsum;
+  record PUVc PUr;
+  record ObjVc Objr;
+  Boolean res;
+  //row PUVc PUrw;
+  val p,s;
+
+  res = True;
+  SetLangMode(LangRussian, "RUS", 2);
+  if (changedf!=0) then begin
+    GetWindowRecord(wn,PUr);
+    DeselectWindow(wn,false);
+  if nonblank(PUr.CustomsObj) then
+    begin
+    Objr.Code = PUr.CustomsObj;
+    ReadFirstMain(Objr, 1, True);
+    res = (Objr.OTCode == "TMJ");
+    if res then
+      begin
+      PUr.CommentObj = Objr.Comment;
+      end else
+      begin
+      PUr.CustomsObj = "";
+      PUr.CommentObj = "";
+      MessageBox(0, "Неверный объект таможни!");
+      end;
+    PutWindowRecord(wn,PUr);
+    end else
+    begin
+    PUr.CustomsObj = "";
+    PUr.CommentObj = "";
+    MessageBox(0, "Необходим объект таможни!");
+    PutWindowRecord(wn,PUr);
+    end;
+
+  end;
+  PUDClassCustomsObjEFAfter = res;
+  return;
+end;
+
+
+updating function Boolean PUDClassBarcodeEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+BEGIN
+  Boolean res;
+  record PUVc Retr;
+  row PUVc Retrr;
+  record PUVc Retr2;
+  row PUVc Retrr2;
+  record BarcodeVc Barr;
+  Integer RwCnt, i;
+  Boolean Founded;
+  Integer Kvo;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = true;
+  GetWindowRecord(wn,Retr);
+  if Nonblank(Retr.Barcode) then
+    begin
+      Barr.Barcode = Retr.Barcode;
+      if ReadFirstMain(Barr, 1, True) then
+        begin
+        ClearRow(Retr, Retrr, 1);
+        MatRowInsert(Retr, 0, Retrr);
+        Retrr.ArtCode = Barr.Itemcode;
+        Retrr.Quant = 0;
+        MatRowPut(Retr, 0, Retrr);
+        Retr.Barcode = blankval;
+        PutWindowRecord(wn,Retr);
+        PUDClassArtCodeEFAfter(wn,fn,0,1);
+        end
+      else
+        begin
+        MessageBox(0, "Нет такого штрих-кода: " & Retr.Barcode);
+        end;
+    end;
+  PUDClassBarcodeEFAfter = True;
+  RETURN;
+END;
+
+
+global
+updating function Boolean PUDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+  Boolean res;
+
+  switch (fieldname)
+    begin
+      case "CostPrice": res = PUDClassCostPriceEFAfter(wn,fn,rownr,changed);
+      case "CustomsObj": res = PUDClassCustomsObjEFAfter(wn,fn,rownr,changed);
+      case "Barcode": res = PUDClassBarcodeEFAfter(wn,fn,rownr,changed);
+      otherwise
+        res = inner.PUDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+    end;
+
+  PUDClassAfterEditField = res;
+  RETURN;
+END;
+
+
+global
+function Boolean PUDClassOKFlagButtonAction(Integer wn,Integer value)
+begin
+  Boolean res;
+  record PUVc PUr;
+  record UserVc USr;
+  Integer i;
+  row PUVc PUrw;
+  
+  res = inner.PUDClassOKFlagButtonAction(wn, value);
+
+  if res then 
+    begin
+      GetWindowRecord(wn,PUr);
+      for (i = 0; i < MatRowCnt(PUr) and res; i = i + 1)
+        begin
+          MatRowGet(PUr, i, PUrw);
+          if nonblank(PUrw.ArtCode) then 
+            begin
+            res = ((PUrw.UPrice > 0));
+            end;
+          WindowFieldGoto(wn, PUr, i, "UPrice", false);
+          if not res then 
+            begin
+            USr.Code = CurrentUser;
+            ReadFirstMain(USr, 1, True);
+            //res = UserCanAction("UnOKAll", False);
+            res = USr.AccessGroup == "ADMIN";
+            end;
+        end;
+    end;
+
+  PUDClassOKFlagButtonAction = res;
+  return;
+end;
+
+
+global
+function Boolean PUDClassOnOKWindow(Integer wn)
+BEGIN
+  record PUVc Pur;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  GetWindowRecord(wn,PUr);
+  if (nonblank(PUr.CustomsCost) and (PUr.CustomsCost != 0) and blank(PUr.CustomsObj))then
+    begin
+    MessageBox(0, "3аполните объект таможни!");
+    WindowFieldGoto(wn,PUr,-1,"CustomsObj", True);
+    PUDClassOnOKWindow = False;
+    end
+  else
+    begin
+    PUDClassOnOKWindow = True;
+    end;
+  RETURN;
+END;

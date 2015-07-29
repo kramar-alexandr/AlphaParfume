@@ -1,0 +1,886 @@
+external inner function string 255 CheckTrans(var record TRVc, Integer, Boolean);
+external function boolean ISetInSet(string, string);
+external inner function Boolean SetInSet2(string,string);
+
+global
+procedure ListCust(var record TempVc Listr, record RcVc RepSpec)
+begin
+record CUVc CUr;
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i,k;
+record UserVc USr;
+
+USr.Code = CurrentUser;
+readfirstmain(Usr, 1, true);
+	
+resetloop(CUr);
+i = 0;
+TrHr = true;
+while (LoopMain(CUr, 1, TrHr))
+	begin	
+	if TrHr and ((CUr.CustCat == RepSpec.f1) or  blank(RepSpec.f1)) and (CUr.blockedFlag <> 1) and (CUr.PayDeal <> "0") and (CUr.PayDeal <> "S0")
+	  and ((Usr.AccessGroup=="ADMIN") or (Usr.AccessGroup=="LAW") or (Usr.SalesGroup == CUr.SalesGroup)) then
+		begin
+		if (((nonblank(CUr.Passp) and (CUr.ValPas == 0))
+		  or (nonblank(CUr.RefINN) and (CUr.ValRefINN == 0))
+		  or (nonblank(CUr.EGRPOU) and (CUr.ValEGRPOU == 0))
+		  or (nonblank(CUr.RefSingle) and (CUr.ValRefSingle == 0))
+		  or (nonblank(CUr.RefOPP) and (CUr.ValRefOPP == 0))
+		  or (nonblank(CUr.AssigDir) and (CUr.ValAssigDir == 0))
+		  or (nonblank(CUr.Excerpt) and (CUr.ValExcerpt == 0))
+		  or (nonblank(CUr.RefNDS) and (CUr.ValRefNDS == 0))   
+		  or (nonblank(CUr.Person) and (CUr.ValTrust == 0))
+		  or (nonblank(CUr.ContractDate) and (CUr.ValTerm == 0))) 
+		  and ((CUr.DocChDate >= RepSpec.sStartDate) and (CUr.DocChDate <= RepSpec.sEndDate)) and (nonblank(CUr.LowPrew)) and (RepSpec.ArtMode == 1)
+		  and (((CUr.Status == 0 and RepSpec.flags[1] == 1) or (RepSpec.flags[1] == 0)) 
+		  or ((CUr.Status == 1 and RepSpec.flags[1] == 2) or (RepSpec.flags[1] == 0)))
+		  
+		  or (blank(CUr.LowPrew) and ((CUr.DocChDate >= RepSpec.sStartDate) and (CUr.DocChDate <= RepSpec.sEndDate)) and (RepSpec.ArtMode == 0))
+		    and (((CUr.Status == 0 and RepSpec.flags[1] == 1) or (RepSpec.flags[1] == 0)) 
+		    or ((CUr.Status == 1 and RepSpec.flags[1] == 2) or (RepSpec.flags[1] == 0))))  then
+			begin
+			Listrw.f2 = CUr.Code;
+			Listrw.f3 = CUr.Name;
+			Listrw.f4 = CUr.CustCat;
+			Listrw.f5 = CUr.DocChDate;
+			Listrw.f6 = CUr.DocChTime;
+			MatRowInsert(Listr, k, Listrw);
+			k = k + 1;
+			end;
+		end;	
+	end;	
+
+return;	
+end;
+
+global
+updating
+procedure CreateLog(string Code, string CustCat, string NameCust)
+begin
+record CheckLogVc CLr;
+Boolean TrHs;
+
+// TrHs = true;
+  // while (LoopMain(CLr,1,TrHs)) 
+  // begin
+    // if (TrHs) then 
+	// begin
+    // RecordDelete(CLr);
+    // StepBack(CLr);
+	// end;
+  // end;
+RecordNew(CLr);
+CLr.SerNr = NextSerNr("CheckLogVc", CurrentDate, -1, false, "");
+CLr.CodeFil = CustCat;
+CLr.NameCust = NameCust;
+CLr.CodeCust = Code;
+CLr.LogDate = CurrentDate;
+CLr.LogTime = CurrentTime;
+recordStore(CLr, true);
+return;
+end;
+
+
+global
+function boolean tBanOper(record TRVc TRp)
+BEGIN
+boolean res;
+row TRVc TRpw;
+integer i,ii;
+record tBanOperVc BOr;
+
+SetLangMode(LangRussian,"RUS",2);
+
+res = true;
+
+BOr.Code = "IYA";
+readfirstmain(BOr, 1, true);
+if TRp.TransDate <= BOr.BanDate then
+	begin	
+	for (ii = 0; ii < MatRowCnt(TRp); ii = ii + 1)
+		begin
+		MatRowGet(TRp, ii, TRpw);
+		if ISetInSet(TRpw.AccNumber, BOr.Acc) then
+			begin
+			res = false;
+			end;			
+		end;
+	end;
+  tBanOper = res;
+  RETURN;
+END;
+
+global
+updating
+function LongInt TRVcRecordSaveAfter(var record TRVc TRr,record TRVc TR2r,LongInt long3,LongInt long4)
+BEGIN
+LongInt res;  
+row TRVc TRrw;
+Integer rwcnt,i;
+string 255 tstr;
+
+if tBanOper(TRr) then
+	begin	  
+	res = inner.TRVcRecordSaveAfter(TRr, TR2r,long3,long4);
+	end
+else
+	begin	  
+	if (ReadFirstMain(TRr,0,true)) then 
+		begin
+		RecordDelete(TRr);  
+		end;
+	end;
+
+  TRVcRecordSaveAfter = res;  
+  RETURN;
+END;
+
+global
+updating function LongInt OPVcRecordCheck(record OPVc OPp,record OPVc OP2p,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+record TRVc TR1r;
+date date1;
+
+res = inner.OPVcRecordCheck(OPp, OP2p, stat, long4);
+
+TR1r.TransDate = OPp.TransDate;
+TR1r.Number = OPp.SerNr;
+if not(ReadFirstKey("TransDate", TR1r,2,true)) and ((OPp.DoneFlag <> OP2p.DoneFlag) and (OPp.DoneFlag == 1)) then 
+	begin
+	res = -1;
+	MessageBox(0, "Создавать запись операции запрещено.");
+	end;	
+
+OPVcRecordCheck = res;
+RETURN;
+END;
+
+global
+updating function LongInt TRVcRecordCheck(record TRVc TRp,record TRVc TR2p,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+
+if tBanOper(TRp) then
+	begin	  
+    res = inner.TRVcRecordCheck(TRp, TR2p,stat,long4);
+	end
+else
+	begin	  
+	res = -1;
+	MessageBox(0, "Создавать запись операции запрещено.");
+	end;
+
+TRVcRecordCheck = res;
+RETURN;
+END;
+
+
+global
+function Longint tBanOperVcRecordDefaults(var record tBanOperVc BOr, record tBanOperVc BO2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+USr.Code = CurrentUser;
+readfirstmain(USr, 1, true);
+
+BOr.Code = CurrentUser;
+BOr.BanDate = CurrentDate;
+
+tBanOperVcRecordDefaults = res;
+RETURN;
+end;
+
+
+global
+function date tGetFirstDayofWN(integer N)
+begin
+  record WeekVc Wr;
+  row WeekVc Wrrw;
+  record CYBlock CompYear;
+  string 20 country;
+  Integer i,rwcnt;
+  date res;
+  Integer year,chkyear;
+  LongInt days;
+  Boolean foundf;
+  Date tdp;
+  string 100 countrycode;
+  LongInt maxweeknrp;
+  
+  tdp = CurrentDate;
+  BlockLoad(CompYear);
+
+  year = GetYear(tdp);
+  chkyear = year;
+  country = countrycode;
+  if (blank(country)) then begin
+    country = CompYear.CountryCode;
+  end;
+  Wr.CountryCode = country;
+  foundf = ReadFirstMain(Wr,1,true);
+  if ((foundf==false) and (country!=CompYear.CountryCode)) then begin
+    Wr.CountryCode = CompYear.CountryCode;
+    foundf = ReadFirstMain(Wr,1,true);
+  end;
+  if (foundf) then begin
+    rwcnt = MatRowCnt(Wr);
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Wr,i,Wrrw);
+      if (Wrrw.Year==year) then begin
+        if (Wrrw.FirstDayofW1>tdp) then begin chkyear = chkyear - 1; end;
+      end;
+      if (Wrrw.Year==year+1) then begin
+        if (Wrrw.FirstDayofW1<=tdp) then begin chkyear = chkyear + 1; end;
+      end;
+    end;
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(Wr,i,Wrrw);
+      if (Wrrw.Year==chkyear) then begin
+       // days = DateDiff(tdp,Wrrw.FirstDayofW1);
+	   days = ((N - 1) * 7);
+        res = addday(Wrrw.FirstDayofW1, days);
+      //  maxweeknrp = Wrrw.NrOffWeeks;
+      end;
+    end;
+  end;
+  tGetFirstDayofWN = res;
+  return;
+end;
+
+
+//===========================================
+global
+function boolean tFindIHrInList(LongInt SerNr, string Code, record TempVc Listr)
+begin
+row TempVc Listrw;
+integer RwCnt;
+boolean bool;
+
+bool = true;
+
+for (RwCnt = 0; RwCnt < MatRowCnt(Listr); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Listr, RwCnt, Listrw);
+	if (StringToLongInt(Listrw.f3) == SerNr) and (Listrw.f2 == Code) then
+		begin
+		bool = false;
+		RwCnt = MatRowCnt(Listr);
+		end;
+	end;
+	
+tFindIHrInList = bool;	
+return;
+end;
+
+//===========================================
+global
+function boolean tNextItemNew( string Code, record TempVc Listr, integer RwCnt)
+begin
+row TempVc Listrw;
+boolean bool;
+
+bool = true;
+
+MatRowGet(Listr, RwCnt + 1, Listrw);
+if (Listrw.f2 == Code) then
+	begin
+	bool = false;
+	end;
+
+	
+tNextItemNew = bool;	
+return;
+end;
+
+//===========================================
+
+global
+function boolean tItemHistMov1(string Code, date sStartDate, date sEndDate, string frloc, string toloc, var record TempVc Listr)
+begin
+record ItemHistVc IHr;
+record StockMovVc SMr;
+boolean bool,res;
+val Qty;
+string 250 Tstr;
+row TempVc Listrw;
+integer ii;
+
+res = false;
+
+ResetLoop(IHr);
+IHr.TransDate = sStartDate;
+IHr.ArtCode = Code;
+IHr.Location = frloc;
+bool = true;
+while (LoopKey("ArtCodeLoc", IHr,3,  bool) )
+	begin
+	bool = (IHr.TransDate >= sStartDate) and (IHr.TransDate <= sEndDate);
+	if bool and (IHr.FileName == "StockMovVc")  then
+		begin
+		SMr.SerNr = IHr.TransNr;
+		ReadFirstMain(SMr, 1, True);
+		if toloc == SMr.ToLocation then
+			begin
+		    Qty = IHr.Qty;
+			//Tstr = IHr.SerNr &	 "   " & SMr.SerNr & "   " & frloc & "   " & toloc & "   " & Qty;
+			ii = MatRowCnt(Listr); 
+			Listrw.f2 = Code;
+			Listrw.f3 = IHr.SerNr;
+			Listrw.f10 = IHr.TransDate;
+			Listrw.f4 = SMr.SerNr;
+			Listrw.f5 = frloc;
+			Listrw.f6 = toloc;
+			Listrw.f7 = Qty;
+			Listrw.f8 = SMr.LogNewUser;
+			Listrw.f9 = "-->";
+			if tFindIHrInList(IHr.SerNr, Code, Listr) then
+				begin
+				MatRowInsert(Listr, ii, Listrw);
+				res = true;
+				//bool = false;
+				end;
+			end;
+		end;
+	end;
+
+tItemHistMov1 = res;;	
+return;
+end;
+
+//===========================================
+global
+procedure tItemHistMov(string Code, date sStartDate, date sEndDate,string locFr ,string locTo, var record TempVc Listr)
+begin
+record ItemHistVc IHr;
+record StockMovVc SMr;
+string 20 frloc,toloc;
+boolean bool;
+val Qty;
+string 250 Tstr, Tstr1;
+row TempVc Listrw;
+integer ii;
+
+ResetLoop(IHr);
+IHr.TransDate = sStartDate;
+IHr.ArtCode = Code;
+IHr.Location = locFr;
+bool = true;
+while (LoopKey("ArtCodeLoc", IHr, 3, bool) )
+	begin
+	bool = (IHr.TransDate >= sStartDate) and (IHr.TransDate <= sEndDate);
+	if bool and (IHr.FileName == "StockMovVc") then
+		begin
+		SMr.SerNr = IHr.TransNr;
+		ReadFirstMain(SMr, 1, True);
+		if locTo == SMr.ToLocation then
+			begin
+			Qty = IHr.Qty;
+			if  (tItemHistMov1(Code, IHr.TransDate, sEndDate, locTo, locFr, Listr)) then
+				begin
+				ii = MatRowCnt(Listr);  //- 1
+				Listrw.f2 = Code;
+				Listrw.f3 = IHr.SerNr;
+				Listrw.f10 = IHr.TransDate;
+				Listrw.f4 = SMr.SerNr;
+				Listrw.f5 = locFr;
+				Listrw.f6 = locTo;
+				Listrw.f7 = Qty;
+				Listrw.f8 = SMr.LogNewUser;
+				MatRowInsert(Listr, ii, Listrw);
+				end;	
+			end;	
+		end;
+	end;
+	
+return;
+end;
+//===============================================
+global
+procedure tRetMovRnServ(record RcVc RepSpec, var record TempVc Listr)
+begin
+string 20 frin,toin;
+string 20 frloc, toloc, locFr, locTo;
+string 255 ckey, ihckey, Tstr;
+Integer keys,ihkeys,sorting;
+record INVc INr;
+record PIVc PIr;
+Boolean foundIN;  
+val itemqin,itemq2in,itemqout,bal,itemcpin,itemcpout,itemq2out;
+val fwdqty,fwdqty2,fwdcp,fwdtotcp;
+
+frin = FirstInRange(RepSpec.f1,20);
+toin = LastInRange(RepSpec.f1,20);
+locFr = RepSpec.f3;
+locTo = RepSpec.f4;
+if (nonblank(RepSpec.f2)) then 
+	begin
+	INr.Group = RepSpec.f2;
+	INr.Code = frin;
+	ckey = "Group";
+	keys = 2;
+	end 
+else 
+	begin
+	INr.Code = frin;
+	ckey = "Code";
+	keys = 1;
+	end;
+foundIN = true;
+while (LoopKey(ckey,INr,keys,foundIN)) 
+	begin
+	if (foundIN) then 
+		begin
+		if (nonblank(toin)) then  
+			begin
+			if (INr.Code>toin) then 
+				begin 
+				foundIN = false; 
+				end;
+			end;  
+		end;
+	if (foundIN) then 
+		begin
+		if (nonblank(RepSpec.f2)) then 
+			begin
+			if (INr.Group!=RepSpec.f2) then 
+				begin 
+				foundIN = false; 
+				end;
+			end;  
+		end;
+		
+	if (INr.Terminated==0) and (INr.NotForSales==0) and nonblank(INr.VItemGroupCode) and Len(INr.VItemGroupCode) > 1 then
+		begin
+		tItemHistMov(INr.Code, RepSpec.sStartDate, RepSpec.sEndDate, locFr, locTo, Listr);
+		end;
+	end;	
+ return;
+end; 
+
+
+//===============================================
+global
+procedure ttSubCIS(string HALName,  var record TempVc Listr)
+begin
+Integer RwCnt, pwn;
+longint cnt,ii,i;
+Boolean res, TrHs, TrHs2;
+record UpCISVc UCr;
+row TempVc Listrw;
+
+resetloop(UCr);
+UCr.HALName = HALName;
+TrHs = true;
+while (LoopKey("HALName", UCr, 1, TrHs)) 
+	begin 
+	if HALName <> "" then
+		begin
+		TrHs = (UCr.HALName == HALName);
+		end
+	else
+		begin
+		TrHs = false;
+		end;
+	if TrHs then
+		begin
+		cnt = MatRowCnt(Listr);
+		if (cnt == 0)   then
+			begin
+			Listrw.f2 = UCr.SUBName;
+			MatRowInsert(Listr, 0, Listrw);	
+			end
+		else
+			begin
+			for (ii=0; ii<cnt; ii=ii+1)
+				begin
+				MatRowGet(Listr,ii,Listrw);
+				if Listrw.f2 == UCr.SUBName then
+					begin
+					TrHs2 = true;
+					ii = cnt;
+					end;
+				end;
+		
+			end;		
+		if (TrHs2 == false) and (cnt <> 0) then
+			begin
+			Listrw.f2 = UCr.SUBName;
+			MatRowInsert(Listr, ii, Listrw);		
+			end;
+	
+		end;
+	end;
+ return;
+end; 
+
+global
+procedure tListCodeQu(string f1, var record TempVc Listr)
+begin
+row TempVc Listrw;
+boolean TrHs;
+record tQuestionsVc Qr;
+integer i;
+
+i = 0;
+resetloop(Qr);
+Qr.QTypeCode = f1;
+TrHs = true;
+while (LoopKey("QTypeCode", Qr, 1, TrHs)) 
+	begin 
+	TrHs = (Qr.QTypeCode == f1);
+	if TrHs then
+		begin
+		Listrw.f2 = Qr.SerNr;
+		Listrw.f3 = 0;
+		MatRowInsert(Listr, i, Listrw);	
+		i = i + 1;
+		end;	
+	end;
+
+return;
+end;
+
+
+global
+procedure tAddBall(var record TempVc Listr, longint QuestNum)
+begin
+row TempVc Listrw;
+boolean TrHs, TrHr1;
+integer i, k, rwcnt, ii;
+
+for (ii=0; ii<MatRowcnt(Listr); ii=ii+1)
+	begin
+	MatRowGet(Listr,ii,Listrw);
+	if StringToLongInt(Listrw.f2) == QuestNum then
+		begin
+		Listrw.f3 = StringToVal(Listrw.f3, M4Val) + 1;
+		MatRowPut(Listr,ii,Listrw); 
+		ii = MatRowcnt(Listr);
+		end;
+	end;
+
+return;
+end;
+
+
+
+global
+procedure tListQuest(var record TempVc Listr)
+begin
+row TempVc Listrw;
+boolean TrHs, TrHr1;
+integer i, k, rwcnt, ii;
+record ValidVc Vr;
+row ValidVc Vrw;
+
+ResetLoop(Vr);	
+Vr.OKFlag = 1;
+TrHs = True;
+while (LoopKey("OKFlag", Vr, 1, TrHs)) 
+	begin 
+	TrHs = (Vr.OKFlag == 1);
+	if TrHs and (Vr.Pers <> 100) then
+		begin
+		for (ii=0; ii<MatRowCnt(Vr); ii=ii+1)
+			begin
+			MatRowGet(Vr,ii,Vrw);
+			if Vrw.Ball == 0 then
+				begin
+				tAddBall(Listr, Vrw.QuestNum);
+				end;
+			end;
+		
+		end;
+	end;	
+
+RETURN; 
+end;
+
+
+global
+function boolean tNotExCU(var record TempVc Listr, String CUSOKR, String SalesGroup)
+begin
+row TempVc Listrw;
+boolean res;
+integer i, k, rwcnt, ii;
+
+res = true ;
+for (ii = 0; ii < MatRowcnt(Listr); ii = ii + 1)
+	begin
+	MatRowGet(Listr,ii,Listrw);
+	if (Listrw.f2 == CUSOKR) and (Listrw.f4 == SalesGroup) then //
+		begin
+		res = false;
+		ii = MatRowcnt(Listr);
+		end;
+	end;
+
+tNotExCU =  res;	
+return;
+end;
+
+
+procedure tAddCU(var record TempVc Listr, string SGroupCode)
+begin
+row TempVc Listrw;
+boolean TrHs, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record CUVc CUr;
+record SalesGroupVc SGr;
+
+ResetLoop(CUr);	
+	TrHs = True;
+	while (LoopKey("SearchKey:" & SGroupCode , CUr, 1, TrHs)) 
+		begin 
+		if (CUr.blockedFlag == 0) and  (CUr.CUType == 1) then
+			begin
+			if 	tNotExCU(Listr, CUr.SearchKey, CUr.SalesGroup) then
+				begin
+				Listrw.f2 = CUr.SearchKey; 
+				Listrw.f3 = CUr.Name; 
+				Listrw.f4 = CUr.SalesGroup;
+				MatRowInsert(Listr, MatRowcnt(Listr), Listrw);
+				end;
+			end;
+		end;
+return;
+end;
+
+global
+procedure tMakeCUList(var record TempVc Listr)
+begin
+row TempVc Listrw;
+boolean TrHs, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record CUVc CUr;
+record SalesGroupVc SGr;
+
+ResetLoop(SGr);	
+while (LoopMain(SGr, 1, true))
+	begin
+	tAddCU(Listr, SGr.SGroupCode);	
+	end;
+RETURN; 
+end;
+
+
+global
+function string 200 tGetNameSalGr(string SalGr)
+begin
+record SalesGroupVc SGr;
+
+SGr.SGroupCode = SalGr;
+ReadFirstMain(SGr, 1, true);
+tGetNameSalGr = SGr.SGroupName;
+
+return;
+end;
+
+
+global
+function boolean tNotCUAct(var record TempVc Listr, String CUrCode, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean res, cont,bool;
+integer i, k, rwcnt, ii;
+record IVVc IVr;
+
+
+IVr.CustCode = CUrCode;
+IVr.InvDate = RepSpec.sStartDate;
+res = true;
+bool = true;
+while loopkey("CustDate", IVr, 2, bool)
+  begin
+  bool = (IVr.CustCode == CUrCode) and (IVr.InvDate <= RepSpec.sEndDate);
+  if bool then
+    begin
+      cont = DateInRange(IVr.TransDate, RepSpec.sStartDate, RepSpec.sEndDate);
+      if cont then
+        begin
+        res = false ;
+        bool = false;
+        end;
+    end;
+	end;
+
+
+tNotCUAct =  res;
+return;
+end;
+
+procedure tAddCUAct(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHs, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record CUVc CUr;
+record SalesGroupVc SGr;
+
+ResetLoop(CUr);
+	TrHs = True;
+	while (LoopKey("SearchKey:" & RepSpec.f2 , CUr, 1, TrHs))
+		begin
+		if (CUr.blockedFlag == 0) and (CUr.CUType == 1) and SetInSet(RepSpec.f1, CUr.Classification) then
+			begin
+			if 	tNotCUAct(Listr, CUr.Code, RepSpec) then
+				begin
+				Listrw.f2 = CUr.Code;
+				Listrw.f3 = CUr.SearchKey;
+				Listrw.f4 = CUr.Name;
+				Listrw.f5 = CUr.SalesGroup;
+				MatRowInsert(Listr, MatRowcnt(Listr), Listrw);
+				end;
+			end;
+		end;
+return;
+end;
+
+global
+procedure tMakeCUActList(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHs, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record CUVc CUr;
+record SalesGroupVc SGr;
+
+if nonblank(RepSpec.f2) then
+    begin
+    tAddCUAct(Listr, RepSpec);
+    end
+else
+    begin
+    ResetLoop(SGr);
+    while (LoopMain(SGr, 1, true))
+    	begin
+    	RepSpec.f2 = SGr.SGroupCode;
+    	tAddCUAct(Listr, RepSpec);
+    	end;
+    end;
+
+RETURN;
+end;
+// ================= 2.02.15
+
+procedure tAddDZCU(var record TempVc Listr, longint ARrInvoiceNr, string ARrCustCode, record RcVc RepSpec, val debzad)
+begin
+row TempVc Listrw;
+integer i, Pos, NewPos, rwcnt;
+boolean found;
+string 60 FN2;
+record CUVc CUr;
+record IVVc IVr;
+val Sum, SumPr;
+
+SumPr = 0;
+
+  CUr.Code =	ARrCustCode;
+  readfirstmain(CUr, 1, true);
+
+  IVr.SerNr = ARrInvoiceNr;
+  readfirstmain(IVr, 1, true);
+
+if (CUr.CustCat == RepSpec.f3 or blank(RepSpec.f3)) and (CUr.SearchKey == RepSpec.f1 or blank(RepSpec.f1))
+     and (((SetInSet2(RepSpec.f4, CUr.Classification)) and nonblank(RepSpec.f4)) or blank(RepSpec.f4)) then
+  begin
+  if RepSpec.f2 == "USD" or blank(RepSpec.f2) then
+    begin
+    if IVr.CurncyCode == "USD" then
+        begin
+        Sum = debzad;
+        end
+    else
+        begin
+        Sum = debzad / IVr.BaseRate2; //=====================================!!! заменить на перевод на валюту, как в отчета деб.зад.
+        end;
+    end
+   else
+    begin
+    if IVr.CurncyCode == "UAH" then
+        begin
+        Sum = debzad;
+        end
+    else
+        begin
+        Sum = debzad * IVr.BaseRate2;
+        end;
+    end;
+
+	Pos = 0;
+	NewPos = Pos;
+	found = false;
+	rwcnt = MatRowCnt(Listr);
+	for (i=0; (i<rwcnt) and not found; i=i+1)
+		begin
+			MatRowGet(Listr,i,Listrw);
+			found = (Listrw.f2 == ARrCustCode);
+			if	//(ARrCustCode <> Listrw.f2) or
+					((ARrCustCode <> Listrw.f2) and (CUr.SearchKey == Listrw.f4)) then
+				begin
+					NewPos = i+1;
+				end;
+			Pos = i;
+		end;
+
+	if (found) then //Обновляем
+		begin
+			Listrw.f8 = StringToVal(Listrw.f8, M4Val) + Sum;
+			  if ((RepSpec.flags[1] == 0) and (IVr.PayDate < CurrentDate)) or ((RepSpec.flags[1] == 1) and (IVr.PlanPayDate < CurrentDate)) then
+          begin
+			    Listrw.f9 = StringToVal(Listrw.f9, M4Val) + Sum;
+			    end;
+			MatRowPut(Listr,Pos,Listrw);
+		end
+	else //Добавляем
+		begin
+			Listrw.f2 = ARrCustCode;
+			Listrw.f3 = CUr.Name;
+			Listrw.f4 = CUr.SearchKey;
+      Listrw.f5 = CUr.SalesMan;
+      Listrw.f6 = CUr.PayDeal;
+      Listrw.f7 = CUr.CurncyCode;
+
+			Listrw.f8 = Sum;
+			if ((RepSpec.flags[1] == 0) and (IVr.PayDate < CurrentDate)) or ((RepSpec.flags[1] == 1) and (IVr.PlanPayDate < CurrentDate)) then
+          begin
+          Listrw.f9 = Sum;
+          end
+        else
+          begin
+          Listrw.f9 = 0;
+          end;
+      Listrw.f10 = CUr.DateDebet;
+			MatRowInsert(Listr,NewPos,Listrw);
+		end;
+	end;
+return;
+end;
+
+global
+procedure tMakeDZCUList(var record TempVc Listr, record RcVc RepSpec)
+begin
+row TempVc Listrw;
+boolean TrHs, TrHr1;
+integer i, k, rwcnt, ii;
+record UserVc USr;
+record CUVc CUr;
+record ARVc ARr;
+
+ResetLoop(ARr);
+while (LoopMain(ARr, 1, true))
+	begin
+  tAddDZCU(Listr, ARr.InvoiceNr, ARr.CustCode, RepSpec, ARr.RVal);
+	end;
+RETURN;
+end;

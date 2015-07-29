@@ -1,0 +1,100 @@
+external procedure AddHelpButton(LongInt, LongInt);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+   
+   
+WindowBegin("Дневник сотрудника", InsightDClass, CGview, 0);
+UseView(InsightVc);
+SetWRect(64, 80, 700, 450);
+BrowseButtons(False);
+v = 10; vs = 20; h = 50; h2 = 180; h3 =310; h4 = 550;
+EditField(h,v,80,"Дата",Normal,DateIn,false,PasteCurDate);
+EditFieldTL(h2, v, 50, "Код", M4Code, ViewOnly, 20, CodeUsr, false, UserSClass);
+EditFieldTL(h3, v, 180, "Сотрудник", M4Str, ViewOnly, 250, NameUsr, false, 0); //
+EditFieldTL(h4, v, 50, "Отдел", M4Code, ViewOnly, 20, CodeDep, false, DepSClass);
+MatrixBegin(4, v+= 50, -31, -20, InsightRowType, 99);
+MatColTL(1, h = 24, "Задача", 0, M4Str, Normal, 250, Task, false, 0);
+MatColTL(1, h += 250, "Решение", 0, M4Str, Normal, 250, Res, false, 0);
+MatColTL(1, h += 250, "Качество", 0, M4Str, Normal, 20, Qual, false, 0);
+EndMatrix;
+EndWindow; 
+
+WindowBegin("Дневник сотрудника",InsightLClass, CGmlist, -);
+SpawnClass(InsightDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(InsightVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(100, 100, "Дата", DateIn, false, DateIn);
+RlColKey(200, 200, "Сотрудник", NameUsr, false, NameUsr);
+RlColKey(450, 450, "Отдел", CodeDep, false, CodeDep);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Дневник сотрудника",InsightSClass, CGslist, -);
+SpawnClass(InsightDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(InsightVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(100, 100, "Дата", DateIn, false, DateIn);
+RlColKey(200, 200, "Сотрудник", NameUsr, false, NameUsr);
+RlColKey(450, 450, "Отдел", CodeDep, false, CodeDep);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Отчёт по дневнику сотрудника",InsightRClass,CGRcW,RcType);
+SetWRect(20,80,450,200);
+v = 6; vs = 20; h = 100;
+PeriodField(h,v,"Период");
+EditFieldTL(h, v += 20, 80, "Сотрудник:", M4UStr, Normal, 21, f1, false, UserSClass);
+EditFieldTL(h, v += 20, 80, "Отдел:", M4UStr, Normal, 21, f2, false, DepSClass);
+EditFieldTL(h, v += 20, 280, "Текст в задаче:", M4Str, Normal, 21, f3, false, 0);
+ButtonFrame(h, v += 50, 123, 2, "Функция");
+RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+EndWindow;
+   
+return;
+end;
+
+global
+updating procedure InsightDClassOnOpenFromBrowse(Integer wn)
+begin
+record InsightVc Ir;
+record UserVc USr;
+boolean res;
+String 50 SuperiorU;
+
+GetWindowRecord(wn, Ir);
+
+Usr.Code = Ir.CodeUsr;
+ReadFirstMain(Usr, 1, True);
+SuperiorU = USr.Supervisor;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+res = ((USr.Department == Ir.CodeDep) or (CurrentUser == "ZINOVIY") or (Ir.CodeUsr == CurrentUser) or (CurrentUser == SuperiorU));
+	
+if (not res) then
+	begin
+	CloseWindow(wn);
+	end;
+	
+RETURN;
+end;
+
+global
+procedure InsightLClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+duplOK = false;
+RETURN;
+end;

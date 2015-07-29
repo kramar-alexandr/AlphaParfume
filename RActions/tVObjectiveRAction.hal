@@ -1,0 +1,847 @@
+external function LongInt tUserInVTicketSet(string);
+external function Longint iMinutesBetween(date, time, date, time);
+global 
+updating procedure TickAfterTask(record VObjectiveVc VOBr) 
+begin
+record VTicketVc VTr;
+row VObjectiveVc VOBrw;
+record UserVc USr;
+LongInt RwCnt, i, j, nAct;
+string 60 tstr;
+Integer pos,textsize;
+
+SetLangMode(LangRussian,"RUS",2);
+  
+RecordNew(VTr);
+VTr.SerNr = NextSerNr("VTicketVc", CurrentDate, -1, false, "");
+stopalert(VTr.SerNr);
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+//VTr.ParentNr = blankval;
+VTr.SendFlag = 1;
+VTr.ServCode = VOBr.ServCode;
+VTr.DateRec = VOBr.DateRec;
+VTr.TimeRec = VOBr.TimeRec;
+VTr.ServName = VOBr.ServName;
+VTr.ServAppoint = VOBr.ServAppoint;
+VTr.ServDepart = VOBr.ServDepart;
+VTr.CastCode = VOBr.UsrCode;
+VTr.CastName = VOBr.UsrName;
+VTr.VarOfInf = "ТЗ";
+VTr.PlanDate = VOBr.DateEnd;
+VTr.Comment = VOBr.Comment;
+VTr.ActionType = VOBr.ActionType ;
+VTr.TestFlag = 0;
+VTr.RecFlag = 1;
+if  VOBr.TypeOfObj == 0 then
+	begin
+	VTr.TypeOfTicket = "NEWPO";
+	end
+else
+	begin
+	VTr.TypeOfTicket = "PO";
+	end;
+  
+j = 0;
+tstr = "Назначение: " & VOBr.AIM;
+LineTextPut(VTr,j,tstr);	
+tstr = "Отделы: " & VOBr.DeparmentList;
+j = j + 1;
+LineTextPut(VTr,j,tstr);	
+tstr = "Наименование: " & VOBr.SoftName;
+j = j + 1;
+LineTextPut(VTr,j,tstr);	
+tstr =  "Мнемон. имя: " & VOBr.SoftMnemo;
+j = j + 1;
+LineTextPut(VTr,j,tstr);	
+tstr = "Пользователи: " & VOBr.UserClass ;
+j = j + 1;
+LineTextPut(VTr,j,tstr);	
+if nonblank(VOBr.HardwareI) then
+	begin
+	tstr = "Оборудование: " & VOBr.HardwareI ;
+	j = j + 1;
+	LineTextPut(VTr,j,tstr);	
+	end;
+if nonblank(VOBr.SoftwareI) then
+	begin
+	tstr = "Используемое ПО: " & VOBr.SoftwareI ;
+	j = j + 1;
+	LineTextPut(VTr,j,tstr);	
+	end;
+if  VOBr.TypeOfObj == 0 then
+	begin
+	tstr = "Тип: " & VOBr.UserI & ";  " & "Новое ПО";
+	end
+else
+	begin
+	tstr = "Тип: " & VOBr.UserI & ";  " & "Дополнение к ПО";
+	end;
+j = j + 1;
+LineTextPut(VTr,j,tstr);	
+
+rwcnt = MatRowCnt(VOBr);
+for (i = 0; i < rwcnt; i = i + 1) 
+  begin
+  MatRowGet(VOBr, i, VOBrw);
+  tstr = VOBrw.Code & " - " & VOBrw.Mnemo & " : " & VOBrw.Text;
+  j = j + 1;
+ LineTextPut(VTr,j,tstr);
+  end;   
+  
+rwcnt = LineTextCnt(VOBr);
+for (i = 0; i < rwcnt; i = i + 1) 
+  begin
+  tstr = LineTextGet(VOBr,i);
+  j = j + 1;
+ LineTextPut(VTr,j,tstr);
+  end;    
+  
+RecordInsert(VTr, false);
+RecordStore(VTr, false);
+
+CreateRecordLink(VOBr, CurrentCompany, VTr, CurrentCompany);
+CreateRecordLink(VTr, CurrentCompany, VOBr, CurrentCompany);
+RETURN;
+end;
+
+global
+function LongInt tFindActTestTask(record VObjectiveVc VOBr, var LongInt nAct)
+begin
+record ActVc Actr;
+Boolean TrHs;
+
+ResetLoop(Actr);
+//Actr.ActType = VOBr.ActionType;
+Actr.TransDate = VOBr.DateRec;
+while  (LoopBackKey("ActType", Actr, 1, not TrHs)) 
+  begin
+  TrHs = ((Actr.SerialNr) == VOBr.SerNr & "tt" ) and blank(Actr.ActType); //StringToLongInt
+  if TrHs then
+    begin
+    if (Actr.OKFlag == 1) then
+		begin
+		tFindActTestTask = 1;
+		nAct = Actr.SerNr;
+		end
+    else
+		begin
+		tFindActTestTask = 0; 
+		nAct = Actr.SerNr;
+		end;
+    end;
+  end;
+
+return;
+end;
+
+
+global 
+updating procedure ActTestTask(record VObjectiveVc VOBr) 
+begin
+record ActVc Actr;
+row ActVc Actrw;
+row VObjectiveVc VOBrw;
+record VObjectiveVc VOB2r;
+LongInt RwCnt, i, j;
+string 60 tstr;
+Integer pos,textsize;
+
+SetLangMode(LangRussian,"RUS",2);
+  
+RecordNew(Actr);
+Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+//stopalert(Actr.SerNr);
+Actr.MainPersons = VOBr.UsrCode;
+Actr.CCPersons = CurrentUser;
+Actr.TodoFlag = 1;
+Actr.CalTimeFlag = 1;
+Actr.TransDate = CurrentDate;
+Actr.EndDate = CurrentDate;
+Actr.StartTime = CurrentTime;
+Actr.EndTime = AddSeconds(CurrentTime, 1);
+Actr.PrioLevel = -1;
+Actr.Invalid = 0;
+//Actr.ActType = VOBr.ActionType //"70301"; 
+Actr.SerialNr = VOBr.SerNr & "tt";
+Actr.Comment = "ТЕСТИРОВАНИЕ " & VOBr.Comment;
+
+j = 0;
+Actrw.Text = "Назначение: " & VOBr.AIM;
+Actrw.Signature = CurrentUser;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text = "Отделы: " & VOBr.DeparmentList;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text = "Наименование: " & VOBr.SoftName;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text =  "Мнемон. имя: " & VOBr.SoftMnemo;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text = "Пользователи: " & VOBr.UserClass ;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);		
+Actrw.Text = "Оборудование: " & VOBr.HardwareI ;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text = "Используемое ПО: " & VOBr.SoftwareI ;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+if  VOBr.TypeOfObj == 0 then
+	begin
+	Actrw.Text = "Тип: " & VOBr.UserI & ";  " & " Новое ПО";
+	end
+else
+	begin
+	Actrw.Text = "Тип: " & VOBr.UserI & ";  " & "Дополнение к ПО";
+	end;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+
+rwcnt = MatRowCnt(VOBr);
+for (i = 0; i < rwcnt; i = i + 1) 
+  begin
+  MatRowGet(VOBr, i, VOBrw);
+  tstr = VOBrw.Code & " - " & VOBrw.Mnemo & " : " & VOBrw.Text;
+  Actrw.Text = tstr;
+  Actrw.Signature = CurrentUser;
+  j = j + 1;
+  MatRowPut(Actr, j, Actrw);
+  end;   
+  
+rwcnt = LineTextCnt(VOBr);
+for (i = 0; i < rwcnt; i = i + 1) 
+  begin
+  tstr = LineTextGet(VOBr,i);
+  Actrw.Text = tstr;
+  Actrw.Signature = CurrentUser; 
+  j = j + 1;
+  MatRowPut(Actr, j, Actrw);
+  end;    
+  
+RecordInsert(Actr, false);
+RecordStore(Actr, false);
+
+CreateRecordLink(VOBr, CurrentCompany, Actr, CurrentCompany);
+CreateRecordLink(Actr, CurrentCompany, VOBr, CurrentCompany);
+
+RETURN;
+end;
+
+
+global
+function LongInt tFindActFromTask(record VObjectiveVc VOBr, var LongInt SumTimeAct, var LongInt nAct, var Date DateSol, var Time TimeSol)
+begin
+record ActVc Actr;
+Boolean TrHs;
+
+SumTimeAct = 0;
+ResetLoop(Actr);
+Actr.ActType = VOBr.ActionType;
+Actr.TransDate = VOBr.DateRec;
+
+while  (LoopBackKey("ActType", Actr, 1, not TrHs)) 
+  begin
+  TrHs = ((Actr.SerialNr) == VOBr.SerNr & "tt") and (Actr.ActType == VOBr.ActionType) and nonblank(Actr.ActType); //StringToLongInt
+  if TrHs then
+    begin
+    if (Actr.OKFlag == 1) then
+      begin
+	  DateSol = Actr.EndDate;
+	  TimeSol = Actr.EndTime;
+      SumTimeAct = iMinutesBetween(VOBr.DateRec, VOBr.TimeRec, Actr.EndDate, Actr.EndTime);  
+      tFindActFromTask = 1;
+	  nAct = Actr.SerNr;
+      end
+    else
+      begin
+      tFindActFromTask = 0;
+	  nAct = Actr.SerNr;
+      end;
+    end;
+  end;
+end;
+
+
+global 
+updating procedure ActAfterTask(record VObjectiveVc VOBr) 
+begin
+record ActVc Actr;
+row ActVc Actrw;
+row VObjectiveVc VOBrw;
+record VObjectiveVc VOB2r;
+LongInt RwCnt, i, j, nAct;
+string 60 tstr;
+Integer pos,textsize;
+
+SetLangMode(LangRussian,"RUS",2);
+  
+RecordNew(Actr);
+Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+//stopalert(Actr.SerNr);
+Actr.MainPersons = VOBr.ServCode;
+Actr.CCPersons = CurrentUser;
+Actr.TodoFlag = 1;
+Actr.CalTimeFlag = 1;
+Actr.TransDate = CurrentDate;
+Actr.EndDate = CurrentDate;
+Actr.StartTime = CurrentTime;
+Actr.EndTime = AddSeconds(CurrentTime, 1);
+Actr.PrioLevel = -1;
+Actr.Invalid = 0;
+Actr.ActType = VOBr.ActionType; //"70301"
+Actr.SerialNr = VOBr.SerNr & "tt";
+
+if (tFindActTestTask(VOBr, nAct) <> 1) then 
+  begin
+  Actr.Comment = VOBr.Comment;
+  end
+else
+  begin  
+  Actr.Comment = VOBr.Comment & "  НЕКАЧЕСТВЕННОЕ ИСПОЛНЕНИЕ";
+  end;
+  
+j = 0;
+Actrw.Text = "Назначение: " & VOBr.AIM;
+Actrw.Signature = CurrentUser;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text = "Отделы: " & VOBr.DeparmentList;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text = "Наименование: " & VOBr.SoftName;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text =  "Мнемон. имя: " & VOBr.SoftMnemo;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+Actrw.Text = "Пользователи: " & VOBr.UserClass ;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+if nonblank(VOBr.HardwareI) then
+	begin
+	Actrw.Text = "Оборудование: " & VOBr.HardwareI ;
+	Actrw.Signature = CurrentUser;
+	j = j + 1;
+	MatRowPut(Actr, j, Actrw);	
+	end;
+if nonblank(VOBr.SoftwareI) then
+	begin
+	Actrw.Text = "Используемое ПО: " & VOBr.SoftwareI ;
+	Actrw.Signature = CurrentUser;
+	j = j + 1;
+	MatRowPut(Actr, j, Actrw);	
+	end;
+if  VOBr.TypeOfObj == 0 then
+	begin
+	Actrw.Text = "Тип: " & VOBr.UserI & ";  " & "Новое ПО";
+	end
+else
+	begin
+	Actrw.Text = "Тип: " & VOBr.UserI & ";  " & "Дополнение к ПО";
+	end;
+Actrw.Signature = CurrentUser;
+j = j + 1;
+MatRowPut(Actr, j, Actrw);	
+
+rwcnt = MatRowCnt(VOBr);
+for (i = 0; i < rwcnt; i = i + 1) 
+  begin
+  MatRowGet(VOBr, i, VOBrw);
+  tstr = VOBrw.Code & " - " & VOBrw.Mnemo & " : " & VOBrw.Text;
+  Actrw.Text = tstr;
+  Actrw.Signature = CurrentUser;
+  j = j + 1;
+  MatRowPut(Actr, j, Actrw);
+  end;   
+  
+rwcnt = LineTextCnt(VOBr);
+for (i = 0; i < rwcnt; i = i + 1) 
+  begin
+  tstr = LineTextGet(VOBr,i);
+  Actrw.Text = tstr;
+  Actrw.Signature = CurrentUser; 
+  j = j + 1;
+  MatRowPut(Actr, j, Actrw);
+  end;    
+  
+RecordInsert(Actr, false);
+RecordStore(Actr, false);
+
+CreateRecordLink(VOBr, CurrentCompany, Actr, CurrentCompany);
+CreateRecordLink(Actr, CurrentCompany, VOBr, CurrentCompany);
+RETURN;
+end;
+
+
+
+global
+function Longint VObjectiveVcRecordDefaults(var record VObjectiveVc VOBr, record VObjectiveVc VOB2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+
+if (SingleUserMode) then 
+  begin
+  VOBr.SerNr = NextSerNr("VObjectiveVc", CurrentDate, -1, false, "");
+  end;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if USr.Department <> "83IT" then
+begin
+VOBr.UsrCode = USr.Code;
+VOBr.UsrName = USr.Name;
+VOBr.UsrAppoint = USr.StateJob;
+VOBr.UsrDepart = USr.Department;
+VOBr.UsrGroup = USr.SalesGroup;
+end;
+
+
+VObjectiveVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt VObjectiveVcRecordDuplicate(var record VObjectiveVc VOBr, record VObjectiveVc VOB2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+
+if (SingleUserMode) then 
+  begin
+  VOBr.SerNr = NextSerNr("VObjectiveVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  VOBr.SerNr = -1;
+  end;
+VOBr.DateStart = "";
+VOBr.TimeStart = "";  
+VOBr.DateSend = "";
+VOBr.TimeSend = "";
+VOBr.DateEnd = "";
+VOBr.TimeEnd = "";
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VOBr.UsrCode = "";
+VOBr.UsrName = "";
+VOBr.UsrAppoint = "";
+VOBr.UsrDepart = "";
+// VOBr.ParentNr = blankval;
+VOBr.SendFlag = 0;
+VOBr.ServCode = blankval;
+VOBr.DateRec = "";
+VOBr.TimeRec = "";
+VOBr.DateSol = "";
+VOBr.TimeSol = "";
+VOBr.SendFlag = 0;
+VOBr.RecFlag = 0;
+VOBr.SolFlag = 0;
+VOBr.ServName = blankval;
+VOBr.ServAppoint = blankval;
+VOBr.ServDepart = blankval;
+VOBr.TestFlag = 0;
+VOBr.DateTest = "";
+VOBr.TimeTest = "";
+// VOBr.ActNr = blankval;
+VOBr.TimeSum = -1;
+VOBr.DateRec= "";
+VOBr.TimeRec = "";
+VOBr.Concordance = "";
+VOBr.DateConcord = "";
+VOBr.TimeConcord = "";
+VOBr.StartFlag = 0;
+VObjectiveVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt VObjectiveVcRecordRemoveTest(var record VObjectiveVc VOBr, record VObjectiveVc VOB2r, LongInt stat, LongInt long4)
+BEGIN
+VObjectiveVcRecordRemoveTest = 1;
+if (not UserCanAction("UnOKAll",True)) then 
+  begin
+ VObjectiveVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+function Longint FindBoss(string CurUsr)
+begin
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+Integer RwCnt;
+
+FindBoss = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(Bossb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Bossb, RwCnt, Bossbw);
+	if Bossbw.Boss == CurUsr then
+		begin
+		FindBoss = 1;
+		RwCnt = MatRowCnt(Bossb);
+		end;
+	end;
+
+RETURN;
+END;
+
+global
+function Longint VObjectiveVcRecordCheck(var record VObjectiveVc VOBr, record VObjectiveVc VOB2r, LongInt stat, LongInt long4)
+begin
+LongInt Res, Res1, SumTime, nAct;
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+Integer insertmode,updatemode;
+Boolean TrHs;
+row VObjectiveVc VOBrw, VOB2rw;
+Integer RwCnt;
+Date DateSol;
+Time TimeSol;
+string 20 SupUsr, SupServ;
+string 255 tstr, tstr2;
+Integer pos, textsize;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (VOBr.SerNr < 1) then
+  begin
+  VOBr.SerNr = NextSerNr("VObjectiveVc", CurrentDate, -1, false, "");
+  end;
+  
+ if (stat == updatemode) and (VOBr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+if (VOB2r.SolFlag == 1) then
+  begin
+  res = -1;
+  end;
+if  (VOBr.SendFlag == 0) and (VOBr.TestFlag == 1) then
+begin
+res = -1;
+end;
+if (tUserInVTicketSet(USr.Code) <> 1) and (VOBr.TestFlag <> VOB2r.TestFlag)  and (VOBr.TestFlag == 1)  then
+	begin
+	res = -1;
+	end;	
+if (tUserInVTicketSet(USr.Code) <> 1) and (VOBr.SendFlag <> VOB2r.SendFlag) and (VOBr.SendFlag == 1) then
+	begin
+	res = -1;
+	end;  
+if (blank(VOBr.ServCode) or blank(VOBr.DateEnd) ) and (VOBr.SendFlag == 1) then
+	begin
+    res = -1;
+    end;	
+// if (tFindActFromTask(VOBr, SumTime, nAct, DateSol, TimeSol) <> 1)  and (VOBr.TestFlag <> VOB2r.TestFlag)  and (VOBr.TestFlag == 1) then
+	// begin
+	// res = -1;
+	// end;	
+if (VOBr.UsrDepart <> USr.Department) and (VOBr.SolFlag <> VOB2r.SolFlag) and (VOBr.SolFlag == 1) then
+	begin
+	res = -1;
+	end;
+if blank(VOBr.ServDepart) or blank(VOBr.DatePlan) or blank(VOBr.TimePlan) or blank(VOBr.AIM) or blank(VOBr.DeparmentList) or VOBr.SoftName == ""  
+		or VOBr.UserClass == "" or LineTextCnt(VOBr) < 0 then
+	begin
+    res = -1;
+    end;	
+
+if (blank(VOBr.ServCode) or blank(VOBr.DateEnd)) and (VOBr.SendFlag == 1) then //or blank(VOBr.ActionType)  or VOBr.StartFlag <> 1
+	begin
+    res = -1;
+    end;
+pos = 0;  
+textsize = SizeTextCnt(VOB2r);
+while (pos<textsize) 
+	begin
+	tstr2 = StringFromText(VOB2r,pos,1);
+	tstr = StringFromText(VOBr,pos,1);
+	pos = pos + len(tstr2);
+	if ((tstr2)<>(tstr)) then 
+		begin
+		res = -1;
+		end;	
+	end;
+
+if (VOBr.StartFlag == 1) and UserCanAction("UnOKAll",True) and (VOBr.Concordance <> VOB2r.Concordance) then
+		begin
+		VOBr.StartFlag = 0;
+		VOBr.DateConcord = "";
+		VOBr.TimeConcord = "";
+		end;	
+	
+if (res <> -1) then
+	begin 
+    res1 = 0;	
+	for (RwCnt = 0; RwCnt < MatRowCnt(VOBr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(VOBr, RwCnt, VOBrw);
+		if ((VOBrw.Code == "ВХОД")) and (VOBrw.Text <> "") then //and (VOBrw.Mnemo <> "") 
+			begin
+			RwCnt = MatRowCnt(VOBr);
+			res1 = 1;
+			end;	
+		end; 
+	if res1 <> 1 then
+		begin
+		res = -1;
+		stopalert("ВХОД");
+		end;
+	res1 = 0;	
+	for (RwCnt = 0; RwCnt < MatRowCnt(VOBr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(VOBr, RwCnt, VOBrw);
+		if ((VOBrw.Code == "ВЫХОД")) and (VOBrw.Text <> "") then
+			begin
+			RwCnt = MatRowCnt(VOBr);
+			res1 = 1;
+			end;	
+		end; 
+	if (VOB2r.SolFlag == 1) then
+		begin
+		res = -1;
+		end;	
+	if (VOBr.SolFlag == 0) and (VOB2r.SolFlag <> 0) and (VOBr.UsrDepart <> USr.Department) then
+		begin
+		res = -1;
+		end;
+	if res1 <> 1 then
+		begin
+		res = -1;
+		end;
+	res1 = 0;	
+	for (RwCnt = 0; RwCnt < MatRowCnt(VOBr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(VOBr, RwCnt, VOBrw);
+		if ((VOBrw.Code == "ИСПДАН")) and (VOBrw.Text <> "") then
+			begin
+			RwCnt = MatRowCnt(VOBr);
+			res1 = 1;
+			end;	
+		end; 
+	if (VOB2r.SolFlag == 1) then
+		begin
+		res = -1;
+		end;	
+	if (VOBr.SolFlag == 0) and (VOB2r.SolFlag <> 0) and (not UserCanAction("UnOKAll",True))  then
+		begin
+		res = -1;
+		end;
+	if res1 <> 1 then
+		begin
+		res = -1;
+		end;
+	res1 = 0;	
+	for (RwCnt = 0; RwCnt < MatRowCnt(VOBr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(VOBr, RwCnt, VOBrw);
+		if ((VOBrw.Code == "ТИПВЫВ")) and (VOBrw.Text <> "") then
+			begin
+			RwCnt = MatRowCnt(VOBr);
+			res1 = 1;
+			end;	
+		end; 
+	if (VOB2r.SolFlag == 1) then
+		begin
+		res = -1;
+		end;	
+	if (VOBr.SolFlag == 0) and (VOB2r.SolFlag <> 0) and (not UserCanAction("UnOKAll",True))  then
+		begin
+		res = -1;
+		end;
+	if res1 <> 1 then
+		begin
+		res = -1;
+		end;
+			res1 = 0;	
+	for (RwCnt = 0; RwCnt < MatRowCnt(VOBr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(VOBr, RwCnt, VOBrw);
+		if ((VOBrw.Code == "ЧАСТ")) and (VOBrw.Text <> "") then
+			begin
+			RwCnt = MatRowCnt(VOBr);
+			res1 = 1;
+			end;	
+		end; 
+	if (VOB2r.SolFlag == 1) then
+		begin
+		res = -1;
+		end;	
+	if (VOBr.SolFlag == 0) and (VOB2r.SolFlag <> 0) and (not UserCanAction("UnOKAll",True))  then
+		begin
+		res = -1;
+		end;
+	if res1 <> 1 then
+		begin
+		res = -1;
+		end;
+
+	if (VOBr.SendFlag <> VOB2r.SendFlag) and (VOBr.SendFlag == 1) then
+		begin
+		VOBr.DateStart = CurrentDate;
+		VOBr.TimeStart = CurrentTime;
+		end;  
+	if (VOBr.TestFlag <> VOB2r.TestFlag) and (VOBr.TestFlag == 1) and (VOBr.ServDepart == USr.Department) then
+		begin
+		//tFindActFromTask(VOBr, SumTime, nAct, DateSol, TimeSol);
+		// VOBr.DateSol = DateSol;
+		// VOBr.TimeSol = TimeSol;
+		VOBr.DateTest = CurrentDate;
+		VOBr.TimeTest = CurrentTime;
+		end;	
+	if (VOBr.SendFlag == 1) and (VOBr.RecFlag == 0) then
+		begin    
+		  VOBr.DateRec = CurrentDate;
+		  VOBr.TimeRec = CurrentTime;
+		  VOBr.RecFlag = 1;
+		  VOBr.TestFlag = 0;
+		end;		
+	if (VOBr.SolFlag <> VOB2r.SolFlag) and (VOBr.SolFlag == 1) then
+	  begin
+	  if VOBr.TestFlag == 1 then
+	//  if (tFindActTestTask(VOBr, nAct) == 1) and (tFindActFromTask(VOBr, SumTime, nAct, DateSol, TimeSol) == 1) then 
+		begin
+		SumTime = iMinutesBetween(VOBr.DateRec, VOBr.TimeRec, VOBr.DateTest, VOBr.TimeTest);
+		VOBr.TimeSum = SumTime;  	
+		VOBr.DateSol = CurrentDate;
+		VOBr.TimeSol = CurrentTime;
+		end
+	  else
+		begin
+		res = -1; 
+		end;
+	  end;
+	end;
+	
+if (res <> -1) then // подписи в зависимости от внесённых изменений в ТЗ
+	begin
+	if VOBr.Concordance == VOB2r.Concordance and VOBr.StartFlag <> 1 then
+		begin
+		if (VOBr.ServDepart <> VOB2r.ServDepart) or (VOBr.DatePlan <> VOB2r.DatePlan) or (VOBr.TimePlan <> VOB2r.TimePlan) or (VOBr.AIM <> VOB2r.AIM) 
+		or (VOBr.DeparmentList <> VOB2r.DeparmentList) or (VOBr.SoftName <> VOB2r.SoftName) or (VOBr.UserI <> VOB2r.UserI) or (VOBr.TypeOfObj <> VOB2r.TypeOfObj)
+		or (VOBr.UserClass <> VOB2r.UserClass) then
+			begin
+			VOBr.Concordance = "";
+			end;
+			
+		for (RwCnt = 0; RwCnt < MatRowCnt(VOBr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(VOBr, RwCnt, VOBrw);	
+			if (VOBrw.Code <> VOB2rw.Code)  or (VOBrw.Mnemo <> VOB2rw.Mnemo) or (VOBrw.Text <> VOB2rw.Text) then //
+				begin
+				VOBr.Concordance = "";
+				end;
+			end;	
+
+		if (SizeTextCnt(VOBr) <> SizeTextCnt(VOB2r))  then
+			begin
+			tstr = "(" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime & ")" ;
+			AddToText(tstr, VOBr);
+			VOBr.Concordance = "";
+			end;
+		end;
+			
+	// если боссы обоих отделов подписали - ТЗ в работе	
+	if VOBr.Concordance <> ""  then
+		begin
+		BlockLoad(Bossb);
+		for (RwCnt = 0; RwCnt < MatRowCnt(Bossb); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Bossb, RwCnt, Bossbw);
+			if Bossbw.Department == VOBr.UsrDepart then
+				begin
+				SupUsr = Bossbw.Boss;	
+				end;
+			if Bossbw.Department == VOBr.ServDepart then
+				begin
+				SupServ = Bossbw.Boss;	
+				end;	
+			end;
+		if (SetInSet(SupUsr,VOBr.Concordance)) and (SetInSet(SupServ,VOBr.Concordance)) then
+			begin
+			if VOBr.StartFlag <> 1 then
+				begin
+				VOBr.DateConcord = CurrentDate;
+				VOBr.TimeConcord = CurrentTime;
+				VOBr.StartFlag = 1;
+				end;
+			end
+		else
+			begin
+			VOBr.StartFlag = 0;
+			end;
+		end;	
+	end;	
+	// if (VOBr.SendFlag == 1) and (VOBr.RecFlag == 1) and (VOBr.TestFlag == 0) and (VOBr.RecFlag <> VOB2r.RecFlag)   then 
+	  // begin
+		// VOBr.SolFlag = 1;
+	  // end;
+  
+  
+VObjectiveVcRecordCheck = res;
+RETURN;
+end;
+
+
+global updating 
+function LongInt VObjectiveVcRecordSave(var record VObjectiveVc VOBr,record VObjectiveVc VOB2r,LongInt stat,LongInt long4) 
+BEGIN
+LongInt res;
+string 255 tstr;
+
+tstr = "(" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime & ")" ;
+AddToText(tstr, VOBr);
+	 
+// if (VOBr.SendFlag == 1) and (VOBr.TestFlag == 0) and (VOBr.RecFlag == 1)then // and (VOBr.TestFlag == 0) 
+  // begin
+   // TickAfterTask(VOBr);
+  // //ActAfterTask(VOBr); 
+  // end;
+VObjectiveVcRecordSave = res;  
+RETURN;
+end;
+
+global updating 
+function LongInt VObjectiveVcRecordUpdate(var record VObjectiveVc VOBr,record VObjectiveVc VOB2r,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+
+// if (VOBr.SendFlag == 1) and (VOBr.RecFlag == 1) and (VOBr.TestFlag == 0) and (VOBr.RecFlag <> VOB2r.RecFlag)  then // 
+  // begin
+ // // ActAfterTask(VOBr); 
+  // TickAfterTask(VOBr);
+  // end;
+// if (VOBr.TestFlag <> VOB2r.TestFlag) and (VOBr.TestFlag == 1) then
+	// begin
+	// // ActTestTask(VOBr);
+	// end;
+
+VObjectiveVcRecordUpdate = res;  
+RETURN;
+end;
+

@@ -1,0 +1,52 @@
+external function integer IItemCountInStr(string);
+
+
+global
+function longint ObjVcRecordUpdate(var record ObjVc Objr, record ObjVc Obj2r, longint long3, longint long4)
+begin
+  longint res;
+
+//  res = inner.ObjVcRecordUpdate(Objr, Obj2r, long3, long4);
+  if (Objr.AutoObjects <> Obj2r.AutoObjects) then
+    begin
+      SetLangMode(LangRussian, "RUS", 2);
+      RunProgram("./tools/mailsuperior", "it@parfume.ua" & " " & CurrentUser & " ObjVc.AutoObjects(" & Objr.Code & ") '" & Obj2r.AutoObjects & "' '" & Objr.AutoObjects & "'");
+      StopAlert(CurrentUser & ": ObjVc.AutoObjects (" & Objr.Code & ") : " & Obj2r.AutoObjects & " -> " & Objr.AutoObjects);
+    end;
+
+  ObjVcRecordUpdate = res;
+  Return;
+end;
+
+
+global
+function LongInt ObjVcRecordCheck(var record ObjVc Objr, record ObjVc Obj2r, LongInt stat, LongInt long4)
+begin
+  longint res;
+  record UserVc Usr;
+
+  SetLangMode(LangRussian,"RUS",2);
+
+  res = inner.ObjVcRecordCheck(Objr, Obj2r, stat, long4);
+
+  // if (res <> -1) and (Objr.AutoObjects <> Obj2r.AutoObjects) then
+    // begin
+      // Usr.Code = CurrentUser;
+      // ReadFirstMain(Usr, 1, true);
+      // if not ((Usr.AccessGroup == "UCHR") or (Usr.Department == "83IT")) then //Идти лесом
+        // begin
+          // RecordCheckError(1499, "Не разрешено изменять иерархию!", -1, "AutoObjects");
+          // StopAlert("ObjVc.AutoObjects: " & Objr.AutoObjects & " -> " & Obj2r.AutoObjects & " (" & CurrentUser & ")");
+          // res = -1;
+        // end;
+    // end;
+
+  if (res <> -1) and (Objr.OTCode == "EMP") and (IItemCountInStr(Objr.AutoObjects) > 1) then
+    begin
+      RecordCheckError(1499, "Количество объектов в иерархии не может превышать 1", -1, "AutoObjects");
+      res = -1;
+    end;
+
+  ObjVcRecordCheck = res;
+  Return;
+end;

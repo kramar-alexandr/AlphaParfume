@@ -1,0 +1,168 @@
+external inner procedure IVClearRows(record IVVc);
+external inner procedure FindCreditNotePayTerm(string);
+external inner function val RetVc_FindQtyToBeCredited(LongInt,LongInt);
+external inner procedure IVDchsum(record IVVc,Integer);
+external inner function Boolean GetFirstItem(var string,var record INVc);
+external inner procedure CalcSum(val,val,val,val,var val,Integer);
+external inner procedure Do_InvoiceRecepy(record IVVc,record INVc,Integer);
+external inner procedure PasteCreditSalesAccs(record IVVc);
+external inner procedure IVSumup(var record IVVc,Boolean);
+external inner function LongInt GetCurUserLastNr(string);
+external inner procedure RetSumUp(var record RetVc);
+//
+remote procedure IVVc_LogAction(var record IVVc, string); //Добвавлено 30.01.10 INAU
+external updating procedure CreateORHistFromRet(record RetV); //05.08.10 INAU
+external updating procedure ORHist_RecordRemove(integer, longint,longInt); //05.08.10 INAU
+external procedure LogRecordRetvc(record RetVc);
+external updating procedure IRetOrdVc_OnCreatedDocRemove(longint, longint); //13.02.11 INAU
+
+
+global
+updating function Integer RecordAction_raPasteRetInInv(var record IVVc IVp, LongInt retnr)
+begin
+  longint res;
+
+  res = inner.RecordAction_raPasteRetInInv(IVp, retnr);
+
+  IVp.PayDeal = "CN";
+  IVp.LogNewUser=blankval;
+  IVp.LogNewDate="";
+  IVp.LogNewTime="";
+  IVp.LogSaveUser=blankval;
+  IVp.LogSaveDate="";
+  IVp.LogSaveTime="";
+  IVp.LogOKUser=blankval;
+  IVp.LogOKDate="";
+  IVp.LogOKTime="";
+  IVp.LogAnnulUser=blankval;
+  IVp.LogAnnulDate="";
+  IVp.LogAnnulTime="";
+  IVVc_LogAction(IVp, "New") //Добавлено 30.01.10 INAU
+//  IVVc_LogAction(IVp, "Save") //Добавлено 30.01.10 INAU
+
+  RecordAction_raPasteRetInInv = res;
+  Return;
+end;
+
+
+//INAU 27.11.09 INAU
+global
+procedure RetVc_LogAction(var record RetVc Retr, string ActionName) //Добвавлено 25.11.09 INAU
+begin
+  if blank(GetFieldValueByName(Retr,"Log"&ActionName&"User",-1)) then
+    begin
+      SetFieldValueByName(Retr,"Log"&ActionName&"User", CurrentUser, -1);
+      SetFieldValueByName(Retr,"Log"&ActionName&"Date", CurrentDate, -1);
+      SetFieldValueByName(Retr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+//27.11.09 INAU
+global
+function LongInt RetVcRecordDefaults(var record RetVc Retr,record RetVc Ret2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+
+  res = inner.RetVcRecordDefaults(Retr,Ret2r,stat,long4);
+  RetVc_LogAction(Retr,"New"); //25.11.09 INAU
+  RetVc_LogAction(Retr,"Save"); //24.12.09 INAU
+  RetVcRecordDefaults = res;
+  RETURN;
+END;
+
+//27.11.09 INAU
+global
+function LongInt RetVcRecordDuplicate(var record RetVc Retr,record RetVc Ret2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+
+  res = inner.RetVcRecordDuplicate(Retr,Ret2r,stat,long4);
+  Retr.LogNewUser=blankval;
+  Retr.LogNewDate="";
+  Retr.LogNewTime="";
+  Retr.LogSaveUser=blankval;
+  Retr.LogSaveDate="";
+  Retr.LogSaveTime="";
+  Retr.LogOKUser=blankval;
+  Retr.LogOKDate="";
+  Retr.LogOKTime="";
+  RetVc_LogAction(Retr,"New");
+  Retr.LocOKNr = blankval;
+  RetSumUp(Retr);
+  RetVcRecordDuplicate = res;
+  RETURN;
+END;
+
+
+global
+function LongInt RetVcRecordCheck(var record RetVc Retp,record RetVc Ret2p,LongInt stat,LongInt check)
+begin
+	longint res;
+	integer insertmode, updatemode;
+
+	insertmode = 1;
+  updatemode = 2;
+
+	res = inner.RetVcRecordCheck(Retp, Ret2p, stat, check);
+
+	if (res <> -1) then
+    begin
+      RetVc_LogAction(Retp, "Save");
+      if (Retp.OKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (Ret2p.OKFlag==0))) then //OKFlag
+        begin
+          RetVc_LogAction(Retp, "OK");
+        end;
+    end;
+	RetVcRecordCheck = res;
+	Return;
+end;
+
+
+global
+updating function LongInt RetVcRecordSave(var record RetVc Retr,record RetVc Ret2r,LongInt stat,LongInt long4)
+begin 
+  LongInt res;
+  
+	res = inner.RetVcRecordSave(Retr, Ret2r, stat, long4);
+  CreateORHistFromRet(Retr);
+  RetVcRecordSave = res;
+  Return;
+end;
+
+
+global
+updating function LongInt RetVcRecordSaveAfter(var record RetVc Retr,record RetVc Ret2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+	
+	res = inner.RetVcRecordSaveAfter(Retr, Ret2r, stat, long4);
+	LogRecordRetvc(Retr);
+  RetVcRecordSaveAfter = res;
+  Return;
+end;
+
+global
+updating function LongInt RetVcRecordUpdate(var record RetVc Retr,record RetVc Ret2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+	res = inner.RetVcRecordUpdate(Retr, Ret2r, stat, long4);
+	LogRecordRetvc(Retr);
+  CreateORHistFromRet(Retr); 
+  RetVcRecordUpdate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt RetVcRecordRemove(var record RetVc Retr,record RetVc Ret2r,LongInt long3,LongInt long4)
+begin
+  LongInt res;
+
+	res = inner.RetVcRecordRemove(Retr, Ret2r, long3, long4);
+  ORHist_RecordRemove(3,Retr.OrdNr,Retr.SerNr);
+  IRetOrdVc_OnCreatedDocRemove(Retr.IRetOrdNr, Retr.SerNr); //13.02.11 INAU
+  RetVcRecordRemove = res; 
+  Return;
+end;

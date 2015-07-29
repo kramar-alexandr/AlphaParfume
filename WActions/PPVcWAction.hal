@@ -1,0 +1,304 @@
+remote inner procedure PPVc_PasteTransDate(var record PPVc, Boolean, var Integer, var Integer);
+external inner function val MulRateToBase1(var string, val, val, val, val, val, val, RoundMode);
+external inner function val MulWithRateToBase2(var string, Date, val, RoundMode);
+external inner procedure PPSumup(var record PPVc);
+external function val VGetUserBal(var record UserVc );
+
+
+global
+function Boolean PPDClassOrderedFlagButtonAction(Integer wn, Integer value)
+begin
+  Boolean res;
+  record PPVc PPr;
+
+  res = inner.PPDClassOrderedFlagButtonAction(wn, value);
+
+  GetWindowRecord(wn, PPr);
+
+  res = res and (PPr.SentFlag == 1);
+  if res then
+    begin
+    PPr.BankAcc = CurrentUser;
+    PutWindowRecord(wn, PPr);
+    end;
+  PPDClassOrderedFlagButtonAction = res;
+  Return;
+end;
+
+
+global
+function Boolean PPDClassUpdateTest(Integer wn)
+BEGIN
+  Boolean res;
+  record PPVc PPr;
+  record PPVc PPr1;
+  record UserVc Usr;
+  record UserVc Usr1;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  GetWindowRecord(wn, PPr);
+  GetPrevWindowRecord(wn, PPr1);
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  Usr1.Code = PPr.Sign;
+  ReadFirstMain(Usr1, 1, true);
+
+  res = ((PPr.SentFlag == 0) and ((CurrentUser == PPr.Sign) or (CurrentUser == Usr1.Supervisor))
+        and (PPr.OrderedFlag == 0) and Blank(PPr.BankName)) //документ создан и пользователь его редактирует;
+        or ((PPr1.SentFlag <> 0) and SetInSet(Usr.AccessGroup, "UCHR,ADMIN") and (PPr.OrderedFlag == 0)) //документ "заказан", но не утвержден;
+        or ((PPr.OrderedFlag != 0) and (SetInSet("CAS", Usr.Comment)) and (PPr.DoneFlag == 0)); //Документ не подписан кассиром.
+
+  if not res then
+    begin
+      MessageBox(0, "У вас нет прав для совершения этой операции!");
+    end;
+
+  PPDClassUpdateTest = res;
+  Return;
+end;
+
+
+global
+updating procedure SignIt()
+begin
+  record PPVc PPr;
+  Integer wn;
+
+  GetPrevWindowRecord(CurWindow, PPr);
+  if Blank(PPr.BankName) then
+    begin
+    PPr.BankName = CurrentUser;
+    PPr.SentFlag = 1;
+    PutWindowRecord(CurWindow, PPr);
+    end;
+  Return;
+end;
+
+
+global
+procedure OSVed() //Запуск оборотно-сальдовой ведомости по счету подотчета и объекту сотрудника
+begin
+  record PPVc PPr;
+  row PPVc PPrw;
+  record RcVc RepSpec;
+  record UserVc Userr;
+  Integer wn, rownr;
+
+  wn = CurWindow;
+  GetWindowRecord(wn,PPr);
+  rownr = GetWindowCurRow(wn);
+  if (rownr >= 0) then
+    begin
+      MatRowGet(PPr,rownr,PPrw);
+      ReportDefaults(RepSpec,"MBARClass");
+      RepSpec.repname = "MBARn";
+      RepSpec.sStartDate = AddMonth(CurrentDate, -1);
+      RepSpec.sEndDate = CurrentDate;
+      RepSpec.ObjStr = PPrw.Person;
+      RepSpec.d2 = RepSpec.sStartDate;
+      RepSpec.SimVerf = 1;
+      if (PPr.CurncyCode == "UAH") then
+        begin
+        RepSpec.basecurncy = 1;
+        end
+      else
+        begin
+        RepSpec.basecurncy = 0;
+        end;
+      Userr.Code = PPrw.Person;
+      if ReadFirstMain(Userr,1,true) then
+        begin
+        RepSpec.AccStr = Userr.PersAcc;
+        RepSpec.Media = mtScreen;
+        RepSpec.UsedOnly = wn;
+        RunReport(RepSpec,0);
+        end;
+    end;
+  Return;
+end;
+
+
+function Boolean PPDClassTransDateEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+  record PPVc PPr;
+  Integer warning1,warning2;
+  record UserVc Usr;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr,1,true);
+
+  GetWindowRecord(wn,PPr);
+  DeselectWindow(wn,false);
+  PPVc_PasteTransDate(PPr, changed <> 0, warning1, warning2);
+  if (warning1!=0) then
+    begin
+    MessageBox(warning1,"");
+    end;
+  if (warning2!=0) then
+    begin
+    MessageBox(warning2,"");
+    end;
+
+  if (not SetInSet("CAS", Usr.Comment)) then
+    begin
+    PutWindowRecord(wn,PPr);
+    end;
+
+  PPDClassTransDateEFAfter = true;
+  Return;
+end;
+
+
+function Boolean PPDClassPersonEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+  record PPVc PPr;
+  row PPVc PPrw;
+  record UserVc Userr;
+  boolean flag;
+
+  flag = true;
+  if (changed <> 0) and (rownr >= 0) then
+    begin
+      GetWindowRecord(wn,PPr);
+      DeselectWindow(wn,false);
+      MatRowGet(PPr,rownr,PPrw);
+      Userr.Code = PPrw.Person;
+      if (ReadFirstMain(Userr,1,true)) then
+        begin
+        if NonBlank(Userr.LastCLOutNr) then
+          begin
+          PPrw.BankAcc = Userr.LastCLOutNr;
+          end
+        else
+          begin
+          PPrw.BankAcc = 0;
+          end;
+        PPrw.Comment = Userr.Name;
+        PPrw.Objects = Userr.PersObjx;
+        end
+      else
+        begin
+        PPrw.Person = "";
+        flag = False;
+        end;
+
+      MatRowPut(PPr,rownr,PPrw);
+      PutWindowRecord(wn,PPr);
+    end;
+
+  PPDClassPersonEFAfter = flag;
+  Return;
+end;
+
+
+function Boolean PPDClassPayValEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+  record PPVc PPr;
+  row PPVc PPrw;
+  row PPVc PPrw1;
+  Integer rwcnt, i;
+  record UserVc Userr;
+  boolean flag;
+  val Limit, Summa;
+  record RcVc Rc;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  flag = True;
+  Limit = 0;
+
+  if (changed <> 0) and (rownr >= 0) then
+    begin
+      GetWindowRecord(wn,PPr);
+      MatRowGet(PPr,rownr,PPrw);
+      Userr.Code = PPrw.Person;
+      ReadFirstMain(Userr,1,true);
+      //Посчитаем сумму заказанных денег для данного работника
+      Summa = 0;
+      rwcnt = MatRowCnt(PPr);
+      for (i=0;i<rwcnt;i=i+1)
+        begin
+        MatRowGet(PPr,i,PPrw1);
+        if (PPrw1.Person == PPrw.Person) then
+          begin
+          Summa = Summa + PPrw1.PayVal;
+          end;
+        end;
+      // Расчитаем превышение лимита: поле Userr.LastCLOutNr в карточке работника  -
+      // Баланс по объекту сотрудника и счету подотчета (см. tools.hal) -
+      // посчитанная сумма строк для данного сотрудника в данной записи PPrVc в базовой валюте 2
+
+      Rc.CurncyCode = "USD";
+
+      /*{StopAlert("Лимит=" & StringToVal(Userr.LastCLOutNr, M4Val) &
+        " Баланс=" & VGetUserBal(Userr) &
+        "Баланс Mul=" & MulWithRateToBase2(Rc.CurncyCode, CurrentDate, VGetUserBal(USerr), DefaultCurRoundOff) &
+        "Сумма=" & MulWithRateToBase2(PPr.CurncyCode, CurrentDate, Summa, DefaultCurRoundOff));}*/
+
+      Limit = Userr.PPLimit
+        - MulWithRateToBase2(Rc.CurncyCode, CurrentDate, VGetUserBal(USerr), DefaultCurRoundOff)
+        - MulWithRateToBase2(PPr.CurncyCode, CurrentDate, Summa, DefaultCurRoundOff);
+
+      if (Limit <= 0) then // Если полученная разность отрицательная (превышен лимит), то:
+        begin
+        flag = false;
+        //расчитываем сумму, которая "помещается" в выдачу без превышения лимита == сейчас нет времени - потом, пока что НОЛЬ
+        PPrw.PayVal = 0;
+        MatRowPut(PPr,rownr,PPrw);
+        MessageBox(0, "На " & Limit & " грн превышен лимит п/о суммы для " & Userr.Code & "!");
+        end;
+
+      DeselectWindow(wn,false);
+      PPSumup(PPr);
+      PutWindowRecord(wn,PPr);
+    end;
+
+  PPDClassPayValEFAfter = flag;
+  Return;
+end;
+
+
+global
+function Boolean PPDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+  boolean res;
+
+  switch (fieldname)
+    begin
+      case "TransDate": res = PPDClassTransDateEFAfter(wn,fn,rownr,changed); //А кассирам можно (см.ф-цию)
+      case "Person": res = PPDClassPersonEFAfter(wn,fn,rownr,changed);
+      case "PayVal": res = PPDClassPayValEFAfter(wn,fn,rownr,changed);
+      otherwise
+        res = inner.PPDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+    end;
+
+  PPDClassAfterEditField = res;
+  Return;
+end;
+
+
+global
+function Boolean PPDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record PPVc PP2r;
+  record CYBlock CYRec;
+  record UserVc Usr;
+
+  if (fieldname == "TransDate") then
+    begin
+    BlockLoad(CYRec);
+    Usr.Code = CurrentUser;
+    ReadFirstMain(Usr, 1, true);
+    res = (CYRec.AllowTransDateEdit == 1) or SetInSet("CAS", Usr.Comment);
+    end
+  else
+    begin
+    res = inner.PPDClassActiveEditField(wn, fieldname, fn, wnst, rownr, changed);
+    end;
+
+  PPDClassActiveEditField = res;
+  Return;
+end;

@@ -1,0 +1,1387 @@
+external procedure AddHelpButton(LongInt, LongInt);
+external function string 255 IGetUserName(string);
+external inner function Integer GetWeekNr(Date,string,var LongInt);
+external inner function Integer WeekNr(Date,string);
+external function date tGetFirstDayofWN(integer);
+remote updating function Boolean MakeAOFromDE(record DinnerEmpVc, var record ExpVc);
+remote function string 20 tFirstVECode( var string);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("Обеды", tDinnerDClass, CGview, -);
+UseView(tDinnerVc);
+SetWRect(10, 80, 730, 400);
+h1 = 150; h2 = 300; h3 = 500; vs = 25; v = 20;
+AddHelpButton(5, 5);
+EditField(h1, v , 80, "Поставщик", Normal, VECode, False, tVEDinSClass);
+EditField(h2-50, v , 200, "", Normal, VEName, False, 0);
+EditField(h3, v, 80, "Дата", Normal, Date, False, PasteCurDate);
+ButtonFrame(h1, v += 40, 180, 2, "Тип");
+RadioButton(h1, v , 0, 0, "Меню", DType);
+RadioButton(h2-50, v, 1, 0, "Комплексный", DType);
+//RadioButton(h3-100, v, 1, 0, "Комплексный №2", DType);
+RadioButton(h3-100, v, 2, 0, "Гарнир+мясное", DType);
+MatrixBegin(30, v += 40, -30, -30,-,100);
+MatCol(1, 25, "Блюдо", 0, DName, false, 0);
+MatCol(1, -70, "Цена", 0, DPrice, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Обеды", tDinnerLClass, CGmlist, DMView);
+SpawnClass(tDinnerDClass);
+SetWRect(64, 80, 709, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tDinnerVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Поставщик", VECode, false, VECode);
+RlColKey(100, 100, "Название", VEName, false, VEName);
+RlColKey(-200, -200, "Дата", Date, false, Date);
+CalculatedColumn(-120, -120, "Тип обеда", "DTypeLClassExpName", false);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Обеды", tDinnerSClass, CGslist, -);
+SpawnClass(tDinnerDClass);
+UseView(tDinnerVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Поставщик", VECode, false, VECode);
+RlColKey(100, 100, "Название", VEName, false, VEName);
+RlColKey(-150, -150, "Дата", Date, false, Date);
+CalculatedColumn(-120, -120, "Тип обеда", "DTypeLClassExpName", false);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+
+
+WindowBegin("Заказ обедов", tDinnerEmpDClass, CGview, -);
+UseView(tDinnerEmpVc);
+SetWRect(10, 80, 730, 600);
+h1 = 150; h2 = 300; h3 = 530; vs = 25; v = 20;
+AddHelpButton(5, 5);
+EditField(h1, v , 80, "Серийный номер", ViewOnly, SerNr, False, 0);
+EditField(h1, v += 20, 80, "Сотрудник", Normal, User, False, UserSClass);
+EnterSkip(VECode);
+EditField(h2-50, v , 200, "", ViewOnly, UsrName, False, 0);
+EditField(h3, v, 170, "Объекты", Normal, ObjStr, False, ObjSClass);
+EditField(h1, v += 20 , 80, "Поставщик", Normal, VECode, False, tVEDinSClass);
+EnterSkip(NrWeek);
+EditField(h2-50, v , 200, "", ViewOnly, VEName, False, 0);
+EditField(h3, v, 80, "№ недели", Normal, NrWeek, False, 0);
+EditField(h3 + 50, -30, 80, "Сумма", ViewOnly, Summa, False, 0);
+CheckBox(h1, -30, 0, "OK",OKFlag);
+//CheckBox(h2 - 50, -30, 0, "Запись операций",AOFlag);
+// EditField(h2 + 100, -30, 80, "№", ViewOnly, AONr, False, 0);
+MatrixBegin(30, v += 40, -30, -45,-,50);
+MatCol(1, 25, "Дата", 0, Date, false, PasteCurDate);
+MatCol(1, 100, "Блюдо", 0, DName, false, tDNameSClass);
+EnterSkip(Date);
+MatCol(1, -240, "Тип", 0, DTypeName, false, 0);//tDTypeNameSClass
+MatCol(1, -160, "Цена", 0, DPrice, false, 0);
+MatCol(1, -70, "Запись оп.", 0, TRNr, false, 0);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+SpecialMenu("Открыть запись операций",'A',0,"tOpenTRFromDinDsm");
+// SpecialMenu("Авансовый отчет",'A',0,"AOFromDClDinEmpDsm");
+EndWindow;
+
+WindowBegin("Заказ обедов", tDinnerEmpLClass, CGmlist, DMView);
+SpawnClass(tDinnerEmpDClass);
+SetWRect(64, 80, 709, 300);
+Sizeable(-1, -1, 0, 0);
+UseView(tDinnerEmpVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Серийный номер", SerNr, false, SerNr);
+RlColKey(100, 100, "Сотрудник", User, false, User);
+RlColKey(180, 180, "Имя", UsrName, false, UsrName);
+RlColKey(-150, -150, "№ недели", NrWeek, false, NrWeek);
+RlColKey(-70, -70, "OK", OKFlag, false, OKFlag); 
+RlColKey(-40, -40, "Запись операций", AOFlag, false, AOFlag); 
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Заказ обедов", tDinnerEmpSClass, CGslist, -);
+SpawnClass(tDinnerEmpDClass);
+UseView(tDinnerEmpVc);
+SetWRect(64,80,850,300);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Сотрудник", User, false, User);
+RlColKey(100, 100, "Имя", UsrName, false, UsrName);
+RlColKey(-150, -150, "№ недели", NrWeek, false, User);
+RlColKey(-70, -70, "OK", OKFlag, false, OKFlag); 
+RlColKey(-40, -40, "Запись операций", AOFlag, false, AOFlag); 
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+
+WindowBegin("Тип обеда", tDTypeNameSClass, CGother, HBlRecType);
+SetWRect (20,80,450,250);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,-10);
+EndWindow; 
+
+WindowBegin("Блюдо", tDNameSClass, CGother, HBlRecType);
+SetWRect (20,80,450,600);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,-10);
+EndWindow; 
+
+WindowBegin("Блюдо", tDNameRepSClass, CGother, HBlRecType);
+SetWRect (20,80,450,800);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,-10);
+EndWindow; 
+
+WindowBegin("Заказы обедов", tDinnerRClass, CGRcW, RcType);
+SetWRect(20,80,430,250);
+v = 10; h = 50; h1 = 150;  h2 = 250; vs = 25;
+AddHelpButton(5, 5);
+PeriodField(h1,v,"Период");
+EditFieldTL(h1, v += vs , 70, "Сотрудник", M4Code, Normal, 20, f3, False, UserSClass);
+EditField(h1, v += vs , 70, "Дата", Normal, d1, False, PasteCurDate);
+EditField(h1, v += vs, 70, "Поставщик", Normal, f1, False, tVEDinSClass);
+EditField(h1, v += vs , 200, "Блюдо", Normal, f5, False, tDNameRepSClass);
+CheckBox(h1, v += vs, 0, "Подробно за неделю для вывода в Excel", flags[0]);
+EditField(h1, v += vs , 70, "№ Недели", Normal, AccSpec, False, 0);
+CheckBox(h1, v += vs, 0, "Только сумма за неделю", flags[1]);
+EditField(h1, v += vs , 70, "Год", Normal, long1, False, 0);
+EndWindow;   
+
+WindowBegin("Поставщик обедов", tVEDinDClass, CGview, 0);
+UseView(tVEDinVc);
+SetWRect(64, 80, 450, 250);
+v = 30; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, VESClass);
+EditFieldTL(h, v += vs, 250, "Поставщик", M4Str, Normal, 200, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Поставщики обедов", tVEDinLClass, CGmlist, -);
+SpawnClass(tVEDinDClass);
+SetWRect(64, 80, 450, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tVEDinVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Поставщик", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Поставщики обедов",tVEDinSClass, CGslist, -);
+SpawnClass(tVEDinDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tVEDinVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Поставщик", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Цены на обеды", tDinPriceDClass, CGview, 0);
+UseView(tDinPriceVc);
+SetWRect(64, 80, 450, 250);
+v = 30; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Тип обеда", M4Str, Normal, 200, NameDin, false, tDTypeNameSClass);
+EditFieldTL(h, v += vs, 250, "Поставщик", M4Code, Normal, 20, POCode, false, tVEDinSClass);
+EditFieldTL(h, v += vs, 250, "", M4Str, Normal, 20, PoName, false, 0);
+EditField(h, v += vs, 80, "Цена", Normal, Price, false, 0);
+EndWindow; 
+
+WindowBegin("Цены на обеды", tDinPriceLClass, CGmlist, -);
+SpawnClass(tDinPriceDClass);
+SetWRect(64, 80, 450, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tDinPriceVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Тип обеда", NameDin, false, NameDin);
+RlColKey(100, 100, "Поставщик", POCode, false, POCode);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Цены на обеды",tDinPriceSClass, CGslist, -);
+SpawnClass(tDinPriceDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tDinPriceVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Тип обеда", NameDin, false, NameDin);
+RlColKey(100, 100, "Поставщик", POCode, false, POCode);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Меню на каждый день", tDinEvrDayDClass, CGview, -);
+UseView(tDinEvrDayVc);
+SetWRect(10, 80, 730, 400);
+h1 = 150; h2 = 300; h3 = 500; vs = 25; v = 20;
+EditField(h1, v , 80, "Поставщик", Normal, VECode, False, tVEDinSClass);
+EditField(h2-50, v , 200, "", Normal, VEName, False, 0);
+MatrixBegin(30, v += 40, -30, -30,-,100);
+MatCol(1, 25, "Блюдо", 0, DName, false, 0);
+MatCol(1, -70, "Цена", 0, DPrice, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Меню на каждый день", tDinEvrDayLClass, CGmlist, DMView);
+SpawnClass(tDinEvrDayDClass);
+SetWRect(64, 80, 709, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(tDinEvrDayVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Поставщик", VECode, false, VECode);
+RlColKey(100, 100, "Название", VEName, false, VEName);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Меню на каждый день", tDinEvrDaySClass, CGslist, -);
+SpawnClass(tDinEvrDayDClass);
+UseView(tDinEvrDayVc);
+SetWRect(64,80,850,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Поставщик", VECode, false, VECode);
+RlColKey(100, 100, "Название", VEName, false, VEName);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+
+WindowBegin("Создать Запись операций из Обедов за неделю",MakeAOFromDinVClass,CGMnt,RcType);
+SetWRect(90,80,518,150);
+v = 15; vs = 20; h = 140;
+//PeriodField(h,v,"Период");
+EditField(h1, v , 50, "Номер недели", Normal, AccSpec, False, 0);
+EditField(h1, v += vs, 100, "Поставщик", Normal, f1, False, tVEDinSClass);
+
+EndWindow;
+ 
+ 
+
+end;
+//======================================== //======================================== 
+
+global
+updating procedure AOFromDClDinEmpDsm()
+BEGIN
+record tDinnerEmpVc DEr;
+record ExpVc Er;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, DEr);
+
+if DEr.OKFlag == 1 and DEr.AOFlag == 0 then
+	begin
+	if MakeAOFromDE(DEr, Er) then 
+		begin
+		nwn = OpenWindow("ExpDClass", 1, 0, "", "", Er);
+		CreateRecordLink(DEr, CurrentCompany, Er, CurrentCompany);
+		CreateRecordLink(Er, CurrentCompany, DEr, CurrentCompany);
+		end;
+	end;	
+RETURN;
+end;
+//======================================== //======================================== 
+
+global
+updating procedure tOpenTRFromDinDsm()
+BEGIN
+record tDinnerEmpVc DEr;
+record TRVc TRr;
+row tDinnerEmpVc DErw;
+Integer wn,nwn,RwCnt;
+
+wn = CurWindow;
+GetWindowRecord(wn, DEr);
+RwCnt = GetWindowCurRow(wn);
+//if DEr.AOFlag == 1 then
+if (RwCnt >= 0) then
+	begin
+	MatRowGet(DEr, RwCnt, DErw);
+	TRr.IntYc = FirstTransTypeInRange(DErw.TRNr);
+    TRr.Number = FirstTransInRange(DErw.TRNr);
+	//TRr.Number = DEr.AONr;
+	if ReadFirstMain(TRr, 2, true) then
+		begin
+		nwn = OpenWindow("TRDClass", 1, 0, "", "", TRr);
+		end;
+	end;	
+RETURN;
+end;
+
+//========================================
+global
+function boolean tVEDinDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record CUVc CUr;
+record tVEDinVc tVEDr;
+
+if changed == 1 then
+	begin
+	GetWindowRecord(wn, tVEDr);
+	CUr.Code = tVEDr.Code;
+	readFirstMain(CUr, 1, true);
+	tVEDr.Name = CUr.Name;
+	PutWindowRecord(wn, tVEDr);
+	end;
+
+tVEDinDClassAfterEditField = res;
+
+return;
+end;
+//============================================
+global
+function boolean tDinnerDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tDinnerVc Dr;
+record CUVc CUr;
+
+if changed and fieldname == "VECode" then
+	begin
+	GetWindowRecord(wn, Dr);
+	CUr.Code = Dr.VECode;
+	readFirstMain(CUr, 1, true);
+	Dr.VEName = CUr.Name;
+	PutWindowRecord(wn, Dr);
+	end;
+
+  tDinnerDClassAfterEditField = res;
+  Return;
+end;
+
+//========================================
+
+global
+function boolean tDinnerEmpDClassUserEFAfter(Integer wn, Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+record ObjVc Objr; 
+record CUVc CUr;
+record IEmployeeVc IEr;
+
+GetWindowRecord(wn, DEr);
+
+DEr.UsrName = IGetUserName(DEr.User);
+/*
+Objr.Code = DEr.User;
+readfirstmain(Objr, 1 , true);
+DEr.ObjStr = Objr.AutoObjects;
+
+if DEr.ObjStr <> "" then
+	begin
+	DEr.ObjStr =  DEr.ObjStr & ",";
+	end;
+DEr.ObjStr = DEr.ObjStr  & "NOT" & "," & "ZADM" & "," & "O2" ; // & "," & ""*/
+
+IEr.Code = DEr.User;
+readfirstmain(IEr, 1 , true);
+DEr.ObjStr = IEr.tObj;
+
+PutWindowRecord(wn, DEr);
+
+  tDinnerEmpDClassUserEFAfter = res;
+Return;
+end;
+
+//========================================
+
+global
+function boolean  tDinnerEmpDClassVECodeEFAfter(Integer wn, Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+record CUVc CUr;
+
+GetWindowRecord(wn, DEr);
+CUr.Code = DEr.VECode;
+readFirstMain(CUr, 1, true);
+DEr.VEName = CUr.Name;
+PutWindowRecord(wn, DEr);
+
+  tDinnerEmpDClassVECodeEFAfter = res;
+Return;
+end;
+
+/*
+//========================================
+
+global
+function boolean  tDinnerEmpDClassNrWeekEFAfter(Integer wn, Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+record ObjVc Objr; 
+LongInt maxweek;
+date d2;
+
+GetWindowRecord(wn, DEr);
+maxweek = 53;
+d2 = CurrentDate;
+
+// if (DEr.NrWeek <> GetWeekNr(CurrentDate, "", maxweek)) and (DEr.NrWeek <> (GetWeekNr(CurrentDate, "", maxweek) + 1)) then
+	// begin
+	// DEr.NrWeek = (GetWeekNr(CurrentDate, "", maxweek) + 1);
+	// end;
+// PutWindowRecord(wn, DEr);
+
+tDinnerEmpDClassNrWeekEFAfter = res;
+Return;
+end;
+*/
+
+//========================================
+global
+function boolean  tDinnerEmpDClassDateEFAfter(Integer wn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+record ObjVc Objr; 
+LongInt maxweek;
+date d2;
+
+SetLangMode(LangRussian,"RUS",2);
+
+GetWindowRecord(wn, DEr);
+maxweek = 53;
+
+MatRowGet(DEr, rownr, DErw);
+
+if (DEr.NrWeek <> GetWeekNr(DErw.Date, "", maxweek)) then
+	begin
+	DErw.Date = d2;
+	MatRowPut(DEr, rownr, DErw);
+	messagebox(0, "Неверная дата");
+	end;
+
+PutWindowRecord(wn, DEr);
+
+tDinnerEmpDClassDateEFAfter = res;
+Return;
+end;
+//========================================
+
+global
+function boolean  ItDinnerEmpDClassDPriceEFAfter(Integer wn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+val Sum;
+Integer RwCnt;
+
+GetWindowRecord(wn, DEr);
+
+Sum = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(DEr, RwCnt , DErw);
+	Sum = Sum + DErw.DPrice;
+	end;  
+
+DEr.Summa = Sum;	
+
+PutWindowRecord(wn, DEr);
+
+ItDinnerEmpDClassDPriceEFAfter = res;
+Return;
+end;
+
+/*
+//========================================
+function boolean tFindKompl(record tDinnerEmpVc DEr, date DateK, Integer rownr)
+begin 
+row tDinnerEmpVc  DErw;
+boolean res;
+Integer RwCnt;
+
+res = false;
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(DEr, RwCnt, DErw);
+	if (DErw.Date == DateK) and (DErw.DType == 1) and rownr <> RwCnt then
+		begin
+		res = true;
+		RwCnt = MatRowCnt(DEr);
+		end;
+	end;  
+tFindKompl = res;
+Return;
+end;
+*/
+
+//========================================
+
+global
+function val tFindDinPrice(string DTypeName, string VECode)
+begin
+Boolean res;
+record tDinPriceVc DPr;
+
+DPr.NameDin = DTypeName;
+DPr.POCode = VECode;
+ReadFirstMain(DPr, 1, true);
+tFindDinPrice = DPr.Price;
+
+Return;
+end;
+/*
+//========================================
+function integer tKolKomp(record tDinnerEmpVc DEr, date DateK, Integer rownr)
+begin 
+row tDinnerEmpVc  DErw;
+Integer RwCnt, res;
+
+res = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(DEr, RwCnt, DErw);
+	if (DErw.Date == DateK) and (DErw.DType == 1) and rownr <> RwCnt then
+		begin
+		res = res + 1;
+		end;
+	end;  
+tKolKomp = res;
+Return;
+end;
+*/
+//========================================
+function integer tKolNet(record tDinnerEmpVc DEr, date DateK, Integer rownr)
+begin 
+row tDinnerEmpVc  DErw;
+Integer RwCnt, res;
+
+res = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(DEr, RwCnt, DErw);
+	if (DErw.Date == DateK) and rownr <> RwCnt then
+		begin
+		res = res + 1;
+		end;
+	end;  
+tKolNet = res;
+Return;
+end;
+//========================================
+
+global
+function boolean  tDTypeAfterEdit(Integer wn, Integer rownr)
+begin
+record tDinnerEmpVc DEr;
+Boolean res;
+row tDinnerEmpVc  DErw;
+record tDinPriceVc DPr;
+
+GetWindowRecord(wn, DEr);
+MatRowGet(DEr, rownr, DErw);		
+switch (DErw.DType)
+    begin
+    //case 1:begin
+			//if tKolKomp(DEr, DErw.Date, rownr) > 2 then
+				//begin
+				//DErw.DTypeName = "";
+				//DErw.DName = "";
+				//end;
+		  // end;
+	case 3:begin
+			if tKolNet(DEr, DErw.Date, rownr) > 0 then
+				begin
+				DErw.DTypeName = "";
+				DErw.DName = "";
+				DErw.DPrice = 0;
+				end;
+		   end;	   
+	end;	   
+//DErw.DName = FirstInRange(DErw.DName, 250);	
+MatRowPut(DEr, rownr, DErw);
+PutWindowRecord(wn, DEr);
+//ItDinnerEmpDClassDPriceEFAfter(wn, rownr,changed);
+
+tDTypeAfterEdit = res;
+Return;
+end;
+/*
+//========================================
+function integer tKolNameKomp(record tDinnerEmpVc DEr, date DateK, Integer rownr, string DName)
+begin 
+row tDinnerEmpVc  DErw;
+Integer RwCnt, res;
+
+res = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(DEr, RwCnt, DErw);
+	if (DErw.Date == DateK) and (DErw.DType == 1) and (rownr <> RwCnt)  and (DErw.DName == DName) then
+		begin
+		res = res + 1;
+		end;
+	end;  
+tKolNameKomp = res;
+Return;
+end;
+*/
+//========================================
+
+function integer tKolDinDay(record tDinnerEmpVc DEr, date DateK, Integer rownr)
+begin 
+row tDinnerEmpVc  DErw;
+Integer RwCnt, res;
+
+res = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(DEr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(DEr, RwCnt, DErw);
+	if (DErw.Date == DateK) and (DErw.DType == 3) and rownr <> RwCnt then
+		begin
+		res = res + 1;
+		end;
+	end;  
+tKolDinDay = res;
+Return;
+end;
+
+//========================================
+global
+function boolean  tDTypeNameEFAfter(Integer wn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+integer t;
+
+SetLangMode(LangRussian,"RUS",2);
+
+GetWindowRecord(wn, DEr);
+MatRowGet(DEr, rownr, DErw);
+//if tKolDinDay(DEr, DErw.Date, rownr) > 0 then
+	//begin
+	//DErw.Date = "";
+	//DErw.DName = "";
+	//DErw.DTypeName = "";
+	//DErw.DPrice = 0;
+	//DErw.DType = -1;
+	//MatRowPut(DEr, rownr, DErw);
+	//PutWindowRecord(wn, DEr);
+	//end
+//else
+	begin
+	//Stopalert("DErw.DTypeName=" & DErw.DTypeName);
+	if DErw.DTypeName <> "Меню" and DErw.DTypeName <> "Комплексный" and DErw.DTypeName <> "Гарнир+мясное" and DErw.DTypeName <> "НЕ ОБЕДАЮ"  then
+		begin
+		DErw.DTypeName = "";
+		end;
+	switch (DErw.DTypeName)
+		begin
+		  case "Меню": t = 0;
+		  case "Комплексный": t = 1;
+		  case "Гарнир+мясное": t = 2;
+		 /* case "НЕ ОБЕДАЮ": begin
+							t = 3;
+							DErw.DPrice = 0;
+							MatRowPut(DEr, rownr, DErw);
+							PutWindowRecord(wn, DEr);
+							ItDinnerEmpDClassDPriceEFAfter(wn, rownr, changed);
+							end;
+							*/
+		end;
+	DErw.DType = t;
+
+	MatRowPut(DEr, rownr, DErw);
+	PutWindowRecord(wn, DEr);
+
+	tDTypeAfterEdit(wn, rownr);
+	res = true;
+	end;
+
+tDTypeNameEFAfter = res;
+Return;
+end;
+
+//========================================
+global
+function boolean  tDTypeNameEnter(Integer wn, Integer rownr, Integer changed)
+begin
+record tDinnerEmpVc DEr;
+Boolean res;
+row tDinnerEmpVc  DErw;
+
+GetWindowRecord(wn, DEr);
+MatRowGet(DEr, rownr, DErw);	
+
+DErw.DTypeName = FirstInRange(DErw.DName, 20);
+MatRowPut(DEr, rownr, DErw);
+PutWindowRecord(wn, DEr);
+res = tDTypeNameEFAfter(wn, rownr, changed);
+
+tDTypeNameEnter = res;
+Return;
+end;
+
+/*
+//========================================
+global
+function boolean tAddKomplDin3(Integer wn, record tDinnerVc Dr, integer RwCnt, var record tDinnerEmpVc DEr)
+begin
+Boolean res;
+row tDinnerVc  Drw;
+row tDinnerEmpVc  DErw;
+record tDinPriceVc DPr;
+
+SetLangMode(LangRussian,"RUS",2);
+
+MatRowGet(Dr, RwCnt + 2, Drw);
+
+DErw.Date = Dr.Date;
+DErw.DName = Drw.DName;	
+DErw.DType = 1;	
+DErw.DTypeName = "Комплексный";	
+DErw.DPrice = 0;	
+MatRowInsert(DEr, MatRowCnt(DEr), DErw);
+PutWindowRecord(wn, DEr);
+
+Return;
+end;
+
+//========================================
+global
+function boolean tAddKomplDin2(Integer wn, record tDinnerVc Dr, integer RwCnt, var record tDinnerEmpVc DEr)
+begin
+Boolean res;
+row tDinnerVc  Drw;
+row tDinnerEmpVc  DErw;
+record tDinPriceVc DPr;
+
+SetLangMode(LangRussian,"RUS",2);
+
+MatRowGet(Dr, RwCnt + 1, Drw);
+
+DErw.Date = Dr.Date;
+DErw.DName = Drw.DName;	
+DErw.DType = 1;	
+DErw.DTypeName = "Комплексный";	
+DErw.DPrice = 0;	
+MatRowInsert(DEr, MatRowCnt(DEr), DErw);
+PutWindowRecord(wn, DEr);
+
+Return;
+end;
+
+//========================================
+global
+function boolean tAddKomplDin(Integer wn, string DName, var record tDinnerEmpVc DEr, Integer rownr )
+begin
+record tDinnerVc Dr;
+Boolean res;
+row tDinnerVc  Drw;
+row tDinnerEmpVc  DErw;
+record tDinPriceVc DPr;
+integer RwCnt;
+
+MatRowGet(DEr, rownr, DErw);
+Dr.DType = 1; 
+Dr.Date = DErw.Date; 
+Dr.VECode = DEr.VECode;
+if ReadFirstMain(Dr, 3, True) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Dr, RwCnt, Drw);
+		if Drw.DName == DName then
+			begin
+			tAddKomplDin2(wn, Dr, RwCnt, DEr);
+			tAddKomplDin3(wn, Dr, RwCnt, DEr);
+			RwCnt = MatRowCnt(Dr);
+			end;
+		end;
+	end;
+
+Return;
+end;*/
+//========================================
+
+global
+function boolean KDinFirst(string DName, Date DErwDate, string DErVECode)
+begin
+record tDinnerVc Dr;
+row tDinnerVc  Drw;
+boolean res;
+integer RwCnt;
+
+Dr.DType = 1; 
+Dr.Date = DErwDate; 
+Dr.VECode = DErVECode;
+if ReadFirstMain(Dr, 3, True) then
+	begin
+	for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Dr, RwCnt, Drw);
+		if (Drw.DName == DName) and (RwCnt == 0) or (RwCnt == 3) then
+			begin
+			res = true;
+			end;
+		end;
+	end;
+KDinFirst = res;	
+return;
+end;
+
+global
+function boolean  tDinnerEmpDClassDNameEFAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record tDinnerEmpVc DEr;
+Boolean res;
+row tDinnerEmpVc  DErw;
+record tDinPriceVc DPr;
+string 200 tstr, DName;
+string 7 s;
+integer ss;
+
+if tDTypeNameEnter(wn, rownr, changed) then
+	begin
+	GetWindowRecord(wn, DEr);
+	MatRowGet(DEr, rownr, DErw);
+	tstr = Mid(DErw.DName,len(FirstInRange(DErw.DName, 20)) + 1,200);
+
+	s = Right(tstr,7);
+	ss = len(tstr) - (len(LastInRange(s, 5)) + 1);
+	DName = left(tstr, ss);
+	DErw.DName = tstr;
+	switch (DErw.DType)
+		begin
+		case 0: DErw.DPrice = StringToVal(LastInRange(Right(DErw.DName,7), 5),M4Val);
+		case 1: DErw.DPrice = StringToVal(LastInRange(Right(DErw.DName,7), 5),M4Val);
+		//begin
+				//if tKolNameKomp(DEr, DErw.Date, rownr, FirstInRange(DErw.DName, 200)) > 0 then
+				//	begin
+					//DErw.DTypeName = "";
+					//DErw.DName = "";
+					//end
+				//else
+					//begin			
+					//if tFindKompl(DEr, DErw.Date, rownr)  then
+					//	begin
+					//	DErw.DPrice = 0;
+					//	end
+					//else
+					//if KDinFirst(DErw.DName, DErw.Date, DEr.VECode) then
+						//begin
+						//DErw.DPrice = tFindDinPrice(DErw.DTypeName, DEr.VECode);
+						//tAddKomplDin(wn, FirstInRange(DErw.DName, 250), DEr, rownr);
+					//	end
+					//else
+						//begin
+						//DErw.DPrice = 0;
+						//end;
+					//end;	
+				//end;
+		case 2: DErw.DPrice = tFindDinPrice(DErw.DTypeName, DEr.VECode);
+		end;
+	DErw.DName = DName;//FirstInRange(DErw.DName, 250);	
+	MatRowPut(DEr, rownr, DErw);
+	PutWindowRecord(wn, DEr);
+	ItDinnerEmpDClassDPriceEFAfter(wn, rownr,changed);
+	end;
+tDinnerEmpDClassDNameEFAfter = res;
+Return;
+end;
+
+
+
+//========================================
+
+global
+function boolean tDinnerEmpDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "User":  res = tDinnerEmpDClassUserEFAfter(wn, changed);
+		case "VECode": res = tDinnerEmpDClassVECodeEFAfter(wn, changed);
+		//case "NrWeek": res = tDinnerEmpDClassNrWeekEFAfter(wn, changed);
+		case "Date": res = tDinnerEmpDClassDateEFAfter(wn, rownr, changed);
+		case "DTypeName": res = tDTypeNameEFAfter(wn, rownr, changed);
+		case "DName": res = tDinnerEmpDClassDNameEFAfter(wn, rownr, changed);//ItDinnerEmpDClassDNameEFAfter(wn, rownr, changed);
+		//case "DPrice": res = tDinnerEmpDClassDPriceEFAfter(wn, rownr, changed);
+		
+		
+		end;
+	end;
+  tDinnerEmpDClassAfterEditField = res;
+  Return;
+end;
+
+//========================================
+global
+function boolean tDinnerEmpDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+
+res = true;
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "DPrice": res = false;
+		end;
+	end;
+  tDinnerEmpDClassActiveEditField = res;
+  Return;
+end;
+
+//========================================
+
+global
+function Boolean tDTypeNameSClassOnOpenWindow(integer wn)
+begin
+Boolean res;
+
+SetLangMode(LangRussian,"RUS",2);
+
+SetListString(wn, 0,  "Меню" , false);
+SetListString(wn, 1,  "Комплексный" , false);
+SetListString(wn, 2,  "Гарнир+мясное" , false);
+//SetListString(wn, 3,  "НЕ ОБЕДАЮ" , false);
+
+ tDTypeNameSClassOnOpenWindow = res;
+RETURN;
+end;
+
+//========================================
+
+global
+function Boolean tDTypeNameSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+tDTypeNameSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+//===============================================
+global
+function string 255 DTypeLClassExpName(record tDinnerVc Dr)
+begin
+  string 255 res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (Dr.DType)
+    begin
+      case 0: res = "Меню";
+      case 1: res = "Комплексный";
+      case 2: res = "Гарнир+мясное";
+	  //case 3: res = "НЕ ОБЕДАЮ";
+    end;
+  DTypeLClassExpName = res;
+  Return;
+end;
+
+//===============================================
+global
+function string 255 tDTypeName(integer DType)
+begin
+  string 255 res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (DType)
+    begin
+      case 0: res = "Меню";
+      case 1: res = "Комплексный";
+      case 2: res = "Гарнир+мясное";
+	 // case 3: res = "НЕ ОБЕДАЮ";
+    end;
+  tDTypeName = res;
+  Return;
+end;
+//========================================//========================================//========================================
+global
+function Boolean tDNameSClassOnOpenWindow(integer wn)
+begin
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc DErw;
+record tDinnerVc Dr;
+row tDinnerVc Drw;
+Integer RwCnt, RwCnt1;
+Boolean res;
+integer i, pwn;
+record tDinEvrDayVc DEDr;
+row tDinEvrDayVc  DEDrw;
+string 250 tstr;
+val Price;
+
+SetLangMode(LangRussian,"RUS",2);
+
+pwn =  MotherWindow(wn);
+GetWindowRecord(pwn, DEr);
+
+RwCnt1 = GetWindowCurRow(pwn);
+if (RwCnt1 > -1) then
+	begin
+	//SetListString(wn, RwCnt, "НЕ ОБЕДАЮ::0", false);
+	//RwCnt = RwCnt + 1;
+	//SetListString(wn, RwCnt, "                                               ", false);
+	//RwCnt = RwCnt + 1;
+	MatRowGet(DEr, RwCnt1, DErw);
+	if nonblank(DErw.Date)  and nonblank(DEr.VECode) then
+		begin
+		Dr.DType = 2; 
+		Dr.Date = DErw.Date; 
+		Dr.VECode = DEr.VECode;
+		if ReadFirstMain(Dr, 3, True) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(Dr, RwCnt, Drw);			
+				Price =	tFindDinPrice(tDTypeName(Dr.DType), DEr.VECode);
+				SetListString(wn, RwCnt,tDTypeName(Dr.DType) & ":" & Drw.DName & ":" & Price, false);
+				end;
+			end;	
+		//===========================================================================
+		RwCnt = RwCnt + 1;	
+		SetListString(wn, RwCnt, "                                               ", false);
+		RwCnt = RwCnt + 1;	
+		Dr.DType = 1; 
+		Dr.Date = DErw.Date; 
+		Dr.VECode = DEr.VECode;
+		if ReadFirstMain(Dr, 3, True) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(Dr, RwCnt, Drw);
+				if RwCnt == 0 or RwCnt == 3 then
+					begin
+					Price =	tFindDinPrice(tDTypeName(Dr.DType), DEr.VECode);
+					SetListString(wn, RwCnt,tDTypeName(Dr.DType) & ":" & Drw.DName & ":" & Price, false);
+					//SetListString(wn, RwCnt, tDTypeName(Dr.DType) & ":" & Drw.DName & ":" & tFindDinPrice(DErw.DTypeName, DEr.VECode), false);
+					end
+				else
+					begin
+					SetListString(wn, RwCnt, tDTypeName(Dr.DType) & ":" & Drw.DName & ":0", false);
+					end;
+				end;
+			end;
+		//===========================================================================
+		RwCnt = RwCnt + 1;
+		SetListString(wn, RwCnt, "                                               ", false);
+		RwCnt = RwCnt + 1;
+		Dr.DType = 0; 
+		Dr.Date = DErw.Date; 
+		Dr.VECode = DEr.VECode;
+		if ReadFirstMain(Dr, 3, True) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(Dr, RwCnt, Drw);
+				SetListString(wn, RwCnt, tDTypeName(Dr.DType) & ":" & Drw.DName & ":" & Drw.DPrice, false);
+				end;
+			end;
+		RwCnt = RwCnt + 1;	
+		SetListString(wn, RwCnt, "                                               ", false);
+		RwCnt = RwCnt + 1;	
+		DEDr.VECode = DEr.VECode;	
+		if ReadFirstMain(DEDr, 1, True) then
+			begin
+			for (RwCnt1 = 0; RwCnt1 < MatRowCnt(DEDr); RwCnt1 = RwCnt1 + 1)
+				begin
+				MatRowGet(DEDr, RwCnt1, DEDrw);
+				SetListString(wn, RwCnt + RwCnt1,  "Меню:" & DEDrw.DName  & ":" & DEDrw.DPrice, false);
+				end;
+			end;	
+
+		
+		
+		end
+	else
+		begin
+		MessageBox(0, "Необходимо ввести дату и поставщика!");
+		end;
+	end;
+// if (RwCnt1 > -1) then
+	// begin
+	// MatRowGet(DEr, RwCnt1, DErw);
+	// Dr.DType = DErw.DType; 
+	// Dr.Date = DErw.Date; 
+	// Dr.VECode = DEr.VECode;
+	// if ReadFirstMain(Dr, 3, True) then
+		// begin
+		// for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+			// begin
+			// MatRowGet(Dr, RwCnt, Drw);
+			// SetListString(wn, RwCnt, Drw.DName & ":" & Drw.DPrice, false);
+			// end;
+		// end;
+	// RwCnt = RwCnt + 1;	
+	// if DErw.DType == 0 and nonblank(DErw.DTypeName) then
+		// begin
+		// DEDr.VECode = DEr.VECode;	
+		// if ReadFirstMain(DEDr, 1, True) then
+			// begin
+			// for (RwCnt1 = 0; RwCnt1 < MatRowCnt(DEDr); RwCnt1 = RwCnt1 + 1)
+				// begin
+				// MatRowGet(DEDr, RwCnt1, DEDrw);
+				// SetListString(wn, RwCnt + RwCnt1, DEDrw.DName & ":" & DEDrw.DPrice, false);
+				// end;
+			// end;	
+		// end;	
+	// end;	
+tDNameSClassOnOpenWindow = res;
+RETURN;
+end;
+
+//========================================
+
+global
+function Boolean tDNameSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+tDNameSClassOnOKWindow = false;
+RETURN;
+end;
+
+//========================================//========================================//========================================
+global
+function Boolean tDNameRepSClassOnOpenWindow(integer wn)
+begin
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc DErw;
+record tDinnerVc Dr;
+row tDinnerVc Drw;
+Integer RwCnt, RwCnt1;
+Boolean res;
+integer i, pwn;
+record tDinEvrDayVc DEDr;
+row tDinEvrDayVc  DEDrw ;
+record RcVc RepSpec;
+
+SetLangMode(LangRussian,"RUS",2);
+
+pwn =  MotherWindow(wn);
+GetWindowRecord(pwn, RepSpec);
+
+if nonblank(RepSpec.d1)  and nonblank(RepSpec.f1) then
+	begin
+	Dr.DType = 0; 
+	Dr.Date = RepSpec.d1; 
+	Dr.VECode = RepSpec.f1;
+	if ReadFirstMain(Dr, 3, True) then
+		begin
+		for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Dr, RwCnt, Drw);
+			SetListString(wn, RwCnt, Drw.DName, false);
+			end;
+		end;
+	RwCnt = RwCnt + 1;	
+	DEDr.VECode = RepSpec.f1;	
+	if ReadFirstMain(DEDr, 1, True) then
+		begin
+		for (RwCnt1 = 0; RwCnt1 < MatRowCnt(DEDr); RwCnt1 = RwCnt1 + 1)
+			begin
+			MatRowGet(DEDr, RwCnt1, DEDrw);
+			SetListString(wn, RwCnt + RwCnt1, DEDrw.DName, false);
+			end;
+		end;	
+
+	RwCnt = RwCnt + 1;	
+	Dr.DType = 1; 
+	Dr.Date = RepSpec.d1; 
+	Dr.VECode = RepSpec.f1;
+	if ReadFirstMain(Dr, 3, True) then
+		begin
+		for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Dr, RwCnt, Drw);
+			SetListString(wn, RwCnt, Drw.DName, false);
+			end;
+		end;
+	RwCnt = RwCnt + 1;
+	Dr.DType = 2; 
+	Dr.Date = RepSpec.d1; 
+	Dr.VECode = RepSpec.f1;
+	if ReadFirstMain(Dr, 3, True) then
+		begin
+		for (RwCnt = 0; RwCnt < MatRowCnt(Dr); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Dr, RwCnt, Drw);
+			SetListString(wn, RwCnt, Drw.DName, false);
+			end;
+		end;	
+	end
+else
+	begin
+	MessageBox(0, "Необходимо ввести дату и поставщика!");
+	end;
+tDNameRepSClassOnOpenWindow = res;
+RETURN;
+end;
+
+//========================================
+
+global
+function Boolean tDNameRepSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+tDNameRepSClassOnOKWindow = false;
+RETURN;
+end;
+
+//========================================
+
+global 
+function Boolean tDinnerEmpDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+Boolean res;
+record tDinnerEmpVc DEr;
+row tDinnerEmpVc  DErw;
+val Sum;
+Integer RwCnt;
+
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	DeselectWindow(wn,false);
+	GetWindowRecord(wn, DEr);
+	//GetPrevWindowRecord(wn, DEr);    
+	res = (DEr.OKFlag == 0);
+	matRowGet(DEr, rownr , DErw);
+	DEr.Summa = DEr.Summa - DErw.DPrice;
+	PutWindowRecord(wn, DEr);
+	SelectWindow(wn);
+	end;
+tDinnerEmpDClassDeleteRowTest = res;
+return;
+end;
+
+//========================================
+
+global
+function boolean tDinEvrDayDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tDinEvrDayVc DEr;
+record CUVc CUr;
+
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "VECode": 	begin
+						GetWindowRecord(wn, DEr);
+						CUr.Code = DEr.VECode;
+						readFirstMain(CUr, 1, true);
+						DEr.VEName = CUr.Name;
+						PutWindowRecord(wn, DEr);
+						end;
+	
+		end;
+	end;
+  tDinEvrDayDClassAfterEditField = res;
+  Return;
+end;
+
+global
+function boolean tDinPriceDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tDinPriceVc DEr;
+record CUVc CUr;
+
+if changed then
+	begin
+	switch (fieldname)
+		begin
+		case "POCode": 	begin
+						GetWindowRecord(wn, DEr);
+						CUr.Code = DEr.POCode;
+						readFirstMain(CUr, 1, true);
+						DEr.PoName = CUr.Name;
+						PutWindowRecord(wn, DEr);
+						end;
+	
+		end;
+	end;
+  tDinPriceDClassAfterEditField = res;
+  Return;
+end;
+
+global
+procedure tOpenExp(longint SerNr)
+begin
+record ExpVc Er;
+Integer wn;
+
+Er.SerNr = SerNr;
+ReadFirstMain(Er, 1, true);
+wn = OpenWindow("ExpDClass", 1, 0, "", "", Er);
+
+return;
+end;
+
+
+global
+procedure tDinnerRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+string 250 VEName;
+
+DeselectWindow(wn,false);
+GetWindowRecord(wn,RepSpec);
+ReportDefaults(RepSpec,"tDinnerRClass");
+RepSpec.long1 = getyear(CurrentDate);
+RepSpec.f1 = tFirstVECode(VEName);
+
+PutWindowRecord(wn,RepSpec);
+SelectWindow(wn);
+Return;
+end;
+
+global
+procedure MakeAOFromDinVClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+string 250 VEName;
+
+DeselectWindow(wn,false);
+GetWindowRecord(wn,RepSpec);
+ReportDefaults(RepSpec,"MakeAOFromDinRClass");
+RepSpec.f1 = tFirstVECode(VEName);
+
+PutWindowRecord(wn,RepSpec);
+SelectWindow(wn);
+Return;
+end;

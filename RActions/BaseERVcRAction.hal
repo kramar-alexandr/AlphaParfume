@@ -1,0 +1,23 @@
+//external procedure BaseRateMail(val);
+
+
+global
+updating function LongInt BaseERVcRecordSaveAfter(var record BaseERVc BERr,  record BaseERVc BER2r, LongInt stat, LongInt long4)
+begin
+Integer res;
+
+//BaseRateMail(BERr.Rate2);
+BaseERVcRecordSaveAfter = res;
+RETURN;
+end;
+
+
+global
+updating function LongInt BaseERVcRecordUpdateAfter(var record BaseERVc BERr,  record BaseERVc BER2r, LongInt stat, LongInt long4)
+begin
+Integer res;
+
+//BaseRateMail(BERr.Rate2);
+BaseERVcRecordUpdateAfter = res;
+RETURN;
+end;

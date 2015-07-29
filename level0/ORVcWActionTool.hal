@@ -1,0 +1,592 @@
+external function string 255 CustArtCode(string,string);
+external function string 255 FillupTaxMatrix(Integer,string,string,string,string,string,var record TaxMatrixVc);
+external function string 255 FindINObjects(string,string);
+external function string 20 GetTax2Acc(string);
+external procedure GetTaxesDiscounts(string,Date,string,string,var val,var val);
+external procedure ORDchsum(var record ORVc,Integer);
+external procedure ORSumup(var record ORVc);
+external function Boolean ORDchrsum(var record ORVc,Integer);
+external procedure GetDatePriceBasedOn(string,Date,Date,string,var Date);
+external function Boolean GetItemPriceDiscount3(string,val,var record INVc,string,val,val,val,val,val,string,string,string,string,
+                                                var val,var string,var val,var string,var val,var string,Integer,var Boolean,Date,Time,
+                                                string,Boolean,var Boolean,string,var string,var val,string,string,var string);
+external function Boolean SetUnitFactor(string,var val,val,val,val,var val,var val,var val,var string,Boolean);
+external procedure ORMultiLineText(record ORVc,record INVc,string,Integer);
+external procedure ORVcGetCalcItemPrice(record INVc,record ORVc,Integer,var val);
+external function Boolean INVc_AllowSales(record INVc,var LongInt);
+external function Boolean FindItemVAR(string,var string,var string,var string,var string);
+external procedure ORVc_PasteQuant(var record ORVc,Integer,Boolean,var Boolean);
+//
+external procedure RemoveOldPersObjects(string,var string);
+external procedure RemoveOldCustObjects(string,var string);
+external function Boolean GetCustAndBal(var record CUVc,var val,var val,Integer,Integer,Integer,Integer,Integer,Integer,var Boolean);
+external function string 20 FindCustRoute(string,string,string);
+external function string 60 AddObjectToObjectList(string,string);
+external procedure SetSalesMan(var string,string);
+external procedure ORVc_PastePayDeal(var record ORVc);
+external procedure ORVc_FillupTaxTemplate(var record ORVc);
+external procedure GetPriceList(string,Date,Time,var string,var Integer);
+external procedure GetItemVATCode(string,Integer,var string,Boolean);
+external procedure CalculateFreightWeightOR(record ORVc, Boolean);
+external function val DivRateToBase1(string,val,val,val,val,val,val,roundmode);
+external procedure ORDUpdatePrices(var record ORVc, Boolean);
+external procedure AddPerceptionTaxesRows_ORVc(var record ORVc);
+external procedure ORVc_PasteInvCountry(var record ORVc, string);
+external procedure ORVc_PasteDelCountry(var record ORVc, string);
+// Our
+external procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+external function val MulRateToBase1(var string,val,val,val,val,val,val, roundmode);
+
+external procedure ORVc_PastePriceList(var record ORVc);
+external procedure ORVc_PastevRebate(var record ORVc,Integer,var Boolean);
+
+
+//Оригинальная версия ф-ции из HAL 
+function Boolean ORVc_PasteArtCode_Orig(var record ORVc ORr,Integer rownr,var string inwarning,var string warning,Boolean varf)
+BEGIN
+  Boolean chsum,res;
+  Boolean chrqty;
+  record INVc INr;
+  row ORVc ORrw;
+  val t,s,price,vreb,baseprice,temp,tax2prc,tax2reb;
+  string 255 curitemname,salesacc,vatcode,tstr,tax2code,location,taxtemplatecode;
+  Boolean calcprice;
+  Boolean pritemf;
+  val UnitFactQuant,UnitFactPrice,Quant;
+  Date orddate;
+  Boolean dummyf,varf2;
+  LongInt ErrorCode;
+  record TaxMatrixVc TMr;
+  Time blankt;
+  string 60 sz,msk,mskrep;
+  string 200 varsubset;
+
+  chsum = false;
+  chrqty = false;
+  pritemf = true;
+  MatRowGet(ORr,rownr,ORrw);
+  ORrw.Price = BlankVal;
+  ORrw.vRebate = BlankVal;
+  ORrw.Sum = BlankVal;
+  ORrw.SerialNr = "";
+  location = ORrw.Location;
+  if (blank(location)) then begin
+    location = ORr.Location;
+  end;  
+  GetDatePriceBasedOn(ORr.CustCode,ORr.OrdDate,ORr.DespatchDate,ORr.PlanShip,orddate);
+  if (GetItemPriceDiscount3(ORrw.ArtCode,ORrw.Quant,INr,ORr.CurncyCode,
+                            ORr.FrRate,ORr.ToRateB1,ORr.ToRateB2,ORr.BaseRate1,ORr.BaseRate2,
+                            ORr.LangCode,ORr.CustCat,ORr.PriceList,ORr.RebCode,
+                            price,curitemname,vreb,vatcode,baseprice,salesacc,
+                            ORr.ExportFlag,calcprice,orddate,blankt,ORr.CustCode,true,dummyf,ORr.PayDeal,tax2code,tax2prc,ORr.Region,location,taxtemplatecode)) then begin
+    ORrw.TaxTemplateCode = FillupTaxMatrix(0,ORr.BranchID,ORr.CustCode,ORr.CustCat,ORr.DelAddrCode,taxtemplatecode,TMr);
+    if (vreb==0) then begin
+      vreb = blankval;
+    end;
+    if (nonblank(INr.WarnText1)) then begin
+      inwarning = INr.WarnText1;
+    end;
+    if (!INVc_AllowSales(INr,ErrorCode)) then begin
+      warning = USetStr(ErrorCode);
+    end;
+    ORrw.OrderType = ORr.OrderType;
+    ORrw.Price = price;
+    ORrw.Spec = curitemname;
+    ORrw.vRebate = vreb;
+    ORrw.VATCode = vatcode;
+    ORrw.BasePrice = baseprice;
+    ORrw.SalesAcc = salesacc;
+    ORrw.ArtCode = INr.Code;
+    ORrw.Objects = FindINObjects(INr.Objects,INr.Group);
+    ORrw.UnitCode = INr.Unittext;
+    ORrw.UnitXval = INr.Width;
+    ORrw.UnitYval = INr.Height;
+    ORrw.UnitZval = INr.Depth;
+    ORrw.OrderType = INr.DefOrderType;
+    ORrw.Source = INr.DefaultSource;
+    ORrw.PriceFactor = INr.PriceFactor;
+    ORrw.Perceptions = INr.Perceptions;
+    ORrw.CustArtCode = CustArtCode(ORr.CustCode,ORrw.ArtCode);
+    GetTaxesDiscounts(ORr.CustCode,ORr.OrdDate,ORrw.VATCode,tax2code,t,tax2reb);
+    if (ORr.NoTax2==0) then begin
+      ORrw.TAX2Code = tax2code;
+      ORrw.TAX2Prc = tax2prc;
+      ORrw.TAX2Reb = tax2reb;
+      ORrw.TAX2Acc = GetTax2Acc(ORrw.TAX2Code);
+    end;
+    if (ORr.NoTax1==0) then begin
+      ORrw.TAX1Reb = t;
+    end;
+    if (nonblank(ORrw.UnitCode)) then begin
+      price = ORrw.Price;
+      Quant = ORrw.Quant;
+      chrqty = SetUnitFactor(ORrw.UnitCode,UnitFactQuant,ORrw.UnitXval,ORrw.UnitYval,ORrw.UnitZval,UnitFactPrice,Quant,price,ORrw.UnitComment,false);
+      if (chrqty) then begin
+        ORrw.UnitFactQuant = UnitFactQuant;
+        ORrw.UnitFactPrice = UnitFactPrice;
+        ORrw.Quant = Quant;
+        ORrw.Price = price;
+      end;
+    end;
+    if (nonblank(INr.DefLocation)) then begin
+      ORrw.Location = INr.DefLocation;
+    end;
+    if ((INr.ItemType==2) and (nonblank(INr.Recepy))) then begin
+      ORrw.Recepy = INr.Recepy;
+    end else begin 
+      ORrw.Recepy = "";
+    end;
+    if (nonblank(ORr.CustVATCode)) then begin
+      ORrw.VATCode = ORr.CustVATCode;
+    end;
+    if (calcprice) then begin
+      MatRowPut(ORr,rownr,ORrw);
+      temp = -1;
+      ORVcGetCalcItemPrice(INr,ORr,rownr,temp);
+      MatRowGet(ORr,rownr,ORrw);
+    end;
+    PackRowFieldMatrix(ORrw,"TaxMatrix",TMr);
+    MatRowPut(ORr,rownr,ORrw);
+
+//    if ((INr.ExplodeRec==0) or (blank(ORrw.Recepy))) and (varf==false) then begin
+//why
+      MatRowGet(ORr,rownr,ORrw);
+      ORMultiLineText(ORr,INr,ORr.LangCode,rownr);
+//    end;
+    
+    if (ORDchrsum(ORr,rownr)) then begin
+      ORDchsum(ORr,rownr);
+    end;
+    if (GuiType==kGuiiPhone or GuiType==kGuiAndroid or IsBooks) then begin
+      if (ORrw.Quant==0) then begin
+        if (FindItemVAR(INr.Code,sz,msk,mskrep,varsubset)) then begin//should be taken from GetItemPriceDiscount3
+          varf2 = true;
+        end;
+        if (varf2==false) then begin
+          MatRowGet(ORr,rownr,ORrw);
+          ORrw.Quant = 1;
+          MatRowPut(ORr,rownr,ORrw);
+          ORVc_PasteQuant(ORr,rownr,true,chsum);
+        end;
+      end;
+    end;
+    if (chrqty) then begin
+      chsum = ORDchrsum(ORr,rownr);
+      if (chsum) then begin
+        ORDchsum(ORr,rownr);
+      end;
+    end;
+    ORSumup(ORr);
+    res = true;
+  end else begin
+    if (nonblank(ORrw.ArtCode)) then begin
+      warning = USetStr(1120) & ORrw.ArtCode;
+    end;
+  end;
+  ORVc_PasteArtCode_Orig = res;
+  RETURN;
+END;
+
+//=========================
+global
+function Boolean tInSetPriceOR(string InrCode, string ORrObj, var string PriceList)
+begin
+record tChPrInORVc SOr;
+boolean res;
+
+while loopMain(SOr, 1, true)
+    begin
+    if SOr.INCode == InrCode and setinset(SOr.Obj,ORrObj) then
+        begin
+        PriceList = SOr.PriceList;
+        res = true;
+        end;
+    end;
+
+tInSetPriceOR = res;
+return;
+end;
+//===============================
+//=========================
+global
+function Boolean tInSetPriceORPrice(string InrCode, string PriceList)
+begin
+record tChPrInORVc SOr;
+boolean res,TrHs;
+
+resetloop(SOr);
+SOr.PriceList = PriceList;
+TrHs = true;
+while loopKey("PriceList", SOr, 1, TrHs)
+    begin
+    TrHs = SOr.PriceList == PriceList;
+    if SOr.INCode == InrCode and TrHs then //and setinset(SOr.Obj,ORrObj)
+        begin
+        res = true;
+        end;
+    end;
+
+tInSetPriceORPrice = res;
+return;
+end;
+
+global
+function Boolean tInSettingOR(string InrGroup, string ORrSalesGroup, string CurncyCode, var val BaseRate2,var string PriceList)
+begin
+record tBaseRate2ORVc SOr;
+boolean res;
+
+while loopMain(SOr, 1, true)
+    begin
+    if SOr.Group == InrGroup and setinset(SOr.SalesGroup,ORrSalesGroup) and CurncyCode == "USD" and nonblank(SOr.BaseRate2)  then
+        begin
+        BaseRate2 = SOr.BaseRate2;
+        res = true;
+        end;
+    if SOr.Group == InrGroup and setinset(SOr.SalesGroup,ORrSalesGroup) and CurncyCode == "UAH"  then
+        begin
+        PriceList = SOr.PriceList;
+        res = true;
+        end;
+    end;
+
+tInSettingOR = res;
+return;
+end;
+
+global
+function Boolean ORVc_PasteArtCode(var record ORVc ORr, Integer rownr, var string inwarning, var string warning, Boolean varf)
+begin
+boolean res, chsum, bool;
+string 60 Obj0, Obj;
+record INVc INr;
+row ORVc ORrw;
+val BaseRate2;
+string 5  Group1, Group2;
+string 20 PriceList;
+record tChPrInORVc SOr;
+
+res = true;
+
+  if not SetInSet(currentuser, "LTVERDOKHL") then //VVINOGRADO,,OLYA
+    begin
+      if (rownr == 0) then
+        begin
+          MatRowGet(ORr,rownr,ORrw);
+          INr.Code =ORrw.ArtCode;
+          ReadFirstMain(INr,1,true);
+
+          if SetInSet("EL",Inr.Objects) then
+            begin
+            ORr.CurncyCode = "USD";
+            if (ORr.PriceList <> "EL+2%") and (ORr.PriceList <> "EL+5%") then
+              begin
+              ORr.PriceList = "BASE"; // By Delphi 09/30/2011
+              end;
+            end;// else begin  ORr.CurncyCode = "UAH"; end;
+
+          if tInSettingOR(Inr.Group, ORr.Objects, ORr.CurncyCode, BaseRate2, PriceList) and (ORr.CurncyCode == "USD") then // для акционного курса у.е.
+              begin
+              ORr.BaseRate2 = BaseRate2;
+              ORr.RebCode = "";
+              /*ORrw.vRebate = BlankVal;
+              MatRowPut(ORr, rownr, ORrw);
+              ORVc_PastevRebate(ORr,rownr,chsum);
+                  if (chsum) then
+                    begin
+                    ORDchsum(ORr,rownr);
+                    ORSumup(ORr);
+                    end;*/
+
+              end;
+          if tInSettingOR(Inr.Group, ORr.Objects, ORr.CurncyCode, BaseRate2, PriceList) and (ORr.CurncyCode == "UAH") then // для акционного курса у.е.
+              begin
+              ORr.PriceList = PriceList;
+              ORr.RebCode = "";
+              ORVc_PastePriceList(ORr);
+              // пересчет по прайсу
+              end;
+
+          if  tInSetPriceOR(Inr.Code, ORr.Objects, PriceList)  then // для акционного курса у.е.
+              begin
+              ORr.PriceList = PriceList;
+              ORr.RebCode = "";
+              ORVc_PastePriceList(ORr);// пересчет по прайсу
+              bool = true;
+
+              end;
+
+        end;
+
+    if (res) and (rownr <> 0) then //25.05.12 INAU - Не разрешаем "элиту" с "не элитой" в одном счете
+      begin
+        MatRowGet(ORr, 0, ORrw);
+        INr.Code = ORrw.ArtCode;
+        ReadFirstMain(INr,1,true);
+        Obj0 = INr.Objects; //Objs первого товара
+
+        MatRowGet(ORr, rownr, ORrw);
+        INr.Code = ORrw.ArtCode;
+        ReadFirstMain(INr,1,true);
+        Obj = INr.Objects; //Objs текущего товара
+
+        res =  (SetInSet(Obj0, "EL") and SetInSet(Obj, "EL")) /* Элита */  or not (SetInSet(Obj0, "EL") or SetInSet(Obj, "EL")) /* Не элита */ ;
+
+
+        if not res then
+          begin
+            ORrw.ArtCode = "";
+            MatRowPut(ORr,rownr,ORrw);
+          end;
+
+          
+        INr.Code =ORrw.ArtCode;
+        ReadFirstMain(INr,1,true);
+
+        if tInSettingOR(Inr.Group, ORr.Objects, ORr.CurncyCode, BaseRate2, PriceList)  and ((ORr.CurncyCode == "USD") or (ORr.CurncyCode == "UAH")) then // для акционного курса у.е.
+            begin
+            MatRowGet(ORr, 0, ORrw);
+            INr.Code = ORrw.ArtCode;
+            ReadFirstMain(INr,1,true);
+            Group1 = INr.Group; //Objs первого товара
+
+            MatRowGet(ORr, rownr, ORrw);
+            INr.Code = ORrw.ArtCode;
+            ReadFirstMain(INr,1,true);
+            Group2 = INr.Group; //Objs текущего товара
+
+            res = (Group1 == Group2);
+            if not res then
+              begin
+                ORrw.ArtCode = "";
+                MatRowPut(ORr,rownr,ORrw);
+              end;
+            end;
+
+        // для акционного прайса
+         MatRowGet(ORr, 0, ORrw);
+         INr.Code = ORrw.ArtCode;
+         if tInSetPriceOR(Inr.Code, ORr.Objects, PriceList) then
+            begin
+            MatRowGet(ORr, rownr, ORrw);
+            INr.Code = ORrw.ArtCode;
+            if not tInSetPriceORPrice(Inr.Code, ORr.PriceList) then
+                begin
+                ORrw.ArtCode = "";
+                MatRowPut(ORr,rownr,ORrw);
+                end;
+              end;
+            end;
+     // end;
+
+    end;
+
+  if (res) then //Родной обработчик
+    begin
+      res = ORVc_PasteArtCode_Orig(ORr, rownr, inwarning, warning, varf);
+    end;
+
+  ORVc_PasteArtCode = res;
+  Return;
+end;
+
+
+global
+procedure ORGetRate(var record ORVc ORp)
+BEGIN
+  val from,to1,to2,base1,base2;
+  val sum;
+  string 5 crncy;
+  record CUVc CUr;
+  record BaseERVc Brr;
+
+  crncy = ORp.CurncyCode;
+  GetFullCurncyRate(crncy,ORp.OrdDate,from,to1,to2,base1,base2);
+  ORp.CurncyCode = crncy;
+  ORp.FrRate = from;
+  ORp.ToRateB1 = to1;
+  ORp.ToRateB2 = to2;
+  ORp.BaseRate1 = base1;
+  ORp.BaseRate2 = base2;
+
+//+++
+  CUr.Code = ORp.CustCode;
+  ReadFirstMain(CUr,1,true);
+  if (nonblank(CUr.VECustID)) then
+    begin
+    ORp.BaseRate2 = StringToVal(CUr.VECustID, M4Rate);
+    end;
+//===
+
+  sum = MulRateToBase1(ORp.CurncyCode,ORp.Sum4,from,to1,to2,base1,base2,DefaultCurRoundOff);
+  ORp.BaseSum4 = sum;
+  RETURN;
+END;
+
+
+global
+function Boolean PasteCustInOrder(var record ORVc ORp,string custcode,string efstr,var string warning,var string errstr)
+BEGIN
+  Boolean res;
+  record CreditLimitBlock CreditLimitRec;
+  record RebVc Rebr;
+  record CUVc CUr;
+  record UserVc Userr;
+  string 255 tstr,tstr2,oldpricelist;
+  val bal,limit;
+  Integer InclVAT;
+  record FreightBlock FreightRec;
+  record INVc INr;
+  record CCatVc CCatr;
+  Boolean limitdaysf;
+  Time blankt;
+
+  warning = "";
+  errstr = "";
+  oldpricelist = ORp.PriceList;
+  if ((efstr!=custcode) and (nonblank(efstr))) then begin
+    tstr = ORp.Objects;
+    RemoveOldCustObjects(efstr,ORp.Objects);
+    if (ORp.Objects!=tstr) then begin
+      res = true;
+    end;
+  end;
+  BlockLoad(CreditLimitRec);
+  CUr.Code = custcode;
+  if (GetCustAndBal(CUr,limit,bal,CreditLimitRec.Base,CreditLimitRec.OwnCheques,CreditLimitRec.ThirdCheques,CreditLimitRec.IOUCheques,CreditLimitRec.ThirdIOUCheques,CreditLimitRec.ORSaveWarn,limitdaysf)) then begin
+    BlockLoad(FreightRec);
+    res = true;
+    CCatr.Code = CUr.CustCat;
+    if (ReadFirstMain(CCatr,1,true)) then begin end;
+    Rebr.Code = CUr.RebCode;
+    if (blank(Rebr.Code)) then begin
+      Rebr.Code = CCatr.RebCode;
+    end;
+    if (ReadFirstMain(Rebr,1,true)) then begin
+      ORp.DiscPerc = Rebr.DiscPerc;
+    end;
+    ORp.Addr0 = CUr.Name;
+    ORp.Addr1 = CUr.InvAddr0;
+    ORp.Addr2 = CUr.InvAddr1;
+    ORp.Addr3 = CUr.InvAddr2;
+    ORp.InvAddr3 = CUr.InvAddr3;
+    ORp.InvAddr4 = CUr.InvAddr4;
+    ORp.InvCountry = CUr.CountryCode;
+    ORp.CustContact = CUr.Person;
+    ORp.RecipientGLN = CUr.RecipientGLN;
+
+//+++ 18.07.14 INAU
+    ORp.DespatchTime = CUr.PlanDeliveryTime;
+//
+
+    if ((nonblank(CUr.DelAddr0)) or
+        (nonblank(CUr.DelAddr1)) or
+        (nonblank(CUr.DelAddr2))) then begin
+      ORp.ShipAddr0 = CUr.Name;
+      ORp.ShipAddr1 = CUr.DelAddr0;
+      ORp.ShipAddr2 = CUr.DelAddr1;
+      ORp.ShipAddr3 = CUr.DelAddr2;
+      ORp.DelAddr3 = CUr.DelAddr3;
+      ORp.DelAddr4 = CUr.DelAddr4;
+      ORp.DelCountry = CUr.DelCountry;
+    end else begin
+      ORp.ShipAddr0 = "";
+      ORp.ShipAddr1 = "";
+      ORp.ShipAddr2 = "";
+      ORp.ShipAddr3 = "";
+      ORp.DelAddr3 = "";
+      ORp.DelAddr4 = "";
+      ORp.DelCountry = "";
+    end;
+    ORp.Region = CUr.Region;
+    ORp.Sorting = FindCustRoute(ORp.CustCode,ORp.Location,ORp.DelAddrCode);
+    ORp.InvoiceToCode = CUr.InvoiceToCode;
+    ORp.ExportFlag = CUr.ExportFlag;
+    ORp.CustCat = CUr.CustCat;
+    ORp.PayDeal = CUr.PayDeal;
+    ORp.CurncyCode = CUr.CurncyCode;
+    ORp.BankCode = CUr.AccOperator;
+    ORp.Objects = AddObjectToObjectList(ORp.Objects,CUr.Objects);
+    SetSalesMan(tstr,CUr.SalesMan);
+    tstr2 = ORp.Objects;
+    RemoveOldPersObjects(ORp.SalesMan,tstr2);
+    ORp.Objects = tstr2;
+    ORp.SalesMan = tstr;
+    Userr.Code = ORp.SalesMan;
+    if (ReadFirstMain(Userr,1,true)) then begin
+      ORp.Objects = AddObjectToObjectList(ORp.Objects,Userr.PersObjx);
+      ORp.SalesGroup = Userr.SalesGroup;
+    end;
+    ORp.LangCode = CUr.LangCode;
+    ORp.ShipDeal = CUr.ShipDeal;
+    ORp.ShipMode = CUr.ShipMode;
+    ORp.Comment = CUr.OrderComment;
+    ORVc_PastePayDeal(ORp);
+    if (blank(ORp.PriceList) or oldpricelist!=CUr.PLCode) then begin
+      ORp.PriceList = CUr.PLCode;
+    end;
+    if (blank(ORp.PriceList)) then begin
+      ORp.PriceList = CCatr.PLCode;
+    end;
+    ORp.RebCode = CUr.RebCode;
+    if (blank(ORp.RebCode)) then begin
+      ORp.RebCode = CCatr.RebCode;
+    end;
+    ORp.CustVATCode = CUr.VATCode;
+    if (CUr.TaxTemplateCode!=ORp.CustTaxTemplateCode) then begin
+      ORVc_FillupTaxTemplate(ORp);
+      ORp.CustTaxTemplateCode = CUr.TaxTemplateCode;
+    end;
+    ORp.Phone = CUr.Phone;
+    ORp.Fax = CUr.Fax;
+    tstr = ORp.PriceList;
+    GetPriceList(ORp.CustCat,ORp.OrdDate,blankt,tstr,InclVAT);
+    ORp.InclVAT = InclVAT;
+    if (nonblank(tstr)) then begin
+      ORp.PriceList = tstr;
+    end;
+    ORp.VATNr = CUr.VATNr;
+    ORp.NoTax1 = CUr.NoTax1;
+    ORp.NoTax2 = CUr.NoTax2;
+    ORGetRate(ORp);
+
+    ORp.FrItem = FreightRec.FrItem;
+    INr.Code = ORp.FrItem;
+    if (ReadFirstMain(INr,1,true)) then begin
+      GetItemVATCode(ORp.FrItem,ORp.ExportFlag,tstr,true);
+      ORp.FrVATCode = tstr;
+      ORp.FrBase = INr.UPrice1;
+    end else begin
+      ORp.FrItem = "";
+      ORp.FrBase = blankval;
+      ORp.FrPrice = blankval;
+      ORp.FrVATCode = "";
+    end;
+    if (FreightRec.UseWeight!=0) then begin
+      CalculateFreightWeightOR(ORp,true);
+    end else begin
+      ORp.FrPrice = DivRateToBase1(ORp.CurncyCode,ORp.FrBase,ORp.FrRate,ORp.ToRateB1,ORp.ToRateB2,ORp.BaseRate1,ORp.BaseRate2,DefaultCurRoundOff);
+    end;
+    if (nonblank(CUr.WarnText1)) then begin
+      warning = CUr.WarnText1;
+    end;
+    if (CreditLimitRec.ORPaste==1) then begin
+      if (limitdaysf) then begin
+        errstr = USetStr(22260);
+      end;
+      if (blank(limit)==false) then begin
+        if (bal>limit) then begin
+          errstr = USetStr(1164);
+        end;
+      end;
+    end;
+    if (oldpricelist!=ORp.PriceList) then begin
+      ORDUpdatePrices(ORp,false);
+    end;
+  end;
+  AddPerceptionTaxesRows_ORVc(ORp);
+  ORVc_PasteInvCountry(ORp,"");
+  ORVc_PasteDelCountry(ORp,"");
+  PasteCustInOrder = res;
+  RETURN;
+END;

@@ -1,0 +1,444 @@
+external function string 60 IGetObjByType(string, string);
+external function boolean ISetsEqual(string, string);
+external function string 255 IGetAccName(string);
+external function val ABS(val);
+
+//===============================================
+//ПОЛНОЕ очищение регистра! Только в тестовых целях!
+global
+updating procedure ClearIBudgetDiffVc()
+begin
+  record IBudgetDiffVc IBDr;
+  
+  ResetLoop(IBDr);
+  while (LoopMain(IBDr, 1, true))
+    begin
+      RecordDelete(IBDr);
+      StepBack(IBDr);
+    end;
+  Return;
+end;
+
+//===============================================
+//Добавить связку FN1-PODR в уникальный список с сортировкой
+//f2 - FN1, f3 - PODR
+procedure AddToFN1List(var record TempVc Listr, string FN1, string PODR)
+begin
+  row TempVc Listrw;
+  integer i, Pos, rwcnt;
+  boolean found, cont;
+
+  Pos = 0;
+  found = false;
+  cont = true;
+  rwcnt = MatRowCnt(Listr);
+  for (i=0; (i<rwcnt) and cont and not found; i=i+1)
+    begin
+      MatRowGet(Listr, i, Listrw);
+      found = (Listrw.f2 == FN1) and (Listrw.f3 == PODR);
+      cont = (FN1 > Listrw.f2) or 
+             ((FN1 == Listrw.f2) and (PODR > Listrw.f3));
+      if cont then
+        begin
+          Pos = i + 1;
+        end;
+    end;
+
+  if not found then //Добавляем
+    begin
+      Listrw.f2 = FN1;
+      Listrw.f3 = PODR;
+      MatRowInsert(Listr, Pos, Listrw);
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Добавить AccNumber, ObjStr, Plan в уникальный список с сортировкой
+//f2 - AccNumber, f3 - ObjStr, f4 - Plan, f5 - Fact, f6 - 0:запланированные; 1:незапланированные
+procedure AddToAccList(var record TempVc Listr, string AccNumber, string ObjStr, val Plan, val Fact, integer Type)
+begin
+  row TempVc Listrw;
+  integer i, Pos, NewPos, rwcnt;
+  integer RowType; //Тип текущей строки
+  boolean found, cont;
+
+  Pos = 0;
+  NewPos = Pos;
+  found = false;
+  cont = true;
+  rwcnt = MatRowCnt(Listr);
+  for (i=0; (i<rwcnt) and cont and not found; i=i+1)
+    begin
+      MatRowGet(Listr, i, Listrw);
+      RowType = StringToInt(Listrw.f6);
+      found = (Listrw.f2 == AccNumber) and (RowType == Type) and ISetsEqual(Listrw.f3, ObjStr);
+      cont = (Type > RowType) or
+             ((Type == RowType) and (AccNumber >= Listrw.f2));
+      if cont then
+        begin
+          NewPos = i + 1;
+        end;
+      Pos = i;
+    end;
+
+  if found then //Накапливаем план
+    begin
+      Listrw.f4 = StringToVal(Listrw.f4, M4Val) + Plan;
+      Listrw.f5 = StringToVal(Listrw.f5, M4Val) + Fact;
+      MatRowPut(Listr, Pos, Listrw);
+    end
+  else //Добавляем
+    begin
+      Listrw.f2 = AccNumber;
+      Listrw.f3 = ObjStr;
+      Listrw.f4 = Plan;
+      Listrw.f5 = Fact;
+      Listrw.f6 = Type;
+      MatRowInsert(Listr, NewPos, Listrw);
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Создать уникальный список FN1-PODR
+procedure CreateFN1List(record RcVc RepSpec, var record TempVc Listr)
+begin
+  record VBudgetVc BUr;
+  row VBudgetVc BUrw;
+  integer i, rwcnt;
+  boolean cont;
+  
+  cont = true;
+  BUr.DMonth = RepSpec.sStartDate;
+  while (LoopKey("DMonthF", BUr, 1, cont))
+    begin
+      cont = BUr.DMonth <= RepSpec.sEndDate;
+      if cont and (BUr.OKFlag == 1) then
+        begin
+          rwcnt = MatRowCnt(BUr);
+          for (i=0; i<rwcnt; i=i+1)
+            begin
+              MatRowGet(BUr, i, BUrw);
+              AddToFN1List(Listr, BUr.Function1, IGetObjByType(BUrw.ObjectStr, "PODR"));
+            end;
+        end;
+    end;
+   Return;
+end;
+
+//===============================================
+//Создать список счетов, объектов и планов для заданных FN1 и PODR
+procedure CreateAccList(record RcVc RepSpec, var record TempVc Listr, string FN1, string PODR)
+begin
+  record VBudgetVc BUr;
+  row VBudgetVc BUrw;
+  integer i, rwcnt;
+  boolean cont;
+  
+  cont = true;
+  BUr.DMonth = RepSpec.sStartDate;
+  BUr.Function1 = FN1;
+  while (LoopKey("DMonthF", BUr, 2, cont))
+    begin
+      cont = (BUr.DMonth <= RepSpec.sEndDate);
+      if cont and (BUr.OKFlag == 1) and (BUr.Function1 == FN1) then
+        begin
+          rwcnt = MatRowCnt(BUr);
+          for (i=0; i<rwcnt; i=i+1)
+            begin
+              MatRowGet(BUr, i, BUrw);
+              if SetInSet(PODR, BUrw.ObjectStr) then
+                begin
+                  AddToAccList(Listr, BUrw.Account, BUrw.ObjectStr, BUrw.Plan, 0, 0);
+                end;
+            end;
+        end;
+    end;
+  
+  Return;
+end;
+
+//===============================================
+//Фактическая сумма по счету для объектов
+function val GetFactByAcc(record RcVc RepSpec, string AccNumber, string ObjStr, string FN1)
+begin
+  record TRVc TRr;
+  row TRVc TRrw;
+  integer i, rwcnt;
+  val Sum;
+  boolean cont;
+  
+  Sum = 0;
+  TRr.TransDate = RepSpec.sStartDate;
+  cont = true;
+  while (LoopKey("AccNumberReconsf:" & AccNumber, TRr, 1, cont))
+    begin
+      cont = (TRr.TransDate <= RepSpec.sEndDate);
+      if cont then
+        begin
+          rwcnt = MatRowCnt(TRr);
+          for (i=0;i<rwcnt;i=i+1)
+            begin
+              MatRowget(TRr,i,TRrw);
+              if (TRrw.AccNumber == AccNumber) /*and SetInSet(FN1, TRrw.Objects)*/ and SetInSet(ObjStr, TRrw.Objects) and (TRrw.ovst == 0) then
+                begin
+                  if nonblank(TRrw.DebVal2) or nonblank(TRrw.CredVal2) then
+                    begin
+                      sum = sum + (TRrw.DebVal2 - TRrw.CredVal2);
+                    end
+                  else
+                    begin
+                      sum = sum + ((TRrw.DebVal - TRrw.CredVal) * TRrw.BaseRate2);
+                    end;
+                end;
+            end;
+        end;
+    end;
+ 
+  GetFactByAcc = Sum;
+  Return;
+end;
+
+//===============================================
+//Проверяем присутствие в планах
+function boolean CheckPlanned(record TempVc Listr, string AccNumber, string Objects)
+begin
+  row TempVc Listrw;
+  integer i, rwcnt;
+  boolean found, cont;
+  integer RowType;
+
+  cont = true;
+  rwcnt = MatRowCnt(Listr);
+  for (i=0; (i<rwcnt) and cont and not found; i=i+1)
+    begin
+      MatRowGet(Listr, i, Listrw);
+      RowType = StringToInt(Listrw.f6);
+      found = (Listrw.f2 == AccNumber) and (RowType == 0) and SetInSet(Listrw.f3, Objects);
+      cont = (RowType == 0);
+    end;
+  CheckPlanned = found;
+  Return;
+end;
+
+//===============================================
+//Незапланированное
+procedure AddNonPlanExpToAccList(record RcVc RepSpec, var record TempVc Listr, string FN1, string PODR)
+begin
+  record AccVc ACr;
+  record TRVc TRr;
+  row TRVc TRrw;
+  integer i, rwcnt;
+  boolean cont;
+  val Sum;
+
+  ResetLoop(ACr);
+  while(LoopMain(ACr, 1, true))
+    begin
+      cont = SetInSet(Left(ACr.AccNumber, 1), "8,9");
+      ResetLoop(TRr);
+      TRr.TransDate = RepSpec.sStartDate;
+      while (LoopKey("AccNumberReconsf:" & Acr.AccNumber, TRr, 1, cont))
+        begin
+          cont = (TRr.TransDate <= RepSpec.sEndDate);
+          if cont then
+            begin
+              rwcnt = MatRowCnt(TRr);
+              for (i=0; i<rwcnt; i=i+1)
+                begin
+                  MatRowGet(TRr, i, TRrw);
+                  if (TRrw.AccNumber == Acr.AccNumber) and SetInSet(FN1 & "," & PODR, TRrw.Objects) and (TRrw.ovst == 0) then
+                    begin
+                      if not CheckPlanned(Listr, TRrw.AccNumber, TRrw.Objects) then
+                        begin
+                          if nonblank(TRrw.DebVal2) or nonblank(TRrw.CredVal2) then
+                            begin
+                              sum = TRrw.DebVal2 - TRrw.CredVal2;
+                            end
+                          else
+                            begin
+                              sum = (TRrw.DebVal - TRrw.CredVal) * TRrw.BaseRate2;
+                            end;
+                          AddToAccList(Listr, TRrw.AccNumber, TRrw.Objects, 0, Sum, 1);
+                        end;
+                    end;
+                end;
+            end;
+        end;
+    end;    
+  Return;
+end;
+
+//===============================================
+//Собираем факты по списку номеров счетов и объектов
+procedure AddPlanExpToAccList(record RcVc RepSpec, var record TempVc Listr, string FN1)
+begin
+  row TempVc Listrw;
+  integer i, rwcnt;
+  boolean cont;
+  
+  rwcnt = MatRowCnt(Listr);
+  for (i=0; i<rwcnt; i=i+1)
+    begin
+      MatRowGet(Listr, i, Listrw);
+      Listrw.f5 = GetFactByAcc(RepSpec, Listrw.f2, Listrw.f3, FN1);
+      MatRowPut(Listr, i, Listrw)
+    end;
+  Return
+end;
+
+//===============================================
+procedure FillBudgetDiff(var record IBudgetDiffVc IBDr, row Tempvc Listrw, var integer CurRowType)
+begin
+  row IBudgetDiffVc IBDrw;
+  integer RowType;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  RowType = StringToInt(Listrw.f6);
+  if RowType <> CurRowType then
+    begin
+      ClearRow(IBDr, IBDrw, 2);
+      switch (RowType)
+        begin
+          case 0: IBDrw.RowComment = "Запланированные расходы";
+          case 1: IBDrw.RowComment = "Незапланированные расходы";
+        end;
+      CurRowType = RowType;
+      MatRowPut(IBDr, MatRowCnt(IBDr), IBDrw);
+    end;
+  ClearRow(IBDr, IBDrw, 1);
+  IBDrw.AccNumber = Listrw.f2;
+  IBDrw.AccName = IGetAccName(IBDrw.AccNumber);
+  IBDrw.Objects = Listrw.f3;
+  IBDrw.Plan = StringToVal(Listrw.f4, M4Val);
+  IBDrw.Fact = StringToVal(Listrw.f5, M4Val);
+  IBDrw.Diff = ABS(IBDrw.Plan - IBDrw.Fact);
+  IBDrw.Sum = IBDrw.Diff;
+  MatRowPut(IBDr, MatRowcnt(IBDr), IBDrw);
+  IBDr.TotalPlan = IBDr.TotalPlan + IBDrw.Plan;
+  IBDr.TotalDiff = IBDr.TotalDiff + IBDrw.Diff;
+  Return;
+end;
+
+//===============================================
+//Создаем документы
+updating procedure CreateBudgetDocs(record RcVc RepSpec, record TempVc Listr, string FN1, string PODR)
+begin
+  record IBudgetDiffVc IBDr; //Видимый
+  record IBudgetDiffVc IBD2r; //Невидимый
+  row TempVc Listrw;
+  integer i, rwcnt;
+  integer CurRowType;
+  integer CurRowType2;
+  val Plan, Fact, Diff;
+  
+  SetLangMode(LangRussian, "RUS", 2);
+
+  CurRowType = -1;
+  CurRowType2 = CurRowType;
+
+  rwcnt = MatRowCnt(Listr);
+  for (i=0; i<rwcnt; i=i+1)
+    begin
+      MatRowGet(Listr, i, Listrw);
+      Plan = StringToVal(Listrw.f4, M4Val);
+      Fact = StringToVal(Listrw.f5, M4Val);
+      Diff = ABS(Plan - Fact);
+      if (Diff > RepSpec.vals0) then //порог чувствительности
+        begin
+          FillBudgetDiff(IBDr, Listrw, CurRowType); //Требует согласования (Видимый)
+        end
+      else
+        begin
+          FillBudgetDiff(IBD2r, Listrw, CurRowType2); //Не требует согласования (Невидимый)
+        end;
+    end;
+  
+  if (MatRowCnt(IBDr) > 0) then
+    begin
+      IBDr.SerNr = NextSerNr("IBudgetDiffVc", CurrentDate, -1, false, "");
+      IBDr.RegDate = CurrentDate;
+      IBDr.Podr = PODR;
+      IBDr.Func = FN1;
+      IBDr.Visible = "Visible"; //Subset
+      RecordStore(IBDr, false);
+    end;
+
+  if (MatRowCnt(IBD2r) > 0) then
+    begin
+      IBD2r.SerNr = NextSerNr("IBudgetDiffVc", CurrentDate, -1, false, "");
+      IBD2r.RegDate = CurrentDate;
+      IBD2r.Podr = PODR;
+      IBD2r.Func = FN1;
+      IBD2r.Visible = "Invisible";
+      RecordStore(IBD2r, false);
+    end;
+    
+  Return;
+end;
+
+//===============================================
+//Собираем бюджет и его выполнение по FN1 и PODR
+updating procedure BudgetDiffByFN1(record RcVc RepSpec, string FN1, string PODR)
+begin
+  record TempVc Listr;
+  
+  CreateAccList(RepSpec, Listr, FN1, PODR);
+  AddPlanExpToAccList(RepSpec, Listr, FN1);
+  AddNonPlanExpToAccList(RepSpec, Listr, FN1, PODR);
+  CreateBudgetDocs(RepSpec, Listr, FN1, PODR);
+  Return;
+end;
+
+//===============================================
+global
+updating procedure IBudgetDiffCreateMn(record RcVc RepSpec)
+begin
+  record TempVc Listr; //Связка FN1-PODR
+  row TempVc Listrw;
+  integer i, rwcnt;
+  
+  CreateFN1List(RepSpec, Listr);
+
+  rwcnt = MatRowCnt(Listr);
+  for (i=0; i<rwcnt; i=i+1)
+    begin
+      MatRowGet(Listr, i, Listrw);
+      BudgetDiffByFN1(RepSpec, Listrw.f2, Listrw.f3);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IBudgetDiffVcRecordCheck(var record IBudgetDiffVc IBDr, record IBudgetDiffVc IBD2r, longint stat, longint check)
+begin
+  longint res;
+
+  SetLangMode(LangRussian,"RUS",2);
+  res = 0;
+  
+  if (IBDr.SerNr < 0) then
+    begin
+      IBDr.SerNr = NextSerNr("IBudgetDiffVc", CurrentDate, -1, false, "");
+    end;
+  
+  IBudgetDiffVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+global
+function longint IBudgetDiffVcRecordRemoveTest(var record IBudgetDiffVc IBDr, record IBudgetDiffVc IBD2r, longint long3, longint long4)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  MessageBox(0, "Удалить нельзя!");
+  IBudgetDiffVcRecordRemoveTest = 0;
+  Return;
+end;
+

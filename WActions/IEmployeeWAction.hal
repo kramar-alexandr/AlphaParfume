@@ -1,0 +1,740 @@
+external function string 255 IGetDepName(string);
+remote function string 200 IEmployeeGetObjStrByUser(string);
+remote function integer CanViewConfidentNote(string);
+
+//===============================================
+//Предприятие редприятия
+function boolean GetEntpr(string Code, var record tEntPrVc Entpr)
+begin
+  Entpr.Code = Code;
+  GetEntpr = ReadFirstMain(Entpr, 1, true);
+  Return;
+end;
+
+//===============================================
+//Наименование должности
+function boolean GetPositionName(string Code, integer EntprType, var string Name)
+begin
+  record VPositionVc VPr;
+  record ProfClassVc PCr;
+  boolean res;
+
+  Name = blankval;
+  if (EntprType == 3) then //ГК
+    begin
+      VPr.Code = Code;
+      res = ReadFirstMain(VPr, 1, true);
+      Name = VPr.Name;
+    end;
+    
+  if (EntprType == 1) or (EntprType == 2) then //Юр.лицо / Физ.лицо
+    begin
+      PCr.KP = Code;
+      res = ReadFirstKey("KP", PCr, 1, true);
+      Name = PCr.PNR;
+    end;
+
+  GetPositionName = res;
+  Return;
+end;
+
+//===============================================
+//Наименование структурного подразделения
+function boolean GetStPodrName(string Code, integer EntprType, var string Name)
+begin
+  record StPodrVc SPr;
+  record tStPodrVc tSPr;
+  boolean res;
+
+  Name = blankval;
+  if (EntprType == 3) then //ГК
+    begin
+      SPr.Code = Code;
+      res = ReadFirstMain(SPr, 1, true);
+      Name = SPr.Name;
+    end;
+    
+  if (EntprType == 1) or (EntprType == 2) then //Юр.лицо / Физ.лицо
+    begin
+      tSPr.Code = Code;
+      res = ReadFirstMain(tSPr, 1, true);
+      Name = tSPr.Name;
+    end;
+
+  GetStPodrName = res;
+  Return;
+end;
+
+//===============================================
+//Приводим строку к виду "DD1.MM1.YYYY1:DD2.MM2.YYYY2"
+procedure NormalizePeriodStr(var string PeriodStr)
+begin
+  PeriodStr = StringToDate(FirstInRange(PeriodStr, 10)) & ":" & StringToDate(LastInRange(PeriodStr, 10));
+  Return;
+end;
+
+//===============================================
+function boolean IEmployeeDClassCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IEmployeeVc Emplr;
+  record UserVc Usr;
+  
+  if (changed <> 0) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, Emplr);
+      Usr.Code = Emplr.Code;
+      if ReadFirstMain(Usr, 1, true) then
+        begin
+          Emplr.Name = Usr.Name;
+          Emplr.DepCode = Usr.Department;
+          Emplr.DepName = IGetDepName(Emplr.DepCode);
+          Emplr.Found = StringToVal(Usr.BankAcc, M4Val);
+          Emplr.BonusFound = Usr.BonusFound;
+          Emplr.MotiveCoeff = Usr.MotiveCoeff;
+          Emplr.StateJob = Usr.StateJob;
+          Emplr.PersAcc = Usr.PersAcc;
+          Emplr.MotiveDebAcc = Usr.MotiveDebAcc;
+          Emplr.MotiveCredAcc = Usr.MotiveCredAcc;
+          Emplr.MotivRespCode = Usr.MotivRespCode;
+          Emplr.Supervisor = Usr.Supervisor;
+        end
+      else 
+        begin
+          Emplr.Code = blankval;
+          Emplr.Name = blankval;
+          Emplr.DepCode = blankval;
+          Emplr.DepName = blankval;
+          Emplr.Found = blankval;
+          Emplr.BonusFound = blankval;
+          Emplr.MotiveCoeff = blankval;
+          Emplr.StateJob = blankval;
+          Emplr.PersAcc = blankval;
+          Emplr.MotiveDebAcc = blankval;
+          Emplr.MotiveCredAcc = blankval;
+          Emplr.MotivRespCode = blankval;
+          Emplr.Supervisor = blankval;
+        end;
+      PutWindowRecord(wn, Emplr);
+      SelectWindow(wn);
+    end;
+  IEmployeeDClassCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IEmployeeDClassPositionCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record IEmployeeVc Emplr;
+  row IEmployeeVc Emplrw;
+  string 250 Name;
+  
+  if (changed <> 0) and (rownr <> -1) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, Emplr);
+      MatRowGet(Emplr, rownr, Emplrw);
+      if GetPositionName(Emplrw.PositionCode, Emplrw.EntprType, Name) then
+        begin
+          Emplrw.PositionName = Name;
+        end
+      else
+        begin
+          Emplrw.PositionCode = blankval;
+          Emplrw.PositionName = blankval;
+        end;
+      MatRowPut(Emplr, rownr, Emplrw);
+      PutWindowRecord(wn, Emplr);
+      SelectWindow(wn);
+    end;
+  IEmployeeDClassPositionCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IEmployeeDClassStPodrCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record IEmployeeVc Emplr;
+  row IEmployeeVc Emplrw;
+  string 250 Name;
+  
+  if (changed <> 0) and (rownr <> -1) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, Emplr);
+      MatRowGet(Emplr, rownr, Emplrw);
+      if GetStPodrName(Emplrw.StPodrCode, Emplrw.EntprType, Name) then
+        begin
+          Emplrw.StPodrName = Name;
+        end
+      else
+        begin
+          Emplrw.StPodrCode = blankval;
+          Emplrw.StPodrName = blankval;
+        end;
+      MatRowPut(Emplr, rownr, Emplrw);
+      PutWindowRecord(wn, Emplr);
+      SelectWindow(wn);
+    end;
+  IEmployeeDClassStPodrCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IEmployeeDClassEntprCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record IEmployeeVc Emplr;
+  row IEmployeeVc Emplrw;
+  record tEntPrVc Entpr;
+  string 250 Name;
+  
+  if (changed <> 0) and (rownr <> -1) then
+    begin
+      GetWindowRecord(wn, Emplr);
+      MatRowGet(Emplr, rownr, Emplrw);
+      if GetEntpr(Emplrw.EntprCode, Entpr) then
+        begin
+          Emplrw.EntprName = Entpr.Name;
+          Emplrw.EntprType = Entpr.EType;
+        end
+      else
+        begin
+          Emplrw.EntprCode = blankval;
+          Emplrw.EntprName = blankval;
+          Emplrw.EntprType = 0;
+          Emplrw.StPodrCode = blankval;
+          Emplrw.StPodrName = blankval;
+          Emplrw.PositionCode = blankval;
+          Emplrw.PositionName = blankval;
+        end;
+      MatRowPut(Emplr, rownr, Emplrw);
+      PutWindowRecord(wn, Emplr);
+    end;
+  IEmployeeDClassEntprCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IEmployeeDClassDepCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IEmployeeVc Emplr;
+  
+  if (changed <> 0) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, Emplr);
+      Emplr.DepName = IGetDepName(Emplr.DepCode);
+      if blank(Emplr.DepName) then
+        begin
+          Emplr.DepCode = blankval;
+        end;
+      PutWindowRecord(wn, Emplr);
+      SelectWindow(wn);
+    end;
+  IEmployeeDClassDepCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IEmployeeDClassPeriodEFAfter(integer wn, string FieldName, integer changed)
+begin
+  boolean res;
+  record IEmployeeVc Emplr;
+  
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, Emplr);
+      switch (FieldName)
+        begin
+          case "Education1Period": NormalizePeriodStr(Emplr.Education1Period);
+          case "Education2Period": NormalizePeriodStr(Emplr.Education2Period);
+          case "Education3Period": NormalizePeriodStr(Emplr.Education3Period);
+          case "Training1Period": NormalizePeriodStr(Emplr.Training1Period);
+          case "Training2Period": NormalizePeriodStr(Emplr.Training2Period);
+          case "Training3Period": NormalizePeriodStr(Emplr.Training3Period);
+          case "Training4Period": NormalizePeriodStr(Emplr.Training4Period);
+          case "Training5Period": NormalizePeriodStr(Emplr.Training5Period);
+        end;
+      PutWindowRecord(wn, Emplr);
+    end;
+  IEmployeeDClassPeriodEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IEmployeeDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "Code": res = IEmployeeDClassCodeEFAfter(wn, changed);
+          case "PositionCode": res = IEmployeeDClassPositionCodeEFAfter(wn, rownr, changed);
+          case "StPodrCode": res = IEmployeeDClassStPodrCodeEFAfter(wn, rownr, changed);
+          case "EntprCode": res = IEmployeeDClassEntprCodeEFAfter(wn, rownr, changed);
+          case "DepCode": res = IEmployeeDClassDepCodeEFAfter(wn, changed);
+        otherwise
+          if (right(fieldname, 6) == "Period") then
+            begin
+              res = IEmployeeDClassPeriodEFAfter(wn, fieldname, changed); //Все поля периодов
+            end;
+        end;
+    end; 
+  IEmployeeDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+function string 255 IClassIEmployeeSClassHDesc(var record IClassIEmployeeVc CEr)
+begin
+  record IClassIEmployeeVc parentCEr;
+
+  parentCEr.Code = CEr.Hierarchy;
+  ReadFirstMain(parentCEr, 1, true);
+  IClassIEmployeeSClassHDesc = parentCEr.Description;
+  Return;
+end;
+
+//===============================================
+global
+function string 255 IEmployeeLClassObjStr(var record IEmployeeVc Emplr)
+begin
+  IEmployeeLClassObjStr = IEmployeeGetObjStrByUser(Emplr.Code);
+  Return;
+end;
+
+//===============================================
+global
+procedure DblIEmployeeVc(string dblstr, string l, integer currepwn)
+begin
+  integer wn;
+  record IEmployeeVc Emplr;
+  
+  if nonblank(dblstr) then
+    begin
+      Emplr.Code = FirstInRange(dblstr, 20);
+      if ReadFirstMain(Emplr, 1, true) then
+        begin  
+          wn = OpenWindow("IEmployeeDClass", 1, 0, "", "", Emplr);
+        end; 
+    end;
+  return;
+end;
+
+//===============================================
+global
+function string 40 IEmployeeDClassSpecPasteName(Integer wn, string defpsname)
+begin
+  record IEmployeeVc Emplr;
+  row IEmployeeVc Emplrw;
+  string 40 psname;
+
+  psname = defpsname;
+  switch (WindowActiveField(wn))
+    begin
+      case "StPodrCode": 
+        begin
+          GetWindowRecord(wn, Emplr);
+          MatRowGet(Emplr,  GetWindowCurRow(wn), Emplrw);
+          if (Emplrw.EntprType == 3) then
+            begin
+              psname = "StPodrSClass"; //Структурные подразделения ГК
+            end
+          else
+            begin
+              psname = "tStPodrSClass"; //Подразделения Юр.лица / Физ.лица
+            end;
+        end;
+
+      case "PositionCode": 
+        begin
+          GetWindowRecord(wn, Emplr);
+          MatRowGet(Emplr,  GetWindowCurRow(wn), Emplrw);
+          if (Emplrw.EntprType == 3) then
+            begin
+              psname = "VPositionSClass"; //Должности ГК
+            end
+          else
+            begin
+              psname = "ProfClassByKPSClass"; //Классификатор профессий
+            end;
+        end;
+    end;
+      
+  IEmployeeDClassSpecPasteName = psname;
+  Return;
+end;
+
+//===============================================
+global 
+procedure IEmployeeConfidentNote()
+begin
+  record IEmployeeVc Emplr;
+  record CDataVc CDr;
+  record RcVc RepSpec;
+  integer res, wn, nwn;
+
+  wn = CurWindow;
+  GetWindowRecord(wn, Emplr);
+  res = CanViewConfidentNote(Emplr.Code);
+  WindowDeactivateField(wn);
+  //ActivateTile(wn, 7);
+  switch res 
+    begin
+      case 1:
+        RepSpec.f1 = Emplr.Code;
+        RepSpec.Media = mtScreen;
+        RepSpec.repname = "ConfidentNoteRn";
+        RunReport(RepSpec, 0);
+      case 9:
+        CDr.Code = Emplr.Code;
+        if not ReadFirstMain(CDr, 1, True) then
+          begin
+            RecordNew(CDr);
+            CDr.Code = Emplr.Code;
+            CDr.Superior = Emplr.Supervisor;
+            CDr.User = CurrentUser;
+          end;
+        nwn = OpenWindow("CDataDClass", 0, 0, "", "", CDr);
+    end;
+
+  Return;
+end;
+
+//===============================================
+global
+procedure IEmployeeRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "IEmployeeRClass");
+  RepSpec.flags[1] = -1;
+  RepSpec.flags[2] = -1;
+  RepSpec.flags[3] = -1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l;
+  record IEmployeeVc Emplr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классы сотрудников ГК", IClassIEmployeeLClass, CGmlist, -);
+  SpawnClass(IClassIEmployeeDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassIEmployeeVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+  RlColKey(204, 204, "Наименование", Description, false, Description);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Класс сотрудников ГК", IClassIEmployeeDClass, CGview, -);
+  SetWRect(20, 80, 600, 180);
+  //Sizeable(-1, -1, -1, -1);
+  UseView(IClassIEmployeeVc);
+  v = 16; vs = 20; h = 100; h2 = 300;
+  EditField(h, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2, v, 80, "Иерархия", Normal, Hierarchy, false, IClassIEmployeeSClass);
+  EditField(h, v += vs, -40,"Наименование", Normal, Description, false, 0);
+  EndWindow;
+
+
+  WindowBegin("Классы сотрудников ГК", IClassIEmployeeSClass, CGslist, -);
+  SpawnClass(IClassIEmployeeDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassIEmployeeVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(100, 100, "Наименование", Description, false, Description);
+  RlColKey(-200, -200, "Род.код", Hierarchy, false, Hierarchy);
+  CalculatedColumn(-100, -100, "Род.Наим.", "IClassIEmployeeSClassHDesc", false);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Сотрудники ГК", IEmployeeLClass, CGmlist, -);
+  SpawnClass(IEmployeeDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IEmployeeVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(104, 104, "ФИО", Name, false, Name);
+  RlColKey(-400, -400, "Отдел", DepCode, false, DepCode);
+  CalculatedColumn(-300, -300, "Объекты", "IEmployeeLClassObjStr", false);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Сотрудник ГК", IEmployeeDClass, CGview, -);
+  SetWRect(20, 80, 1000, 500);
+  UseView(IEmployeeVc);
+  v = 16; vs = 20; h = 140;
+  h2 = h + 220;
+  h3 = h + 440;
+  vm = v;
+
+  Tile(0, 70, false, "", Code);
+  EditField(h, v, 100, "Код сотрудника", Normal, Code, false, UserSClass);
+  EditField(h2, v, -40, "ФИО", Normal, Name, false, 0);
+  TileButton(1, "Общ.");
+  TileButton(2, "Док-ты");
+  TileButton(3, "Упр.учет");
+  TileButton(4, "Персональные");
+  TileButton(5, "Семейное полож.");
+  TileButton(6, "Оформл.");
+  TileButton(7, "Образов.");
+  TileButton(8, "Опыт работы");
+  TileButton(9, "Воинский учет");
+  TileButton(10, "Доп.");
+  TileButton(11, "Хар-ка");
+
+  Tile(1, 110, true, "1", BirthDate);
+  EditField(h, v=vm, 100, "Дата рождения", Normal, BirthDate, false, PasteCurDate);
+  ButtonFrame(h2, v, 150, 2, "Пол");
+  RadioButton(h2, v, 0, 0, "Мужской", Gender);
+  RadioButton(h2+100, v, 1, 0, "Женский", Gender);
+  EditField(h, v+=vs+vs, -40, "Конт. тел.", Normal, Phones, false, 0);
+  EditField(h, v+=vs , 100, "Отдел", Normal, DepCode, false, DepSClass);
+  EnterSkip(Classification);
+  EditField(h2, v , -40, "Наим. отдела",  Normal, DepName, false, 0);
+  EditField(h, v+=vs+vs, -40, "Классификация", Normal, Classification, false, IClassIEmployeeSClass);
+  
+  Tile(2, 110, true, "2", Passport);
+  EditField(h, v=vm, -40, "Паспорт", Normal, Passport, false, 0);
+  EditField(h, v+=vs, 200, "ИНН", Normal, IdentCode, false, 0);
+  EditField(h3, v, -40, "Св-во обяз. страх.", Normal, InsuranceCode, false, 0);
+  EditField(h, v+=vs, -40, "Диплом об обр.", Normal, Diploma, false, 0);
+  EditField(h, v+=vs, -40, "Пенсион. уд.", Normal, PensionerCard, false, 0);
+  EditField(h, v+=vs, -40, "Уд. инвалида", Normal, DisabilityCard, false, 0);
+  EditField(h, v+=vs, -40, "Водит. уд.", Normal, DrivingLicense, false, 0);
+
+  Tile(3, 110, true, "3", Found);
+  EditField(h, v=vm, 80, "Ставка", Normal, Found, true, 0);
+  EditField(h2, v, 80, "Премиальный фонд", Normal, BonusFound, true, 0);
+  EditField(h, v+=vs, 80, "Kоэф.мотив.", Normal, MotiveCoeff, true, 0);
+  EditField(h2, v, 80, "Kод мотив.", Normal, StateJob, false, 0);  
+  EditField(h, v+=vs, 80, "Руководитель", Normal, Supervisor, false, UserSClass);
+  EditField(h2, v, 80, "Отв. за мотив.", Normal, MotivRespCode, false, UserSClass);
+  EditField(h, v+=40, 80, "Счет", Normal, PersAcc, false, AccSClass);
+  EditField(h2, v, 80, "Сч.питание", Normal, FoodAcc, false, AccSClass);
+  EditField(h, v+=vs, 80, "Сч.мотив.деб.", Normal, MotiveDebAcc, false, AccSClass);
+  EditField(h2, v, 80, "Сч.мотив.кред.", Normal, MotiveCredAcc, false, AccSClass);
+  EditField(h, v+=vs+vs, 80, "Первый рабочий день", Normal, StartDate, false, PasteCurDate);
+  EditField(h2, v, 80, "Оконч. испыт. срока", Normal, TestEndDate, false, PasteCurDate);
+  EditField(h, v+=vs, 80, "Планируемый отпуск", Normal, HolidayPlanDate, false, PasteCurDate);
+  EditField(h2, v, 80, "Фактический отпуск", Normal, HolidayDate, false, PasteCurDate);
+  EditField(h, v+=40, 300, "Объекты", Normal, tObj, true, ObjSClass);
+
+  Tile(4, 110, true, "4", BirthPlace);
+  EditField(h, v=vm, -40, "Место рождения", Normal, BirthPlace, false, 0);
+  EditField(h, v+=vs, -40, "Адрес прописки", Normal, RegAddr, false, 0);
+  EditField(h, v+=vs, -40, "Адрес проживания", Normal, ActualAddr, false, 0);
+  ButtonFrame(h, v+=vs+vs, 300, 7, "Статус");
+  RadioButton(h,  v,     0, 0, "Испытательный срок", Status);
+  RadioButton(h2, v,     4, 0, "Уволенный", Status);
+  RadioButton(h,  v+=16, 1, 0, "Действующий", Status);
+  RadioButton(h2, v,     5, 0, "Инвалид", Status);
+  RadioButton(h,  v+=16, 2, 0, "Декрет", Status);
+  RadioButton(h2, v,     6, 0, "Пенсионер", Status);
+  RadioButton(h,  v+=16, 3, 0, "Длительный больничный", Status);
+
+  Tile(5, 110, true, "5", Mother);
+  StaticText(h, v=vm, "Родители (ФИО, дата рождения)", false);
+  EditField(h, v+=10, -40, "Мать", Normal, Mother, false, 0);
+  EditField(h, v+=vs, -40, "Отец", Normal, Father, false, 0);
+  EditField(h, v+=vs, -40, "Супруг(а)", Normal, Family, false, 0);
+  EditField(h3, v+=vs+vs, 80, "Дата выхода из декрета", Normal, DecreeEndDate, false, PasteCurDate);
+  ButtonFrame(h, v, 150, 2, "Дети");
+  RadioButton(h, v,     0, 0, "Нет", HasChildren);
+  RadioButton(h, v+=16, 1, 0, "Есть", HasChildren);
+  StaticText(h, v+=vs+vs, "Дети (ФИО, дата рождения)", false);
+  EditField(h, v+=10, -40, "1", Normal, Child1, false, 0);
+  EditField(h, v+=vs, -40, "2", Normal, Child2, false, 0);
+  EditField(h, v+=vs, -40, "3", Normal, Child3, false, 0);
+  EditField(h, v+=vs, -40, "4", Normal, Child4, false, 0);
+  EditField(h, v+=vs, -40, "5", Normal, Child5, false, 0);
+  EditField(h, v+=vs+vs, -40, "Конт.тел.родственника", Normal, RelativePhone, false, 0);
+  
+  Tile(6, 110, true, "6", Math);
+  MatrixBegin(4, 9, -31, -30, IEmployeeRowType, 99);
+  MatCol(1, 24, "Предприятие", 0, EntprCode, false, tEntPrSClass);
+  EnterSkip(StPodrCode);
+  MatCol(1, 120, "Наименование", 0, EntprName, false, 0);
+  MatCol(1, 220, "Подразделение", 0, StPodrCode, false, 0);
+  EnterSkip(PositionCode);
+  MatCol(1, 320, "Наименование", 0, StPodrName, false, 0);
+  MatCol(1, 420, "Должность", 0, PositionCode, false, 0);
+  EnterSkip(RegDate);
+  MatCol(1, 520, "Наименование", 0, PositionName, false, 0);
+  MatCol(1, 620, "Принят", 0, RegDate, false, PasteCurDate);
+  MatCol(1, 700, "Уволен", 0, DismissDate, false, PasteCurDate);
+  MatCol(1, 780, "Статья", 0, DismissReason, false, 0);
+  EndMatrix;
+
+  Tile(7, 110, true, "7", Education1);
+  StaticText(h, v=vm, "Образование", false);
+  h2 = h2 + 50;
+  EditField(h, v+=10, 140, "1. Период обучения", Normal, Education1Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Учебное заведение", Normal, Education1, false, 0);
+  EditField(h, v+=vs, 140, "2. Период обучения", Normal, Education2Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Учебное заведение", Normal, Education2, false, 0);
+  EditField(h, v+=vs, 140, "3. Период обучения", Normal, Education3Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Учебное заведение", Normal, Education3, false, 0);
+  EditField(h, v+=vs+vs, -40, "Квалификация", Normal, Qualification, false, 0);
+  StaticText(h, v+=vs+vs, "Курсы треннинги и пр. обучающие мероприятия", false);
+  EditField(h, v+=10, 140, "1. Период обучения", Normal, Training1Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Наименование", Normal, Training1, false, 0);
+  EditField(h, v+=vs, 140, "2. Период обучения", Normal, Training2Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Наименование", Normal, Training2, false, 0);
+  EditField(h, v+=vs, 140, "3. Период обучения", Normal, Training3Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Наименование", Normal, Training3, false, 0);
+  EditField(h, v+=vs, 140, "4. Период обучения", Normal, Training4Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Наименование", Normal, Training4, false, 0);
+  EditField(h, v+=vs, 140, "5. Период обучения", Normal, Training5Period, false, PasteCurDate);
+  EditField(h2, v, -40, "Наименование", Normal, Training5, false, 0);
+  h2 = h2 - 50;
+
+  Tile(8, 110, true, "8", CareerStartDate);
+  EditField(h, v=vm, 80, "Начало труд. деят.", Normal, CareerStartDate, false, PasteCurDate);
+  StaticText(h, v+=vs+vs, "Трудовая деятельность согласно трудовой книжки", false);
+  EditField(h, v+=10, -40, "1", Normal, CareerExperience1, false, 0);
+  EditField(h, v+=vs, -40, "2", Normal, CareerExperience2, false, 0);
+  EditField(h, v+=vs, -40, "3", Normal, CareerExperience3, false, 0);
+  EditField(h, v+=vs, -40, "4", Normal, CareerExperience4, false, 0);
+  EditField(h, v+=vs, -40, "5", Normal, CareerExperience5, false, 0);
+
+  Tile(9, 110, true, "9", MilitaryGroup);
+  h = h + 50;
+  EditField(h, v=vm, -40, "Группа учета", Normal, MilitaryGroup, false, 0);
+  EditField(h, v+=vs, -40, "Категория учета", Normal, MilitaryCat, false, 0);
+  EditField(h, v+=vs, -40, "Состав", Normal, MilitaryStruct, false, 0);
+  EditField(h, v+=vs, -40, "Воинское звание", Normal, MilitaryRank, false, 0);
+  EditField(h, v+=vs, -40, "ВУС", Normal, MilitarySpec, false, 0);
+  EditField(h, v+=vs, -40, "Годность к воен. службе", Normal, MilitaryServFit, false, 0);
+  EditField(h, v+=vs, -40, "Военкомат по месту проживания", Normal, FactMilitaryOffice, false, 0);
+  EditField(h, v+=vs, -40, "Военкомат по месту регистр.", Normal, RegMilitaryOffice, false, 0);
+  EditField(h, v+=vs, -40, "Пребывание на спецучете", Normal, SpecialRecords, false, 0);
+  h = h - 50;
+
+  Tile(10, 110, true, "10", VehicleRegistration);
+  EditField(h, v=vm, -40, "Св-во о рег-ции Т/С", Normal, VehicleRegistration, false, 0);
+
+  Tile(11, 110, true, "11", Characteristics);
+  EditField(h, v=vm, -150, "Комментарий", Normal, Characteristics, false, 0);
+  ColourPushButton(-140, v-3, -40, v+13, "IEmployeeConfidentNote", "Характеристика", 0);
+  EndWindow;
+
+
+  WindowBegin("Сотрудники ГК", IEmployeeSClass, CGslist, -);
+  SpawnClass(IEmployeeDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IEmployeeVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(104, 104, "ФИО", Name, false, Name);
+  RlColKey(-400, -400, "Отдел", DepCode, false, DepCode);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Сотрудники ГК", IEmployeeRClass, CGRcW, RcType);
+  SetWRect(20, 80, 450, 300);
+  Tile(0, 20, false, "", f1);
+  EditFieldTL(h=120, v=6, 100, "Код сотрудника", M4Code, Normal, 20, f1, false, IEmployeeSClass);
+  TileButtons(v,3);
+  
+  Tile(1, 280, false, "1", f1);
+  EditFieldTL(h, v=6, 200, "Классификация", M4UStr, Normal, 200, f2, false, IClassIEmployeeSClass);
+  EditFieldTL(h, v+=vs, 100, "Предприятие", M4Code, Normal, 20, f3, false, tEntPrSClass);
+  EditFieldTL(h, v+=vs, 100, "Подразделение", M4Code, Normal, 20, f4, false, StPodrSClass);
+  EditFieldTL(h, v+=vs, 100, "Отдел", M4Code, Normal, 20, f5, false, DepSClass);
+  EditFieldTL(h, v+=vs, 100, "Должность", M4Code, Normal, 20, f6, false, VPositionSClass);
+//  ButtonFrame(h, v+=40, 123, 7, "Функция");
+//  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+//  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+
+  Tile(2, 150, true, "2", flags[0]);
+  h = 30;
+  h2 = 230;
+  ButtonFrame(h, v=26, 300, 7, "Статус");
+  RadioButton(h,  v,     0, 0, "Испытательный срок", flags[1]);
+  RadioButton(h2, v,     4, 0, "Уволенный", flags[1]);
+  RadioButton(h,  v+=16, 1, 0, "Действующий", flags[1]);
+  RadioButton(h2, v,     5, 0, "Инвалид", flags[1]);
+  RadioButton(h,  v+=16, 2, 0, "Декрет", flags[1]);
+  RadioButton(h2, v,     6, 0, "Пенсионер", flags[1]);
+  RadioButton(h,  v+=16, 3, 0, "Длительный больничный", flags[1]);
+  RadioButton(h2, v,    -1, 0, "Все", flags[1]);
+
+  ButtonFrame(h, v+=50, 300, 7, "Сортировка");
+  RadioButton(h,  v,     0, 0, "Алфавит", flags[0]);
+  RadioButton(h2, v,     3, 0, "Испытательный срок", flags[0]);
+  RadioButton(h,  v+=16, 1, 0, "Дата рождения", flags[0]);
+  RadioButton(h2, v,     4, 0, "Ежегодный отпуск", flags[0]);
+  RadioButton(h,  v+=16, 2, 0, "Возраст", flags[0]);
+  RadioButton(h2, v,     5, 0, "Стаж работы", flags[0]);
+  RadioButton(h,  v+=16, 6, 0, "Дата приема", flags[0]);
+  
+  vm = v+=50;
+  ButtonFrame(h, v, 150, 7, "Пол");
+  RadioButton(h, v,      0, 0, "Муж.", flags[2]);
+  RadioButton(h, v+=16,  1, 0, "Жен.", flags[2]);
+  RadioButton(h, v+=16, -1, 0, "Все", flags[2]);
+  
+  ButtonFrame(h2, v=vm, 150, 7, "Дети");
+  RadioButton(h2, v,      0, 0, "Нет", flags[3]);
+  RadioButton(h2, v+=16,  1, 0, "Есть", flags[3]);
+  RadioButton(h2, v+=16, -1, 0, "Не имеет значения", flags[3]);
+  
+  Tile(3, 150, true, "3", flags[4]);
+  CheckBox(h, v=26, 0, "Контактные телефоны", flags[4]);
+  CheckBox(h, v+=16, 0, "Документы", flags[5]);
+  CheckBox(h, v+=16, 0, "Дата приема", flags[6]);
+  CheckBox(h, v+=16, 0, "Управленческий учет", flags[7]);
+  CheckBox(h, v+=16, 0, "Семейное положение", flags[8]);
+  CheckBox(h, v+=16, 0, "Оформление", flags[9]);
+  CheckBox(h2, v=26, 0, "Образование", flags[10]);
+  CheckBox(h2, v+=16, 0, "Обучение", flags[11]);
+  CheckBox(h2, v+=16, 0, "Стаж работы", flags[12]);
+  CheckBox(h2, v+=16, 0, "Воинский учет", flags[13]);
+  CheckBox(h2, v+=16, 0, "Транспортное средство", flags[14]);
+  CheckBox(h2, v+=16, 0, "Комментарий", flags[15]);
+  EndWindow;
+
+  //Вставка кода профессии KP ввместо SerNr
+  WindowBegin("Классификатор профессий", ProfClassByKPSClass, CGslist, -);
+  SpawnClass(ProfClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ProfClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код КП", KP, false, KP);
+  RlColKey(120, 120, "Професійна назва роботи", PNR, false, PNR);
+  SearchField("Поиск");
+  EndWindow;
+
+  Return;
+end;

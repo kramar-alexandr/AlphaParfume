@@ -1,0 +1,1660 @@
+//Определение оконных классов
+//===============================================
+
+external inner procedure TSERW_RUS();
+
+event DefineWindows
+
+begin
+  real v, v1, v2, v3, vm, vs;
+  real h, h1, h2, h3, h4, h5, h6, hs;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+//===============================================
+  // Отчет "Дебиторская задолженность 3"
+  WindowBegin("Определите дебиторскую задолженность",AR3RClass,CGRcW,RcType);
+    SetWRect(20,80,532,360);
+    EditFieldTL(h=150,v=6, 150,"Клиент",   M4UStr,Normal,30,f1,false,CUSClass);
+    CheckBox(h + 200,v,0,"Статистика",flags[5]);
+    EditFieldTL(h=150,v+=20, 100,"Сокр.", M4UStr,Normal,10,f6,false,0);
+//    CheckBox(h+ 160,v,0,"Aкт сверки",flags[24]);
+    EditFieldTL(h,v+=20, 50, "Категория",   M4UStr,Normal,5,f3,false,CCatSClass);
+    EditFieldTL(h,v+=20 ,70,"Классификация",M4UStr,Normal,30,f4,false,CClassSClass);
+    EditFieldTL(h,v+=20 ,70,"Виды классификации",M4UStr,Normal,60,f5,false,CTypeSClass);
+    EditFieldTL(h,v+=20, 50, "Продавец",   M4UStr,Normal,10,f2,false,UserSClass);
+    EditFieldTL(h,v+=20, 150, "Объекты",M4UStr,Normal,60,ObjStr,false,ObjSClass);
+    EditFieldTL(h,v+=20, 50, "Типы объектов",M4UStr,Normal,5,ObjType,false,OTSClass);
+    EditFieldTL(h,v+=20, 50, "Валюта",M4UStr,Normal,5,CurncyCode,false,CurncyCodeSClass);
+    EditFieldTL(h,v+=20, 50, "Проср. более чем",   M4Long,Normal,0,long1,false,0);
+    EditFieldTL(h,v+=20, 82, "Дата",   M4Date,Normal,0,d1,false,PasteCurDate);
+    EditFieldTL(h,v3=(v+=20), 50, "Счет дебиторов",   M4UStr,Normal,10,AccStr,false,AccSClass);
+    ButtonFrame(h=20,v=(vm=(v3+=42)),125,2,"Суммы в");
+    RadioButton(h,v,0,0,"Осн. вал. 1",flags[2]);
+    RadioButton(h,v+=16,1,0,"Осн. вал. 2",flags[2]);
+    RadioButton(h,v+=16,2,0,"Валюта док-та",flags[2]);
+    ButtonFrame(h+=148,v=vm,123,5,"Спорные");
+    RadioButton(h,v,0,0,"‚Вкл. спорные",flags[3]);
+    RadioButton(h,v+=16,1,0,"Искл. спорные",flags[3]);
+    RadioButton(h,v+=16,2,0,"Только спорные",flags[3]);
+    ButtonFrame(h+=148,v=50,125,2,"Сортировать по");
+    RadioButton(h,v,0,0,"№ клиента",flags[1]);
+    RadioButton(h,v+=16,1,0,"названию клиента",flags[1]);
+    ButtonFrame(h,v+=50,123,7,"Функция");
+    RadioButton(h,v,0,0,"Подробный",ArtMode);
+    RadioButton(h,v+=16,1,0,"Сводный",ArtMode);
+    RadioButton(h,v+=16,2,0,"Просрочено",ArtMode);
+    RadioButton(h,v+=16,5,0,"Просрочено - подр.",ArtMode);
+    RadioButton(h,v+=16,7,0,"Просрочено - для торговых",ArtMode);
+    RadioButton(h,v+=16,8,0,"Анализ деб. задолженности",ArtMode);
+    CheckBox(h,v+=16,0,"Комментарии к сч/ф",flags[25]);
+    CheckBox(h,v+=16,0,"Наличие док-тов",flags[24]);
+//    RadioButton(h,v+=16,3,0,"Сальдо",ArtMode);
+    ButtonFrame(h,v=vm,123,2,"Статус");
+    RadioButton(h,v,0,0,"Неоплаченные",flags[0]);
+    RadioButton(h,v+=16,2,0,"Просроченные",flags[0]);
+    CheckBox(h,v+=16,0,"Просрочено от даты сч/ф",flags[22]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Эффективность контрагента"
+  WindowBegin("Определите параметры отчета",CAgentEffRClass,CGRcW,RcType);
+    SetWRect(20,80,527,400);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Клиент",M4UStr,Normal,60 ,f2,false,CUSClass);
+    EditFieldTL(h,v+=20,150,"Классификация",M4UStr,Normal,60 ,f3,false,CClassSClass);
+    ButtonFrame(h,v+=40,123,2,"Значения в");
+    RadioButton(h,v,0,0,"Осн. валюте 1",basecurncy);
+    RadioButton(h,v+=16,1,0,"Осн. валюте 2",basecurncy);
+  EndWindow;
+
+  WindowBegin("CAgentGrLClass",CAgentGrLClass,CGmlist,BalGrView);
+    SetWRect(64,80,509,298);
+    SpawnClass(CAgentGrDClass);
+    UseView(CAgentGrVc);
+    Sizeable(-1,-1,0,0);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Номер",IdKey,false,IdKey);
+    RlCol(81,81, "Комментарий",Comment,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("CAgentGrDClass",CAgentGrDClass,CGview,BalGrView);
+    UseView(CAgentGrVc);
+    SetWRect(20,80,620,440);
+    EditField(h=105,v=6,50,"Номер",Normal,IdKey,false,0);
+    EditField(h,v+=20,300,"Комментарий",Normal,Comment,false,0);
+    EditField(500,v,-20,"оп. код",Normal,SpecCode,false,0);
+    EditField(105,50,300,"Cчета",Normal,Desc,false,AccSClass);
+//    EditField(105,70,300,"",Normal,Desc2,false,AccSClass);
+//    EditField(105,90,300,"",Normal,Desc3,false,AccSClass);
+    ButtonFrame(h=15,v=130,100,4,"Тип");
+    RadioButton(h,v    ,1,0,"Счета",RsType);
+    RadioButton(h,v+=16,2,0,"Сумма",RsType);
+    RadioButton(h,v+=16,3,0,"Текст",RsType);
+    RadioButton(h,v+=16,4,0,"Разделитель",RsType);
+    RadioButton(h,v+=16,5,0,"Платежи",RsType);
+    RadioButton(h,v+=16,6,0,"Вал. деб. задолж.",RsType);
+    RadioButton(h,v+=16,7,0,"Просроч. деб. задолж.",RsType);
+    RadioButton(h,v+=16,8,0,"Средняя. деб. задолж.",RsType);
+
+    ButtonFrame(h=150,v=130,100,5,"'ид счета");
+    RadioButton(h,v    ,0,0,"Актив",AccType);
+    RadioButton(h,v+=16,1,0,"Пассив",AccType);
+    RadioButton(h,v+=16,2,0,"Капитал",AccType);
+    RadioButton(h,v+=16,3,0,"Доходы",AccType);
+    RadioButton(h,v+=16,4,0,"Расходы",AccType);
+    ButtonFrame(h=285,v=130,100,3,"'торона");
+    RadioButton(h,v    ,0,0,"Норм.",DCSide);
+    RadioButton(h,v+=16,1,0,"Дебет",DCSide);
+    RadioButton(h,v+=16,2,0,"Кредит",DCSide);
+    ButtonFrame(h=410,v=130,100,3,"Актив/Пассив");
+    RadioButton(h,v    ,0,0,"Норм.",DCSaldo);
+    RadioButton(h,v+=16,1,0,"Только дебет",DCSaldo);
+    RadioButton(h,v+=16,2,0,"Только кредит",DCSaldo);
+    MatrixBegin(4,v=300,-32,-20,INTextRowType,99);
+    MatCol(1,24,"Язык",0,LangCode,false,LangSClass);
+    MatCol(1,84,"Текст",0,Text,false,0);
+    EndMatrix;
+  EndWindow;
+
+//===============================================
+  // Отчет "Статистика отгрузок и перемещений"
+  WindowBegin("Определите Отчет Статистика отгрузок и перемещений",SHStatRClass,CGRcW,RcType);
+    SetWRect(20,80,450,300);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20, 170,"Склад", M4UStr,Normal,20,f1,false,LocationSClass);
+    EditFieldTL(h,v+=20, 170,"Подразделение", M4UStr,Normal,20,f2,false,DepSClass);
+    EditFieldTL(h,v+=20, 170,"Кладовщик", M4UStr,Normal,20,f3,false,UserSClass);
+    EditFieldTL(h,v+=20, 170,"Комплектовщик", M4UStr,Normal,20,f4,false,UserSClass);
+    CheckBox(h=100,v+=20, 0, "Отгрузки",flags[1]);
+    CheckBox(h,v+=20, 0, "Перемещения",flags[2]);
+  EndWindow;
+
+//===============================================
+  // Отчет "Статистика отгрузок"
+  WindowBegin("Определите статистику отгрузок",SHStat2RClass,CGRcW,RcType);
+    SetWRect(20,80,532,360);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,100,"Склад",M4UStr,Normal,20,f1,false,LocationSClass);
+    EditFieldTL(h,v+=20, 100,"Подразделение", M4UStr,Normal,60,f2,false,DepSClass);
+    EditFieldTL(h,v+=20, 50, "Интервал", M4Long,Normal,0,long1,false,0);
+    StaticText(h+130,v+12,"часов и более",true);
+    ButtonFrame(h,v+=40,123,2,"Тип интервала");
+    RadioButton(h,v,0,0,"От даты создания",flags[1]);
+    RadioButton(h,v+=16,1,0,"От запланированной даты",flags[1]);
+    CheckBox(h,v+=16,0,"Показывать доп. информацию",flags[0]);
+  EndWindow;
+
+//===============================================
+  // Отчет "Недоставленные Счета-фактуры"
+  WindowBegin("Определите параметры отчета ""Недоставленные Счета-фактуры""",ListIVTTRClass,CGRcW,RcType);
+    SetWRect(20,80,532,360);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,100,"Склад",M4UStr,Normal,20,f1,false,LocationSClass);
+    EditFieldTL(h,v+=20, 100,"Подразделение", M4UStr,Normal,60,f2,false,DepSClass);
+    EditFieldTL(h,v+=20, 100,"Клиент", M4UStr,Normal,60,f3,false,CUSClass);
+  EndWindow;
+
+  // Удаление записей из IVTTVc по дату
+  WindowBegin("""Недоставленные Сч/ф"" - Удаление записей",DelFromIVTTVClass,CGMnt,RcType);
+    SetWRect(20,80,350,150);
+    EditFieldTL(h=150,v=20,100,"Удалить записи по дату",M4Date,Normal,20,d1,false,PasteCurDate);
+  EndWindow;
+
+//===============================================
+  //Регистр товарных стикеров
+  WindowBegin("Товарные cтикеры", IStickerLClass,CGMlist,-);
+    SetWRect (20,80,750,410);
+    Sizeable (-1,-1,0,0);
+    UseView(IStickerVc);
+    SpawnClass(IStickerDClass);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Код товара",ArtCode,false,ArtCode);
+    RlCol(80,80,"Наименование",ArtName,false);
+    RlCol(-350,-350,"Группа",Group,false);
+    RlCol(-250,-250,"Классификация",DispGroups,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Товарные cтикеры", IStickerDClass, CGView, -);
+    SetWRect(20, 80, 450, 390);
+    UseView(IStickerVc);
+    FormName(IStickerDClassPrint);
+    h = 90; v = 8; vs = 20;
+    EditField(h, v, 80, "Код товара", Normal, ArtCode, false, INSClass);
+    EnterSkip(FormCode);
+    EditField(h+150, v, 50, "Группа", ViewOnly, Group, false, 0);
+    EditField(h, v+=vs, 200, "Наименование", ViewOnly, ArtName, false, 0);
+    EditField(h, v+=vs, 200, "Классификация", ViewOnly, DispGroups, false, 0);
+    EditField(h, v+=vs, 70, "Форма печати", Normal, FormCode, false, DocSClass);
+    EditField(h+150, v, 50, "Симв. в стр.", Normal, MaxLineLen, false, 0);
+    TextField(4, v+=vs, -4, -4, Math, 0);
+  EndWindow;
+
+  WindowBegin("Изменить параметры стикеров", IStickerSetParamsVClass, CGMnt, RcType);
+    SetWRect(20, 80, 350, 300);
+    EditFieldTL(h=120, v=6, 100, "Форма печати", M4Code, Normal, 20, f1, false, DocSClass);
+    EditFieldTL(h, v+=vs, 100, "Группа тов.", M4Code, Normal, 20, f2, false, DISClass);
+    EditFieldTL(h, v+=vs, 100, "Классификация", M4UStr, Normal, 60, f3, false, CClassSClass);
+    StaticText(h, v+=(vs+vs), "Заменить:", false);
+    EditFieldTL(h, v+=vs, 100, "Форма печати", M4Code, Normal, 20, f4, false, DocSClass);
+    EditField(h, v+=vs, 20, "Симв. в стр.", Normal, flags[0], true, 0);
+  EndWindow;
+
+//===============================================
+  //Регистр "История редактирования контактов"
+//  WindowBegin("История редактирования", CUEditHistLClass,CGMlist,-)
+//    SetWRect (20,80,750,400);
+//    Sizeable (-1,-1,0,0);
+//    UseView(CUEditHistVc);
+//    RecordList(4,17,-21,-39);
+//    RlColKey(4,4,"Номер",SerNr,false,SerNr);
+//    RlColKey(80,80,"Дата",RegDate,false,RegDate);
+//    RlColKey(150,150,"Код Клиента",CUCode,false,CUCode);
+//    RlColKey(250,250,"Редактировал",UserCode,false,UserCode);
+//    RlColKey(320,320,"Действие",LogStr,false,LogStr);
+//    SearchField("Найти");
+//  EndWindow;
+
+  // Отчет "История редактирования контактов"
+  WindowBegin("Определите параметры отчета ""История редактирования контактов""",CUEditHistRClass,CGRcW,RcType);
+    SetWRect(20,80,532,360);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,100,"Клиент",M4UStr,Normal,60,f1,false,CUSClass);
+    EditFieldTL(h,v+=20, 100,"Сотрудник", M4UStr,Normal,60,f2,false,UserSClass);
+    CheckBox(h,v+=40,0,"Открыть в OpenOffice", flags[20]);
+  EndWindow;
+
+//===============================================
+  //Измененный отчет "Список исправлений"
+  WindowBegin("Определите список исправлений",CorrRClass,CGRcW,RcType);
+    SetWRect(20,80,409,170);
+    PeriodField(130,v=6,"Период");
+    EditFieldTL(130,v+=20,150,"Счет",M4UStr,Normal,41,f1,false,AccSClass);
+    EditFieldTL(130,v+=20,150,"Исправил",M4UStr,Normal,41,f2,false,UserSClass); //26.04.10
+    EditFieldTL(130,v+=20,75,"Начиная с даты",M4Date,Normal,20,RegDate,false,0);
+    CheckBox(130,v+=20,0,"Все записи операций",flags[4]);
+  EndWindow;
+
+//===============================================
+  // Отчет "Рентабельность доставки"
+  WindowBegin("Определите рентабельность доставки",DeliveryEffRClass,CGRcW,RcType);
+    SetWRect(20,80,409,250);
+    PeriodField(h=120,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Перевозчик",M4UStr,Normal,41,f1,false,ObjSClass);
+    EditFieldTL(h,v+=20,150,"Склад",M4UStr,Normal,41,f2,false,LocationSClass);
+    EditFieldTL(h,v+=20,150,"Подразделение",M4UStr,Normal,41,f4,false,DepSClass);
+    v1 = v;
+    ButtonFrame(h=30,v+=50,100,2,"Суммы в");
+    RadioButton(h,v,0,0,"Осн. вал. 1",flags[0]);
+    RadioButton(h,v+=16,1,0,"Осн. вал. 2",flags[0]);
+    //21.06.11 INAU
+    ButtonFrame(h,v+=50,123,7,"Функция");
+    RadioButton(h,v,0,0,"Сводный",ArtMode);
+    RadioButton(h,v+=16,1,0,"Подробный",ArtMode);
+    //
+    v = v1;
+    ButtonFrame(h=180,v+=50,125,2,"Статус");
+    RadioButton(h,v,0,0,"Утвержденные",flags[1]);
+    RadioButton(h,v+=16,-1,0,"Неутвержденные",flags[1]);
+    RadioButton(h,v+=16,1,0,"Все",flags[1]);
+  EndWindow;
+
+//===============================================
+  // Заполнение MotivVc сотрудниками отдела - ввод отдела
+  WindowBegin("Мотивация - заполнить сотрудниками отдела",VMotivFillFromDepVClass,CGMnt,RcType);
+    SetWRect(20,80,350,200);
+    UseView(RcVc);
+    EditFieldTL(h=100,v=20,100,"Отдел",M4UStr,Normal,20,f1,false,DepSClass);
+    ButtonFrame(h, v+=50, 100, 2, "Тип документа");
+    RadioButton(h, v, 0, 0, "Ежемесячный", AccSpec);
+    RadioButton(h, v+=16, 1, 0, "Квартальный", AccSpec);    
+  EndWindow;
+
+  //Создание операций
+  WindowBegin("Мотивация - создать операции", VMotivMakeTransVClass, CGMnt, RcType);
+    SetWRect(20,80,350,200);
+    UseView(RcVc);
+    EditFieldTL(h=100, v=20, 100, "Дата операции", M4Date, Normal, 20, d1, false, PasteCurDate);
+  EndWindow;
+
+//===============================================
+  // Отчет "Активность операторов"
+  WindowBegin("Определите Отчет активности операторов", ActOpRClass, CGRcW, RcType);
+    SetWRect(20, 80, 550, 300);
+    PeriodField(h=100, v=6, "Период");
+    EditFieldTL(h, v+=vs, 170, "Отдел", M4UStr, Normal, 60, f1, false, DepSClass);
+    EditFieldTL(h, v+=vs, 170, "Оператор", M4UStr, Normal, 60, f2, false, UserSClass);
+    ButtonFrame(h=40, v+=50, 310, 2, "Регистры");
+    v1 = v;
+    CheckBox(h=100, v, 0, "Отгрузки", flags[1]);
+    CheckBox(h, v+=vs, 0, "Возвраты", flags[2]);
+    CheckBox(h, v+=vs, 0, "Поступления", flags[3]);
+    CheckBox(h, v+=vs, 0, "Перемещения", flags[4]);
+    v = v1;
+    CheckBox(h=230, v=v1, 0, "Счета", flags[5]);
+    CheckBox(h, v+=vs, 0, "Счета/фактуры", flags[6]);
+    CheckBox(h, v+=vs, 0, "Платежи", flags[7]);
+    CheckBox(h, v+=vs, 0, "Заявка на возврат", flags[8]);//---t+
+    //CheckBox(h=360, v=v1, 0, "Контакты", flags[9]);
+    CheckBox(h=360, v=v1, 0, "Списания", flags[10]);
+    CheckBox(h, v+=vs, 0, "Доставка", flags[11]);
+    CheckBox(h, v+=vs, 0, "Инвентаризация", flags[12]);
+
+    ButtonFrame(h=40, v=v+50, 310, 2, "Действия");
+    v1 = v;
+    CheckBox(h=100, v, 0, "Сохранил", flags[20]);
+    CheckBox(h, v+=20, 0, "Закрыл (ОK)", flags[21]);
+    CheckBox(h, v+=20, 0, "Аннулировал", flags[25]);
+    CheckBox(h=230, v=v1, 0, "Подтвердил", flags[22]);
+    CheckBox(h, v+=20, 0, "Собрал", flags[23]);
+    CheckBox(h, v+=20, 0, "Отправил", flags[24]);
+  EndWindow;
+
+//===============================================
+  //Отчет по реализации
+  WindowBegin("Определите параметры отчета по реализации",IRealizationRClass,CGRcW,RcType);
+    SetWRect(20,80,527,400);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Склад",M4UStr,Normal,60 ,f1,false,LocationSClass);
+    EditFieldTL(h,v+=20,150,"Товар(ы)",M4UStr,Normal,60 ,f4,false,INSClass);
+    EditFieldTL(h,v+=20,150,"Классифик. тов.",M4UStr,Normal,20 ,Stext,false,DISClass);
+    EditFieldTL(h,v+=20,300,"Клиент",M4UStr,Normal, 255 ,f2,false,CUSClass);
+    EditFieldTL(h,v+=20,50,"Категория",M4UStr,Normal,5 ,f6,false,CCatSClass);
+    EditFieldTL(h,v+=20,150,"Классифик. кл.",M4UStr,Normal,60 ,f3,false,CClassSClass);
+    CheckBox(h,v+=30,0,"Остатки Максан на сегодня", flags[0]);
+    ButtonFrame(h,v+=40,123,2,"Функция");
+    RadioButton(h,v,0,0,"Сводный", ArtMode);
+    RadioButton(h,v+=16,1,0,"Подробный", ArtMode);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Настройка - Экспорт товаров и цен",IItemsExportTClass,CGHbl,HBlRecType);
+    SetBlid(IItemsExportBlock);
+    SetWRect(20,80,600,357);
+    Sizeable(-1,-1,0,0);
+    MatrixBegin(4,20,-31,-20,IRetOrdNoncondRowType,99);
+      MatCol(1,20,"Группа прод.",0,SalesGroup,false,0);
+      MatCol(1,80,"Список складов",0,Locations,false,LocationSClass);
+      MatCol(1,240,"Все тов.",0,AllItems,false,0);
+      MatCol(1,300,"Файл экспорта",0,Path,false,0);
+    EndMatrix;
+  EndWindow;
+
+//===============================================
+  //Регистр Заявки на возврат
+  WindowBegin("Заявки на возврат - Серии номеров",IRetOrdSerTClass,CGHbl,HBlRecType);
+    SetBlid(IRetOrdSerBlock);
+    TSERW_RUS;
+  EndWindow;
+
+  WindowBegin("Заявки на возврат - Типы возврата",IRetOrdTypesLClass,CGMList,-);
+    SetWRect(20,80,532,357);
+    Sizeable(-1,-1,0,0);
+    UseView(IRetOrdTypesVc);
+    SpawnClass(IRetOrdTypesDClass);
+    RecordList(4,17,-21,-39);
+    RLColKey(5,5,"Код",Code,false,Code);
+    RLCol(80,80,"Наименование",Name,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Заявки на возврат - Типы возврата",IRetOrdTypesDClass,CGView,-);
+    SetWRect (20,80,490,210);
+    Sizeable (-1,-1,0,0);
+    UseView(IRetOrdTypesVc);
+    EditField(h=40,v=8,90,"Код",Normal,Code,false,0);
+    EditField(h+=180,v,300,"Наименование",Normal,Name,false,0);
+    MatrixBegin(4,v+=40,-20,-20,IRetOrdTypesRowType,199);
+      MatCol(1,h=24,"Для складов",0,Locations,false,LocationSClass);
+      MatCol(1,h+=320,"Склад возвр.",0,RetLocation,false,LocationSClass);
+      MatCol(1,h+=120,"Объекты",0,DefObjects,false,ObjSClass);
+    EndMatrix;
+  EndWindow;
+
+  WindowBegin("Типы возврата",IRetOrdTypesSClass,CGslist,-);
+    SetWRect(210,80,500,300);
+    UseView(IRetOrdTypesVc);
+    SpawnClass(IRetOrdTypesDClass);
+    Sizeable(-1,-1,0,0);
+    RecordList(4,17,-21,-39);
+    RLColKey(5,5,"Код",Code,false,Code);
+    RLCol(80,80,"Наименование",Name,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Документы",IRetOrdFileNrSClass,CGother,-);
+    SetWRect (20,80,450,300);
+    Sizeable (-1,-1,0,0);
+    StringList(9,9,-40,209);
+  EndWindow;
+
+  WindowBegin("Заявки на возврат",IRetOrdLClass,CGMlist,-);
+    SetWRect (20,80,590,210);
+    Sizeable (-1,-1,0,0);
+    UseView(IRetOrdVc);
+    SpawnClass(IRetOrdDClass);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Номер",SerNr,false,SerNr);
+    RlCol(80,80,"Ок",OKFlag,false);
+    RlCol(100,100,"з",OrderedFlag,false);
+    RlCol(120,120,"п",ReceivedFlag,false);
+    RlCol(140,140,"Дата",RegDate,false);
+    RlCol(250,250,"Покупатель",CustCode,false);
+//    RlColKey(250,250,"Покупатель",CustCode,false,CustCode);
+    RlCol(340,340,"Наименование",CustName,false);
+    RlCol(-50,-50,"Подпись",LogOKUser,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Заявка на возврат",IRetOrdDClass,CGView,-);
+    SetWRect (20,80,490,210);
+    Sizeable (-1,-1,0,0);
+    UseView(IRetOrdVc);
+    vs = 20;
+
+    Tile(0,110,false,"",CustCode);
+    TileButton(1,"Товары");
+    TileButton(2,"История");
+
+    EditField(h=70,v=8,100,"Номер",Normal,SerNr,false,TSerSClass);
+    EditField(h+200,v,100,"Дата",Normal,RegDate,false,PasteCurDate);
+    EditField(h+400, v, 100, "Склад инициатор", Normal, InitLocation, false, LocationSClass);
+    EditField(h,v+=vs,100,"Клиент",Normal,CustCode,false,CUSClass);
+    EnterSkip(FileType);
+    EditField(h+200,v,400,"Наименование",ViewOnly,CustName,false,0);
+    EditField(h+200,v+=vs,400,"Комментарий",Normal,Comment,false,0);
+    RadioButton(h=70,v+=vs,0,0,"Отгрузка",FileType);
+    RadioButton(h+70,v,1,0,"Перемещение",FileType);
+    EditField(h+200,v,100,"№",Normal,FileNr,false,IRetOrdFileNrSClass);
+    EditField(h+400,v,200,"Объекты",Normal,Objects,false,ObjSClass);
+    EnterSkip(Math);
+    ActiveFieldOnNew("CustCode");
+
+    Tile(1,110,true,"1",Math);
+    MatrixBegin(4,v=20,-20,-20,IRetOrdRowType,199);
+    hs = 50;
+
+    MatCol(1,h=24,"Код товара",0,ArtCode,false,INSClass);
+    EnterSkip(FileNr);
+    MatColTL(1,h+=60,"Наименование",0,M4Str,ViewOnly,0,ArtName,false,0);
+    MatCol(1,h=-500,"Документ",0,FileNr,false,IRetOrdFileNrSClass);
+    MatCol(1,h+=hs,"Заказано",0,QntOrdered,true,0);
+    MatCol(1,h+=hs,"Получено",0,QntReceived,true,0);
+    MatCol(1,h+=hs,"Тип возвр.",0,RetCode,false,IRetOrdTypesSClass);
+    EnterSkip(Objects);
+    MatColTL(1,h+=hs,"Описание",0,M4Str,ViewOnly,0,RetName,false,0);
+    MatCol(1,h+=hs,"Объекты",0,Objects,false,ObjSClass);
+    MatCol(1,h+=hs,"Комментарий",0,Comment,false,0);
+
+    EnterSkip(ArtCode);
+    InsertRowTest;
+    DeleteRowTest;
+    EndMatrix;
+
+    CheckBox(10,-20,0,"OK",OKFlag);
+    CheckBox(90,-20,0,"Заказано",OrderedFlag);
+    CheckBox(310,-20,0,"Получено",ReceivedFlag);
+    EditField(170,-20,50,"",ViewOnly,SumOrdered,false,0);
+    EditField(230,-20,70,"",ViewOnly,OrderedBy,false,0);
+    EditField(400,-20,50,"",ViewOnly,SumReceived,false,0);
+    EditField(460,-20,70,"",ViewOnly,ReceivedBy,false,0);
+
+    Tile(2,110,true,"2",LogNewUser);
+    EditField(h=130,v=20,70,"Создал",ViewOnly,LogNewUser,false,0);
+    EditField(h+=80,v,70,"",ViewOnly,LogNewDate,false,0);
+    EditField(h+=80,v,50,"",ViewOnly,LogNewTime,false,0);
+
+    EditField(h=130,v+=20,70,"Сохранил",ViewOnly,LogSaveUser,false,0);
+    EditField(h+=80,v,70,"",ViewOnly,LogSaveDate,false,0);
+    EditField(h+=80,v,50,"",ViewOnly,LogSaveTime,false,0);
+
+    EditField(h=130,v+=20,70,"Заказано",ViewOnly,OrderedBy,false,0);
+    EditField(h+=80,v,70,"",ViewOnly,LogOrderedDate,false,0);
+    EditField(h+=80,v,50,"",ViewOnly,LogOrderedTime,false,0);
+
+    EditField(h=130,v+=20,70,"Получено",ViewOnly,ReceivedBy,false,0);
+    EditField(h+=80,v,70,"",ViewOnly,LogReceivedDate,false,0);
+    EditField(h+=80,v,50,"",ViewOnly,LogReceivedTime,false,0);
+
+    EditField(h=130,v+=20,70,"Закрыл (OK)",ViewOnly,LogOKUser,false,0);
+    EditField(h+=80,v,70,"",ViewOnly,LogOKDate,false,0);
+    EditField(h+=80,v,50,"",ViewOnly,LogOKTime,false,0);
+    SpecialMenu("Cоздать задачу",' ',1,"NewQAIRODsm");
+  EndWindow;
+
+  WindowBegin("Определите параметры отчета Заявки на возврат",IRetOrdRClass,CGRcW,RcType);
+    SetWRect(20,80,527,400);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Номер документа",M4Long,Normal,60,long1,false,0);
+    EditFieldTL(h,v+=20,150,"Клиент",M4UStr,Normal,60,f1,false,CUSClass);
+    EditFieldTL(h,v+=20,150,"Товар",M4UStr,Normal,60,f2,false,INSClass);
+    EditFieldTL(h,v+=20,150,"Тип возврата",M4UStr,Normal,60,f3,false,IRetOrdTypesSClass);
+    EditFieldTL(h,v+=20,150,"Объекты",M4UStr,Normal,60,ObjStr,false,ObjSClass);
+
+    CheckBox(h,v+=30,0,"Отгрузки/Возвраты", flags[5]);
+    CheckBox(h+200,v,0,"Утвержденные", flags[1]);
+    CheckBox(h,v+=16,0,"Перемещения/Перемещения", flags[6]);
+    CheckBox(h+200,v,0,"Не утвержденные", flags[2]);
+
+    RadioButton(h,v+=30,0,0,"Заказано", flags[3]);
+    CheckBox(h+200,v,0,"Номера созданных документов", flags[0]);
+    RadioButton(h,v+=16,1,0,"Получено", flags[3]);
+    CheckBox(h+200,v,0,"Комментарии", flags[4]);
+
+    ButtonFrame(h,v+=40,123,2,"Функция");
+    RadioButton(h,v,0,0,"Сводный", ArtMode);
+    RadioButton(h,v+=16,1,0,"Подробный", ArtMode);
+    RadioButton(h,v+=16,2,0,"Для склада", ArtMode);
+  EndWindow;
+
+  WindowBegin("Закрепление функций",VUserRetOrdLClass,CGMlist,RcType)
+    SetWRect (20,80,450,210);
+    Sizeable (-1,-1,0,0);
+    v = 6; vs = 20; h = 100;
+    SpawnClass(VUserRetOrdDClass);
+    UseView(VUserRetOrdVc);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Код",Code,false,Code);
+    RlColKey(81,81,"Функция I уровня",Function1,false,Function1);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Закрепление функций",VUserRetOrdDClass,CGview,-)
+    SetWRect (60,80,609,182);
+    UseView(VUserRetOrdVc);
+    vs=20;
+    EditFieldTL(h=105,v=6,60,"Код пользователя",M4Code,Normal,20,Code,false,UserSClass);
+    EditField(h,v+=vs,260,"Функции I уровня",Normal,Function1,false,ObjSClass);
+  EndWindow;
+
+//===============================================
+  //Отчет по ПКО
+  WindowBegin("Определите параметры отчета ПКО",IPayOrderRClass,CGRcW,RcType);
+    SetWRect(20,80,527,400);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Категория",M4UStr,Normal,60,f1,false,CCatSClass);
+    EditFieldTL(h,v+=20,150,"Продавец",M4UStr,Normal,60,f2,false,UserSClass);
+    EditFieldTL(h,v+=20,150,"Клиент",M4UStr,Normal,60,f3,false,CUSClass);
+    CheckBox(h,v+=30,0,"Утвержденные", flags[0]);
+    CheckBox(h,v+=16,0,"Не утвержденные", flags[1]);
+    CheckBox(h,v+=30,0,"Распечатанные", flags[2]);
+    CheckBox(h,v+=16,0,"Не распечатанные", flags[3]);
+  EndWindow;
+
+//===============================================
+  //Настройка соответствия
+  WindowBegin("Настройка соответствия",IMappingTClass,CGHbl,HBlRecType);
+    SetBlid(IMappingBlock);
+    SetWRect(20,80,600,357);
+    Sizeable(-1,-1,0,0);
+    MatrixBegin(4,20,-31,-20,IMappingRowType,99);
+      MatCol(1,h=24,"Подразделение",0,Department,false,DepSClass);
+      MatCol(1,h+=100,"Группа продажи",0,SalesGroup,false,SalesGroupSClass);
+      MatCol(1,h+=100,"Категория",0,CustCat,false,CCatSClass);
+      MatCol(1,h+=100,"Объект PODR",0,Object,false,ObjSClass);
+      MatCol(1,h+=100,"Склады",0,Locations,false,LocationSClass);
+    EndMatrix;
+  EndWindow;
+
+//===============================================
+  //Отчет "Активность клиентов"
+  WindowBegin("Определите параметры отчета Активность клиентов", ICustActRClass, CGRcW, RcType);
+    SetWRect(20,80,527,400);
+    PeriodField(h=150, v=6, "Период");
+    EditFieldTL(h, v+=20, 150, "Сокр.", M4UStr, Normal, 10, LastAcc, false, 0);
+    EditFieldTL(h, v+=20, 150, "Категория", M4UStr, Normal, 255, f2, false, CCatSClass);
+    EditFieldTL(h, v+=20, 150, "Группы продажи", M4UStr, Normal, 255, f3, false, SalesGroupSClass);
+    EditFieldTL(h, v+=20, 150, "Объекты", M4UStr, Normal, 255, f4, false, ObjSClass);
+    EditFieldTL(h, v+=20, 150, "Классификаторы", M4UStr, Normal, 255, f5, false, CClassSClass);
+    EditFieldTL(h, v+=20, 150, "Продавцы", M4UStr, Normal, 255, f6, false, UserSClass);
+    EditFieldTL(h, v+=20, 150, "Классификация товара", M4UStr, Normal, 60, f1, false, DISClass);
+    CheckBox(h, v+=30, 0,"Сработавший за период", flags[0]);
+    CheckBox(h, v+=16, 0,"Выводить закрытых", flags[1]);
+    CheckBox(h, v+=16, 0,"Группировать по СОКР", flags[2]);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Выберете транспортное средство",IVehicleSClass,CGslist,-);
+    SetWRect (20,80,750,410);
+    UseView(IVehicleVc);
+    SpawnClass(IVehicleDClass);
+    Sizeable(-1,-1,0,0);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Код",Code,false,Code);
+    RlColKey(80,80,"Наименование",Name,false,Name);
+    RlColKey(-450,-450,"Гос.номер",RegNumber,false,RegNumber);
+    RlColKey(-350,-350,"Водитель",Driver,false,Driver);
+    RlCol(-250,-250,"Комментарий",Comment,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Список транспортных средств", IVehicleLClass,CGMlist,-);
+    SetWRect (20,80,750,410);
+    Sizeable (-1,-1,0,0);
+    UseView(IVehicleVc);
+    SpawnClass(IVehicleDClass);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Код",Code,false,Code);
+    RlColKey(80,80,"Наименование",Name,false,Name);
+    RlColKey(-450,-450,"Гос.номер",RegNumber,false,RegNumber);
+    RlColKey(-350,-350,"Водитель",DrCode, false,Driver);
+    RlCol(-250,-250,"Комментарий",Comment,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Карточка транспортного средства", IVehicleDClass,CGView,-);
+    SetWRect (20,80,490,410);
+    Sizeable (-1,-1,0,0);
+    UseView(IVehicleVc);
+    EditField(h=130,v=20,200,"Код (Объект)",Normal,Code,false,ObjSClass);
+    EditField(h+350,v,200,"Тип объекта",ViewOnly,ObjType,false,0);
+    EditField(h,v+=20,550,"Наименование",Normal,Name,false,0);
+    EditField(h,v+=20,550,"Комментарий",Normal,Comment,false,0);
+    EditField(h,v+=20,200,"Гос. номер",Normal,RegNumber,false,0);
+    EditField(h+350,v,200,"VIN-код",Normal,VINCode,false,0);
+    EditField(h,v+=20,200,"Водитель",Normal,Driver,false,UserSClass);
+    EditField(h+350,v,200,"Цвет кузова",Normal,Color,false,0);
+    EditField(h,v+=20,200,"Год выпуска",Normal,ManufYear,false,0);
+    EditField(h+350,v,200,"Дата приобретения",Normal,PurchDate,false,PasteCurDate);
+    EditField(h,v+=20,200,"Объем двигателя (см3)",Normal,EngineCapacity,false,0);
+    EditField(h+350,v,200,"Тип топлива",Normal,FuelCode,false,WLPetrolListSClass);
+    EditField(h,v+=20,200,"Расход (л/100 км)",Normal,FuelCons,false,0);
+    EditField(h+350,v,200,"Затраты на 1 км (грн)",Normal,Cost1km,false,0);
+    EditField(h,v+=20,200,"Пробег (км)",Normal,Mileage,false,0);
+  EditField(h+350,v,200,"Код водителя",Normal,DrCode,false,UserSClass);
+  //EditField(h+350,v+=20,200,"Классификация",Normal,ClassTr,false,0);
+  EndWindow;
+
+//===============================================
+  //Отчет "Чистые продажи"
+  WindowBegin("Определите параметры отчета Чистые продажи",INetSalesRClass,CGRcW,RcType);
+    SetWRect(20,80,400,240);
+    PeriodField(h=140,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Продавец",M4UStr,Normal,255,f1,false,UserSClass);
+    EditFieldTL(h,v+=20,150,"Категория клиента",M4UStr,Normal,255,f2,false,CCatSClass);
+    EditFieldTL(h,v+=20,150,"Классификация клиента",M4UStr,Normal,255,f3,false,CClassSClass);
+    ButtonFrame(h,v+=50,123,7,"Функция");
+    RadioButton(h,v,0,0,"Сводный",ArtMode);
+    RadioButton(h,v+=16,1,0,"Подробный",ArtMode);
+  EndWindow;
+
+//===============================================
+  //Отчет "Качество бюджетирования"
+  WindowBegin("Определите параметры отчета Качество бюджетирования",IBudgetQualityRClass,CGRcW,RcType);
+    SetWRect(20,80,400,240);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Подразделение",M4UStr,Normal,60,f3,false,ObjSClass);
+    EditFieldTL(h,v+=20,60,"Функция 1",M4Code,Normal,20,f1,false,ObjSClass);
+    EditFieldTL(h,v+=20,150,"Функция 2",M4UStr,Normal,255,f2,false,ObjSClass);
+    EditFieldTL(h,v+=20,150,"Исключить счета",M4UStr,Normal,255,f4,false,AccSClass);
+    ButtonFrame(h,v+=50,123,7,"Функция");
+    RadioButton(h,v,0,0,"Сводный",ArtMode);
+    RadioButton(h,v+=16,1,0,"Подробный",ArtMode);
+  EndWindow;
+
+//===============================================
+  //Отчет "Прайс-лист компании"
+  WindowBegin("Определите параметры отчета Прайс-лист компании",ICompPriceListRClass,CGRcW,RcType);
+    SetWRect(20,80,520,320);
+    EditFieldTL(h=140,v=6,150,"Склад",M4Code,Normal,20,f6,false,LocationSClass);
+    EditFieldTL(h,v+=20,150,"Группы товаров",M4UStr,Normal,20,f2,false,ITSClass);
+    EditFieldTL(h,v+=20,150,"Классификация товара",M4UStr,Normal,20,f3,false,DISClass);
+    EditFieldTL(h,v+=20,150,"Клиент",M4Code,Normal,20,f4,false,CUSClass);
+    EditFieldTL(h,v+=20,150,"Прейскурант",M4Code,Normal,20,f5,false,PLDefSClass);
+    CheckBox(h,v+=20,0,"Выводить товары с альт.кодом -1",flags[1]);
+    CheckBox(h,v+=20,0,"Выводить товары с нулевыми остатками",flags[4]);
+    CheckBox(h,v+=20,0,"Выводить все новинки",flags[5]);
+    EditFieldTL(h,v+=20,150,"Порядок сортировки",M4UStr,Normal,20,f1,false,CTypeSClass);
+    v1 = v;
+    ButtonFrame(h=30,v+=40,123,7,"Дополнительно");
+    RadioButton(h,v+=16,0,0,"По коду",flags[0]);
+    RadioButton(h,v+=16,1,0,"По наименованию",flags[0]);
+    RadioButton(h,v+=16,2,0,"По цене",flags[0]);
+    v = v1;
+    ButtonFrame(h+=150,v+=40,123,7,"Наличие товара");
+    RadioButton(h,v+=16,0,0,"Не показывать",flags[2]);
+    RadioButton(h,v+=16,1,0,"Признак",flags[2]);
+    RadioButton(h,v+=16,2,0,"Количество",flags[2]);
+    v = v1;
+    ButtonFrame(h+=150,v+=40,123,7,"Варианты");
+    RadioButton(h,v+=16,0,0,"Не показывать",flags[3]);
+    RadioButton(h,v+=16,1,0,"Аналоги",flags[3]);
+    RadioButton(h,v+=16,2,0,"Замены",flags[3]);
+  EndWindow;
+
+//===============================================
+  //Официальные продавцы
+  WindowBegin("Выберите официального продавца",IOffiSellerSClass,CGother,-);
+    SetWRect (20,80,350,420);
+    Sizeable (-1,-1,0,0);
+    StringList(9,9,-20,-9);
+  EndWindow;
+
+  WindowBegin("Копировать LangCode в OffiSeller",ILangToOffiSellerVClass,CGMnt,RcType);
+    SetWRect(20,80,510,150);
+    StaticText(50,v=20,"Нажмите Запуск",false);
+  EndWindow;
+
+//===============================================
+  //Отчет "Упаковочный лист"
+  WindowBegin("Определите параметры отчета Упаковочный лист",IPackingListRClass,CGRcW,RcType);
+    SetWRect(20,80,620,180);
+    EditFieldTL(h = 100, v = 12, -20, "Номера сч.ф.", M4UStr, Normal, 80, f1, false, IVSClass);
+    EditFieldTL(h = 100, v += 20, -20, "", M4UStr, Normal, 80, f2, false, IVSClass);
+    EditFieldTL(h = 100, v += 20, -20, "", M4UStr, Normal, 80, f3, false, IVSClass);
+    ButtonFrame(h = 200, v = 90, 123, 2, "Функция");
+    RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+    RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+  EndWindow;
+
+//===============================================
+  //HSClass
+  WindowBegin("Выберите отгрузку",ISHSClass,CGslist,-);
+    SpawnClass(SHDClass);
+    SetWRect(10,80,509,298);
+    Sizeable(-1,-1,0,0);
+    UseView(SHVc);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Номер",SerNr,false,SerNr);
+    RlColKey(71,66,"OK",OKFlag,false,OKFlag);
+    RlColKey(121,121,"Счет",OrderNr,false,OrderKey);
+    RlColKey(174,174,"Трансп.№",TransportNumber,false,TransportNumber);
+    RlColKey(184+53,184+53," Дата дост.",ShipDate,false,ShipDate);
+    RlColKey(269+50,269+50,"Клиент",CustCode,false,CustCode);
+    RlColKey(319+50,319+50,"",Addr0,false,CustName);
+    SearchField("Найти");
+  EndWindow;
+
+//===============================================
+//Выполнение плана предприятия
+  //Критерии
+  WindowBegin("Настройка - Прибыль компании - критерии",ICompProfitValBlockTClass,CGHbl,HBlRecType);
+    SetBlid(ICompProfitValBlock);
+    SetWRect(20,80,600,357);
+    Sizeable(-1,-1,0,0);
+    MatrixBegin(4,20,-31,-20,IRetOrdNoncondRowType,99);
+      MatCol(1,20,"Код",0,Code,false,0);
+      MatCol(1,80,"Наименование",0,Name,false,0);
+    EndMatrix;
+  EndWindow;
+
+  WindowBegin("Выберите критерий",ICompProfitValSClass,CGother,-);
+    SetWRect (20,80,350,420);
+    Sizeable (-1,-1,0,0);
+    StringList(9,9,-20,-9);
+  EndWindow;
+
+  //Подразделение
+  WindowBegin("Выберите подразделение",IPodrSClass,CGother,-);
+    SetWRect (20,80,350,420);
+    Sizeable (-1,-1,0,0);
+    StringList(9,9,-20,-9);
+  EndWindow;
+
+  //Планы
+  WindowBegin("Планы", ICompProfitPlanLClass, CGmlist, -);
+    SetWRect(64,80,509,298);
+    SpawnClass(ICompProfitPlanDClass);
+    UseView(ICompProfitPlanVc);
+    Sizeable(-1,-1,0,0);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Год",PlanYear,false,PlanYear);
+    RlCol(81,81, "Комментарий",Comment,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("План прибыли", ICompProfitPlanDClass, CGview, -);
+    SetWRect(20,80,900,500);
+    Sizeable(-1,-1,0,0);
+    UseView(ICompProfitPlanVc);
+    h = 90; h2 = 290; h3 = 10; vs = 20; v = 10;
+    Tile(0, 100, false, "", PlanYear);
+    EditFieldTL(h, v += vs, 80, "Год", M4Int, Normal, 4, PlanYear, False, 0);
+    EditField(h2, v, -20, "Комментарий", Normal, Comment, False, 0);
+    TileButton(1,"Планы");
+    TileButton(2,"Служебные");
+    Tile(1, 110, true, "1", Math);
+    v = 18;
+    MatrixBegin(h3, v, -53, -20, ICompProfitPlanRowType, 99);
+    Flip(0);
+    MatCol(1, 32, "Код", 0, Code, false, ICompProfitValSClass);
+    MatCol(1, 100, "Объекты", 0, Objects, false, ObjSClass);
+    MatCol(1, 200, "Наименование", 0, Name, false, 0);
+
+    Flip(1);
+    MatCol(1, -300, "Янв", 0, Val1, true, 0);
+    MatCol(1, -200, "Фев", 0, Val2, true, 0);
+    MatCol(1, -100, "Мар", 0, Val3, true, 0);
+
+    Flip(2);
+    MatCol(1, -300, "Апр", 0, Val4, true, 0);
+    MatCol(1, -200, "Май", 0, Val5, true, 0);
+    MatCol(1, -100, "Июнь", 0, Val6, true, 0);
+
+    Flip(3);
+    MatCol(1, -300, "Июль", 0, Val7, true, 0);
+    MatCol(1, -200, "Авг", 0, Val8, true, 0);
+    MatCol(1, -100, "Сен", 0, Val9, true, 0);
+
+    Flip(4);
+    MatCol(1, -300, "Окт", 0, Val10, true, 0);
+    MatCol(1, -200, "Ноя", 0, Val11, true, 0);
+    MatCol(1, -100, "Дек", 0, Val12, true, 0);
+
+    EndMatrix;
+    VTab(-35, v, -16, v += vs, ToolFlip, 1, "I");
+    VTab(-35, v, -16, v += vs, ToolFlip, 2, "II");
+    VTab(-35, v, -16, v += vs, ToolFlip, 3, "III");
+    VTab(-35, v, -16, v += vs, ToolFlip, 4, "IV");
+    InsertRowTest;
+    DeleteRowTest;
+    Tile(2, 180, true, "2", Flag1);
+    h = 90; h2 = 260; h3 = 410;
+    v = 18;
+    StaticText(h2, v, "Утвержденные планы", false);
+    CheckBox(h, v += vs , 0, "Январь", Flag1);
+    CheckBox(h2, v , 0, "Февраль", Flag2);
+    CheckBox(h3, v , 0, "Март", Flag3);
+
+    CheckBox(h, v += vs , 0, "Апрель", Flag4);
+    CheckBox(h2, v , 0, "Май", Flag5);
+    CheckBox(h3, v , 0, "Июнь", Flag6);
+
+    CheckBox(h, v += vs, 0, "Июль", Flag7);
+    CheckBox(h2, v , 0, "Август", Flag8);
+    CheckBox(h3, v , 0, "Сентябрь", Flag9);
+
+    CheckBox(h, v += vs , 0, "Октябрь", Flag10);
+    CheckBox(h2, v , 0, "Ноябрь", Flag11);
+    CheckBox(h3, v , 0, "Декабрь", Flag12);
+  EndWindow;
+
+  WindowBegin("Настройка - Прибыль компании - содержание", ICompProfitPlanResLClass, CGmlist, -);
+    SetWRect (20,80,750,410);
+    SpawnClass(ICompProfitPlanResDClass);
+    UseView(ICompProfitPlanResVc);
+    Sizeable(-1,-1,0,0);
+    RecordList(4,17,-21,-39);
+    RlColKey(4,4,"Номер",IDKey,false,IDKey);
+    RlCol(81,81, "Выражение",Expr,false);
+    RlCol(300,300, "Комментарий",Comment,false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Настройка - Прибыль компании - содержание", ICompProfitPlanResDClass, CGview, -);
+    SetWRect(20,80,620,440);
+    UseView(ICompProfitPlanResVc);
+    EditField(h=105,v=6,50,"Номер",Normal,IDKey,false,0);
+    EditField(h,v+=20,300,"Комментарий",Normal,Comment,false,0);
+    EditField(h,v+=20,300,"Выражение",Normal,Expr,false,AccSClass);
+    EditField(h,v+=20,300,"Объекты",Normal,Objects,false,ObjSClass);
+
+    ButtonFrame(h=15,v=170,100,3,"Тип выражения");
+    RadioButton(h,v    ,0,0,"Счета",RsType);
+    RadioButton(h,v+=16,1,0,"Формула (*)",RsType);
+    RadioButton(h,v+=16,2,0,"Сумма",RsType);
+
+    ButtonFrame(h=150,v=170,100,3,"Сторона счета");
+    RadioButton(h,v    ,0,0,"Норм.",DCSide);
+    RadioButton(h,v+=16,1,0,"Дебет",DCSide);
+    RadioButton(h,v+=16,2,0,"Кредит",DCSide);
+
+    ButtonFrame(h=285,v=170,100,3,"Разделитель");
+    RadioButton(h,v    ,0,0,"Нет",Divider);
+    RadioButton(h,v+=16,1,0,"Тонкий",Divider);
+    RadioButton(h,v+=16,2,0,"Жирный",Divider);
+
+    ButtonFrame(h=420,v=170,100,3,"Видимость");
+    RadioButton(h,v    ,0,0,"Не показывать",Visibility);
+    RadioButton(h,v+=16,1,0,"Сводный",Visibility);
+    RadioButton(h,v+=16,2,0,"Подробный",Visibility);
+
+    StaticText(15,300,"* Служебные символы: #номер_строки, $имя_переменной, |модуль",false);
+  EndWindow;
+
+  WindowBegin("Определите параметры отчета Выполнение плана прибыли компании",ICompProfitRClass,CGRcW,RcType);
+    SetWRect(20,80,400,240);
+    PeriodField(h=100,v=6,"Период");
+    EditFieldTL(h,v+=20,150,"Подразделение",M4UStr,Normal,60,ObjStr,false,IPodrSClass);
+    CheckBox(h,v+=20,0,"Группировать по месяцам", flags[0]);
+    ButtonFrame(h,v+=50,123,7,"Функция");
+    RadioButton(h,v,0,0,"Сводный",ArtMode);
+    RadioButton(h,v+=16,1,0,"Подробный",ArtMode);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Классификация",IClassSClass,CGother,-);
+  //Пустое окно, вызывающее отчет
+  EndWindow;
+
+  //Наименование классификаторов
+  WindowBegin("Классификаторы",IClassDetWClass,CGother,-);
+    Modality(1);
+    SetWRect(357,104,620,406);
+    Sizeable(-1,-1,0,0);
+    StringList(10,10,-20,-10);
+  EndWindow;
+
+  WindowBegin("Список классификаторов",ISelectVClassRClass,CGRcW,RcType);
+    SetWRect(20,80,400,50);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Настройка скидок по суммам", IDiscountBySumTClass, CGHbl, -);
+    SetBlid(IDiscountBySumBlock);
+    SetWRect(20, 80, 600, 357);
+    Sizeable(-1, -1, 0, 0);
+    MatrixBegin(4, 20, -31, -20, IDiscountBySumRowType, 199);
+      MatCol(1, 32, "Код товара/диапазон", 0, ArtCode, false, INSclass);
+      MatCol(1, -390, "Сумма", 0, Sum, false, 0);
+      MatCol(1, -320, "Скидка, %", 0, Discount, false, 0);
+      MatCol(1, -250, "Объекты", 0 , Objects, false, ObjSClass);
+      MatCol(1, -180, "Начальная дата", 0, StartDate, false, PasteCurDate);
+      MatCol(1, -90, "Конечная дата", 0, EndDate, false, PasteCurDate);
+    EndMatrix;
+  EndWindow;
+
+//===============================================
+  //Отчет "Сверка с поставщиком"
+  WindowBegin("Определите параметры отчета Сверка с поставщиком",ISplVerificationRClass,CGRcW,RcType);
+    SetWRect(20,80,420,180);
+    EditField(h=100, v=12, 150, "Поставщик", Normal, f1, false, VESClass);
+    EditFieldTL(h, v+=20, 82, "Дата", M4Date, Normal, 0, d1, false, PasteCurDate);
+    CheckBox(h,v+=40,0,"Выводить все (включая оплаченные)", flags[0]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Доля в продаже"
+  WindowBegin("Определите параметры отчета Доля в продаже",IStakeSalesRClass,CGRcW,RcType);
+    SetWRect(20,80,400,340);
+    PeriodField(h=120,v=6,"Период");
+    EditFieldTL(h, v+=vs, 150, "Диапазон товаров", M4UStr, Normal, 60, f1, false, INSclass);
+    EditFieldTL(h, v+=vs, 50, "Группа товаров", M4UStr, Normal, 20, f3, false, ITSclass);
+    EditFieldTL(h, v+=vs, 50, "Группа продажи", M4UStr, Normal, 20, f4, false, SalesGroupSClass);
+    EditFieldTL(h, v+=vs, 150, "Критерий", M4UStr, Normal, 60, f2, false, 0);
+    RadioButton(h,v+=vs,0,0,"Группа продажи",flags[0]);
+    RadioButton(h,v+=vs,1,0,"Тип классификации",flags[0]);
+    RadioButton(h,v+=vs,2,0,"Тип объекта",flags[0]);
+    CheckBox(h,v+=40,0,"Включая закрытые", flags[1]);
+    ButtonFrame(h,v+=50,123,7,"Значения");
+    RadioButton(h,v,0,0,"Количество", flags[2]);
+    RadioButton(h,v+=vs,1,0,"Базовая цена",flags[2]);
+    RadioButton(h,v+=vs,2,0,"Фактическая цена",flags[2]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Реализация. План - Факт"
+  WindowBegin("Определите параметры отчета 'Реализация. План - Факт'",IVPlanRClass,CGRcW,RcType);
+    SetWRect(20,80,400,280);
+    PeriodField(h=120,v=6,"Период");
+    EditFieldTL(h, v+=vs, 100, "Объект", M4UStr, Normal, 60, ObjStr, false, ObjSClass);
+    EditFieldTL(h, v+=vs, 100, "Продавец", M4UStr, Normal, 20, f1, false, UserSClass);
+    EditFieldTL(h, v+=vs, 100, "Группа продажи", M4UStr, Normal, 20, f2, false, SalesGroupSClass);
+    EditFieldTL(h, v+=(vs+10), 150, "Группы товаров", M4UStr, Normal, 60, f3, false, ITSClass);
+    EditFieldTL(h, v+=vs, 150, "Классификация", M4UStr, Normal, 60, f4, false, DISClass);
+    EditFieldTL(h, v+=vs, 150, "Класс", M4UStr, Normal, 60, f5, false, IClassSClass);
+    CheckBox(h,v+=vs,0,"Выводить помесячно", flags[1]);
+    CheckBox(h,v+=vs,0,"Включать закрытых клиентов", flags[2]);
+    CheckBox(h,v+=vs,0,"Учитывать перевыполнение", flags[3]);
+//    RadioButton(h,v+=vs,0,0,"По группе товара",flags[0]);
+//    RadioButton(h,v+=vs,1,0,"По товару",flags[0]);
+  EndWindow;
+
+//===============================================
+//Планирование продаж
+  //Настройка соответствия объектов нормирования продавцам
+  WindowBegin("Настройка - Объект нормирования<->Продавец", IObjSalesManTClass, CGHbl, -);
+    SetBlid(IObjSalesManBlock);
+    SetWRect(20, 80, 600, 357);
+    Sizeable(-1, -1, 0, 0);
+    MatrixBegin(4, 20, -31, -20, IObjSalesManRowType, 999);
+      MatCol(1, 32, "Объект", 0, Obj, false, ObjSclass);
+      MatCol(1, 200, "Продавец", 0, SalesMan, false, UserSClass);
+      MatCol(1, -100, "Коэффициент", 0, Coeff, true, 0);
+    EndMatrix;
+    SpecialMenu("Заполнить из справочника контактов",'',0,"IObjSalesManFromCUDsm");
+    SpecialMenu("Обновить справочник контактов",'',0,"ICUfromObjSalesManDsm");
+  EndWindow;
+
+
+//===============================================
+  //Экспорт измененных регистров 5.4 -> 6.3
+  WindowBegin("Экспортировать",ICommonEClass,CGEcW,RcType);
+    SetWRect(20,80,450,150);
+    EditField(h=250, v=12, 100, "Ограничить экспорт кол-вом записей", Normal, long1, false, 0);
+  EndWindow;
+
+//===============================================
+  //Переопределенный RClass (Harus2.hal)
+  WindowBegin("Определите статистику продаж по товарам",ItemSalesRClass,CGRcW,RcType);
+  SetWRect(20,80,450,300);
+  h = 150; vs = 20;
+  PeriodField(h,v=6,"Период");
+  EditFieldTL(h,v+=vs, 150,"Товары",   M4UStr,Normal,50,f1,false,INSClass);
+  EditFieldTL(h,v+=vs, 150,"Группа",   M4UStr,Normal,5,f2,false,ITSClass);
+  EditFieldTL(h,v+=vs, 150,"Классификация товара", M4UStr,Normal,60,f4,false,DISClass);
+  EditFieldTL(h, v+=vs, 150, "Класс товара", M4UStr, Normal, 60, f3, false, IClassSClass); //23.05.12 INAU
+  EditFieldTL(h,v+=vs, 50,"Показать товаров:",   M4Long,Normal,0,long1,false,0);
+  ButtonFrame(h,vm=(v+=41),160,3,"Функция");
+  RadioButton(h,v,0,0,"Наиболее продаваемые",ArtMode);
+  RadioButton(h,v+=16,1,0,"Наименее продаваемые",ArtMode);
+  RadioButton(h,v+=16,2,0,"Наибольший оборот",ArtMode);
+  CheckBox(h,v+=30,0,"Включить непроданные товары",flags[1]);
+  CheckBox(h,v+=16,0,"Показывать варианты",flags[2]); //HW72
+  EndWindow;
+
+//===============================================
+  //Отчет "Журнал согласования затрат"
+  WindowBegin("Определите журнал согласования затрат", ApproveCostsRClass, CGRcW, RcType);
+    SetWRect(20,80,450,280);
+    PeriodField(h=120,v=6,"Период");
+    EditFieldTL(h, v+=vs, 100, "Инициатор", M4Code, Normal, 60, f1, false, UserSClass);
+    EditFieldTL(h, v+=vs, 100, "Отдел", M4Code, Normal, 20, f2, false, DepSClass);
+    EditFieldTL(h, v+=vs, 100, "Функция FN1", M4Code, Normal, 20, ObjStr, false, ObjSClass);
+    EditFieldTL(h, v+=vs, 50, "Способ оплаты", M4Code, Normal, 20, f3, false, PMSClass);
+    CheckBox(h, v+=vs, 0, "Авансовый платеж", flags[0]);
+    CheckBox(h, v+=vs, 0, "РКО", flags[1]);
+    ButtonFrame(h, v+=50, 123, 7, "Статус");
+    v1 = v;
+    RadioButton(h, v, 0, 0, "Несогласованные", flags[2]);
+    RadioButton(h, v+=16, 1, 0, "Согласованные", flags[2]);
+    RadioButton(h, v+=16, 2, 0, "Выплаченные", flags[2]);
+    ButtonFrame(h+=150, v = v1, 123, 7, "Функция");
+    RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+    RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+//===============================================
+  //Отчет "Расчеты с перевозчиками"
+  WindowBegin("Определите Расчеты с перевозчиками", ITransportPaymentsRClass, CGRcW, RcType);
+    SetWRect(20,80,450,280);
+    PeriodField(h=120,v=6,"Период");
+    EditFieldTL(h, v+=vs, 100, "Объект", M4Code, Normal, 60, ObjStr, false, ObjSClass);
+    StaticText(h+120, v+12,  "(тип PRVZ, OS или PODR)", false);
+    ButtonFrame(h, v+=40, 123, 7, "Функция");
+    RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+    RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+//===============================================
+  //Отчет "Затраты логистики"
+  WindowBegin("Определите Затраты логистики", ILogisticsExpRClass, CGRcW, RcType);
+    SetWRect(20,80,450,280);
+    PeriodField(h=120,v=6,"Период");
+    EditFieldTL(h, v+=vs, 100, "Функция", M4Code, Normal, 60, ObjStr, false, ObjSClass);
+    EditFieldTL(h, v+=vs, 100, "Счет", M4Code, Normal, 20, FirstAcc, false, AccSClass);
+    ButtonFrame(h, v+=40, 123, 7, "отчет");
+    RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+    RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+//===============================================
+  //Отчет "Выполнение планов отгрузки и доставки"
+  WindowBegin("Выполнение планов отгрузки и доставки", ISHTTPlanExecRClass, CGRcW, RcType);
+    SetWRect(20,80,450,280);
+    PeriodField(h=120,v=6,"Период");
+    RadioButton(h, v+=vs, 0, 0, "Отгрузка (план)", flags[0]);
+    RadioButton(h, v+=16, 1, 0, "Доставка (план)", flags[0]);
+    CheckBox(h + 120, v, 0, "Перевозчик", flags[3]);
+    EditFieldTL(h, v+=vs, 100, "Склады", M4UStr, Normal, 100, f1, false, LocationSClass);
+    EditFieldTL(h, v+=vs, 100, "Группа продажи", M4Code, Normal, 60, f2, false, SalesGroupSClass);
+    ButtonFrame(h, v+=40, 123, 7, "Подробно (Excel)");
+    CheckBox(h, v, 0, "Вводить отгрузки", flags[1]);
+    CheckBox(h, v+=16, 0, "Выводить доставку", flags[2]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Итоги выполнения планов отгрузки и доставки"
+  WindowBegin("Группы складов", IStockGroupTClass, CGHbl, -);
+    SetBlid(IStockGroupBlock);
+    SetWRect(20, 80, 600, 357);
+    Sizeable(-1, -1, 0, 0);
+    MatrixBegin(8, 20, -31, -20, IStockGroupRowType, 99);
+    MatCol(1, 20, "Код", 0, Code, false, 0);
+    MatCol(1, 100, "Наименование", 0, Name, false, 0);
+    MatCol(1, 200, "Склады", 0, Locations, false, LocationSClass);
+    EndMatrix;
+  EndWindow;
+
+  WindowBegin("Группы складов", IStockGroupSClass, CGother, -);
+    SetWRect (20, 80, 350, 420);
+    Sizeable (-1, -1, 0, 0);
+    StringList(9, 9, -20, -9);
+  EndWindow;
+
+  WindowBegin("Итоги выполнения планов отгрузки и доставки", ISHTTPlanExecTotalsRClass, CGRcW, RcType);
+    SetWRect(20,80,450,280);
+    PeriodField(h=120,v=6,"Период");
+    EditFieldTL(h, v+=vs, 100, "Структура", M4UStr, Normal, 100, f1, false, IStockGroupSClass);
+  EndWindow;
+
+//===============================================
+  //Отчет "Прайс-лист компании по группе товара Элита"
+  WindowBegin("Определите параметры отчета Прайс-лист компании по Элите", ICompPriceListELRClass, CGRcW, RcType);
+    SetWRect(20, 80, 520, 320);
+    EditFieldTL(h=140, v=6, 150, "Дата", M4Date, Normal, 20, d1, false, PasteCurDate);
+    EditFieldTL(h, v+=vs, 150, "Склад", M4Code, Normal, 20, f1, false, LocationSClass);
+    EditFieldTL(h, v+=vs, 150, "Прейскурант", M4Code, Normal, 20, f2, false, PLDefSClass);
+    CheckBox(h, v+=vs, 0, "Выводить товары с альт.кодом -1", flags[1]);
+    CheckBox(h, v+=vs, 0, "Показывать остатки", flags[0]);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Распределить товары с временного склада", ITempLocDispItemsVClass, CGMnt,RcType);
+    SetWRect(20,80,450,300);
+    h = 150; vs = 20;
+    PeriodField(h, v=6, "Период планирования");
+  EndWindow;
+
+//===============================================
+  //Отчет "Документы"
+  WindowBegin("Неутвержденные документы", IWastedDocsRClass, CGRcW, RcType);
+    SetWRect(20, 80, 520, 320);
+    EditFieldTL(h=140, v=6, 150, "На дату", M4Date, Normal, 20, d1, false, PasteCurDate);
+  EndWindow;
+
+//===============================================
+  //Отчет "Своевременность оформления ТТН"
+  WindowBegin("Своевременность оформления ТТН", ITTFormalizeRClass, CGRcW, RcType);
+    SetWRect(20, 80, 420, 180);
+    PeriodField(h=120, v=6, "Период");
+    EditFieldTL(h, v+=vs, 200, "Склад(ы)", M4Code, Normal, 200, f1, false, LocationSClass);
+    CheckBox(h, v+=40, 0, "Оформленные", flags[1]);
+    CheckBox(h, v+=16, 0, "Неоформленные", flags[0]);
+  EndWindow;
+
+//===============================================
+  //Заполнить/Исправить ссылку IVVc.TTNr -> TTVc.SerNr
+  WindowBegin("Установить связь Сч/ф -> ТТН", IIVVcToTTVcVClass, CGMnt, RcType);
+    SetWRect(20, 80, 450, 150);
+    PeriodField(h=120, v=6, "Период");
+  EndWindow;
+
+//===============================================
+  //Интерфейс к неопл. сч/ф
+  WindowBegin("Список неоплаченных сч/ф", ARLClass, CGmlist, -);
+    SetWRect(64, 80, 800, 500);
+    Sizeable(150, 150, 0, 0);
+    UseView(ARVc);
+    SpawnClass(ARDClass);
+    RecordList(4, 17, -21, -39);
+    RlColKey(4,4,     "№ сч/ф", InvoiceNr, false, InvoiceNr);
+    RlColKey(70,70,   "Дата опл.", DueDate, false, DueDate);
+    RlColKey(143,143, "№ для печати", OfficialSerNr, false, OfficialSerNr);
+    RlColKey(250,250, "Клиент", CustCode, false, CustCode);
+    RlColKey(330,330, "Наименование", CustName, false, CustName);
+    RlColKey(-70,-70, "Сумма", RVal, true, RVal);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Неопл. сч/ф", ARDClass, CGview, -);
+    SetWRect(20, 80, 600, 300);
+    UseView(ARVc);
+    EditField(h=100, v=16, 100, "Номер сф/ф", Normal, InvoiceNr, false, 0);
+    EditField(h, v+=vs, 100, "Клиент", Normal, CustCode, false, 0);
+    EditField(h+200, v, -40, "Наименование", Normal, CustName, false, 0);
+    EditField(h, v+=vs, 100, "Сумма", Normal, RVal, false, 0);
+    EditField(h+200, v, 100, "Валюта", Normal, ARCurncyCode, false, 0);
+    EditField(h, v+=vs, 100, "Дата оплаты", Normal, DueDate, false, 0);
+    EditField(h, v+=vs, 100, "ARRebDate", Normal, ARRebDate, false, 0);
+    EditField(h, v+=vs, 100, "BookRVal", Normal, BookRVal, false, 0);
+    EditField(h, v+=vs, 100, "OfficialSerNr", Normal, OfficialSerNr, false, 0);
+    EditField(h, v+=vs, 100, "ARRebDate2", Normal, ARRebDate2, false, 0);
+  EndWindow;
+
+//===============================================
+  //Отчет "Маржинальная прибыль по полученным средствам"
+  WindowBegin("Определите параметры отчета Маржинальная прибыль", IMarginGPRClass, CGRcW, RcType);
+    SetWRect(20, 80, 520, 320);
+    PeriodField(h=150, v=6, "Период");
+    EditFieldTL(h, v+=vs, 150, "Клиент", M4Code, Normal, 20, f1, false, CUSClass);
+    EditFieldTL(h, v+=vs, 150, "Категория клиента", M4Code, Normal, 20, FirstAcc, false, CCatSClass);
+    EditFieldTL(h, v+=vs, 150, "Классификация клиента", M4UStr, Normal, 200, f2, false, CClassSClass);   
+    EditFieldTL(h, v+=vs, 150, "Код товара", M4Code, Normal, 20, f3, false, INSClass);
+    EditFieldTL(h, v+=vs, 150, "Объект товара", M4UStr, Normal, 60, ObjStr, false, ObjSClass);
+    EditFieldTL(h, v+=vs, 150, "Группа товара", M4Code, Normal, 10, AccStr, false, ITSClass);
+    EditFieldTL(h, v+=vs, 150, "Классификация товара", M4UStr, Normal, 200, f4, false, DISClass);
+    EditFieldTL(h, v+=vs, 150, "Продавец", M4Code, Normal, 20, f5, false, UserSClass);
+    EditFieldTL(h, v+=vs, 150, "Группа продажи", M4Code, Normal, 20, LastAcc, false, SalesGroupSClass);
+  EndWindow;
+
+//===============================================
+  //Временно
+  WindowBegin("Записи операций - объекты одного типа",ITestObjsTRRClass,CGRcW,RcType);
+    SetWRect(20,80,450,300);
+    h = 150; vs = 20;
+    PeriodField(h,v=6,"Период");
+  EndWindow;
+
+//===============================================
+  //Установить ОК, принудительно сохранить (RecordStore)
+  WindowBegin("Задачи. ОК + RecordStore ", ItVTicketOKStoreVRClass, CGMnt, RcType);
+    SetWRect(20,80,450,300);
+    EditFieldTL(h=150, v=20, 100, "Номер задачи", M4Long, Normal, 20, long1, false, tVTicketSClass);
+  EndWindow;
+
+//===============================================
+  //Удаление записей из IBudgetDiffVc на дату
+  WindowBegin("""Выполнение бюджета"" - Удаление записей", DelFromIBudgetDiffVClass, CGMnt, RcType);
+    SetWRect(20,80,350,150);
+    EditFieldTL(h=150,v=20,100,"Удалить записи на дату", M4Date, Normal, 20, d1, false, PasteCurDate);
+  EndWindow;
+
+//===============================================
+  //Отчет "Контроль деб. задолженности"
+  WindowBegin("Контроль деб. задолженности", IARCheckRClass, CGRcW, RcType);
+    SetWRect(20, 80, 532, 360);
+    EditFieldTL(h=150, v=6, 150,"Клиент", M4Code, Normal, 30, f1, false, CUSClass);
+    EditFieldTL(h, v+=vs, 50, "Группа продажи", M4Code, Normal, 5, f3, false, SalesGroupSClass);
+    EditFieldTL(h, v+=vs ,70, "Классификация", M4Code, Normal, 30, f4, false, CClassSClass);
+    EditFieldTL(h, v+=vs, 50, "Продавец", M4UStr, Normal, 10, f2, false, UserSClass);
+    EditFieldTL(h, v+=vs, 82, "Дата", M4Date, Normal, 0, d1, false, PasteCurDate);
+    EditFieldTL(h, v+=vs, 50, "Просрочено дней", M4Long, Normal, 0, long1, false, 0);
+    CheckBox(h, v+=vs, 0, "Только просроченные", flags[0]);
+  EndWindow;
+
+//===============================================
+  //История изменения договорного срока оплаты Сч/ф
+  WindowBegin("Договорной срок оплаты - История", IVPlanPayHistLClass, CGMlist, -);
+    SetWRect (20, 80, 1000, 410);
+//    Sizeable (-1, -1, 0, 0);
+    UseView(IVPlanPayHistVc);
+    SpawnClass(IVplanPayHistDClass);
+    RecordList(4,17,-21,-39);
+    RlColKey(4, 4, "Номер", SerNr, false, SerNr);
+    RlColKey(80, 80,"Сч/ф", InvoiceNr, false, InvoiceNr);
+    RlCol(160, 160, "Клиент", CustCode, false);
+    RlColKey(240, 240, "Дата Сч/ф", InvDate, false, InvDate);
+    RlColKey(320, 320, "Дата Опл.", InvPayDate, false, InvPayDate);
+    RlColKey(400, 400, "Дог. стар.", PrevPlanPayDate, false, PrevPlanPayDate);
+    RlColKey(480, 480, "Дог. нов.", PlanPayDate, false, PlanPayDate);
+    RlCol(560, 560, "Сотрудник", RegUser, false);
+    RlColKey(640, 640, "Дата изм.", RegDate, false, RegDate);
+    RlCol(720, 720, "Группа", SalesGroup, false);
+    RlCol(760, 760, "Сумма", InvVal, true);
+    RlCol(840, 840, "Вал.", InvCurncy, false);
+    RlCol(880, 880, "Деб.", InvRVal, true);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Договорной срок оплаты - История", IVPlanPayHistDClass, CGView, -);
+    SetWRect(20, 80, 450, 390);
+    UseView(IVPlanPayHistVc);
+    EditField(100, 8, 80, "Номер", Normal, SerNr, false, 0);
+  EndWindow;
+
+  WindowBegin("Договорный срок оплаты", IVPlanPayHistRClass, CGRcW, RcType);
+    SetWRect(20, 80, 532, 360);
+    PeriodField(h=150, v=6, "Период (Срок опл)");
+    CheckBox(h, v+=vs, 0, "Только за период", flags[0]);
+    EditFieldTL(h=150, v+=vs, 150,"Клиент", M4Code, Normal, 20, f1, false, CUSClass);
+    EditFieldTL(h, v+=vs, 50, "Группа продажи", M4Code, Normal, 5, ObjType, false, SalesGroupSClass);
+    EditFieldTL(h, v+=vs, 150, "Кем изменен", M4Code, Normal, 20, f2, false, UserSClass);
+  EndWindow;
+
+//===============================================
+  //Отчет "Мотивация торговых"
+  WindowBegin("Мотивация торговых", IMotivSalesManRClass, CGRcW, RcType);
+    SetWRect(20, 80, 532, 360);
+    PeriodField(h=150, v=6, "Период");
+    EditFieldTL(h, v+=vs, 50, "Группа продажи", M4Code, Normal, 5, ObjType, false, SalesGroupSClass);
+    EditFieldTL(h, v+=vs, 50, "Категория клиента", M4Code, Normal, 5, FirstAcc, false, CCatSClass);
+    EditFieldTL(h, v+=vs, 150, "Искл. классификацию", M4Code, Normal, 200, f2, false, CClassSClass);
+    EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 20, f1, false, UserSClass);
+    EditFieldTL(h, v+=vs, 100, "Ставка", M4Val, Normal, 100, vals1, true, 0);
+    RadioButton(280, v, 0, 0, "ГРН", flags[0]);
+    RadioButton(330, v, 1, 0, "USD", flags[0]);
+  EndWindow;
+
+  WindowBegin("Мотивация торговых", IFirstIVPayRClass, CGRcW, RcType);
+    SetWRect(20, 80, 532, 360);
+    PeriodField(h=150, v=6, "Период");
+    EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 20, f1, false, UserSClass);
+  EndWindow;
+
+//===============================================
+  //Интерфейс к предоплатам клиентов
+  WindowBegin("Список предоплат клиентов", I_ARPayLClass, CGmlist, -);
+    SetWRect(20, 80, 620, 298);
+    Sizeable(150, 150, 0, 0);
+    UseView(ARPayVc);
+    SpawnClass(I_ARPayDClass);
+    RecordList(4, 17, -21, -39);
+    RlColKey(4, 4,      "Номер", CUPNr, false, CUPNr);
+    RlColKey(90, 90,    "№ сч.", OrderNr, false, OrderNr);
+    RlColKey(180, 180,  "Дата опл.", PayDate, false, PayDate);
+    RlColKey(250, 250,  "Клиент", CustCode, false, CustCode);
+    RlColKey(310, 310,  "Наим.", CustName, false, CustName);
+    RlCol(-150, -150,   "НДС", VATVal, true);
+    RlCol(-90, -90,     "Сумма", RVal, true);
+    RlCol(-30, -30,     "Валюта", CurncyCode, false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Предоплата клиента", I_ARPayDClass, CGview, -);
+    SetWRect(20, 80, 600, 300);
+    UseView(ARPayVc);
+    EditField(h=100, v=16, 100, "Номер", Normal, CUPNr, false, 0);
+    EditField(h, v+=vs, 100, "№ сч.", Normal, OrderNr, false, 0);
+    EditField(h2=300, v, 100, "Дата опл.", Normal, PayDate, false, 0);
+    EditField(h, v+=vs, 100, "Клиент", Normal, CustCode, false, 0);
+    EditField(h2, v, -40, "Наименование", Normal, CustName, false, 0);
+    EditField(h, v+=vs, 100, "Сумма", Normal, RVal, false, 0);
+    EditField(h2, v, 100, "Валюта", Normal, CurncyCode, false, 0);
+    EditField(h2+100, v, 100, "НДС", Normal, VATVal, false, 0);
+  EndWindow;
+
+//===============================================
+  //Интерфейс к предоплатам поставщикам
+  WindowBegin("Список предоплат поставщикам", I_APPayHistLClass, CGmlist,-);
+    SetWRect(20, 80, 532, 355);
+    Sizeable(-1, -1, 0, 0);
+    UseView(APPayHistVc);
+    SpawnClass(I_APPayHistDClass);
+    RecordList(4, 17, -21, -39);
+    RlColKey(4, 1, "№", VEPNr, false, MainKey);
+    RlCol(90, 90, "Дата опл.", TransDate, false);
+    RlColKey(160, 160, "Пост.", VECode, false, VECode);
+    RlCol(-210, -210, "НДС", VATVal, true);
+    RlCol(-180, -110, "Сумма", BookVal, true);
+    RlCol(-70, -70, "Вал.", CurncyCode, false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Предоплата поставщику", I_APPayHistDClass, CGview, -);
+    SetWRect(20, 80, 600, 300);
+    UseView(APPayHistVc);
+    EditField(h=100, v=16, 100, "Номер", Normal, VEPNr, false, 0);
+    EditField(h, v+=vs, 100, "Дата опл.", Normal, TransDate, false, 0);
+    EditField(h, v+=vs, 100, "Поставщик", Normal, VECode, false, 0);
+    EditField(h, v+=vs, 100, "НДС", Normal, VATVal, false, 0);
+    EditField(h, v+=vs, 100, "Сумма", Normal, BookVal, false, 0);
+    EditField(h+200, v, 100, "Валюта", Normal, CurncyCode, false, 0);
+  EndWindow;
+
+
+  WindowBegin("Список открытых предоплат", I_OPPLClass, CGmlist,-);
+    SetWRect(20, 80, 650, 355);
+    Sizeable(-1, -1, 0, 0);
+    UseView(OPPVc);
+    SpawnClass(I_OPPDClass);
+    RecordList(4,17,-21,-39);
+    RlColKey(4, 1, "Номер", SerNr, false, SerNr);
+    RlColKey(90, 90, "№ сч.", OrderNr, false, OrderNr);
+    RlColKey(180, 180, "Дата оплаты", PayDate, false, PayDate);
+    RlColKey(250, 250, "Пост.", VECode, false, VECode);
+    RlColKey(310, 310, "Наим.", VEName, false, VEName);
+    RlCol(-210, -210, "НДС", VATVal, true);
+    RlCol(-150, -150, "Сумма", PPVal, true);
+    RlCol(-90,-90, "Заказанная", BookRVal, true);
+    RlCol(-30,-30, "Вал.", CurncyCode, false);
+    SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Открытая предоплата", I_OPPDClass, CGview, -);
+    SetWRect(20, 80, 600, 300);
+    UseView(OPPVc);
+    EditField(h=100, v=16, 100, "Номер", Normal, SerNr, false, 0);
+  EndWindow;
+
+//===============================================
+  //Отчет "Рейтинг клиентов"
+  WindowBegin("Рейтинг клиентов", ICUByRatingRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 180);
+    PeriodField(h=150, v=6, "Период");
+    EditFieldTL(h, v+=vs, 50, "Группа продажи", M4Code, Normal, 5, ObjType, false, SalesGroupSClass);
+    EditFieldTL(h, v+=vs, -40, "Классификация", M4Code, Normal, 200, f1, false, CClassSClass);
+    EditFieldTL(h, v+=vs, 50, "Число клиентов (50)", M4Int, Normal, 3, flags[0], true, 0);
+    CheckBox(h, v+=40, 0, "Группировать по СОКР", flags[1]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Выполнение квоты продаж"
+  WindowBegin("Выполнение квоты продаж", ISalesQuotaRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 280);
+    PeriodField(h=150, v=6, "Период");
+    CheckBox(h, v+=40, 0, "Только отгрузки отчетного периода", flags[0]);
+    EditFieldTL(h, v+=vs, 50, "Группа продажи", M4Code, Normal, 5, f3, false, SalesGroupSClass);
+    EditFieldTL(h, v+=vs, -40, "Продавец", M4Code, Normal, 200, f1, false, UserSClass);
+    CheckBox(h, v+=40, 0, "MM", flags[1]);
+    CheckBox(h+100, v, 0, "EL", flags[3]);
+    CheckBox(h, v+=16, 0, "KS", flags[2]);
+    CheckBox(h+100, v, 0, "KR", flags[4]);
+    CheckBox(h, v+=16, 0, "TE", flags[5]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Остатки + реализация"
+  WindowBegin("Остатки + реализация", IRestsNSalesRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 280);
+    PeriodField(h=150, v=6, "Период");
+    EditFieldTL(h, v+=vs, 80, "Склад", M4Code, Normal, 10, f1, false, LocationSClass);
+    EditFieldTL(h, v+=vs, -40, "Товары", M4UStr, Normal, 200, f2, false, INSClass);
+    EditFieldTL(h, v+=vs, 80, "Группа товаров", M4Code, Normal, 10, f3, false, ITSСlass);
+    EditFieldTL(h, v+=vs, -40, "Классификация", M4UStr, Normal, 200, f4, false, DISClass);
+  EndWindow;
+
+//===============================================
+  //Отчет "Несоответствия неопл. Сч/ф"
+  WindowBegin("Несоответствия неопл. Сч/ф", ICheckARVcRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 280);
+    PeriodField(h=150, v=6, "Дата оплаты");
+    CheckBox(h, v+=30, 0, "Только за период", flags[0]);
+    EditFieldTL(h, v+=30, 100, "Номер Сч/ф", M4Long, Normal, 20, long1, false, IVSClass);
+    EditFieldTL(h, v+=vs, 100, "Код клиента", M4Code, Normal, 20, f1, false, CUSClass);
+  EndWindow;
+
+//===============================================
+  //Отчет "Дефицит отгрузки"
+  WindowBegin("Дефицит отгрузки", ISHDeficitRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 280);
+    PeriodField(h=150, v=6, "Дата счета");
+    EditFieldTL(h, v+=vs, 150, "Дата отгрузки (план)", M4UStr, Normal, 21, f1, false, PasteCurDate);
+    EditFieldTL(h, v+=vs, 100, "Склад", M4Code, Normal, 20, f2, false, LocationSClass);
+    EditFieldTL(h, v+=vs, 100, "Товар", M4Code, Normal, 20, f3, false, INSClass);
+    EditFieldTL(h, v+=vs, 100, "Группа товара", M4Code, Normal, 20, f4, false, ITSClass);
+    EditFieldTL(h, v+=vs, 100, "Классификация товара", M4Code, Normal, 200, f5, false, DISClass);
+    EditFieldTL(h, v+=vs, 100, "Прейскурант", M4Code, Normal, 20, f6, false, PLDefSClass);
+    CheckBox(h, v+=30, 0, "Только с дефицитом отгрузки", flags[0]);
+    CheckBox(h, v+=vs, 0, "С остатком не более", flags[1]);
+    EditFieldTL(h+140, v, 50, "", M4Int, Normal, 20, frc, true, 0);
+    StaticText(h+210, v+12, "шт", false);
+    CheckBox(h, v+=vs, 0, "Все доступные товары", flags[2]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Весогабаритные данные товаров"
+  WindowBegin("Весогабаритные данные товаров (Excel)", IArtWeightSizeRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 280);
+    EditFieldTL(h=150, v=6, 150, "Товар(ы)", M4UStr, Normal, 200, f1, false, INSClass);
+    EditFieldTL(h, v+=vs, 100, "Группа товара", M4Code, Normal, 20, f2, false, ITSClass);
+    EditFieldTL(h, v+=vs, 150, "Классификация товара", M4Code, Normal, 200, f3, false, DISClass);
+    EditFieldTL(h, v+=vs, 100, "Склад", M4Code, Normal, 20, f4, false, LocationSClass);
+    EditFieldTL(h, v+=vs, 100, "Прейскурант", M4Code, Normal, 20, f5, false, PLDefSClass);
+    CheckBox(h, v+=30, 0, "Показывать остатки", flags[2]);
+    CheckBox(h, v+=vs, 0, "Показывать отсутствующие", flags[0]);
+    CheckBox(h, v+=vs, 0, "Показывать товары с кодом -1", flags[1]);
+  EndWindow;
+
+//===============================================
+  //Отчет "Среднее время доставки"
+  WindowBegin("Время доставки План-Факт", IDeliveryTimeDiffRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 280);
+    PeriodField(h=150, v=6, "Дата доставки план.");
+    EditFieldTL(h, v+=vs, 100, "Клиент", M4Code, Normal, 20, f1, false, CUSClass);
+    EditFieldTL(h, v+=vs, 100, "Склад", M4Code, Normal, 20, f2, false, LocationSClass);
+    EditFieldTL(h, v+=vs, 100, "Подразделение", M4Code, Normal, 20, f3, false, DepSClass);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Выберите время доставки", IDeliveryTimeSClass,CGother,-);
+    SetWRect (20,80,450,210);
+    Sizeable (-1,-1,0,0);
+    v = 6; vs = 20; h = 100;
+    SetWRect(240,80,600,298);
+    StringList(9,9,-40,209);
+  EndWindow;
+
+//===============================================
+  //Настройка - Стоимость логистики за единицу
+  WindowBegin("Настройка - Стоимость логистики за единицу", ILogCostSGTClass, CGHbl, -);
+    SetBlid(ILogCostSGBlock);
+    SetWRect(20, 80, 400, 357);
+    Sizeable(-1, -1, 0, 0);
+    StaticText(150, 20, "Стоимость логистики 1 шт.", false);
+    MatrixBegin(4, 40, -50, -20, ILogCostSGRowType, 99);
+    Flip(0);
+    MatCol(1, 20, "Группа прод.", 0, SalesGroup, false, SalesGroupSClass);
+    Flip(1);
+    MatCol(1, 100, "Янв", 0, Cost1, true, 0);
+    MatCol(1, 180, "Фев", 0, Cost2, true, 0);
+    MatCol(1, 260, "Мар", 0, Cost3, true, 0);
+    Flip(2);
+    MatCol(1, 100, "Апр", 0, Cost4, true, 0);
+    MatCol(1, 180, "Май", 0, Cost5, true, 0);
+    MatCol(1, 260, "Июнь", 0, Cost6, true, 0);
+    Flip(3);
+    MatCol(1, 100, "Июль", 0, Cost7, true, 0);
+    MatCol(1, 180, "Авг", 0, Cost8, true, 0);
+    MatCol(1, 260, "Сент", 0, Cost9, true, 0);
+    Flip(4);
+    MatCol(1, 100, "Окт", 0, Cost10, true, 0);
+    MatCol(1, 180, "Ноя", 0, Cost11, true, 0);
+    MatCol(1, 260, "Дек", 0, Cost12, true, 0);
+    EndMatrix;
+    VTab(-35, v=40, -16, v+=vs, ToolFlip, 1, "I");
+    VTab(-35, v, -16, v+=vs, ToolFlip, 2, "II");
+    VTab(-35, v, -16, v+=vs, ToolFlip, 3, "III");
+    VTab(-35, v, -16, v+=vs, ToolFlip, 4, "IV");
+  EndWindow;
+
+  //Отчет "Эффективность ТП (Excel)"
+  WindowBegin("Эффективность ТП (Excel)", ISalesManEffRClass, CGRcW, RcType);
+  SetWRect(20, 80, 532, 360);
+  PeriodField(h=200, v=6, "Период");
+  EditFieldTL(h, v+=vs, 50, "Группа продажи", M4Code, Normal, 5, ObjType, false, SalesGroupSClass);
+  EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 20, f1, false, UserSClass);
+  EditFieldTL(h, v+=vs, 100, "Ставка (грн)", M4Val, Normal, 10, vals1, true, 0);
+  EditFieldTL(h, v+=vs, 100, "НДС, норматив", M4Val, Normal, 5, vals2, true, 0);
+  EditFieldTL(h, v+=vs, 100, "Норматив отчислений в фонд УК", M4Val, Normal, 5, vals3, true, 0);
+  EditFieldTL(h, v+=vs, 100, "Норматив расходов филиала", M4Val, Normal, 5, vals4, true, 0);
+  ButtonFrame(h, v+=60, 123, 7, "Валюта");
+  v2 = v;
+  RadioButton(h, v, 0, 0, "Базовая 1", basecurncy);
+  RadioButton(h, v+=16, 1, 0, "Базовая 2", basecurncy);
+  ButtonFrame(h+=150, v=v2, 123, 7, "Мотив. реализации");
+  RadioButton(h, v, 0, 0, "По EMP", flags[0]);
+  RadioButton(h, v+=16, 1, 0, "По CONTR", flags[0]);
+  EndWindow;
+
+  //Отчет "Эффективность ТП (подробный)"
+  WindowBegin("Эффективность ТП (подробный)", ISalesManEffExRClass, CGRcW, RcType);
+  SetWRect(20, 80, 532, 360);
+  PeriodField(h=200, v=6, "Период");
+  EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 20, f1, false, UserSClass);
+  EditFieldTL(h, v+=vs, 100, "Ставка (грн)", M4Val, Normal, 10, vals1, true, 0);
+  EditFieldTL(h, v+=vs, 100, "НДС, норматив", M4Val, Normal, 5, vals2, true, 0);
+  EditFieldTL(h, v+=vs, 100, "Норматив отчислений в фонд УК", M4Val, Normal, 5, vals3, true, 0);
+  EditFieldTL(h, v+=vs, 100, "Норматив расходов филиала", M4Val, Normal, 5, vals4, true, 0);
+  ButtonFrame(h, v+=60, 123, 7, "Валюта");
+  RadioButton(h, v, 0, 0, "Базовая 1", basecurncy);
+  RadioButton(h, v+=16, 1, 0, "Базовая 2", basecurncy);
+  EndWindow;
+
+
+//===============================================
+  //Отчет "Клиент - время доставки"
+  WindowBegin("Клиент - время доставки", ICUDelivPlanTimeRClass, CGRcW, RcType);
+    SetWRect(20, 80, 460, 280);
+    EditFieldTL(h=120, v+=vs, 100, "Клиент", M4Code, Normal, 20, f1, false, CUSClass);
+    EditFieldTL(h, v+=vs, -40, "Классификация", M4Code, Normal, 20, f2, false, CClassSClass);
+    EditFieldTL(h, v+=vs, 100, "Сокр.", M4Code, Normal, 20, f3, false, 0);
+    EditFieldTL(h, v+=vs, 100, "Продавец", M4Code, Normal, 20, f4, false, UserSClass);
+    EditFieldTL(h, v+=vs, 100, "Группа продажи", M4Code, Normal, 20, f5, false, SalesGroupSClass);
+  EndWindow;
+
+
+//===============================================
+//"Пустышка" для запуска Maint без параметров
+  WindowBegin("Запустить процедуру...", ICommonVClass,CGMnt,RcType);
+  SetWRect(20,80,350,150);
+  EndWindow;
+
+
+//===============================================
+  //Отчет "Проводки отсутствующих документов"
+  WindowBegin("Проводки отсутствующих документов", IMissedDocsTransRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  PeriodField(h=80, v=6, "Период");
+  ButtonFrame(h, v=50, 123, 7, "Типы документов");
+  CheckBox(h, v=80, 0, "Сч/ф", flags[0]);
+  CheckBox(h, v+=20, 0, "Отгр.", flags[1]);
+  CheckBox(h, v+=20, 0, "Спис.", flags[2]);
+  CheckBox(h, v+=20, 0, "Пост.", flags[3]);
+  CheckBox(h, v+=20, 0, "Возвр.", flags[4]);
+  CheckBox(h+=120, v=80, 0, "ТТН", flags[5]);
+  CheckBox(h, v+=20, 0, "Ав.выплата", flags[6]);
+  CheckBox(h, v+=20, 0, "Ав.отчет", flags[7]);
+  CheckBox(h, v+=20, 0, "РКО", flags[8]);
+  CheckBox(h, v+=20, 0, "ПКО", flags[9]);
+  EndWindow;
+
+
+//===============================================
+  //Отчет "Планирование маржинальной прибыли"
+  WindowBegin("Отчет Планирование маржинальной прибыли", IPlanMarginGPRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  EditFieldTL(h=200, v=6, 100, "Дата", M4Date, Normal, 20, d1, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Период план. 1", M4UStr, Normal, 21, f1, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Период план. 2", M4UStr, Normal, 21, f2, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Период план. 3", M4UStr, Normal, 21, f3, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Период план. 4", M4UStr, Normal, 21, f4, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Классификатор(ы)  товара", M4UStr, Normal, 200, f7, false, DISClass);
+  EditFieldTL(h, v+=vs, 200, "Группа(ы) продажи", M4UStr, Normal, 200, f5, false, SalesGroupSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификатор(ы) клиента", M4UStr, Normal, 200, f6, false, CClassSClass);
+  EndWindow;
+
+//===============================================
+  //Отчет "Отчет МП по продажам по факту"
+  WindowBegin("Отчет МП по продажам по факту", IFactMarginGPRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  EditFieldTL(h, v+=vs, 200, "Период план. 1", M4UStr, Normal, 21, f1, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Период план. 2", M4UStr, Normal, 21, f2, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Период план. 3", M4UStr, Normal, 21, f3, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 200, "Классификатор(ы)  товара", M4UStr, Normal, 200, f4, false, DISClass);
+  EditFieldTL(h, v+=vs, 200, "Группа(ы) продажи", M4UStr, Normal, 200, f5, false, SalesGroupSClass);
+  EditFieldTL(h, v+=vs, 200, "Классификатор(ы) клиента", M4UStr, Normal, 200, f6, false, CClassSClass);
+  EndWindow;
+
+//===============================================
+//Планирование маржинальной прибыли
+  WindowBegin("План маржинальной прибыли", IPlanMarginGPLClass, CGmlist, -);
+  SetWRect(64,80,509,298);
+  SpawnClass(IPlanMarginGPDClass);
+  UseView(IPlanMarginGPVc);
+  Sizeable(-1, -1, 0, 0);
+  RecordList(4, 17, -39, -39);
+  RlColKey(4, 4, "Начальная дата", bd,false, bd);
+  RlColKey(160, 160, "Конечная дата", ed, false, ed);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("План маржинальной прибыли", IPlanMarginGPDClass, CGview, -);
+  UseView(IPlanMarginGPVc);
+  SetWRect(20, 80, 620 ,440);
+  Sizeable(-1, -1, 0, 0);
+  EditField(h=120, v=6, 80, "Начальная дата", Normal, bd, false, PasteCurDate);
+  EditField(h, v+=vs, 80,"Конечная дата", Normal, ed, false, PasteCurDate);
+  MatrixBegin(4, v+=40, -32, -20, IPlanMarginGPRowType, 99);
+  MatCol(1, 24, "Группа продажи", 0, SalesGroup, false, SalesGroupSClass);
+  MatCol(1, 124, "Класс. клиента", 0, CUClass, false, CClassSClass);
+  MatCol(1, 224, "Класс. товара", 0, INClass, false, DISClass);
+  MatCol(1, 324, "Маржинальная прибыль (USD)", 0, MarginGP, false, 0);
+  EndMatrix;
+  EndWindow;
+
+//===============================================
+  WindowBegin("!!! Удаление записей выбранного регистра !!!", IRemoveRecordsVClass, CGMnt, RcType);
+  SetWRect(20,80,510,150);
+  StaticText(50,v=20,"ВНИМАНИЕ! ОСТОРОЖНО! ПРОЦЕДУРА УДАЛЕНИЯ ДАННЫХ",false);
+  StaticText(50,v+=20,"В ВЫБРАННОМ РЕГИСТРЕ ЯВЛЯЕТСЯ НЕОБРАТИМОЙ!",false);
+  ButtonFrame(h, v+=60, 123, 7, "Выберите регистр для удаления данных");
+  RadioButton(h, v,     1, 0, "ItemHistVcRemove", flags[0]);
+  RadioButton(h, v+=16, 2, 0, "ItemStatusVcRemove", flags[0]);
+  RadioButton(h, v+=16, 3, 0, "TRVcRemove", flags[0]);
+  RadioButton(h, v+=16, 4, 0, "UserDefRepVcRemove", flags[0]);
+  RadioButton(h, v+=16, 5, 0, "NormPhoneNumVcRemove", flags[0]);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Экспорт товаров в eAgent", IExportItems2eAgentRClass, CGRcW, RcType);
+  SetWRect(20, 80, 520, 320);
+  EditFieldTL(h=140, v=6, 150, "Склад", M4Code, Normal, 20, f1, false, LocationSClass);
+  EditFieldTL(h,v+=20, 150, "Клиент", M4Code, Normal, 20, f2, false, CUSClass);
+  EditFieldTL(h,v+=20, 150, "Прейскурант", M4Code, Normal, 20, f3, false, PLDefSClass);
+  EndWindow;
+
+  WindowBegin("Экспорт контактов в eAgent", IExportCustomers2eAgentRClass, CGRcW, RcType);
+  SetWRect(20, 80, 520, 320);
+  EditFieldTL(h=140, v=6, 150, "ТП / ГП", M4Code, Normal, 20, f1, false, UserSClass);
+  EndWindow;
+
+  WindowBegin("Экспорт групп в eAgent", IExportGroups2eAgentRClass, CGRcW, RcType);
+  SetWRect(20, 80, 520, 320);
+  EndWindow;
+
+//===============================================
+  WindowBegin("Коммерческий курс", IBaseRateMailAClass, CGother, RcType);
+  SetWRect(20,80,500,150);
+  UseView(RcVc);
+  vs = 20;
+  EditField(h=50, v=20, 80,"Курс", Normal, vals1, false, 0);
+  HalPushButton(h+=100, v, h+80, v+20, "IBaseRateMailBtn", "Отправить");
+  EndWindow;
+
+//===============================================
+
+  Return;
+end;

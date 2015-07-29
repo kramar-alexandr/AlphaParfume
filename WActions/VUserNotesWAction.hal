@@ -1,0 +1,61 @@
+event DefineWindows
+begin
+  real i,h,h1,h2,h3,h4,h5,h6,h7,hm,hs,v,l,vs,v2,vm,f,t,fs;
+  string 255 label;
+  
+  SetLangMode(LangRussian, "RUS", 2);
+  
+WindowBegin("Заметка", VUserNotesDClass, CGview, -);
+  UseView(VUserNoteVc);
+  SetWRect(20,80,630,400);
+  Sizeable(-1,-1,0,0);
+  BrowseButtons(false);
+  ActiveFieldOnNew("Comment");
+
+  //CommunicateButton;
+  vs = 20; h = 100; h2 = 220; h3 = 390; h4 = 580;
+  EditField(h, v = 6, 82,"Номер", ViewOnly, SerNr, false, 0);
+  EditField(h2, v, 82, "Дата", ViewOnly, Date, false, 0);
+  EditField(h3, v, 82, "Дата изм.", ViewOnly, Date, false, 0);
+  EditField(h4, v, 100, "Сотрудник", ViewOnly, SalesMan, false, 0);
+  EditField(h, v += vs, 330,"Комментарий", Normal, Comment, false, 0);
+  TextField(h, v += vs, -21, -16, Math, 0);
+  EndWindow;
+ 
+WindowBegin("Заметки", VUserNotesLClass, CGmlist, -);
+  SpawnClass(VUserNotesDClass);
+  SetWRect(20,80,620,298);
+  Sizeable(-1,-1,0,0);
+  UseView(VUserNoteVc);
+ // FormName(PrintActL);
+  RecordList(4,17,-21,-39);
+  RlColKey(4,2,"Сотрудник",SalesMan,false,SMan);
+  RlColKey(75,75,"Дата",Date,false,Date);
+  RlColKey(155,155,"Дата изм.",DateUpdate,false,DateUpdate);
+ // RlColKey(245,245,"Номер",SerNr,false,SerNr);
+  RlColKey(245,245,"Комментарий",Comment,false,Comment);
+  SearchField("Hайти");
+  BrowseSubsetButton(-40,-15);
+  
+  EndWindow;
+ 
+return;
+end;
+
+
+global
+updating procedure VUserNotesDClassOnOpenFromBrowse(Integer wn)
+begin
+record VUserNoteVc VUNr;
+boolean res;
+
+GetWindowRecord(wn, VUNr);
+res = (VUNr.SalesMan == CurrentUser);
+if (not res) then
+	begin
+	CloseWindow(wn);
+	end;	
+RETURN;
+end;
+
+

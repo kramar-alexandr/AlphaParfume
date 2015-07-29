@@ -1,0 +1,138 @@
+// global
+// function Longint LocEquipVcRecordDefaults(var record LocEquipVc LEr, record LocEquipVc LE2r, LongInt stat, LongInt long4)
+// begin
+// Longint Res;
+// record UserVc USr;
+// boolean TrHs;
+
+// SetLangMode(LangRussian, "RUS", 2);
+
+// LocEquipVcRecordDefaults = res;
+// RETURN;
+// end;
+
+// global
+// function LongInt LocEquipVcRecordDuplicate(var record LocEquipVc LEr, record LocEquipVc LE2r, LongInt stat, LongInt long4)
+// BEGIN
+// LongInt res;
+// record UserVc USr;
+// integer i;
+// SetLangMode(LangRussian, "RUS", 2);
+
+// LocEquipVcRecordDuplicate = res; 
+// RETURN;
+// END;
+
+// global
+// updating function LongInt LocEquipVcRecordRemoveTest(var record LocEquipVc LEr, record LocEquipVc LE2r, LongInt stat, LongInt long4)
+// BEGIN
+// record UserVc USr;
+
+// LocEquipVcRecordRemoveTest = 1;
+// USr.Code = CurrentUser;
+// ReadFirstMain(USr, 1, True);
+// if (not UserCanAction("UnOKAll",True)) then 
+  // begin
+  // LocEquipVcRecordRemoveTest = 0;
+  // end;
+// RETURN;
+// END;
+
+global
+updating function LongInt LocEqDel(string LocCode, string InventoryNr)
+begin
+record ttPhysStockVc Locr, Loc2r;
+row ttPhysStockVc Locrw;
+integer exist, i;
+
+Locr.Code = LocCode;
+ReadFirstMain(Locr, 1, true);
+if MatRowCnt(Locr) <> 0 then
+	begin
+	for(i = 0; (i < MatRowCnt(Locr)); i = i + 1)
+		begin
+		MatRowGet(Locr, i, Locrw);
+		if Locrw.EquipCode == InventoryNr then
+			begin
+			MatRowDelete(Locr,i);
+			i = MatRowCnt(Locr);
+			end;
+		end;
+		
+	Loc2r.Code = Locr.Code;	
+	ReadFirstMain(Loc2r, 1, true);
+	RecordUpdate(Loc2r,Locr,true);	
+end;
+end;
+
+global
+updating function LongInt LocEqIns(string LocCode, string InventoryNr, string Description)
+begin
+record ttPhysStockVc Locr, Loc2r;
+row ttPhysStockVc Locrw;
+integer exist, i;
+
+exist = 1; 
+Locr.Code = LocCode;
+ReadFirstMain(Locr, 1, true);
+Locrw.EquipCode = InventoryNr;
+Locrw.EquipName = Description;
+MatRowInsert(Locr,MatRowCnt(Locr),Locrw);
+
+Loc2r.Code = Locr.Code;	
+ReadFirstMain(Loc2r, 1, true);
+RecordUpdate(Loc2r,Locr,true);	
+end;
+
+global
+function LongInt LocEquipVcRecordCheck(var record LocEquipVc LEr, record LocEquipVc LE2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode;
+record UserVc USr;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+if blank(LEr.LocCode) then
+	begin
+	RecordCheckError(20549,"",-1,"LocCode");
+	res = -1;
+	end;
+
+  LocEquipVcRecordCheck = res;
+RETURN;
+end;
+
+
+global updating 
+function LongInt LocEquipVcRecordSave(var record LocEquipVc LEr, record LocEquipVc LE2r, LongInt stat, LongInt long4)
+BEGIN
+record HALNameVc HNr;
+LongInt res;
+
+LocEqIns(LEr.LocCode, LEr.InventoryNr, LEr.Description);
+LocEquipVcRecordSave = res;  
+RETURN;
+end;
+
+global updating 
+function LongInt LocEquipVcRecordUpdate(var record LocEquipVc LEr, record LocEquipVc LE2r, LongInt stat, LongInt long4)
+BEGIN
+record HALNameVc HNr;
+LongInt res;
+
+if (LEr.LocCode <> LE2r.LocCode) then
+	begin
+	if nonblank(LE2r.LocCode) then
+		begin
+		LocEqDel(LE2r.LocCode, LEr.InventoryNr);
+		end;
+	LocEqIns(LEr.LocCode, LEr.InventoryNr, LEr.Description);
+
+	end;
+
+LocEquipVcRecordUpdate = res;  
+RETURN;
+end;

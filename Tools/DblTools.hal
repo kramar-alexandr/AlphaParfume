@@ -1,0 +1,265 @@
+external inner procedure MainRClassReportDef(var record RcVc);
+external inner procedure INrsRClassReportDef(var record RcVc);
+
+//===============================================
+global
+procedure DblPIVc(string dblstr,string l,Integer currepwn)
+begin
+record PIVc PIr;
+Integer wn;
+
+if nonblank(dblstr) then
+  begin
+  PIr.VEItemCode = dblstr;
+  if ReadFirstKey("VEItemCode", PIr, 1, True) then
+    begin
+    wn = OpenWindow("PIDClass", 1, currepwn, "", "", PIr);
+    end;
+  end;
+RETURN;
+end;
+
+//===============================================
+global
+procedure DblNLFunc(string dblstr,string l,Integer currepwn,Integer cons)
+begin
+  Integer wn;
+  record RcVc curRepSpec;
+  record RcVc RepSpec;
+  Integer oldcomp,repcompany;
+
+  if (nonblank(dblstr)) then begin
+    GetWIndowRecord(currepwn,curRepSpec);
+    oldcomp = CurrentCompany;
+    if (nonblank(l)) then begin
+      repcompany = StringToInt(l);
+    end else begin
+      repcompany = oldcomp;
+    end;
+    if (repcompany!=0) then begin
+      if (SetCompany(repcompany,false)) then begin
+      end;
+    end;
+    ReportDefaults(RepSpec,"MainRClass");
+    MainRClassReportDef(RepSpec);
+    RepSpec.repname = "MainRn";
+    RepSpec.Media = mtScreen;
+    RepSpec.basecurncy = curRepSpec.basecurncy;
+    RepSpec.SimVerf = curRepSpec.SimVerf;
+    RepSpec.stoff = -1;
+    RepSpec.f3 = curRepSpec.f6;//excl obj
+    RepSpec.f4 = dblstr;//AccStr
+    RepSpec.CurncyCode = curRepSpec.CurncyCode;
+    RepSpec.sStartDate = curRepSpec.sStartDate;
+    RepSpec.sEndDate = curRepSpec.sEndDate;
+    RepSpec.ObjStr = curRepSpec.ObjStr;
+    RepSpec.ObjType = curRepSpec.ObjType;
+    if (curRepSpec.repname=="TrialRn") then begin
+      RepSpec.flags[8] = curRepSpec.flags[5];
+    end;
+    RepSpec.IncDaughter = cons;
+    RepSpec.flags[29] = repcompany;
+    RunReport(RepSpec,0);
+    if (oldcomp!=CurrentCompany) then begin
+      ResetCompany(oldcomp);
+    end;
+  end;
+  return;
+end;
+
+//===============================================
+global
+procedure DblUserVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record UserVc Usr;
+
+  if (nonblank(l)) then begin
+    Usr.Code = l;
+  end else begin
+    Usr.Code = dblstr;
+  end;
+  if (nonblank(Usr.Code)) then begin
+    if (ReadFirstMain(Usr,1,true)) then begin
+      wn = OpenWindow("USDClass",1,0,"","",Usr);
+    end;
+  end;
+  return;
+end;
+
+//===============================================
+global
+procedure DblShowQtyRn(string dbstring,string l, integer currepwn)
+begin
+  integer wn;
+  record INVc INr;
+  record RcVc oldRepSpec,RepSpec;
+  date wdate;
+
+  //StopAlert("1");
+  GetWindowRecord(currepwn,oldRepSpec); //подтягивает из вызывающего окна его RepSpec
+  ReportDefaults(RepSpec,"INr.RClass");// выставляет умолчания
+  INrsRclassReportDef(RepSpec);// выставляет умолчания
+  if (blank(oldRepSpec.d1)) then begin//формирует дату для передачи в отчет
+   wdate = CurrentDate;
+  end else begin
+   wdate = oldRepSpec.d1;//если мы задали какуюто в первичном отчете - то передаст ее во вторичный
+  end;
+  RepSpec.sEndDate = wdate;
+  RepSpec.sStartDate = StringToDate("1/1/2000");
+  RepSpec.Media = mtScreen;//на что выводить по умолчанию - в данном случае - на экран
+  RepSpec.f1 = l;//код товара, что мы передали из первичного
+  RepSpec.f6 = oldRepSpec.f4;//
+  RepSpec.repname = "INrsRn";
+  RunReport(RepSpec,0);
+
+return;
+end;
+
+//===============================================
+global
+procedure DblVBudget(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record VBudgetVc BUr;
+  Boolean testf2;
+
+  if (nonblank(dblstr)) then begin
+    BUr.Code = FirstInRange(dblstr,10);
+    if (ReadFirstMain(BUr,1,true)) then begin
+      wn = OpenWindow("VBudgetDClass",1,0,"","",BUr);
+    end;
+  end;
+  return;
+end;
+
+//===============================================
+global
+procedure DblItemHistVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record ItemHistVc IHr;
+
+  IHr.SerNr = dblstr;
+  ReadFirstMain(IHr, 1, True);
+  wn = OpenWindow("ItemHistDClass", 1, 0, "", "", IHr);
+  Return;
+end;
+
+//===============================================
+global
+procedure DblIVVcBallRn(string dblstr, string l, Integer currepwn)
+begin
+record RcVc RepSpec;
+Integer wn;
+
+GetWindowRecord(currepwn, RepSpec);
+RepSpec.Media = mtScreen;
+RepSpec.f1 = StringToLongint(l);
+RepSpec.f2 = blankval;
+RepSpec.f4 = blankval;
+RepSpec.repname = "IVVcBallRn";
+RunReport(RepSpec, 0);
+RETURN;
+end;
+
+Global
+procedure dblAccnumber(String dblstr, String l,Integer currepwn)
+begin
+string 60 obj1,obj2;
+Integer wn;
+record RcVc curRepSpec;
+record RcVc RepSpec;
+Integer oldcomp,repcompany, cons;
+String 255 tstr, tstr2,k,l1,data;
+
+    cons = 0;
+    if (nonblank(dblstr)) then begin
+      GetWIndowRecord(currepwn,curRepSpec);
+  	if right(l,2) == ",1" or right(l,2) == ",0" then
+  	begin
+  		k = right(l,1);
+  		l1 = left(l,len(l) - 2);
+  		data = right(l1,21);
+  		l1 = left(l,len(l) - 23);
+  		if k == "0" then
+  		begin
+  			curRepSpec.sStartDate = FirstInrange(data,21);
+  			curRepSpec.sEndDate = LastInrange(data,25);
+  		end;
+  		if k == "1" then
+  		begin
+  			RepSpec.sStartDate = FirstInrange(data,21);
+  			RepSpec.sEndDate = LastInrange(data,25);
+  		end;
+  		end else begin
+  		l1 = l;
+  	end;
+  	 tstr = firstinrange(l1,20);
+  	 tstr2 = right(l1,(len(l1)-(len(tstr)+1)));
+      oldcomp = CurrentCompany;
+      // if (nonblank(l)) then begin
+        // repcompany = StringToInt(l);
+      // end else begin
+        repcompany = oldcomp;
+      // end;
+      if (repcompany!=0) then begin
+        if (SetCompany(repcompany,false)) then begin
+        end;
+      end;
+      ReportDefaults(RepSpec,"MainRClass");
+      MainRClassReportDef(RepSpec);
+      RepSpec.repname = "MainRn";
+      RepSpec.Media = mtScreen;
+      RepSpec.basecurncy = 1;
+      RepSpec.f4 = tstr;//AccStr
+      RepSpec.CurncyCode = curRepSpec.CurncyCode;
+      RepSpec.sStartDate = curRepSpec.sStartDate;
+      RepSpec.sEndDate = curRepSpec.sEndDate;
+      RepSpec.ObjStr = tstr2;
+      if (curRepSpec.repname=="TrialRn") then begin
+        RepSpec.flags[8] = curRepSpec.flags[5];
+      end;
+      RepSpec.IncDaughter = cons;
+      RepSpec.flags[29] = repcompany;
+      RunReport(RepSpec,0);
+      if (oldcomp!=CurrentCompany) then begin
+        ResetCompany(oldcomp);
+      end;
+    end;
+  return;
+end;
+//*************************************************процедура для вывода  подробных данных о текущей операции
+global
+procedure DblShowPredRn(string dbstring,string l, integer currepwn)
+begin
+  integer wn;
+  record RcVc oldRepSpec,RepSpec  ;
+
+  GetWindowRecord(currepwn,oldRepSpec); //подтягивает из вызывающего окна его RepSpec
+  RepSpec.d1 = oldRepSpec.d1;
+  RepSpec.f5 = oldRepSpec.f5;
+  RepSpec.Media = mtScreen;//на что выводить по умолчанию - в данном случае - на экран
+  RepSpec.f1 = dbstring;//код товара, что мы передали из первичного
+  RepSpec.repname = "DPredFilRn";
+  RunReport(RepSpec,0);
+return;
+end;
+
+
+global
+procedure DblMotivVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record  VMotivVc Motr;
+
+  if (nonblank(dblstr)) then
+    begin
+    Motr.SerNr = FirstInRange(dblstr,10);
+    if (ReadFirstMain(Motr,1,true)) then
+      begin
+      wn = OpenWindow("VMotiv1DClass",1,0,"","",Motr);
+      end;
+    end;
+  return;
+end;

@@ -1,0 +1,217 @@
+external inner procedure ExtractObj(string, var Integer, var string);
+remote function string 13 FillBarcodes(LongInt, LongInt);
+
+
+function string 13 GetBarcodeStr(string ArtCode)
+begin
+record INVc INr;
+record BarcodeVc Bar;
+Boolean Found;
+
+ResetLoop(Bar);
+Bar.Itemcode = ArtCode;
+while LoopKey("Itemcode", Bar, 1, not Found)
+	begin
+	Found = ((Bar.1CFlag == 0) and (Bar.Itemcode == ArtCode));
+	end;
+if Found then 
+	begin
+	GetBarcodeStr = Bar.Barcode;
+	RETURN;
+	end else
+	begin
+	INr.Code = ArtCode;
+	ReadFirstMain(INr, 1, True);
+	GetBarcodeStr = INr.BarCode;
+	RETURN;
+	end;
+RETURN;
+end;
+
+global
+procedure IVVcToExcelCn(record RcVc RepSpec)
+begin
+record CUVc CUr;
+record IVVc IVr, IV2r;
+row IVVc IVrw;
+record LangBlock LB;
+row LangBlock LBrw;
+string 20 INVcNr;
+string 200 INvcSerNums, FileName;
+string 20 CustCode;
+string 13 BarcodeStr;
+Integer RwCnt, pos;
+
+SetLangMode(LangRussian, "RUS", 2);
+StartReportNoHeaderJob("");
+//FileName = FirstInRange(RepSpec.f1, 20) & "_" & GetDay(CurrentDate) & ".xls";
+FileName = RepSpec.f2 & "_" & GetDay(CurrentDate) & ".xls";
+SetExportCodepage("UTF-8");
+CreateFile(FileName);
+OpenFile(FileName);
+ExportString("НЕ ЯВЛЯЕТСЯ ДОКУМЕНТОМ, ПОДТВЕРЖДАЮЩИМ ПЕРЕДАЧУ ТОВАРА!");
+NewLine;
+ExportString("Код");				
+ExportString("Штрих-код");				
+ExportString("Наименование");				
+ExportString("Цена");				
+ExportString("Кол-во");				
+ExportString("Скидка");				
+ExportString("Сумма");		
+NewLine;
+CustCode = blankval;
+pos = 0;
+INvcSerNums = RepSpec.f1;
+ExtractObj(INvcSerNums, pos, INVcNr);
+BlockLoad(LB);
+while nonblank(INVcNr) 
+	begin
+	IVr.SerNr = INVcNr;
+	if ReadFirstMain(IVr, 1, True) then
+		begin
+		if (blank(CustCode) or (IVr.CustCode == CustCode)) then
+			begin
+			CustCode = IVr.CustCode;
+			NewLine;
+			NewLine;
+			ExportString("Счет-фактура № " & IVr.SerNr);
+			ExportString("от " & IVr.InvDate);
+			ExportString("Дата оплаты: " & IVr.PayDate);
+			ExportString("Сумма: ");
+			ExportVal(IVr.Sum4, M4Val);				
+			ExportString(IVr.CurncyCode);				
+			NewLine;
+			ExportString("Покупатель: ");
+			ExportString(IVr.Addr0);
+			NewLine;
+			ExportString("Продавец: ");
+			for(RwCnt = 0; (RwCnt < MatRowCnt(LB)) and (LBrw.Code <> IVr.LangCode); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(LB, RwCnt, LBrw);
+				end;
+			ExportString(LBrw.Comment);
+			NewLine;
+			for(RwCnt = 0; RwCnt < MatRowCnt(IVr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(IVr, RwCnt, IVrw);
+				if (IVrw.stp == 1) then	
+					begin
+					NewLine;
+					ExportString(IVrw.ArtCode);
+					BarcodeStr = FillBarcodes(IVr.OrderNr, IVrw.OrdRow);
+					if blank(BarcodeStr) then
+						begin
+						BarcodeStr = GetBarcodeStr(IVrw.ArtCode);
+						if blank(BarcodeStr) then	
+							begin
+							BarcodeStr = " ";
+							end;
+						end;
+					ExportString(BarcodeStr);
+					ExportString(IVrw.Spec);						
+					ExportVal(IVrw.Price, M4Val);						
+					ExportVal(IVrw.Quant, M423Val);						
+					ExportVal(IVrw.vRebate, M4Val);						
+					ExportVal(IVrw.Sum, M4Val);						
+					end;
+				end;
+			end;
+		end;
+	ExtractObj(INvcSerNums, pos, INVcNr);
+	end;
+CloseFile;
+EndJob;
+RETURN; 
+end;
+
+
+//Экспорт Сч/ф со штрихкодами только из карточки товара
+global
+procedure IVVcToExcel2Cn(record RcVc RepSpec)
+begin
+record CUVc CUr;
+record IVVc IVr, IV2r;
+row IVVc IVrw;
+record LangBlock LB;
+row LangBlock LBrw;
+record INVc INr;
+string 20 INVcNr;
+string 200 INvcSerNums, FileName;
+string 20 CustCode;
+string 13 BarcodeStr;
+Integer RwCnt, pos;
+
+SetLangMode(LangRussian, "RUS", 2);
+StartReportNoHeaderJob("");
+//FileName = FirstInRange(RepSpec.f1, 20) & "_" & GetDay(CurrentDate) & ".xls";
+FileName = RepSpec.f2 & "_" & GetDay(CurrentDate) & ".xls";
+SetExportCodepage("UTF-8");
+CreateFile(FileName);
+OpenFile(FileName);
+ExportString("НЕ ЯВЛЯЕТСЯ ДОКУМЕНТОМ, ПОДТВЕРЖДАЮЩИМ ПЕРЕДАЧУ ТОВАРА!");
+NewLine;
+ExportString("Код");
+ExportString("Штрих-код");
+ExportString("Наименование");
+ExportString("Цена");
+ExportString("Кол-во");
+ExportString("Скидка");
+ExportString("Сумма");
+NewLine;
+CustCode = blankval;
+pos = 0;
+INvcSerNums = RepSpec.f1;
+ExtractObj(INvcSerNums, pos, INVcNr);
+BlockLoad(LB);
+while nonblank(INVcNr)
+	begin
+	IVr.SerNr = INVcNr;
+	if ReadFirstMain(IVr, 1, True) then
+		begin
+		if (blank(CustCode) or (IVr.CustCode == CustCode)) then
+			begin
+			CustCode = IVr.CustCode;
+			NewLine;
+			NewLine;
+			ExportString("Счет-фактура № " & IVr.SerNr);
+			ExportString("от " & IVr.InvDate);
+			ExportString("Дата оплаты: " & IVr.PayDate);
+			ExportString("Сумма: ");
+			ExportVal(IVr.Sum4, M4Val);
+			ExportString(IVr.CurncyCode);
+			NewLine;
+			ExportString("Покупатель: ");
+			ExportString(IVr.Addr0);
+			NewLine;
+			ExportString("Продавец: ");
+			for(RwCnt = 0; (RwCnt < MatRowCnt(LB)) and (LBrw.Code <> IVr.LangCode); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(LB, RwCnt, LBrw);
+				end;
+			ExportString(LBrw.Comment);
+			NewLine;
+			for(RwCnt = 0; RwCnt < MatRowCnt(IVr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(IVr, RwCnt, IVrw);
+				if (IVrw.stp == 1) then
+					begin
+					INr.Code = IVrw.ArtCode;
+					ReadFirstMain(INr, 1, true);
+					NewLine;
+					ExportString(IVrw.ArtCode);
+					ExportString(INr.BarCode);
+					ExportString(IVrw.Spec);
+					ExportVal(IVrw.Price, M4Val);
+					ExportVal(IVrw.Quant, M423Val);
+					ExportVal(IVrw.vRebate, M4Val);
+					ExportVal(IVrw.Sum, M4Val);
+					end;
+				end;
+			end;
+		end;
+	ExtractObj(INvcSerNums, pos, INVcNr);
+	end;
+CloseFile;
+EndJob;
+RETURN;
+end;

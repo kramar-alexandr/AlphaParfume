@@ -1,0 +1,133 @@
+remote updating procedure tVerifIn(); 
+remote updating procedure tClearVerifVc();
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+SetLangMode(LangRussian,"RUS",2);
+
+WindowBegin("Сверка 1С и Hansa", tVerifDClass, CGview, -);
+UseView(tVerifVc);
+SetWRect(10, 80, 730, 400);
+vs = 20; h = 150; v = 30; h2 = 200; h3 = 315; h4 = 505; h5 = 610; 
+EditField(h, v += vs, 80, "Номер", ViewOnly, SerNr, False, 0);
+EditField(h, v += vs, 80, "Дата", ViewOnly, Date, False, 0);
+EditField(h, v += vs, 80, "Код 1С", ViewOnly, CodeC, False, 0);
+EditField(h, v += vs, 80, "Код Hansa", ViewOnly, CodeCU, False, 0);
+EditField(h, v += vs, -50, "Название Hansa", ViewOnly, NameCU, False, 0);
+EditField(h, v += vs, 80, "Группа пр", ViewOnly, SalesGroup, False, 0);
+EditField(h, v += vs, 80, "Задолженность 1С", ViewOnly, DebC, False, 0);
+EditField(h, v += vs, 80, "Задолженность Hansa", ViewOnly, DebCU, False, 0);
+EditField(h, v += vs, 80, "Разница", ViewOnly, Dif, False, 0);
+EndWindow;
+
+WindowBegin("Сверка 1С и Hansa", tVerifLClass, CGmlist, DMView);
+SpawnClass(tVerifDClass);
+SetWRect(64, 80, 650, 350);
+Sizeable(-1, -1, 0, 0);
+UseView(tVerifVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);//---
+RlColKey(80, 80, "Код 1С", CodeC, false, CodeC);
+RlColKey(160, 160, "Код Hansa", CodeCU, false, CodeCU);
+RlColKey(240, 240, "Название Hansa", NameCU, false, NameCU);
+RlColKey(420, 420, "Группа пр", SalesGroup, false, SalesGroup);
+RlColKey(480, 480, "Разница", Dif, false, Dif);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+SpecialMenu("Очистить регистр", 'C', 0, "tClearDsm");
+//SpecialMenu("Импорт из 1С", 'I', 0, "tImpDsm");
+EndWindow;
+
+WindowBegin("Сверка 1С и Hansa", tVerifSClass, CGslist, -);
+SpawnClass(tVerifDClass);
+UseView(tVerifVc);
+SetWRect(64,80,650,350);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);//---
+RlColKey(80, 80, "Код 1С", CodeC, false, CodeC);
+RlColKey(160, 160, "Код Hansa", CodeCU, false, CodeCU);
+RlColKey(240, 240, "Название Hansa", NameCU, false, NameCU);
+RlColKey(420, 420, "Группа пр", SalesGroup, false, SalesGroup);
+RlColKey(480, 480, "Разница", Dif, false, Dif);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+   
+WindowBegin("Отчёт по сверке 1С и Hansa", tVerifRClass,CGRcW,RcType);
+SetWRect(20,80,450,250);
+v = 6; h = 50; h1 = 200;  h2 = 250;
+EditFieldTL(h1, v += 20, 80, "Клиент", M4UStr, Normal, 21, f1, false, CUSClass);
+EditFieldTL(h1,v+=vs ,80,"Группа продажи",M4UStr,Normal,10,f2,false,SalesGroupSClass);
+EditFieldTL(h1, v += 20, 80,"Классификация клиентов", M4UStr,Normal,60,f3,false,CClassSClass);
+EditFieldTL(h1, v += 20, 80, "Дата", M4Date, Normal, 21, d1, false, PasteCurDate);
+EndWindow;   
+
+
+WindowBegin("Импорт из 1С",tVerifWClass,CGIcW,RcType);
+SetWRect(20,80,470,200);
+EditFieldTL(150,15, 150,"Дата сверки",M4Date,Normal,10,d1,false,PasteCurDate);
+//EditFieldTL(150,45, 150,"Выберите файл",M4Str,Normal,200,f1,false,0);
+EndWindow; 
+ return;
+ end;
+ 
+ 
+global
+updating
+procedure tClearDsm()
+begin
+record UserVc USr;
+
+USr.Code = CurrentUser;
+readfirstmain(Usr, 1, true);
+if ((Usr.AccessGroup=="ADMIN") or (Usr.AccessGroup=="FINO") or (Usr.AccessGroup=="FINOA")) then
+	begin
+	tClearVerifVc;
+	end;
+RETURN;
+end;
+
+global
+function Boolean tVerifLClassOnOpenWindow(Integer wn)
+begin
+record UserVc USr;
+
+USr.Code = CurrentUser;
+readfirstmain(Usr, 1, true);
+
+if ((USr.limitedAccess <> 0) or (Usr.AccessGroup<>"ADMIN") or (Usr.AccessGroup<>"FINO") or (Usr.AccessGroup<>"FINOA") ) then
+	begin
+	SetWindowSubset(wn, CurrentUser);
+	UpdateBrowses("");
+	end;
+tVerifLClassOnOpenWindow = True;
+RETURN;
+end;
+
+// global
+// updating
+// procedure tImpDsm()
+// begin
+// record RCVc RepSpec;
+// Integer wn;
+
+// if currentuser == "DELPHI" or currentuser == "IRBO" then
+	// begin
+	// wn = OpenWindow("tVerifWClass", 1, 0, "", "", RepSpec); 
+	// //tVerifIn;
+	// end;
+// RETURN;
+// end;
+
+// global
+// updating function Boolean tVerifWClassOnOKWindow(Integer wn)
+// BEGIN
+// record RcVc RepSpec;
+
+// GetWindowRecord(wn,RepSpec);
+// tVerifIn(RepSpec);
+// CloseWindow(wn);
+// tVerifWClassOnOKWindow = false;
+// RETURN;
+// END;

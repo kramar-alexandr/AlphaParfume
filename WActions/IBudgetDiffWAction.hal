@@ -1,0 +1,949 @@
+external inner procedure TSERW_RUS();
+remote updating procedure ClearIBudgetDiffVc();
+external function string 255 IAddToSet(string, string);
+
+//===============================================
+//Документ не закрыт (OK)
+function Boolean IBudgetDiffIsOpened(integer wn)
+begin
+  record IBudgetDiffVc IBDr, IBD2r;
+  integer ws;
+  integer normalmode, newmode, updatemode;
+  boolean res;
+
+  normalmode = 0;
+  newmode = 1;
+  updatemode = 2;
+
+  ws = WindowState(wn);
+  GetWindowRecord(wn, IBDr);
+  GetPrevWindowRecord(wn, IBD2r);
+
+  res = (ws == newmode) or ((ws == normalmode) and (IBDr.OKFlag <> 1)) or ((ws == updatemode) and (IBD2r.OKFlag <> 1));
+  
+  IBudgetDiffIsOpened = res;
+  Return;
+end;
+
+//===============================================
+//Проверка доступа к FN1
+function boolean CheckFN1(string FN1, string PODR, string UserCode)
+begin
+  record VUserBudVc UBr; //Закрепление функций - настройка
+  record UserVc Usr;
+  record ObjVc Objr;
+  boolean res;
+
+  res = false;
+  UBr.Code = UserCode;
+  if ReadFirstMain(UBr, 1, True) then
+    begin
+      Usr.Code = UserCode;
+      ReadFirstMain(Usr, 1, true);
+      Objr.Code = Usr.PersObjx;
+      ReadFirstMain(Objr, 1, true);
+      res = (blank(UBr.Function1) or SetInSet(FN1, UBr.Function1)) 
+            and
+            ((Usr.limitedAccess == 0) or SetInSet(PODR, Objr.AutoObjects));
+    end;
+    
+  CheckFN1 = res;
+  Return;
+end;
+
+//===============================================
+//Проверка дироектора FN1/PODR
+function boolean CheckDirector(string FN1, string UserCode)
+begin
+  record IObjDirectorBlock Dr;
+  row IObjDirectorBlock Drw;
+  integer i;
+  boolean res;
+
+  BlockLoad(Dr);
+  for (i=0; (i < MatRowCnt(Dr)) and not res; i=i+1)
+    begin
+      MatRowGet(Dr, i, Drw);
+      res = (Drw.Obj == FN1) and (Drw.Director == UserCode);
+    end;
+ 
+  CheckDirector = res;
+  Return;
+end;
+
+//===============================================
+//Полный доступ
+function boolean CheckAdm(string UserCode)
+begin
+  record UserVc Usr;
+
+  Usr.Code = UserCode;
+  CheckAdm = ReadFirstMain(Usr, 1, true) and nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "UCHR,ADMIN");
+  Return;
+end;
+
+//===============================================
+//Начальник
+function boolean CheckSupervisor(string EmplCode, string UserCode)
+begin
+  record UserVc Usr;
+
+  Usr.Code = EmplCode;
+  CheckSupervisor = ReadFirstMain(Usr, 1, true) and (Usr.Supervisor == UserCode);
+  Return;
+end;
+
+//===============================================
+//Копируем основную информацию
+procedure IBudgetDiffRowCopy(var row IBudgetDiffVc newIBDrw, row IBudgetDiffVc IBDrw)
+begin
+  newIBDrw.AccNumber = IBDrw.AccNumber;
+  newIBDrw.AccName = IBDrw.AccName;
+  newIBDrw.Objects = IBDrw.Objects;
+  newIBDrw.Plan = IBDrw.Plan;
+  newIBDrw.Fact = IBDrw.Fact;
+  newIBDrw.Diff = IBDrw.Diff;
+  newIBDrw.Sum = 0;
+  Return;
+end;
+
+//===============================================
+function boolean IBudgetDiffDClassSumEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  boolean NeedUpdate;
+
+  if (changed <> 0) then
+    begin
+      NeedUpdate = false;
+      GetWindowRecord(wn, IBDr);
+      MatRowGet(IBDr, rownr, IBDrw);
+      if (IBDrw.stp <> 2) then
+        begin
+          if ((IBDrw.Sum > IBDrw.Diff) or (IBDrw.Sum < 0)) then //Сумма не может превышать разницу или быть отрицательной
+            begin
+              if (IBDrw.stp == 1) then
+                begin
+                  IBDrw.Sum = IBDrw.Diff;
+                end
+              else
+                begin
+                  IBDrw.Sum = 0;
+                end;
+              NeedUpdate = true;
+            end;
+             
+          if (((IBDrw.stp == 3) or (IBDrw.stp == 4)) and (blank(IBDrw.ToFunc) or blank(IBDrw.ToPodr))) or ((IBDrw.stp == 5) and blank(IBDrw.User)) then
+            begin
+              IBDrw.Sum = 0;
+              NeedUpdate = true;
+            end;
+            
+          if NeedUpdate then
+            begin
+              MatRowPut(IBDr, rownr, IBDrw);
+              PutWindowRecord(wn, IBDr);
+            end;
+        end;
+    end;
+  IBudgetDiffDClassSumEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IBudgetDiffDClassToFuncEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  record ObjVc Objr;
+  
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      MatRowGet(IBDr, rownr, IBDrw);
+      if (IBDrw.stp == 3) then //Распределение на FN1
+        begin
+          Objr.Code = IBDrw.ToFunc;
+          if not (ReadFirstMain(Objr, 1, true) and (Objr.OTCode == "FN1")) then
+            begin
+              IBDrw.ToFunc = blankval;
+              IBDrw.Sum = 0;
+              MatRowPut(IBDr, rownr, IBDrw);
+              PutWindowRecord(wn, IBDr);
+            end;
+        end;
+    end;
+  IBudgetDiffDClassToFuncEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IBudgetDiffDClassToPodrEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  record ObjVc Objr;
+  
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      MatRowGet(IBDr, rownr, IBDrw);
+      if (IBDrw.stp == 4) then //Распределение на PODR
+        begin
+          Objr.Code = IBDrw.ToPodr;
+          if not (ReadFirstMain(Objr, 1, true) and (Objr.OTCode == "PODR")) then
+            begin
+              IBDrw.ToPodr = blankval;
+              IBDrw.Sum = 0;
+              MatRowPut(IBDr, rownr, IBDrw);
+              PutWindowRecord(wn, IBDr);
+            end;
+        end;
+    end;
+  IBudgetDiffDClassToPodrEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IBudgetDiffDClassUserEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  record UserVc Usr;
+  record ObjVc Objr;
+
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      MatRowGet(IBDr, rownr, IBDrw);
+      if (IBDrw.stp == 5) then //Распределение на сотрудника
+        begin
+          Usr.Code = IBDrw.User;
+          ReadFirstMain(Usr, 1, true);
+          Objr.Code = Usr.PersObjx;
+          ReadFirstMain(Objr, 1, true);          
+          if not ((Usr.Supervisor == CurrentUser) and nonblank(Objr.AutoObjects) and SetInSet(IBDrw.ToPodr, Objr.AutoObjects)) then //Можно назначить ответственным только сотрудника данного PODR
+            begin
+              IBDrw.User = blankval;
+              IBDrw.Sum = 0;
+            end;
+          MatRowPut(IBDr, rownr, IBDrw);
+          PutWindowRecord(wn, IBDr);
+        end;
+
+      if (IBDrw.stp == 6) then //Учредитель - назначение отв. сотрудника
+        begin
+          Usr.Code = IBDrw.User;
+          if not (ReadFirstMain(Usr, 1, true) and CheckAdm(CurrentUser)) then //Только Учредитель
+            begin
+              IBDrw.User = blankval;
+              IBDrw.Sum = 0;
+            end;
+          MatRowPut(IBDr, rownr, IBDrw);
+          PutWindowRecord(wn, IBDr);
+        end;
+    end;
+  IBudgetDiffDClassUserEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IBudgetDiffDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "Sum": res = IBudgetDiffDClassSumEFAfter(wn, rownr, changed);
+          case "ToFunc": res = IBudgetDiffDClassToFuncEFAfter(wn, rownr, changed);
+          case "ToPodr": res = IBudgetDiffDClassToPodrEFAfter(wn, rownr, changed);
+          case "User": res = IBudgetDiffDClassUserEFAfter(wn, rownr, changed);
+        end;
+    end;
+  IBudgetDiffDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+function boolean IBudgetDiffDClassActiveEditField(integer wn, string fieldname, integer fn, integer wnst, integer rownr, integer changed)
+begin
+  boolean res;
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  
+  res = IBudgetDiffIsOpened(wn); //Не установлен OK
+  
+  if (res) then
+    begin
+      GetWindowRecord(wn, IBDr);    
+      if (rownr > -1) then
+        begin
+          MatRowGet(IBDr, rownr, IBDrw);
+        end;
+
+      switch (fieldname)
+        begin
+          case "Comment": res = true;
+          case "Sum": res = ((IBDrw.stp == 1) and CheckFN1(IBDr.Func, IBDr.Podr, CurrentUser)) //Основной документ
+                            or
+                            ((IBDrw.stp == 5) and CheckSupervisor(IBDrw.User, CurrentUser)) //На сотрудника - начальник
+                            or
+                            ((IBDrw.stp == 6) and CheckAdm(CurrentUser)) //На сотрудника - Учредитель
+                            or
+                            (((IBDrw.stp == 3) or (IBDrw.stp == 4)) and blank(IBDrw.User) 
+                              and CheckFN1(IBDrw.ToFunc, IBDrw.ToPodr, CurrentUser) or (IBDrw.Initiator == CurrentUser)); //Распределенное - распределивший или ответственный
+
+          case "RowComment": res = (IBDrw.stp <> 2);
+          case "ToFunc": res = blank(IBDrw.ToFunc) and blank(IBDrw.User);
+          case "ToPodr": res = blank(IBDrw.ToPodr) and blank(IBDrw.User);
+          case "User": res = (IBDrw.stp == 5) or ((IBDrw.stp == 6) and CheckAdm(CurrentUser)); //Только для ответственного сотрудника
+          otherwise res = false;
+        end;
+    end;
+
+  IBudgetDiffDClassActiveEditField = res or CheckAdm(CurrentUser);
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IBudgetDiffDClassOKFlagButtonAction(integer wn, integer value)
+begin
+  record IBudgetDiffVc IBDr;
+  boolean res;
+
+  GetWindowRecord(wn, IBDr);
+
+  if IBudgetDiffIsOpened(wn) then //Установка флага - только ответственным лицом или финансовым директором
+    begin
+      res = CheckFN1(IBDr.Func, IBDr.Podr, CurrentUser) or CheckAdm(CurrentUser);
+    end
+  else //Снятие флага - только финансовым директором
+    begin
+      res = CheckAdm(CurrentUser);
+    end;
+
+  if res then //Подпись OK/UnOK
+    begin
+      IBDr.OKUser = CurrentUser;
+      PutWindowRecord(wn, IBDr);
+    end;
+
+  IBudgetDiffDClassOKFlagButtonAction = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IBudgetDiffDClassOnOKWindow(Integer wn)
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  integer i, rwcnt;
+  val Sum;
+  boolean res;
+  boolean RowSign;
+  
+  SetLangMode(LangRussian,"RUS",2);
+  res = true;
+  GetWindowRecord(wn, IBDr);
+  
+  Sum = 0;
+  IBDr.ToFuncIdx = "";
+  IBDr.ToPodrIdx = "";
+  RowSign = true;
+  rwcnt = MatRowCnt(IBDr);
+  for (i=0; i<rwcnt; i=i+1)
+    begin
+      MatRowGet(IBDr, i, IBDrw);
+      if (IBDrw.stp == 1) or (IBDrw.stp == 3) or (IBDrw.stp == 4) then
+        begin
+          Sum = Sum + IBDrw.Sum;
+        end;
+      if (IBDrw.stp == 3) or (IBDrw.stp == 4) then
+        begin
+          RowSign = RowSign and nonblank(IBDrw.User);
+          IBDr.ToFuncIdx = IAddToSet(IBDrw.ToFunc, IBDr.ToFuncIdx);
+          IBDr.ToPodrIdx = IAddToSet(IBDrw.ToPodr, IBDr.ToPodrIdx);
+        end;
+    end;
+  
+  if (IBDr.TotalDiff <> Sum) then
+    begin
+      MessageBox(0, "Сумма не совпадает!");
+      res = false;
+    end;
+    
+  if res and (IBDr.OKFlag == 1) and not RowSign then
+    begin
+      MessageBox(0, "Проверьте подписи!");
+      res = false;
+    end;
+    
+  if res then
+    begin
+      PutWindowRecord(wn, IBDr);
+    end;
+
+  IBudgetDiffDClassOnOKWindow = res;
+  return;
+end;
+
+//===============================================
+global
+procedure IBudgetDiffDClassOnOpenFromBrowse(integer wn)
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  integer i, rwcnt;
+  boolean found;
+  
+  GetWindowRecord(wn, IBDr);
+  found = false;
+  rwcnt = MatRowCnt(IBDr);
+  found = CheckFN1(IBDr.Func, IBDr.Podr, CurrentUser) or CheckAdm(CurrentUser);
+  for (i=0; (i<rwcnt) and not found; i=i+1)
+    begin
+      MatRowGet(IBDr, i, IBDrw);
+      found = ((IBDrw.stp == 3) or (IBDrw.stp == 4)) and CheckFN1(IBDrw.ToFunc, IBDrw.ToPodr, CurrentUser);
+    end;
+
+  if not (found) then
+    begin
+      CloseWindow(wn);
+    end;
+  
+  Return;
+end;
+
+//===============================================
+global
+function boolean IBudgetDiffLClassOnOpenWindow(integer wn)
+begin
+  SetWindowSubset(wn, "Visible");
+  IBudgetDiffLClassOnOpenWindow = false;
+  return;
+end;
+  
+//===============================================
+global
+function Boolean IBudgetDiffDClassInsertRowTest(integer wn, integer rownr)
+begin
+  IBudgetDiffDClassInsertRowTest = false;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IBudgetDiffDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  boolean res;
+
+  res = IBudgetDiffIsOpened(wn); //Запрещать при установленном OK
+  
+  if (res) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      MatRowGet(IBDr, rownr, IBDrw);
+      res = (((IBDrw.stp == 3) or (IBDrw.stp == 4)) and CheckFN1(IBDr.Func, IBDr.Podr, CurrentUser) and blank(IBDrw.User))
+            or
+            ((IBDrw.stp == 5) and (blank(IBDrw.User) or CheckSupervisor(IBDrw.User, CurrentUser)));
+    end;
+  
+  IBudgetDiffDClassDeleteRowTest = res or CheckAdm(CurrentUser);
+  Return;
+end;
+
+//===============================================
+global
+updating procedure IBudgetDiffCreateDsl()
+begin
+  record RcVc RepSpec;
+  ReportDefaults(RepSpec, "IBudgetDiffCreateRClass");    
+  RepSpec.repname = "IBudgetDiffCreateMn";
+  OpenWindow("IBudgetDiffCreateRClass", 1, 0, "", "", RepSpec);
+  Return;
+end;
+
+//===============================================
+global
+updating procedure IBudgetDiffRemoveDsl()
+begin
+  ClearIBudgetDiffVc;
+  Return;
+end;
+
+//===============================================
+//Распределение суммы на ответственную функцию
+global
+procedure IBudgetDiffToFuncDsm()
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw, newIBDrw;
+  integer RowNr;
+  integer wn;
+  
+  wn = CurWindow;
+  if IBudgetDiffIsOpened(wn) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      RowNr = GetWindowCurRow(wn);
+      if (RowNr > -1) then
+        begin
+          MatRowGet(IBDr, RowNr, IBDrw);
+          if ((IBDrw.stp == 1) and CheckFN1(IBDr.Func, IBDr.Podr, CurrentUser))
+              or (((IBDrw.stp == 3) or (IBDrw.stp == 4)) and CheckFN1(IBDrw.ToFunc, IBDrw.ToPodr, CurrentUser))
+              or (((IBDrw.stp == 1) or (IBDrw.stp == 3) or (IBDrw.stp == 4)) and CheckAdm(CurrentUser)) then
+            begin
+              RowNr = RowNr + 1;
+              DeselectWindow(wn, true);
+              ClearRow(IBDr, newIBDrw, 3);
+              IBudgetDiffRowCopy(newIBDrw, IBDrw);
+              newIBDrw.Initiator = CurrentUser;
+              if (IBDrw.stp == 1) then
+                begin
+                  newIBDrw.ToPodr = IBDr.Podr;
+                end
+              else
+                begin
+                  newIBDrw.ToPodr = IBDrw.ToPodr;
+                end;
+              MatRowInsert(IBDr, RowNr, newIBDrw);
+              PutWindowRecord(wn, IBDr);
+              SelectWindow(wn);
+              WindowFieldGoto(wn, IBDr, RowNr, "ToFunc", true);
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Распределение суммы на ответственное подразделение
+global
+procedure IBudgetDiffToPodrDsm()
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw, newIBDrw;
+  integer RowNr;
+  integer wn;
+  
+  wn = CurWindow;
+  if IBudgetDiffIsOpened(wn) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      RowNr = GetWindowCurRow(wn);
+      if (RowNr > -1) then
+        begin
+          MatRowGet(IBDr, RowNr, IBDrw);
+          if ((IBDrw.stp == 1) and CheckFN1(IBDr.Func, IBDr.Podr, CurrentUser))
+              or (((IBDrw.stp == 3) or (IBDrw.stp == 4)) and CheckFN1(IBDrw.ToFunc, IBDrw.ToPodr, CurrentUser))
+              or (((IBDrw.stp == 1) or (IBDrw.stp == 3) or (IBDrw.stp == 4)) and CheckAdm(CurrentUser)) then
+            begin
+              RowNr = RowNr + 1;
+              DeselectWindow(wn, true);
+              ClearRow(IBDr, newIBDrw, 4);
+              IBudgetDiffRowCopy(newIBDrw, IBDrw);
+              newIBDrw.Initiator = CurrentUser;
+              if (IBDrw.stp == 1) then
+                begin
+                  newIBDrw.ToFunc = IBDr.Func;
+                end
+              else
+                begin
+                  newIBDrw.ToFunc = IBDrw.ToFunc;
+                end;
+              MatRowInsert(IBDr, RowNr, newIBDrw);
+              PutWindowRecord(wn, IBDr);
+              SelectWindow(wn);
+              WindowFieldGoto(wn, IBDr, RowNr, "ToPodr", true);
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Подписать строку
+global 
+procedure IBudgetDiffRowSignDsm()
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  integer RowNr;
+  integer wn;
+  
+  wn = CurWindow;
+  if IBudgetDiffIsOpened(wn) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      RowNr = GetWindowCurRow(wn);
+      if (RowNr > -1) then
+        begin
+          MatRowGet(IBDr, RowNr, IBDrw);
+          if ((IBDrw.stp == 3) and CheckDirector(IBDrw.ToFunc, CurrentUser)) or
+             ((IBDrw.stp == 4) and CheckFN1(IBDrw.ToFunc, IBDrw.ToPodr, CurrentUser)) then
+            begin
+              DeselectWindow(wn, true);
+              IBDrw.User = CurrentUser;
+              MatRowPut(IBDr, RowNr, IBDrw);
+              PutWindowRecord(wn, IBDr);
+              SelectWindow(wn);
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Отозвать подпись строки
+global 
+procedure IBudgetDiffRowUnsignDsm()
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw;
+  integer RowNr;
+  integer wn;
+  
+  wn = CurWindow;
+  if IBudgetDiffIsOpened(wn) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      RowNr = GetWindowCurRow(wn);
+      if (RowNr > -1) then
+        begin
+          MatRowGet(IBDr, RowNr, IBDrw);
+          if ((IBDrw.stp == 3) or (IBDrw.stp == 4)) and ((CurrentUser == IBDrw.User) or CheckAdm(CurrentUser)) then //Отозвать свою подпись (или учредителем - любую)
+            begin
+              DeselectWindow(wn, true);
+              IBDrw.User = blankval;
+              MatRowPut(IBDr, RowNr, IBDrw);
+              PutWindowRecord(wn, IBDr);
+              SelectWindow(wn);
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Назначить ответственного сотрудника
+global
+procedure IBudgetDiffToUserDsm()
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw, newIBDrw;
+  integer RowNr;
+  integer wn;
+  
+  wn = CurWindow;
+  if IBudgetDiffIsOpened(wn) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      RowNr = GetWindowCurRow(wn);
+      if (RowNr > -1) then
+        begin
+          MatRowGet(IBDr, RowNr, IBDrw);
+
+          if (((IBDrw.stp == 1) and (CheckFN1(IBDr.Func, IBDr.Podr, CurrentUser)))
+             or
+             (((IBDrw.stp == 3) or (IBDrw.stp == 4)) and CheckFN1(IBDrw.ToFunc, IBDrw.ToPodr, CurrentUser)))
+             and (IBDrw.Fact > IBDrw.Plan) /* Не распределять экономию */ then
+
+            begin
+              RowNr = RowNr + 1;
+              DeselectWindow(wn, true);
+              ClearRow(IBDr, newIBDrw, 5);
+              IBudgetDiffRowCopy(newIBDrw, IBDrw);
+              NewIBDrw.ToPodr = IBDrw.ToPodr;
+              NewIBDrw.Diff = IBDrw.Sum;
+              MatRowInsert(IBDr, RowNr, newIBDrw);
+              PutWindowRecord(wn, IBDr);
+              SelectWindow(wn);
+              WindowFieldGoto(wn, IBDr, RowNr, "User", true);
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Учредитель - Назначить ответственного сотрудника
+global
+procedure IBudgetDiffUCHRToUserDsm()
+begin
+  record IBudgetDiffVc IBDr;
+  row IBudgetDiffVc IBDrw, newIBDrw;
+  integer RowNr;
+  integer wn;
+  
+  wn = CurWindow;
+  if IBudgetDiffIsOpened(wn) and CheckAdm(CurrentUser) then
+    begin
+      GetWindowRecord(wn, IBDr);
+      RowNr = GetWindowCurRow(wn);
+      if (RowNr > -1) then
+        begin
+          MatRowGet(IBDr, RowNr, IBDrw);
+          if (IBDrw.stp == 1) or (IBDrw.stp == 3) or (IBDrw.stp == 4) then
+            begin
+              RowNr = RowNr + 1;
+              DeselectWindow(wn, true);
+              ClearRow(IBDr, newIBDrw, 6);
+              IBudgetDiffRowCopy(newIBDrw, IBDrw);
+              NewIBDrw.ToPodr = blankval;
+              NewIBDrw.Diff = IBDrw.Sum;
+              MatRowInsert(IBDr, RowNr, newIBDrw);
+              PutWindowRecord(wn, IBDr);
+              SelectWindow(wn);
+              WindowFieldGoto(wn, IBDr, RowNr, "User", true);
+            end;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure IBudgetDiffDClassButtonFlags(integer wn, var boolean duplOK, var boolean newOK, var boolean saveOK, var boolean restOK)
+begin
+  duplOK = false;
+  newOK = false;
+  Return;
+end;
+
+//===============================================
+global
+procedure IBudgetDiffLClassButtonFlags(integer wn, var boolean duplOK, var boolean newOK, var boolean saveOK, var Boolean restOK)
+begin
+  duplOK = false;
+  newOK = false;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblIBudgetDiffVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record IBudgetDiffVc IBDr;
+
+  IBDr.SerNr = dblstr;
+  if ReadFirstMain(IBDr, 1, true) then
+    begin
+      wn = OpenWindow("IBudgetDiffDClass", 1, 0, "", "", IBDr);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure IBudgetDiffJrnRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"IBudgetDiffJrnRClass");
+  RepSpec.flags[0] = 1;
+  RepSpec.flags[1] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l, t;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  
+  WindowBegin("Настройка - Директора и управляющие", IObjDirectorTClass, CGHbl, HBlRecType);
+  SetBlid(IObjDirectorBlock);
+  SetWRect(20,80,600,357);
+  Sizeable(-1,-1,0,0);
+  MatrixBegin(4, 20, -31, -20, IBudgetDirectorRowType, 99);
+  MatCol(1, 20, "FN1/PODR", 0, Obj, false, ObjSClass);
+  MatCol(1, 80, "Директор/Управляющий", 0, Director, false, UserSClass);
+  EndMatrix;
+  EndWindow;
+
+  WindowBegin("Серии номеров - Выполнение бюджета", IBudgetDiffSerTClass, CGHbl, HBlRecType);
+  SetBlid(IBudgetDiffSerBlock);
+  TSERW_RUS;
+  EndWindow;
+  
+  WindowBegin("Документы выполнения бюджета", IBudgetDiffLClass, CGMList, -);
+  SetWRect(20,80,800,400);
+  Sizeable(-1,-1,0,0);
+  UseView(IBudgetDiffVc);
+  BrowseButtons(false);
+  SpawnClass(IBudgetDiffDClass);
+  RecordList(4,17,-21,-39);
+  RLColKey(5, 5, "Код", SerNr, false, SerNr);
+  RLColKey(80, 80, "OK", OKFlag, false, OKFlag);
+  RLColKey(100, 100, "Дата", RegDate, false, RegDate);
+  RLColKey(170, 170, "Функция", Func, false, Func);
+  RLColKey(220, 220, "Подр.", Podr, false, Podr);
+  RLColKey(270, 270, "План", TotalPlan, false, TotalPlan);
+  RLColKey(370, 370, "Разница", TotalDiff, false, TotalDiff);
+  RLColKey(470, 470, "Комментарий", Comment, false, Comment);
+  SearchField("Найти");
+  SpecialMenu("Cоздать документ выполнения бюджета",' ',1,"IBudgetDiffCreateDsl");
+//  SpecialMenu("Очистить регистр (!)",' ',1,"IBudgetDiffRemoveDsl");
+  EndWindow;
+  
+  WindowBegin("Выполнение бюджета", IBudgetDiffDClass, CGView, -)
+  SetWRect (20,80,900,600);
+  Sizeable (-1,-1,0,0);
+  BrowseButtons(false);
+  UseView(IBudgetDiffVc);
+  vs = 20;
+  EnterSkip(Comment);
+  EditField(h=90, v=8, 100, "Номер", ViewOnly, SerNr, false, TSerSCLass);
+  EditField(h+200 , v, 100, "Дата", ViewOnly, RegDate, false, 0);
+  EditField(h, v+=vs, 100, "Функция", ViewOnly, Func, false, 0);
+  EditField(h+200, v, 100, "PODR", ViewOnly, Podr, false, 0);
+  EditField(h, v+=vs, -40, "Комментарий", Normal, Comment, false, 0);
+  v = v + 40;
+  vm = v;
+  MatrixBegin(4, v, -50, -56, IBudgetDiffRowType, 199);
+  MatTypedRow(stp);
+  MatCol(t=1, h=30, "Счет", 0, AccNumber, false, 0);
+  MatCol(t, h+=50, "Наименование", 0, AccName, false, 0);
+  MatCol(t, h+=100, "Объекты", 0, Objects, false, 0);
+  MatCol(t, h+=150, "План", 0, Plan, true, 0);
+  MatCol(t, h+=70, "Факт", 0, Fact, true, 0);
+  MatCol(t, h+=70, "Отклонение", 0, Diff, true, 0);
+  MatCol(t, h+=70, "Сумма", 0, Sum, true, 0);
+  MatCol(t, h+=70, "Комментарий", 0, RowComment, false, 0);
+
+  MatCol(t=2, 50, "", 0, RowComment, false, 0);
+  
+  MatText(t=3, h=30, "Отв. FN1:", true);
+  MatCol(t, h+=140, "", 0, ToFunc, false, ObjSClass);
+  EnterSkip(Sum);
+  MatText(t, h+=50, "PODR:", false);
+  MatColTL(t, h+=50, "", 0, M4UStr, 10, ViewOnly, ToPodr, false, 0);
+  MatText(t, h+=30, "Подпись:", false);
+  MatCol(t, h+=70, "", 0, User, false, UserSClass);
+  MatText(t, h+=100, "Сумма:", false);
+  MatCol(t, h+=70, "", 0, Sum, true, 0);
+  MatCol(t, h+=70, "", 0, RowComment, false, 0);
+  
+  MatText(t=4, h=30, "Отв. PODR:", true);
+  MatColTL(t, h+=140, "", 0, M4UStr, 10, ViewOnly, ToFunc, false, 0);
+  MatText(t, h+=50, "PODR:", false);
+  MatCol(t, h+=50, "", 0, ToPodr, false, UserSClass);
+  EnterSkip(Sum);
+  MatText(t, h+=30, "Подпись:", false);
+  MatCol(t, h+=70, "", 0, User, false, UserSClass);
+  MatText(t, h+=100, "Сумма:", false);
+  MatCol(t, h+=70, "", 0, Sum, true, 0);
+  MatCol(t, h+=70, "", 0, RowComment, false, 0);
+  
+  MatText(t=5, h=30, "Отв. сотр.:", true);
+  MatCol(t, h+=340, "", 0, User, false, UserSClass);
+  EnterSkip(Sum);
+  MatText(t, h+=100, "Сумма:", false);
+  MatCol(t, h+=70, "", 0, Sum, true, 0);
+  MatCol(t, h+=70, "", 0, RowComment, false, 0);
+
+  MatText(t=6, h=30, "Отв. сотр.:", true);
+  MatCol(t, h+=340, "", 0, User, false, UserSClass);
+  EnterSkip(Sum);
+  MatText(t, h+=100, "Сумма:", false);
+  MatCol(t, h+=70, "", 0, Sum, true, 0);
+  MatCol(t, h+=70, "", 0, RowComment, false, 0);
+
+  InsertRowTest;
+  DeleteRowTest;
+  EndMatrix;
+  CheckBox(20, -20, 0, "OK", OKFlag);
+  EditField(80, -20, 100, "", ViewOnly, OKUser, false, 0);
+  
+  if CheckAdm(CurrentUser) then
+    begin
+      EditField(-300, -20, 100, "План", Normal, TotalPlan, false, 0);
+      EditField(-130, -20, 100, "Разница", Normal, TotalDiff, false, 0);
+    end
+  else
+    begin
+      EditField(-300, -20, 100, "План", ViewOnly, TotalPlan, false, 0);
+      EditField(-130, -20, 100, "Разница", ViewOnly, TotalDiff, false, 0);
+    end;
+
+  SpecialMenu("Распределить на ответственную функцию",' ',1,"IBudgetDiffToFuncDsm");
+  SpecialMenu("Распределить на ответственное подразделение",' ',1,"IBudgetDiffToPodrDsm");
+  SpecialMenu("Подписать строку",' ',1,"IBudgetDiffRowSignDsm");
+  SpecialMenu("Отозвать подпись строки",' ',1,"IBudgetDiffRowUnsignDsm");
+  SpecialMenu("Назначить ответственного сотрудника",' ',1,"IBudgetDiffToUserDsm");
+  SpecialMenu("Учредитель - назначить ответственного сотрудника",' ',1,"IBudgetDiffUCHRToUserDsm");
+  SpecialMenu("Создать задачу", ' ', 1, "IBudgetDiffToQADsm");
+  EndWindow;
+  
+  WindowBegin("Создать документы разногласий", IBudgetDiffCreateRClass, CGMnt, RcType);
+  SetWRect(20,80,400,240);
+  PeriodField(h=100, v=6, "Период");
+  EditFieldTL(h+100, v+=20, 50, "Игнорировать разницу (+-грн)", M4Val, Normal, 60, vals0, false, 0);
+  EndWindow;
+
+  WindowBegin("Определите параметры журнала выполнения бюджета", IBudgetDiffJrnRClass, CGRcW, RcType);
+  SetWRect(20,80,400,240);
+  PeriodField(h=100, v=6, "Период");
+  EditFieldTL(h, v+=20, 150, "Функция FN1", M4UStr, Normal, 60, f1, false, ObjSClass);
+  EditFieldTL(h, v+=20, 150, "объект PODR", M4UStr, Normal, 60, f2, false, ObjSClass);
+  EditFieldTL(h, v+=20, 150, "Сотрудник", M4UStr, Normal, 60, f3, false, UserSClass);
+  v = v + 40;
+  vs = v;
+  ButtonFrame(h-=50, v, 123, 2, "Функция");
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  ButtonFrame(h+=110, v=vs, 123, 2, "Статус");
+  CheckBox(h, v, 0, "Утвержденные", flags[0]);
+  CheckBox(h, v+=16, 0, "Неутвержденные", flags[1]);
+  CheckBox(h, v+=16, 0, "Выводить нулевые суммы", flags[2]);
+  EndWindow;
+ 
+  WindowBegin("Учет и финансы (NEW)", IBudgetExpRClass, CGRcW, RcType);
+  SetWRect(20,80,400,240);
+  PeriodField(h=130, v=6, "Период");
+  EditFieldTL(h,v+=20, 150,"Период для сравнения", M4UStr, Normal, 21, Stext, false, PerSClass);
+  EditFieldTL(h, v+=20, 150, "Функция FN1", M4UStr, Normal, 60, f1, false, ObjSClass);
+  EditFieldTL(h, v+=20, 150, "объект PODR", M4UStr, Normal, 60, f2, false, ObjSClass);
+  EditFieldTL(h, v+=20, 150, "Объект", M4UStr, Normal, 20, ObjStr, false, ObjSClass);
+  EditFieldTL(h, v+=20, 100, "Тип объекта", M4UStr, Normal, 5, ObjType, false, OTSClass);
+  EditFieldTL(h, v+=20, 150, "Исключить счета", M4UStr, Normal, 255 , f4, false, AccSClass);
+  v = v + 40;
+  vs = v;
+  ButtonFrame(h-50, v, 123, 2, "Функция");
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+  WindowBegin("Бюджет - ответственные сотрудники", IBudgetExpUserRClass, CGRcW, RcType);
+  SetWRect(20,80,400,240);
+  PeriodField(h=130, v=6, "Период");
+  EditFieldTL(h, v+=20, 150, "объект PODR", M4UStr, Normal, 60, f2, false, ObjSClass);
+  EditFieldTL(h, v+=20, 150, "Сотрудник", M4UStr, Normal, 60, f3, false, UserSClass);
+  v = v + 40;
+  vs = v;
+  ButtonFrame(h-50, v, 123, 2, "Функция");
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+  Return;
+end;

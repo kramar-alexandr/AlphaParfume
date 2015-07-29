@@ -1,0 +1,648 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function string 100 IGetVPositionName(string);
+external function string 255 IAddToSet(string, string);
+external function string 255 IDelFromSet(string, string);
+external function boolean ISetInSet(string, string);
+
+//===============================================
+//Классификация критериев повышения квалификации
+//===============================================
+global
+function Boolean ITrnCrtClassVcRecordDuplicate(var record ITrnCrtClassVc TCCr, record ITrnCrtClassVc TCC2r, longint stat, longint check)
+begin
+  longint res;
+
+  TCCr.Code = blankval;
+  ITrnCrtClassVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ITrnCrtClassVcRecordCheck(var record ITrnCrtClassVc TCCr, record ITrnCrtClassVc TCC2r, longint stat, longint check)
+begin
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(TCCr.Code) then
+    begin
+      RecordCheckError(1499, "Укажите код класса!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(TCCr.Desc) then
+    begin
+      RecordCheckError(1499, "Укажите наименование класса", -1, "Desc");
+      res = -1;
+    end;
+
+  ITrnCrtClassVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+//Критерии повышения квалификации
+//===============================================
+global
+function Boolean ITrnCrtVcRecordDuplicate(var record ITrnCrtVc TCr, record ITrnCrtVc TC2r, longint stat, longint check)
+begin
+  longint res;
+
+  TCr.UserCode = blankval;
+  TCr.PosCode = blankval;
+  ITrnCrtVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+//Проверка строки классов
+function boolean ClassSetCheck(string ClassStr, var string ErrCode)
+begin
+  record ITrnCrtClassVc TCCr;
+  integer i, cnt;
+  string 60 TCClass;
+  boolean res;
+  
+  res = true;
+  ErrCode = blankval;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      TCClass = IGetItemFromStr(ClassStr, i);
+      TCCr.Code = TCClass;
+      res = res and ReadFirstMain(TCCr, 1, true);
+    end;
+
+  if not res then
+    begin
+      ErrCode = TCClass;
+    end;
+
+  ClassSetCheck = res;
+  Return;
+end;
+
+//===============================================
+//Проверяем объекты
+procedure ObjSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  record ObjVc Objr;
+  integer i, cnt;
+  string 200 ObjSet, Obj;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ObjSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ObjSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ObjSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Obj = IGetItemFromStr(ObjSet, i);
+      Objr.Code = Obj;
+      cont = cont and ReadFirstMain(Objr, 1, true);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Объект не найден: " & Obj, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверяем образование
+procedure EducationSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  record tEducationVc Er;
+  integer i, cnt;
+  string 200 ItemsSet, Item;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ItemsSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ItemsSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ItemsSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Item = IGetItemFromStr(ItemsSet, i);
+      Er.Code = Item;
+      cont = cont and ReadFirstMain(Er, 1, true);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Проверьте профиль образования: " & Item, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверяем основные знания
+procedure BaseKnowSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  record tBasicKnowVc BKr;
+  integer i, cnt;
+  string 200 ItemsSet, Item;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ItemsSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ItemsSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ItemsSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Item = IGetItemFromStr(ItemsSet, i);
+      BKr.Code = Item;
+      cont = cont and ReadFirstMain(BKr, 1, true);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Проверьте основные знания: " & Item, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверяем основные навыки
+procedure SkillsSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  record tSkillsVc Sr;
+  integer i, cnt;
+  string 200 ItemsSet, Item;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ItemsSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ItemsSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ItemsSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Item = IGetItemFromStr(ItemsSet, i);
+      Sr.Code = Item;
+      cont = cont and ReadFirstMain(Sr, 1, true);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Проверьте основные навыки: " & Item, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверяем языки
+procedure LangSkillSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  record tLanguagesVc Lr;
+  integer i, cnt;
+  string 200 ItemsSet, Item;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ItemsSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ItemsSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ItemsSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Item = IGetItemFromStr(ItemsSet, i);
+      Lr.Code = Item;
+      cont = cont and ReadFirstMain(Lr, 1, true);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Проверьте знание языков: " & Item, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверяем знание ПК
+function boolean CheckCompSkill(string Code)
+begin
+  record CompSkillBlock CSr;
+  row CompSkillBlock CSrw;
+  integer i;
+  boolean found;
+  
+  BlockLoad(CSr);
+  for(i=0; (i<MatRowCnt(CSr)) and not found; i=i+1)
+    begin
+      MatRowGet(CSr, i, CSrw);
+      found = (CSrw.Code == Code);
+    end;
+  CheckCompSkill = found;
+  Return;
+end;
+
+procedure CompSkillSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  integer i, cnt;
+  string 200 ItemsSet, Item;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ItemsSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ItemsSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ItemsSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Item = IGetItemFromStr(ItemsSet, i);
+      cont = cont and CheckCompSkill(Item);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Проверьте знание ПК: " & Item, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверяем транспорт
+function boolean CheckTranspSkill(string Code)
+begin
+  record TranspSkillBlock TSr;
+  row TranspSkillBlock TSrw;
+  integer i;
+  boolean found;
+  
+  BlockLoad(TSr);
+  for(i=0; (i<MatRowCnt(TSr)) and not found; i=i+1)
+    begin
+      MatRowGet(TSr, i, TSrw);
+      found = (TSrw.Code == Code);
+    end;
+  CheckTranspSkill = found;
+  Return;
+end;
+
+procedure TranspSkillSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  integer i, cnt;
+  string 200 ItemsSet, Item;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ItemsSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ItemsSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ItemsSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Item = IGetItemFromStr(ItemsSet, i);
+      cont = cont and CheckTranspSkill(Item);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Проверьте владение транспортом: " & Item, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Проверяем личные и деловые уачества
+procedure BaseSkillSetCheck(record ITrnCrtVc TCr, string FieldName, var longint res)
+begin
+  record BasicSkillVc BSr;
+  integer i, cnt;
+  string 200 ItemsSet, Item;
+  boolean cont;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  ItemsSet = GetFieldValueByName(TCr, FieldName, -1);
+  cont = (res == 0) and nonblank(ItemsSet);
+  
+  if not cont then
+    begin
+    Return;
+    end;
+
+  cnt = IItemCountInStr(ItemsSet);
+  for (i=0; (i < cnt) and cont; i=i+1)
+    begin
+      Item = IGetItemFromStr(ItemsSet, i);
+      BSr.Code = Item;
+      cont = cont and ReadFirstMain(BSr, 1, true);
+    end;
+
+  if not cont then
+    begin
+      RecordCheckError(1499, "Проверьте личные и деловые качества: " & Item, -1, FieldName);
+      res = -1;
+    end;
+
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ITrnCrtVcRecordCheck(var record ITrnCrtVc TCr, record ITrnCrtVc TC2r, longint stat, longint check)
+begin
+  longint res;
+  string 60 ErrCode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(TCr.UserCode) then
+    begin
+      RecordCheckError(1499, "Не указан код сотрудника!", -1, "UserCode");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(TCr.PosCode) then
+    begin
+      RecordCheckError(1499, "Не указан код должности!", -1, "PosCode");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(TCr.Classification) and not ClassSetCheck(TCr.Classification, ErrCode) then
+    begin
+      RecordCheckError(1120, ErrCode, -1, "Classification");
+      res = -1;
+    end;
+
+  EducationSetCheck(TCr, "Education", res);
+  ObjSetCheck(TCr, "EducationObj", res);
+  EducationSetCheck(TCr, "EducationTrn", res);
+
+  BaseKnowSetCheck(TCr, "BaseKnow", res);
+  ObjSetCheck(TCr, "BaseKnowObj", res);
+  BaseKnowSetCheck(TCr, "BaseKnowTrn", res);
+
+  SkillsSetCheck(TCr, "tSkills", res);
+  ObjSetCheck(TCr, "tSkillsObj", res);
+  SkillsSetCheck(TCr, "tSkillsTrn", res);
+
+  LangSkillSetCheck(TCr, "LangSkill", res);
+  ObjSetCheck(TCr, "LangSkillObj", res);
+  LangSkillSetCheck(TCr, "LangSkillTrn", res);
+
+  CompSkillSetCheck(TCr, "CompSkill", res);
+  ObjSetCheck(TCr, "CompSkillObj", res);
+  CompSkillSetCheck(TCr, "CompSkillTrn", res);
+
+  TranspSkillSetCheck(TCr, "TranspSkill", res);
+  ObjSetCheck(TCr, "TranspSkillObj", res);
+  TranspSkillSetCheck(TCr, "TranspSkillTrn", res);
+
+  BaseSkillSetCheck(TCr, "BaseSkill", res);
+  ObjSetCheck(TCr, "BaseSkillObj", res);
+  BaseSkillSetCheck(TCr, "BaseSkillTrn", res);
+
+  ITrnCrtVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+//Создание/Обновление критериев поввышения квалификации из требований к должности
+//===============================================
+function boolean GetTrnCrtRec(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  boolean res;
+
+  TCr.UserCode = RPr.CodeUser;
+  TCr.PosCode = RPr.CodeVPos;
+  res = not ReadFirstMain(TCr, 1, true);
+  if res then
+    begin
+    TCr.UserCode = RPr.CodeUser;
+    TCr.PosCode = RPr.CodeVPos;
+    TCr.UserName = RPr.NameUser;
+    TCr.PosName = RPr.NameVPos;
+    end;
+  GetTrnCrtRec = res;
+  Return;
+end;
+
+//===============================================
+function boolean EducationSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  string 250 NewSet;
+
+  NewSet = IDelFromSet(RPr.EducationS, RPr.Education);
+  if not ISetInSet(NewSet, TCr.Education) then
+    begin
+    TCr.Education = IAddToSet(NewSet, TCr.Education);
+    TCr.EducationOK = 0;
+    EducationSync = true;
+    end;
+  Return;
+end;
+
+//===============================================
+function boolean BaseKnowSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  string 250 NewSet;
+
+  NewSet = IDelFromSet(RPr.BasicKnowS, RPr.BasicKnow);
+  if not ISetInSet(NewSet, TCr.Education) then
+    begin
+    TCr.BaseKnow = IAddToSet(NewSet, TCr.BaseKnow);
+    TCr.BaseKnowOK = 0;
+    BaseKnowSync = true;
+    end;
+  Return;
+end;
+
+//===============================================
+function boolean tSkillsSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  string 250 NewSet;
+
+  NewSet = IDelFromSet(RPr.tSkillsS, RPr.tSkills);
+  if not ISetInSet(NewSet, TCr.tSkills) then
+    begin
+    TCr.tSkills = IAddToSet(NewSet, TCr.tSkills);
+    TCr.tSkillsOK = 0;
+    tSkillsSync = true;
+    end;
+  Return;
+end;
+
+//===============================================
+function boolean LangSkillSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  string 250 NewSet;
+
+  NewSet = IDelFromSet(RPr.LangSkillS, RPr.LangSkill);
+  if not ISetInSet(NewSet, TCr.LangSkill) then
+    begin
+    TCr.LangSkill = IAddToSet(NewSet, TCr.LangSkill);
+    TCr.LangSkillOK = 0;
+    LangSkillSync = true;
+    end;
+  Return;
+end;
+
+//===============================================
+function boolean CompSkillSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  string 250 NewSet;
+
+  NewSet = IDelFromSet(RPr.CompSkillS, RPr.CompSkill);
+  if not ISetInSet(NewSet, TCr.CompSkill) then
+    begin
+    TCr.CompSkill = IAddToSet(NewSet, TCr.CompSkill);
+    TCr.CompSkillOK = 0;
+    CompSkillSync = true;
+    end;
+  Return;
+end;
+
+//===============================================
+function boolean TranspSkillSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  string 250 NewSet;
+
+  NewSet = IDelFromSet(RPr.TranspSkillS, RPr.TranspSkill);
+  if not ISetInSet(NewSet, TCr.TranspSkill) then
+    begin
+    TCr.TranspSkill = IAddToSet(NewSet, TCr.TranspSkill);
+    TCr.TranspSkillOK = 0;
+    TranspSkillSync = true;
+    end;
+  Return;
+end;
+
+//===============================================
+function boolean BaseSkillSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  string 250 NewSet;
+
+  NewSet = IDelFromSet(RPr.BasicSkillS, RPr.BasicSkill);
+  if not ISetInSet(NewSet, TCr.BaseSkill) then
+    begin
+    TCr.BaseSkill = IAddToSet(NewSet, TCr.BaseSkill);
+    TCr.BaseSkillOK = 0;
+    BaseSkillSync = true;
+    end;
+  Return;
+end;
+//===============================================
+function boolean PeManSync(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  if RPr.PeMan > RPr.PeManS then
+    begin
+    TCr.PeMan = 0;
+    TCr.PeManOK = 0;
+    PEManSync = true;
+    end;
+  Return;
+end;
+
+//===============================================
+//Критерии, требующие поввышения квалификации
+function boolean SyncTrnCrtFtomReqPos(record tRequPosVc RPr, var record ITrnCrtVc TCr)
+begin
+  boolean res;
+
+  res = EducationSync(RPr, TCr);
+  res = res or BaseKnowSync(RPr, TCr);
+  res = res or tSkillsSync(RPr, TCr);
+  res = res or LangSkillSync(RPr, TCr);
+  res = res or CompSkillSync(RPr, TCr);
+  res = res or TranspSkillSync(RPr, TCr);
+  res = res or BaseSkillSync(RPr, TCr);
+  res = res or PeManSync(RPr, TCr);
+  SyncTrnCrtFtomReqPos = res;
+  Return;
+end;
+
+//===============================================
+//Создаем критерии повышения квалификации из требований к должности
+global
+updating procedure ra_TrnCrtFromRequPos(string PosCode, string UserCode)
+begin
+  record tRequPosVc RPr;
+  record ITrnCrtVc TCr, TC2r;
+  boolean NewRec, NeedUpdate;
+
+  NeedUpdate = false;
+  RPr.CodeVPos = PosCode;
+  RPr.CodeUser = UserCode;
+  if ReadFirstMain(RPr, 1, true) then
+    begin
+    TCr.PosCode = PosCode;
+    TCr.UserCode = UserCode;
+    NewRec = GetTrnCrtRec(RPr, TCr);
+    NeedUpdate = SyncTrnCrtFtomReqPos(RPr, TCr);
+    end;
+  
+  if NeedUpdate then
+    begin
+    if NewRec then
+      begin
+      RecordStore(TCr, false);
+      end
+    else
+      begin
+      RecordCopy(TC2r, TCr);
+      RecordUpdate(TC2r, TCr, false);
+      end;
+    end;
+  Return;
+end;

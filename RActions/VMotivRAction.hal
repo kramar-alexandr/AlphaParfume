@@ -1,0 +1,657 @@
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+external inner function Integer CheckObjs(string, string, var string);
+//Запись операции мотивации
+external inner function Integer GetIntYc(Date); //06.05.10 INAU
+external inner procedure AddObj(String, var string); //11.05.10 INAU
+external function boolean ISetInSet(string, string);
+
+
+updating function boolean MakeQAFromVMotiv(record VMotivVc Mr)
+begin
+  record UserVc Usr;
+  integer i;
+  boolean res;
+  record tVTicketsVc VTr;
+  record VTicketTypeBlock VTTb;
+  row VTicketTypeBlock VTTbrw;
+
+  SetLangMode(LangRussian,"RUS",2);
+  RecordNew(VTr);
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  VTr.UsrCode = Usr.Code;
+  VTr.UsrName = Usr.Name;
+  VTr.UsrAppoint = Usr.StateJob;
+  VTr.UsrDepart = Usr.Department;
+  VTr.DateSend = CurrentDate;
+  VTr.TimeSend = CurrentTime;
+//
+  Usr.Code = "IYA";
+  ReadFirstMain(Usr, 1, true);
+  VTr.Privacy = 1;
+  VTr.ServCode = Usr.Code;
+  VTr.ServName = Usr.Name;
+  VTr.ServDepart = Usr.Department;
+//
+  BlockLoad(VTTb); 
+  for(i=0; i<MatRowCnt(VTTb); i=i+1)
+    begin
+      MatRowGet(VTTb, i, VTTbrw);
+      if SetInSet("VMOTIVVC", VTTbrw.RegName) then
+        begin
+          VTr.TypeOfTicket = VTTbrw.Code;
+        end;
+    end;
+  VTr.Comment = "Документ мотивации №" & Mr.SerNr & " (" & Mr.UserCode & ") от " & Mr.Date & " - флаг OK установлен";
+  VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+  res = RecordStore(VTr, false);
+  if res then 
+    begin	
+      CreateRecordLink(VTr, CurrentCompany, Mr, CurrentCompany);
+      CreateRecordLink(Mr, CurrentCompany, VTr, CurrentCompany);
+    end;
+  MakeQAFromVMotiv = res;
+  Return;
+end;
+
+global
+function LongInt VMotivVcRecordDefaults(var record VMotivVc Mr, record VMotivVc Mr2, LongInt long3, LongInt long4)
+begin
+  LongInt res;
+  record UserVc USr;
+  val fr,to1,to2,br1,br2;
+  string 10 curcode;
+  
+  Mr.SerNr = -1;
+  Mr.Date = CurrentDate;
+  Mr.OperCode = CurrentUser;
+  Mr.OKFlag = 0;
+  Mr.Curncy = "UAH";
+  Mr.Department = "";
+  Mr.UsrName = "";
+  //Mr.DepName = "";
+  Mr.BonusFound = 0;
+  Mr.MotiveCoeff = 0;
+  GetFullCurncyRate(Mr.Curncy,Mr.Date,fr,to1,to2,br1,br2); 
+  Mr.CurncyRate = br2;
+  Mr.TRNumber = -1; //11.05.10 INAU
+  Mr.TRIntYc = -1;  //11.05.10 INAU
+  Mr.HasTrans = 0;  //12.05.10 INAU
+  Mr.OKUchr = 0;	//27.11.12 TGOR
+  if (SingleUserMode) then begin
+    Mr.SerNr = NextSerNr("VMotivVc", Mr.Date, -1, false, "");
+  end;
+  VMotivVcRecordDefaults = res;  
+  RETURN;
+END;
+
+global
+function LongInt VMotivVcRecordDuplicate(var record VMotivVc Mr,record VMotivVc Mrold, LongInt stat, LongInt long4)
+BEGIN
+  LongInt res;
+  string 255 tstr;
+
+  Mr.SerNr = -1;
+  Mr.OperCode = CurrentUser;
+  Mr.OKFlag = 0;
+  Mr.TRNumber = -1; //11.05.10 INAU
+  Mr.TRIntYc = -1;  //11.05.10 INAU
+  Mr.HasTrans = 0;  //12.05.10 INAU
+  Mr.OKUchr = 0;	//27.11.12 TGOR
+  if (SingleUserMode) then begin
+    Mr.SerNr = NextSerNr("VMotivVc", Mr.Date, -1, false, "");
+  end;
+  VMotivVcRecordDuplicate = res; 
+  RETURN;
+END;
+
+global
+updating function longint VMotivVcRecordCheck(var record VMotivVc Mr,record VMotivVc Mrold, LongInt stat, LongInt long4)
+begin
+  record UserVc Usr;
+  longint res;
+  integer ErrorCode;
+  string 255 ErrStr;
+
+  SetLangMode(LangRussian,"RUS",2);
+
+  res = 0;  
+  if (Mr.SerNr <= 0) then
+    begin
+    Mr.SerNr = NextSerNr("VMotivVc", Mr.Date, -1, false, "");
+    end;
+
+  //11.12.12 INAU - Установлен ОК
+  if (res<>-1) and (Mr.OKFlag==1) and ((stat==1) or ((stat==2) and (Mrold.OKFlag==0))) then //Установлен OK
+    begin
+      Usr.Code = Mr.UserCode;
+      if not ReadFirstMain(Usr, 1, true) then
+        begin
+          RecordCheckError(1499, "Проверьте код сотрудника", -1, "UserCode");
+          res = -1;
+        end;
+
+      if (res <> -1) then
+        begin
+          if blank(Mr.ObjStr) then
+            begin
+              RecordCheckError(1058, "", -1, "ObjStr");
+              res = -1;
+            end
+          else
+            begin
+              ErrorCode = CheckObjs(Usr.MotiveDebAcc, Mr.ObjStr, ErrStr);
+              if (ErrorCode <> 0) then
+                begin
+                  RecordCheckError(ErrorCode, ErrStr, -1, "ObjStr"); 
+                  res = -1;
+                end;
+            end;
+        end;
+    end;
+
+  VMotivVcRecordCheck = res;
+RETURN;
+end;
+
+//22.08.12 INAU
+global
+function LongInt VMotivVcRecordRemoveTest(var record VMotivVc Mr, record VMotivVc M2r, LongInt long3, LongInt long4)
+begin
+  if (Mr.OKFlag == 0) then
+    begin
+      VMotivVcRecordRemoveTest = 1;
+    end
+  else
+    begin
+      VMotivVcRecordRemoveTest = 0;
+    end;
+
+  Return;
+end;
+
+
+
+//===============================================
+// Запись операции
+//===============================================
+//10.01.13 INAU - Возвращаем тип критерия (ежемесячный/квартальный/...)
+function integer GetCrMotType(string CrMotCode)
+begin
+  record CrMotVc Cr;
+
+  Cr.Code = CrMotCode;
+  ReadFirstMain(Cr, 1, true);
+  GetCrMotType = Cr.CrType;
+  Return;
+end;
+
+//===============================================
+//Запись операции
+procedure MotTRHeader(var record TRVc TRr, record VMotivVc Mr, record RcVc RepSpec)
+begin
+  SetLangMode(LangRussian,"RUS",2);
+  TRr.RegDate = CurrentDate;
+  TRr.TransDate = RepSpec.d1;
+//  TRr.Comment = "Мотивация за " & GetMonth(CurrentDate) & "." & GetYear(CurrentDate);
+  TRr.Comment = "Мотивация за " & Mr.Date;
+  TRr.Number = NextSerNr("TRVc",TRr.TransDate,-1,false,"");
+  TRr.IntYc = GetIntYc(TRr.TransDate);
+  TRr.RegTime = CurrentTime;
+  TRr.LastChangeDate = CurrentDate;
+  Return;
+end;
+
+//===============================================
+updating procedure MotTRStore(record TRVc TRr)
+begin
+  record VSetSetBlock Setr;
+
+  if MatRowCnt(TRr)>0 then
+    begin
+//      BlockLoad(Setr);
+      RecordStore(TRr, False);
+//      if (Setr.OpenTRWinMotiv==1) then
+//        begin
+//          OpenWindow("TRDClass",1,0,"","",TRr);
+//        end;
+    end;
+  Return;
+end;
+
+//===============================================
+updating procedure MotTRRows(var record TRVc TRr, record VMotivVc Mr)
+begin
+  record VMotivVc oldMr;
+  record UserVc Userr;
+  row TRVc TRrw;
+  record AccVc Acr;
+  record StateVc Stater;
+  integer tr_row;
+  val Sum, Sum2;
+  string 255 ObjStr;
+
+  Userr.Code = Mr.UserCode;
+  ReadFirstMain(Userr,1,true);
+  if (Mr.Summa>0) and nonblank(Userr.MotiveDebAcc) and nonblank(Userr.MotiveCredAcc) then
+    begin
+      tr_row = MatRowCnt(TRr); //Последняя строка
+      Sum = 0;
+      Sum2 = 0;
+      ObjStr="";
+      Stater.Code = Userr.StateJob;
+      ReadFirstMain(Stater,1,true);
+
+      // Common
+      TRrw.VATCode = "";
+      TRrw.CompCode = "";
+      TRrw.SerNr = 0;
+      TRrw.Curncy = Mr.Curncy;
+      TRrw.BaseRate1 = 1;
+      TRrw.BaseRate2 = Mr.CurncyRate;
+//      AddObj(Left(Userr.Department,2), ObjStr);
+      AddObj(Stater.Func1, ObjStr);
+      AddObj(Stater.Func2, ObjStr);
+      AddObj(Userr.PersObjx, ObjStr);
+      AddObj(Mr.ObjStr, ObjStr);
+      TRrw.Objects = ObjStr;
+      TRrw.SerNr = "";
+      if (TRrw.Curncy == "USD") then
+        begin
+          Sum = Mr.Summa;
+          Sum2 = Round(Mr.Summa * TRrw.BaseRate2, DefaultCurRoundOff);
+        end
+      else
+        begin
+          Sum = Round(Mr.Summa / TRrw.BaseRate2, DefaultCurRoundOff);
+          Sum2 = Mr.Summa;
+        end;
+
+      // Deb
+      TRrw.AccNumber = Userr.MotiveDebAcc;
+      Acr.AccNumber = TRrw.AccNumber;
+      ReadFirstMain(Acr,1,true);
+      TRrw.Comment = Acr.Comment;
+      TRrw.DebVal = Sum;
+      TRrw.DebVal2 = Sum2;
+      TRrw.CredVal = blankval;
+      TRrw.CredVal2 = blankval;
+      TRr.DSum =  TRr.DSum + TRrw.DebVal;
+      TRr.DSum2 = TRr.DSum2 + TRrw.DebVal2;
+      MatRowPut(TRr, tr_row, TRrw);
+
+      // Cred
+      TRrw.AccNumber = Userr.MotiveCredAcc;
+      Acr.AccNumber = TRrw.AccNumber;
+      ReadFirstMain(Acr,1,true);
+      TRrw.Comment = Acr.Comment;
+      TRrw.DebVal = blankval;
+      TRrw.DebVal2 = blankval;
+      TRrw.CredVal = Sum;
+      TRrw.CredVal2 = Sum2;
+      TRr.CSum =  TRr.CSum - TRrw.CredVal;
+      TRr.CSum2 = TRr.CSum2 - TRrw.CredVal2;
+      MatRowPut(TRr, tr_row+1, TRrw);
+
+      // Calculated fields
+      TRr.DiffVal = TRr.DSum + TRr.CSum;
+      TRr.Diff2Val = TRr.DSum2 + TRr.CSum2;
+
+      // Update MotivVc
+      RecordCopy(oldMr, Mr);
+      Mr.TRNumber = TRr.Number;
+      Mr.TRIntYc = TRr.IntYc;
+      Mr.HasTrans = 1;
+      Mr.TransDate = TRr.TransDate;
+      RecordUpdate(oldMr, Mr, false);
+    end;
+  Return;
+end;
+
+//===============================================
+updating procedure VMotivMakeTrans(record RcVc RepSpec)
+begin
+  record VMotivVc Mr;
+  record TRVc TRr;
+
+  Mr.SerNr = RepSpec.long1;
+  if ReadFirstMain(Mr,1,true) and (Mr.OKFlag == 1) and (Mr.ConfirmFlag == 1) and (Mr.OKUchr == 1) and (Mr.HasTrans == 0) and (Mr.Summa>0) then
+    begin
+      RecordNew(TRr);
+      MotTRHeader(TRr, Mr, RepSpec);
+      MotTRRows(TRr, Mr);
+      MotTRStore(TRr);
+    end;
+  Return;
+end;
+
+//===============================================
+updating procedure VMotivMakeTransByDep(record RcVc RepSpec)
+begin
+  record VMotivVc Mr;
+  record TRVc TRr;
+  integer i;
+  string 255 LastDep;
+  boolean NewRec, FirstRec, OpenRec;
+
+  LastDep = "undef";
+  FirstRec = true;
+  OpenRec = false;
+  ResetLoop(Mr);
+  while LoopKey("Department", Mr, 1, true)
+    begin
+      if (Mr.OKFlag == 1) and (Mr.ConfirmFlag == 1) and (Mr.OKUchr == 1) and (Mr.HasTrans == 0) and (Mr.Summa>0) then
+        begin
+          NewRec = (Mr.Department<>LastDep);
+          if NewRec then
+            begin
+              if not FirstRec then
+                begin
+                  MotTRStore(TRr);
+                end;
+              FirstRec = false;
+              RecordNew(TRr);
+              MotTRHeader(TRr, Mr, RepSpec);
+              LastDep = Mr.Department;
+              OpenRec = true;
+            end;
+          MotTRRows(TRr, Mr);
+        end;
+    end;
+  if OpenRec then
+    begin
+      MotTRStore(TRr);
+    end;
+
+  Return;
+end;
+
+//===============================================
+global
+updating procedure VMotivMakeTransMn(record RcVc RepSpec)
+begin
+  record UserVc Usr;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  if nonblank(Usr.AccessGroup) and SetInSet(Usr.AccessGroup, "ADMIN,UCHR") then
+    begin
+      switch (RepSpec.flags[0])
+        begin
+          case 0: VMotivMakeTrans(RepSpec);
+          case 1: VMotivMakeTransByDep(RepSpec);
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//from VCrMotVcWAction
+function boolean VMotivFillMat(var record VMotivVc Mr)
+begin
+record CrMotStateVc CMr;
+row VMotivVc Mrw;
+row CrMotStateVc CMrw;
+record VMotivAutoBlock MAr;
+row VMotivAutoBlock MArw;
+Integer i, j, RowCnt, Pos;
+boolean Yes;
+integer CrMotType, coeff;
+
+while (MatRowCnt(Mr) > 0) //10.01.13 INAU - Чистим матрицу
+  begin
+    MatRowDelete(Mr, 0);
+  end;
+
+Mr.Summa = 0;
+
+BlockLoad(MAr);
+CMr.Code = Mr.StateJob;
+if ReadFirstMain(CMr, 1, True) then
+  begin
+  Pos = 0;
+  RowCnt = MatRowCnt(CMr);
+  for (i = 0; i < RowCnt; i= i + 1)
+    begin
+    MatRowGet(CMr, i, CMrw);
+    CrMotType = GetCrMotType(CMrw.CrCode);
+
+//    if (CrMotType == Mr.MotType) then //10.01.13 INAU - Тип критерия соответствует типу документа
+    if (CrMotType <= Mr.MotType) then //15.01.13 INAU - Тип критерия меньше либо равен типу документа (квартальные док-ты включают ежемесячные показатели)
+      begin
+        switch (CrMotType)
+          begin
+            case 0: coeff = 1; //Месяц
+            case 1: coeff = 3; //Квартал
+          end;
+        Mrw.CrCode = CMrw.CrCode;
+        Mrw.CrName = CMrw.CrName;
+        Mrw.CrWeight = CMrw.CrWeight;
+        Mrw.Fact = 0;
+        Mrw.SumF = 0;
+        Yes = False;
+        for (j = 0; j < MatRowCnt(MAr); j = j + 1)
+          begin
+          MatRowGet(MAr, j, Marw);
+          if ((MArw.CrCode == Mrw.CrCode) and ((MArw.Department == Mr.Department) or blank(MArw.Department))) then
+            begin
+            Mrw.Fact = MArw.Fact;
+            if (CMrw.PC0 <= CMrw.PC100) then
+              begin
+              Mrw.PC = CMrw.PC0;
+              if (Mrw.Fact <= CMrw.PC100) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 1;//CMrw.PC100 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC75) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.75;//CMrw.PC75 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC50) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.5;//CMrw.PC50 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC25) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.25;//CMrw.PC25 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC0) and (Mrw.Fact > 0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0;//CMrw.PC0 / 100;
+                end;
+              if (Mrw.Fact <= 0) then
+                begin
+                Mrw.SumF = 0;
+                end;
+              end
+            else
+              begin
+              Mrw.PC = CMrw.PC100;
+              if (Mrw.Fact <= CMrw.PC0) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0;//CMrw.PC0 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC25) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.25;//CMrw.PC25 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC50) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.50;//CMrw.PC50 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC75) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 0.75;//CMrw.PC75 / 100;
+                end;
+              if (Mrw.Fact <= CMrw.PC100) then
+                begin
+                Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * 1;//CMrw.PC100 / 100;
+                end;
+              end;
+            end;
+          end;
+        Mrw.SumF = Mrw.SumF * coeff;
+        MatRowPut(Mr, Pos, Mrw);
+        Pos = Pos + 1;
+        Mr.Summa = Mr.Summa + Mrw.SumF;
+      end;
+    end;
+  end;
+RETURN;
+end;
+
+//===============================================
+//from VCrMotVcWAction
+function boolean VMotivFillMatPc(var record VMotivVc Mr)
+begin
+record CrMotStateVc CMr;
+row VMotivVc Mrw;
+row CrMotStateVc CMrw;
+record VMotivAutoBlock MAr;
+row VMotivAutoBlock MArw;
+Integer i, j, RowCnt, Pos;
+boolean Yes;
+integer CrMotType, coeff;
+
+while (MatRowCnt(Mr) > 0) //10.01.13 INAU - Чистим матрицу
+  begin
+    MatRowDelete(Mr, 0);
+  end;
+
+Mr.Summa = 0;
+
+BlockLoad(MAr);
+CMr.Code = Mr.StateJob;
+if ReadFirstMain(CMr, 1, True) then
+  begin
+  Pos = 0;
+  RowCnt = MatRowCnt(CMr);
+  for (i = 0; i < RowCnt; i= i + 1)
+    begin
+    MatRowGet(CMr, i, CMrw);
+    CrMotType = GetCrMotType(CMrw.CrCode);
+
+//    if (CrMotType == Mr.MotType) then //10.01.13 INAU - Тип критерия соответствует типу документа
+    if (CrMotType <= Mr.MotType) then //15.01.13 INAU - Тип критерия меньше либо равен типу документа (квартальные док-ты включают ежемесячные показатели)
+      begin
+        switch (CrMotType)
+          begin
+            case 0: coeff = 1; //Месяц
+            case 1: coeff = 3; //Квартал
+          end;
+        Mrw.CrCode = CMrw.CrCode;
+        Mrw.CrName = CMrw.CrName;
+        Mrw.CrWeight = CMrw.CrWeight;
+        Mrw.Fact = 0;
+        Mrw.SumF = 0;
+        Yes = False;
+        for (j = 0; j < MatRowCnt(MAr); j = j + 1)
+          begin
+          MatRowGet(MAr, j, Marw);
+            if ((MArw.CrCode == Mrw.CrCode) and ((MArw.Department == Mr.Department) or blank(MArw.Department))) then
+            begin
+            Mrw.Fact = MArw.Fact;
+            Mrw.SumF = 0;
+            if Mrw.Fact > 120 then
+              begin
+              Mrw.Fact = 120;
+              end;
+            if (Mrw.Fact > CMrw.PC0) then
+              begin
+              Mrw.SumF = Mr.BonusFound * Mrw.CrWeight * (Mrw.Fact - CMrw.PC0) / (100 - CMrw.PC0);//CMrw.PC100 / 100;
+              end;
+            end;
+          end;
+        //HERE PC
+        Mrw.PC = CMrw.PC0;
+        Mrw.SumF = Mrw.SumF * coeff;
+        MatRowPut(Mr, Pos, Mrw);
+        Pos = Pos + 1;
+        Mr.Summa = Mr.Summa + Mrw.SumF;
+      end;
+    end;
+  end;
+RETURN;
+end;
+
+//===============================================
+//Заполняем сотрудниками отдела
+global
+updating procedure VMotivFillFromDepMn(record RcVc RepSpec)
+begin
+  record VMotivVc Mr;
+  record UserVc Userr;
+  record DepVc Depr;
+  record StateVc Sr;
+  record VSetSetBlock VSet;
+  integer i;
+  boolean cont;
+
+  BlockLoad(VSet);
+  cont = nonblank(RepSpec.f1);
+  ResetLoop(Userr);
+  while LoopMain(Userr, 1, true)
+    begin
+      if (Userr.Department == RepSpec.f1) and (Userr.Closed<>1) then
+        begin
+          RecordNew(Mr);
+          Mr.UserCode = Userr.Code;
+          Mr.UsrName = Userr.Name;
+          Mr.StateJob = Userr.StateJob;
+          Mr.Department = Userr.Department;
+          Mr.BonusFound = Userr.BonusFound;
+          Mr.MotiveCoeff = Userr.MotiveCoeff;
+          Depr.Code = Userr.Department;
+          ReadFirstKey("Code", Depr, 1, True);
+          Mr.DepName = Depr.Description;
+          Mr.UsrName = Userr.Name;
+          Sr.Code = Userr.StateJob;
+          ReadFirstMain(Sr, 1, True);
+          Mr.StateName = Sr.Name;
+          Mr.MotType = RepSpec.AccSpec; //Тип (месяц/квартал)
+          if VSet.StepCountMotiv <> 0 then
+            begin
+              VMotivFillMat(Mr);
+            end
+          else
+            begin
+              VMotivFillMatPc(Mr);
+            end;
+          RecordStore(Mr, false);
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Заполняем подписью учредителя мотивацию отдела
+global
+updating procedure tMotivSignDepMn(record RcVc RepSpec)
+begin
+record VMotivVc Mr,M2r;
+record UserVc Userr;
+record DepVc Depr;
+record StateVc Sr;
+record VSetSetBlock VSet;
+integer i;
+boolean cont, TrHs;
+
+if (CurrentUser == "ZINOVIY") then
+	begin
+	Mr.Date= RepSpec.sStartDate;
+	TrHs = True;
+	while (LoopKey("Date", Mr, 1, TrHs))
+		begin
+		TrHs = (Mr.Date <= RepSpec.sEndDate);
+		if (Mr.OKUchr == 0) and (Mr.ConfirmFlag == 1) and (Mr.OKFlag == 1) and (Mr.Department == RepSpec.f1) then
+			begin
+			Mr.OKUchr = 1;
+			RecordCopy(M2r,Mr);
+			RecordUpdate(M2r,Mr, true);
+			end;
+		end;
+	end;
+  Return;
+end;

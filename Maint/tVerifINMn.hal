@@ -1,0 +1,409 @@
+external inner function Boolean SetInSet2(string,string);
+external inner procedure GetAccDCBalance(string,string,Date,record ObjBalVc,Integer,Integer,Integer,string,var val,var val,Integer);
+external function val tDeb(String, Date );
+
+global
+updating procedure tVerifIn()
+begin
+string 60 Field1, Field2, Field3, Field4, Field5, datesv;
+date d1;
+record CUVc CUr, oldCUr;
+record tVerifVc Vr, oldVr;
+record ObjBalVc ObjBalr;
+val StartBalUAH, StartBalUSD;
+val dv, cv;
+
+SetLangMode(LangRussian,"RUS",2);
+
+datesv = ImportField;
+d1 = StringToDate(datesv);
+
+NextImportLine(False);
+//d1 = CurrentDate;
+
+while (not TestEOF)
+	begin
+	Field1 = ImportField;
+	Field2 = ImportField;
+	Field3 = ImportField;
+	Field4 = ImportField;
+	Field5 = ImportField;
+
+	
+	CUr.Code = Field3;
+	if ReadFirstMain(CUr, 1, true) then
+		begin	
+		RecordNew(Vr);
+		Vr.SerNr = NextSerNr("tVerifVc", CurrentDate, -1, false, "");
+		Vr.User = CurrentUser;
+		Vr.Date = d1;
+		Vr.CodeC = Field1;
+		Vr.CodeCU = Field3;
+		Vr.NameCU = CUr.Name;
+		Vr.SalesGroup = CUr.SalesGroup;
+		Vr.DebC = StringToVal(Field4,M4Val) - StringToVal(Field5,M4Val);
+		ObjBalr.AccNumber = "361";
+		ObjBalr.Object = Vr.CodeCU;
+		ReadFirstMain(ObjBalr,2,true);
+		//GetAccDCBalance("361", Vr.CodeCU, d1, ObjBalr, 0, 1, 0, "", dv, cv, 0);
+       //Vr.DebCU =  dv - cv;
+	    Vr.DebCU = tDeb(Vr.CodeCU, d1);
+		Vr.Dif = Vr.DebCU - Vr.DebC;
+		RecordStore(Vr, false);
+		end;
+
+	NextImportLine(False);
+	end;
+CloseFile;
+MessageBox(0, "Импорт завершен");
+Return;
+end;
+
+global
+updating procedure tClearVerifVc()
+begin
+boolean TrHs;
+record tVerifVc Vw;
+TrHs = true;
+while (LoopMain(Vw, 1, TrHs)) 
+	begin
+	if (TrHs) then 
+		begin
+		RecordDelete(Vw);
+		StepBack(Vw);
+		end;
+	end;
+Return;
+end;
+
+//====================================================================== процедуры для отчёта
+
+
+global
+function boolean tSeulCust(String CodeCU, String CodeC)
+begin
+record tVerifVc Vr;
+record CUVc CUr;
+boolean TrHr, TrHr1;
+integer i;
+
+resetloop(Vr);
+i=0;
+TrHr = true;
+Vr.CodeCU = CodeCU;
+while (Loopkey("CodeCU", Vr, 1, TrHr))
+	begin
+	TrHr = (Vr.CodeCU == CodeCU);
+	if TrHr then
+		begin
+		i = i + 1;
+		end;
+	end;
+if i == 1 then
+	begin
+	resetloop(Vr);
+	i=0;
+	TrHr1 = true;
+	Vr.CodeC = CodeC;
+	while (Loopkey("CodeC", Vr, 1, TrHr1))
+		begin
+		TrHr1 = (Vr.CodeC == CodeC);
+		if TrHr1 then
+			begin
+			i = i + 1;
+			end;
+		end;
+	end;
+	
+if i == 1 then
+	begin
+	tSeulCust = true;
+	end;
+return;	
+end;
+
+global
+procedure SeulCust(var record TempVc Listr, record RcVc RepSpec, var integer k)
+begin
+record tVerifVc Vr;
+record CUVc CUr;
+row TempVc Listrw;
+boolean TrHr, TrHr1;
+integer i;
+record UserVc USr;
+
+USr.Code = CurrentUser;
+readfirstmain(Usr, 1, true);
+	
+resetloop(Vr);
+i = 0;
+TrHr = true;
+while (LoopMain(Vr, 1, TrHr))
+	begin
+	CUr.Code = Vr.CodeCU;
+	if ReadFirstMain(CUr, 1, true) then
+		begin	
+		if TrHr and (SetInSet2(RepSpec.f3, CUr.Classification) or blank(RepSpec.f3))
+			  and ((CUr.SalesGroup == RepSpec.f2) or blank(RepSpec.f2)) 
+			  and ((CUr.Code == RepSpec.f1) or blank(RepSpec.f1))
+			  and ((Usr.AccessGroup=="ADMIN") or (Usr.AccessGroup=="FINO") or (Usr.AccessGroup=="FINOA") or (Usr.SalesGroup == CUr.SalesGroup))
+			  and ((Vr.Date == RepSpec.d1) or blank(RepSpec.d1)) then
+			begin
+			if tSeulCust(Vr.CodeCU, Vr.CodeC) then
+				begin
+				Listrw.f2 = Vr.CodeC;
+				Listrw.f3 = Vr.CodeCU;
+				Listrw.f4 = Vr.NameCU;
+				Listrw.f5 = Vr.DebCU;
+				Listrw.f6 = Vr.DebC;
+				Listrw.f7 = Vr.Dif;
+				MatRowInsert(Listr, k, Listrw);
+				k = k + 1;
+				end;
+			end;	
+		end;	
+	end;
+return;	
+end;
+
+global
+procedure tDblHansa(var record TempVc Listr, String CodeC, var integer k, String f2)
+begin
+record tVerifVc Vr;
+record CUVc CUr;
+boolean TrHr, TrHr1;
+integer i, rwcnt;
+row TempVc Listrw;
+val summCU, summC;
+String 20 C;
+String 200 NCU;
+SetLangMode(LangRussian,"RUS",2);
+
+resetloop(Vr);
+i = 0;
+TrHr = true;
+Vr.CodeC = CodeC;
+while (Loopkey("CodeC", Vr, 1, TrHr))
+	begin
+	TrHr = (Vr.CodeC == CodeC);
+	if TrHr then 
+		begin
+		i = i + 1;
+		end;
+	end;
+
+if i > 1 then
+	begin
+
+	resetloop(Vr);
+	TrHr1 = true;
+	Vr.CodeC = CodeC;
+	while (Loopkey("CodeC", Vr, 1, TrHr1))
+		begin
+		TrHr1 = (Vr.CodeC == CodeC);
+		if TrHr1 and ((Vr.SalesGroup == f2) or blank(f2)) then
+			begin
+			Listrw.f2 = Vr.CodeC;
+			Listrw.f3 = Vr.CodeCU;
+			Listrw.f4 = Vr.NameCU;
+			Listrw.f5 = Vr.DebCU;
+			Listrw.f6 = Vr.DebC;
+			Listrw.f7 = Vr.Dif;
+			MatRowInsert(Listr, k, Listrw);
+			summCU = summCU + Vr.DebCU;
+			summC = summC + Vr.DebC;
+			k = k + 1;
+			C = Vr.CodeC;
+			//NCU = Vr.NameCU;
+			end;
+		end;
+	Listrw.f2 = C;	
+	Listrw.f3 = "";
+	Listrw.f4 = "Итого:";
+	Listrw.f5 = summCU;
+	Listrw.f6 = summC;
+	Listrw.f7 = summCU - summC;
+	MatRowInsert(Listr, k, Listrw);	
+	k = k + 1;
+	end;
+return;	
+end;
+
+global
+function boolean NotFindListrC(record TempVc Listr, string CodeC)
+begin
+row TempVc Listrw;
+integer i, rwcnt;
+boolean res;
+
+res = true;
+for (i=0; (i<MatRowCnt(Listr)); i=i+1)
+	begin
+	MatRowGet(Listr, i, Listrw);
+	if Listrw.f2 == CodeC and blank(Listrw.f3) then
+		begin
+		res = false;
+		end;
+	end;
+	
+NotFindListrC = res;	
+return;	
+end;
+
+
+global
+procedure DblHansa(var record TempVc Listr, record RcVc RepSpec, var integer k)
+begin
+record tVerifVc Vr;
+boolean TrHr, TrHr1, TrHr2;
+record CUVc CUr;
+row TempVc Listrw;
+integer i, rwcnt;
+record UserVc USr;
+
+USr.Code = CurrentUser;
+readfirstmain(Usr, 1, true);
+
+resetLoop(Vr);
+TrHr1 = true;
+while (LoopMain(Vr, 1, TrHr1))
+	begin
+	if NotFindListrC(Listr, Vr.CodeC) then
+		begin
+		CUr.Code = Vr.CodeCU;
+		if ReadFirstMain(CUr, 1, true) then
+			begin	
+			if TrHr1 and (SetInSet2(RepSpec.f3, CUr.Classification) or blank(RepSpec.f3))
+				  and ((CUr.SalesGroup == RepSpec.f2) or blank(RepSpec.f2)) 
+				  and ((CUr.Code == RepSpec.f1) or blank(RepSpec.f1))
+				  and ((Usr.AccessGroup=="ADMIN") or (Usr.AccessGroup=="FINO") or (Usr.AccessGroup=="FINOA") or (Usr.SalesGroup == CUr.SalesGroup))
+			  	  and ((Vr.Date == RepSpec.d1) or blank(RepSpec.d1)) then
+				begin
+				tDblHansa(Listr, Vr.CodeC, k, RepSpec.f2);
+				end;	
+			end;	
+		end;
+	end;	
+return;
+end;
+//=======================================================
+global
+procedure tDblC1(var record TempVc Listr, String CodeCU, var integer k, String f2)
+begin
+record tVerifVc Vr;
+record CUVc CUr;
+boolean TrHr, TrHr1;
+integer i, rwcnt;
+row TempVc Listrw;
+val summCU, summC;
+String 20 CU;
+String 200 NCU;
+
+ SetLangMode(LangRussian,"RUS",2);
+ 
+resetloop(Vr);
+i = 0;
+TrHr = true;
+Vr.CodeCU = CodeCU;
+while (Loopkey("CodeCU", Vr, 1, TrHr))
+	begin
+	TrHr = (Vr.CodeCU == CodeCU);
+	if TrHr then 
+		begin
+		i = i + 1;
+		end;
+	end;
+
+if i > 1 then
+	begin
+	resetloop(Vr);
+	TrHr1 = true;
+	Vr.CodeCU = CodeCU;
+	while (Loopkey("CodeCU", Vr, 1, TrHr1))
+		begin
+		TrHr1 = (Vr.CodeCU == CodeCU);
+		if TrHr1 and ((Vr.SalesGroup == f2) or blank(f2))  then
+			begin
+			Listrw.f2 = Vr.CodeC;
+			Listrw.f3 = Vr.CodeCU;
+			Listrw.f4 = Vr.NameCU;
+			Listrw.f5 = Vr.DebCU;
+			Listrw.f6 = Vr.DebC;
+			Listrw.f7 = Vr.Dif;
+			MatRowInsert(Listr, k, Listrw);
+			summCU = Vr.DebCU;
+			summC = summC + Vr.DebC;
+			k = k + 1;
+			CU = Vr.CodeCU;
+			//NCU = Vr.NameCU;
+			end;
+		end;
+	Listrw.f2 = "";	
+	Listrw.f3 = CU;
+	Listrw.f4 = "Итого:";
+	Listrw.f5 = summCU;
+	Listrw.f6 = summC;
+	Listrw.f7 = summCU - summC;
+	MatRowInsert(Listr, k, Listrw);	
+	k = k + 1;
+	end;
+return;	
+end;
+
+
+global
+function boolean NotFindListrCU(record TempVc Listr, string CodeCU)
+begin
+row TempVc Listrw;
+integer i, rwcnt;
+boolean res;
+
+res = true;
+for (i=0; (i<MatRowCnt(Listr)); i=i+1)
+	begin
+	MatRowGet(Listr, i, Listrw);
+	if Listrw.f3 == CodeCU and blank(Listrw.f2) then
+		begin
+		res = false;
+		end;
+	end;
+	
+NotFindListrCU = res;	
+return;	
+end;
+
+global
+procedure DblC1(var record TempVc Listr, record RcVc RepSpec, var integer k)
+begin
+record tVerifVc Vr;
+boolean TrHr, TrHr1, TrHr2;
+record CUVc CUr;
+row TempVc Listrw;
+integer i, rwcnt;
+record UserVc USr;
+
+USr.Code = CurrentUser;
+readfirstmain(Usr, 1, true);
+
+resetLoop(Vr);
+TrHr1 = true;
+while (LoopMain(Vr, 1, TrHr1))
+	begin
+	if NotFindListrCU(Listr, Vr.CodeCU) then
+		begin
+		CUr.Code = Vr.CodeCU;
+		if ReadFirstMain(CUr, 1, true) then
+			begin	
+			if TrHr1 and (SetInSet2(RepSpec.f3, CUr.Classification) or blank(RepSpec.f3))
+				  and ((CUr.SalesGroup == RepSpec.f2) or blank(RepSpec.f2)) 
+				  and ((CUr.Code == RepSpec.f1) or blank(RepSpec.f1))
+				  and ((Usr.AccessGroup=="ADMIN") or (Usr.AccessGroup=="FINO") or (Usr.AccessGroup=="FINOA") or (Usr.SalesGroup == CUr.SalesGroup))
+			  	  and ((Vr.Date == RepSpec.d1) or blank(RepSpec.d1)) then
+				begin
+				tDblC1(Listr, Vr.CodeCU, k, RepSpec.f2);
+				end;	
+			end;	
+		end;
+	end;	
+return;
+end;

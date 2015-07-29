@@ -1,0 +1,289 @@
+external inner function Boolean ORDClassSwitchRow(Integer,Integer);
+remote inner function Boolean ORVc_PasteArtCode(var record ORVc,Integer,var string,var string,Boolean);
+//
+remote function boolean CheckIfItemInPrice(record ORVc, Integer);
+remote external function val VCheckArtQuantInStockAndOrd(string, string, string);
+remote function string 200 ConcateArtName(string, string, string);
+
+
+function boolean ORDClassArtCodeEFAfter(Integer wn, Integer rownr, Integer changedf)
+begin
+  boolean res;
+  record ORVc ORr;
+  row ORvc ORrw;
+  string 255 inwarning, warning;
+
+  res = true;
+
+  if (changedf <> 0) then
+    begin
+      GetWindowRecord(wn,ORr);
+      MatRowGet(ORr, rownr, ORrw);
+      ORrw.Spec = ConcateArtName(ORrw.ArtCode, "ORVC", "");
+      MatRowPut(ORr, rownr, ORrw);
+      PutWindowRecord(wn,ORr);
+      if (not CheckIfItemInPrice(ORr, rownr)) then
+        begin
+          ORrw.ArtCode = blankval;
+          MatRowPut(ORr, rownr, ORrw);
+          PutWindowRecord(wn,ORr);
+          res = false;
+        end;
+    end;
+
+  ORDClassArtCodeEFAfter = res;
+  Return;
+end;
+
+
+//===========обработчик при изменении таблицы скидок
+function Boolean ORDClassRebCodeEFAfter(Integer wn, Integer changed)
+begin
+  record ORVc ORr;
+  row ORVc ORrw;
+  integer i;
+  string 255 inwarning, warning;
+
+  if (changed!=0) then
+    begin
+      DeselectWindow(wn,false);
+      GetWindowRecord(wn,ORr);
+      for (i=0; i < matrowcnt(ORr); i=i+1)
+        begin
+        ORVc_PasteArtCode(ORr,i,inwarning,warning,false);
+        end;
+      PutWindowRecord(wn,ORr);
+    end;
+  ORDClassRebCodeEFAfter = true;
+  return;
+end;
+//========
+
+
+global
+function Boolean ORDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+  boolean res;
+
+  switch (fieldname)
+    begin
+      case "RebCode": res = ORDClassRebCodeEFAfter(wn, changed);
+      case "ArtCode": res = inner.ORDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+                      res = res and ORDClassArtCodeEFAfter(wn, rownr, changed);
+      otherwise
+        res = inner.ORDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+    end;
+
+  ORDClassAfterEditField = res;
+  RETURN;
+END;
+
+
+//14.01.12 INAU
+global
+function Boolean ORDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+  boolean res;
+
+  switch (fieldname)
+    begin
+      case "PlanShip": res = true;
+      case "PlanShipTime": res = true;
+      case "SenceInvalid": res = true;
+      otherwise
+        res = inner.ORDClassActiveEditField(wn, fieldname, fn, wnst, rownr, changed);
+    end;
+  ORDClassActiveEditField = res;
+  Return;
+end;
+
+/*
+global
+function Boolean ORDClassOnOKWindow(Integer wn)
+begin
+record ORVc ORr, OR2r;
+row ORVc ORrw;
+record PrRemainingBlock PRr;
+row PrRemainingBlock PRrw;
+record INVc INr;
+Integer RowCnt, RwCnt, RowCount;
+Boolean PRFound;
+
+PRFound = inner.ORDClassOnOKWindow(wn);
+PRFound = False;
+SetLangMode(LangRussian, "RUS", 2);
+GetWindowRecord(wn, ORr);
+GetPrevWindowRecord(wn, OR2r);
+RwCnt = MatRowCnt(ORr);
+if (RwCnt > 0) then
+  begin
+  BlockLoad(PRr);
+  for(RwCnt = 0; RwCnt < MatRowCnt(ORr); RwCnt = RwCnt + 1)
+    begin
+    MatRowGet(ORr, RwCnt, ORrw);
+    INr.Code = ORrw.ArtCode;
+    ReadFirstMain(INr, 1, True);
+    for(RowCount = 0; (RowCount < MatRowCnt(PRr)) and (not PRFound); RowCount = RowCount + 1)
+      begin
+      MatRowGet(PRr, RowCount, PRrw);
+      PRFound = (PRrw.Code == INr.Group); //нуждается в рекламе
+      end;
+    if PRFound then
+      begin
+      for(RowCnt = 0; (RowCnt < MatRowCnt(ORr)) and PRFound; RowCnt = RowCnt + 1)
+        begin
+        MatRowGet(ORr, RowCnt, ORrw); //ищем рекламу в счете
+        INr.Code = ORrw.ArtCode;
+        ReadFirstMain(INr, 1, True);
+        PRFound = (INr.Group <> "PR");
+        end;
+      end;
+    end;
+  if PRFound and (OR2r.OKFlag == 0) then
+    begin
+    MessageBox(0, "Вы забыли о рекламной продукции!");
+    end;
+  end;
+ORDClassOnOKWindow = True;
+RETURN;
+end;
+*/
+
+//24.09.12 INAU - запрещено изменять признак ГТД
+global
+function Boolean ORDClassCCDFlagButtonAction(Integer wn, Integer value)
+begin
+  ORDClassCCDFlagButtonAction = (CurrentUser == "DELPHI");
+  Return;
+end;
+
+
+global
+function Boolean ORDClassClosedButtonAction(Integer wn, Integer value)
+BEGIN
+Boolean res;
+record ORVc ORr;
+Integer normalmode,updatemode;
+
+res = true;
+if (UserCanAction("DisallowORClose",false)) then begin
+res = false;
+end;
+if res then
+  begin
+  GetWindowRecord(wn, ORr);
+  res = ORr.Reserved <> 1;
+  end;
+ORDClassClosedButtonAction = res;
+RETURN;
+END;
+
+
+global
+function Boolean ORDClassOKFlagButtonAction(Integer wn,Integer value)
+BEGIN
+Boolean res;
+record ORVc ORr;
+record ORVc prevORr;
+Integer normalmode,updatemode;
+
+res = true;
+normalmode = 0;//Rs_normal
+updatemode = 2;//Rs_update
+if (WindowState(wn) == normalmode) then
+  begin
+  GetWindowRecord(wn,ORr);
+  if (ORr.Closed!=0) then
+    begin
+    res = false;
+    end;
+  end;
+if (WindowState(wn) == updatemode) then
+  begin
+  GetPrevWindowRecord(wn,prevORr);
+  if (prevORr.Closed != 0) then
+    begin
+    res = false;
+    end;
+  if ((prevORr.OKFlag != 0) and (ORr.OKFlag == 0)) then
+    begin
+    if (UserCanAction("UnOKOR", true) == false) and (UserCanAction("UnOKAll", true) == false) then
+      begin
+      res = false;
+      MessageBox(1274, StringFromStringSet(3, "UnOKOR"));
+      end;
+    end;
+  end;
+if (UserCanAction("OROK", true) == false) then
+  begin
+  res = false;
+  MessageBox(1274, StringFromStringSet(3, "OROK"));
+  end;
+if (res and (not UserCanAction("UnOKAll", true))) then
+  begin
+  res = ORr.Reserved <> 1;
+  end;
+ORDClassOKFlagButtonAction = res;
+RETURN;
+END;
+
+
+global
+procedure GetStockRemainsWithOrders() //Должны быть включены галки в настройке!
+begin
+  record ORVc ORr;
+  row ORVc ORrw;
+  Integer RwCnt;
+
+  GetWindowRecord(CurWindow, ORr);
+  for (RwCnt = 0; RwCnt < MatRowCnt(ORr); RwCnt = RwCnt + 1)
+    begin
+    MatRowGet(ORr, RwCnt, ORrw);
+    ORrw.QuantAvail = VCheckArtQuantInStockAndOrd(ORrw.ArtCode, ORr.Location, ORr.SalesGroup);
+    MatRowPut(ORr, RwCnt, ORrw);
+    end;
+  PutWindowRecord(CurWindow, ORr);
+  Return;
+end;
+
+
+//===============================================
+global
+procedure GetStockRemainsWithOrdersRn() //Должны быть включены галки в настройке!
+begin
+  record ORVc ORr;
+  row ORVc ORrw;
+  Integer RwCnt, wn;
+
+  wn = CurWindow;
+  SetLangMode(LangRussian, "RUS", 2);
+
+  GetWindowRecord(wn, ORr);
+  StartReportNoHeaderJob("Доступные товары для счета " & ORr.SerNr);
+  StartFormat(15);
+  OutString(20, 0, "Код", False);
+  OutString(80, 0, "Наименование", False);
+  OutString(400, 0, "Заказано", True);
+  OutString(480, 0, "Доступно", True);
+  EndFormat;
+  Black_Divider(0, 1);
+
+  for (RwCnt = 0; RwCnt < MatRowCnt(ORr); RwCnt = RwCnt + 1)
+    begin
+    MatRowGet(ORr, RwCnt, ORrw);
+    StartFormat(15);
+    OutString(20, 0, ORrw.ArtCode, False);
+    OutString(80, 0, Left(ORrw.Spec, 36), False);
+    OutString(400, 0, ORrw.Quant, True);
+    OutString(480, 0, VCheckArtQuantInStockAndOrd(ORrw.ArtCode, ORr.Location, ORr.SalesGroup), True);
+    EndFormat;
+    Gray_Divider(0, 1);
+    end;
+  Black_Divider(0, 1);
+  StartFormat(15);
+  OutString(20, 0, "Участвуют счета за вчера, сегодня и завтра!", False);
+  EndFormat;
+  EndJob;
+  Return;
+end;
+

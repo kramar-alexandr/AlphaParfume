@@ -1,0 +1,72 @@
+global
+function Boolean BarcodeValidate(var string Barcode, Boolean Recount)
+begin
+record SysFormatBlock SysFormatRec;
+Integer Pos, Length;
+string 5 LastDigit;
+string 13 TempStr;
+Integer Odd, Even, Digit;
+
+Odd = 0;
+Even = 0;
+ while len(Barcode) < 12 
+	 begin
+	 Barcode = "0" & Barcode;
+	 end;
+BlockLoad(SysFormatRec);	
+TempStr = Left(Barcode, 12);
+
+Odd = Odd + StringToInt(Mid(Barcode, 1, 1)) + StringToInt(Mid(Barcode, 3, 1)) + StringToInt(Mid(Barcode, 5, 1)) +
+			StringToInt(Mid(Barcode, 7, 1)) + StringToInt(Mid(Barcode, 9, 1)) + StringToInt(Mid(Barcode, 11, 1));	
+Odd = Odd * 3;
+Even = Even + StringToInt(Mid(Barcode, 0, 1)) + StringToInt(Mid(Barcode, 2, 1)) + StringToInt(Mid(Barcode, 4, 1)) +
+			StringToInt(Mid(Barcode, 6, 1)) + StringToInt(Mid(Barcode, 8, 1)) + StringToInt(Mid(Barcode, 10, 1));			
+LastDigit = ValToString(Odd + Even, M4Val, SysFormatRec.thousSep, SysFormatRec.decimalPt, 1); 
+Digit = 10 - StringToInt(Right(LastDigit, 1));
+TempStr = TempStr & Digit;
+BarcodeValidate = (TempStr == Barcode);
+if Recount then
+	begin
+	Barcode = TempStr;
+	end;
+RETURN;
+end;
+
+global
+function Boolean BarcodeGenRClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+record RcVc RepSpec, RepSpecOld;
+
+if (changed <> 0)then 
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	if (fieldname == "f1") then
+		begin
+		BarcodeValidate(RepSpec.f1, True);
+		RepSpec.f2 = RepSpecOld.f1;
+		PutWindowRecord(wn, RepSpec);
+		end;
+	end;
+BarcodeGenRClassAfterEditField = False;
+RETURN;
+end;
+
+event DefineWindows
+begin
+real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l;
+string 255 label;
+SetLangMode(LangRussian, "RUS", 2);
+
+WindowBegin("Генератор штрих-кодов", BarcodeGenRClass, CGother, RcType);//CGRcW
+SetWRect(20, 80, 350, 220);
+Sizeable(-1, -1, 0, 0);
+Modality(1);
+UseView(RcVc);
+EditFieldTL(120, 40, 130, "Введите код", M4UStr, Normal, 13, f1, True, 0);
+EnterSkip(f1);
+EditFieldTL(120, 70, 130, "Старый код", M4UStr, Normal, 13, f2, True, 0);
+EndWindow;
+
+RETURN;
+end;

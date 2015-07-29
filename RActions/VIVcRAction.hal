@@ -1,0 +1,43 @@
+global
+Function boolean tVIOpenPrepExists(string vecode, LongInt SerNr ) // 6-11-12 TGOR
+begin
+  record OPPVc OPPr;
+
+  tVIOpenPrepExists = false;
+
+  OPPr.VECode = vecode;
+  if (ReadFirstKey("VECode",OPPr,1,true)) then
+    begin
+    OPPr.SerNr = SerNr;
+    if not(ReadFirstMain(OPPr,1,true)) then
+      begin
+      tVIOpenPrepExists = true;
+      end;
+    end;
+
+  Return;
+end;
+
+
+global
+updating function LongInt VIVcRecordCheck(record VIVc VIp,record VIVc VI2p,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+  row VIVc VIpw;
+
+  res = 0;
+  MatRowGet(VIp, 0, VIpw);
+  if tVIOpenPrepExists(VIp.VECode, VIpw.PrepayNr) and (VIp.OKFlag == 1) then
+    begin
+    RecordCheckError(2025,"",-1,"SerNr");
+    res = -1;
+    end;
+
+  if (res == 0) then
+    begin
+    res = inner.VIVcRecordCheck(VIp, VI2p, stat, long4);
+    end;
+
+  VIVcRecordCheck = res;
+  Return;
+end;

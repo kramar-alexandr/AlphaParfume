@@ -1,0 +1,462 @@
+external function string 255 IGetObjName(string);
+external function string 255 IGetUserName(string);
+external function string 255 IGetSalesGroupName(string);
+//external inner function Integer DaysInMonth(Integer,Integer);
+external function string 5 GetMonthName(Integer);
+external function string 255 IGetArtName(string);
+//external function val ABS(val);
+external function LongInt tCountWorkingDays(Date,Date,string,string);
+external  updating procedure PlanWeek(string, string, record RcVc, record LogPlanDVc, integer);
+external  updating procedure PlanWeekNew(string, string, record RcVc);
+
+//===============================================
+function val GetIVCoeff(integer InvType)
+begin
+  integer coeff;
+
+  coeff = 1;
+  if (InvType == 3) then
+    begin
+      coeff = -1;
+    end;
+  GetIVCoeff = coeff;
+  Return;
+end;
+
+//===============================================
+//Соответствует ли объект нормирования продавцу
+function boolean TestObjSalesMan(string Obj, string SalesMan, boolean InclClosed)
+begin
+  boolean res;
+  record CUVc CUr;
+
+  res = false;
+  ResetLoop(CUr);
+  while (LoopKey("Code:" & SalesMan, CUr, 1, not res))
+    begin
+      res = res or (nonblank(Obj) and SetInSet(Obj, CUr.Objects) and ((CUr.blockedFlag == 0) or InclClosed));
+    end;
+  TestObjSalesMan = res;
+end;
+
+//===============================================
+//Возвращаем дату начала месяца
+function date FirstDayOfMonth(date dt)
+begin
+  date res;
+
+  res = dt;
+  res.Day = 1;
+  FirstDayOfMonth = res;
+  Return;
+end;
+
+//===============================================
+//Возвращаем дату окончания месяца
+function date LastDayOfMonth(date dt)
+begin
+  date res;
+
+  res = dt;
+  res.Day = DaysInMonth(res.Year, res.Month);
+  LastDayOfMonth = res;
+  Return;
+end;
+
+updating
+procedure LPNew(string SG, string Code, string Name, val Plan, val Fact, record RcVc RepSpec)
+begin
+record LogPlanDVc LPlDr;
+row  LogPlanDVc LPlDrw;
+
+RecordNew(LPlDr);
+LPlDr.SerNr = NextSerNr("LogPlWVc", CurrentDate, -1, false, "");;
+LPlDr.SalesGroup = SG;
+LPlDr.ArtCode = Code;
+LPlDr.ArtName = Name;
+LPlDrw.Month = GetMonth(RepSpec.sStartDate);
+LPlDrw.Year = GetYear(RepSpec.sStartDate);
+LPlDrw.PlanM = Plan;
+LPlDrw.FactM = Fact;
+LPlDrw.PlanD = LPlDrw.PlanM / tCountWorkingDays(RepSpec.sStartDate, RepSpec.sEndDate, "", "");
+MatRowInsert(LPlDr,0,LPlDrw);
+RecordStore(LPlDr,true);
+PlanWeekNew(LPlDr.SalesGroup, LPlDr.ArtCode, RepSpec);
+Return;
+end;
+//===============================================
+updating
+procedure tOutList(record RcVc RepSpec, record TempVc Listr)
+begin
+  record INVc INr;
+  row TempVc Listrw;
+  integer i, ii;
+  val Plan, Fact, Deviation, Diff, Sum;
+  val SumPlan, SumFact, SumDeviation, SumDiff, SumSum;
+  val Percent;
+  record LogPlanDVc LPlDr,LPlD2r;
+  row LogPlanDVc LPlDrw;
+  LongInt SerNr;
+  boolean Exist;
+
+  SumPlan = 0;
+  SumFact = 0;
+  SumDeviation = 0;
+  SumDiff = 0;
+  SumSum = 0;
+
+  for (i=0; i < MatRowCnt(Listr); i=i+1)
+    begin
+    MatRowGet(Listr, i, Listrw);
+    if nonblank(Listrw.f2) then
+        begin
+        INr.Code = Listrw.f2;
+        ReadFirstMain(INr, 1, true);
+
+        Plan = StringToVal(Listrw.f3, M4Val);
+        Fact = StringToVal(Listrw.f4, M4Val);
+        // Diff = Plan - Fact;
+        // Deviation = Diff;
+        // Sum = Fact * INr.UPrice1;
+
+        // if (Diff < 0) then
+            // begin
+              // Diff = 0;
+            // end;
+            
+        // if (Deviation < 0) then
+            // begin
+            // if (RepSpec.flags[3] == 0) then //Перевыполнение приравнивается к 100%
+                // begin
+                 // Deviation = 0;
+                // end
+            // else
+                // begin
+                // Deviation = -Deviation;
+                // end;
+            // end;
+            
+        // if (Deviation > Plan) then
+            // begin
+            // Deviation = Plan;
+            // end;
+
+        // Percent = (Plan - Deviation) * 100 / Plan;
+
+		LPlDr.SalesGroup = RepSpec.f2;
+		LPlDr.ArtCode = Listrw.f2;
+		if (ReadFirstKey("ArtSalesKey", LPlDr, 2, true)) then 
+			begin
+			Exist = False;
+			for (ii = 0; ii < MatRowCnt(LPlDr); ii = ii + 1) 
+				begin
+				MatRowGet(LPlDr,ii,LPlDrw);
+				if  (StringToInt(LPlDrw.Month) == GetMonth(RepSpec.sStartDate)) and (StringToInt(LPlDrw.Year) == GetYear(RepSpec.sStartDate)) then
+					begin
+					Exist = true;
+					// LPlDrw.PlanM = LPlDrw.PlanM - Plan;
+					// LPlDrw.PlanD = LPlDrw.PlanM / tCountWorkingDays(RepSpec.sStartDate, RepSpec.sEndDate, "", "");
+					// MatRowPut(LPlDr,ii,LPlDrw);
+					// recordCopy(LPlD2r,LPlDr);
+					// RecordUpdate(LPlD2r, LPlDr, true);	
+					end;
+				end;
+			if (Exist == False) then
+				begin
+				LPlDrw.Month = GetMonth(RepSpec.sStartDate);
+				LPlDrw.Year = GetYear(RepSpec.sStartDate);
+				LPlDrw.PlanM = Plan;
+				LPlDrw.FactM = Fact;
+				LPlDrw.PlanD = LPlDrw.PlanM / tCountWorkingDays(RepSpec.sStartDate, RepSpec.sEndDate, "", "");
+				MatRowInsert(LPlDr,ii,LPlDrw);
+				recordCopy(LPlD2r,LPlDr);
+				RecordUpdate(LPlD2r, LPlDr, true);		
+				PlanWeek(LPlDr.SalesGroup, LPlDr.ArtCode, RepSpec, LPlDr, ii);
+				end;
+			end
+		else
+			begin
+			LPNew(RepSpec.f2, Listrw.f2, IGetArtName(Listrw.f2), Plan, Fact, RepSpec);
+			end;
+		end;
+	end;	
+  Return;
+end;
+
+
+//===============================================
+//updating
+procedure tAddPlanToList(record RcVc RepSpec, var record TempVc Listr, string ArtCode, val Plan, integer RowNr)
+begin
+row TempVc Listrw;
+record INVc INr;
+integer i, Pos, NewPos;
+boolean found;
+
+INr.Code = ArtCode;
+ReadFirstMain(INr, 1, true);
+MatRowGet(Listr, RowNr, Listrw);
+Listrw.f2 = ArtCode;
+Listrw.f3 = StringToVal(Listrw.f3, M4Val) + Plan;
+Listrw.f4 = 0;
+MatRowPut(Listr, RowNr, Listrw);
+
+  Return;
+end;
+
+//===============================================
+procedure tAddFactToList(var record TempVc Listr, string ArtCode, val Fact)
+begin
+row TempVc Listrw;
+integer i, Pos;
+boolean found;
+
+Pos = 0;
+found = false;
+for (i=0; (i < MatRowCnt(Listr)) and nonblank(ArtCode) and not found; i=i+1)
+    begin
+    MatRowGet(Listr,i,Listrw);
+    found = (Listrw.f2 == ArtCode);
+    Pos = i;
+    end;
+
+if (found) then //Обновляем
+    begin
+    Listrw.f4 = StringToVal(Listrw.f4, M4Val) + Fact;
+    MatRowPut(Listr, Pos, Listrw);
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Факты из СЧ-Ф
+procedure tGetFact(var record TempVc Listr, string SubsetKey, string Obj, date bd, date ed)
+begin
+row IVVc IVrw;
+record IVVc IVr;
+boolean cont;
+integer i;
+integer coeff;
+string 60 KeyStr;
+
+KeyStr = "InvDate";
+if nonblank(SubsetKey) then
+    begin
+    KeyStr = KeyStr & ":" & SubsetKey;
+    end;
+
+IVr.InvDate = bd;
+cont = true;
+while (LoopKey(KeyStr, IVr, 1, cont))
+    begin
+    cont = DateInRange(IVr.InvDate, bd, ed);
+    if (cont) and (IVr.OKFlag == 1) and (IVr.Invalid == 0) and SetInSet(IVr.InvType, "1,3") and
+				(blank(Obj) or SetInSet(Obj, IVr.Objects)) then
+        begin
+        coeff = GetIVCoeff(IVr.InvType);
+        for (i=0; i<MatRowCnt(IVr); i=i+1)
+            begin
+            MatRowGet(IVr, i, IVrw);
+            tAddFactToList(Listr, IVrw.ArtCode, coeff * IVrw.Quant);
+            end;
+        end;
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Продавец
+Function val tPlanFactSalesMan(record RcVc RepSpec, string SalesMan, date bd, date ed, integer ii)
+begin
+integer i, Month;
+boolean cont, planned;
+record VPlanSpecVc VPr;
+record TempVc Listr;
+record CUVc CUr;
+record UserVc Usr;
+val xxx;
+planned = false;
+Listr.f1 = IGetUserName(SalesMan);
+
+Usr.Code = SalesMan;
+ReadFirstMain(Usr, 1, true);
+
+//stopalert("xxx");
+resetLoop(VPr);
+VPr.CustCat = Usr.SalesGroup;
+cont = true;
+while (LoopKey("CustCat", VPr, 1, cont))
+    begin
+	//stopalert("xxx!");
+    cont = (VPr.CustCat == Usr.SalesGroup);
+    if (cont) and (VPr.Year == bd.Year) then
+        begin
+        if TestObjSalesMan(VPr.Objects, SalesMan, false) then//(RepSpec.flags[2] == 1)
+            begin
+            // for (i=0; i < MatRowCnt(VPr); i=i+1)
+                // begin
+                for (Month = bd.Month; Month <= ed.Month; Month = Month + 1)
+                    begin
+					// if (GetFieldValueByName(VPr, "ArtCode", i) == ArtCode) then
+						// begin
+						xxx = StringToVal(GetFieldValueByName(VPr, GetMonthName(Month) & "P", ii), M4Val);
+						
+						// i = MatRowCnt(VPr);
+						// end;
+					end;
+                //end;
+            end;
+        end;
+    end;
+tPlanFactSalesMan = xxx;
+  Return;
+end;
+
+//===============================================
+//Объект
+Function val tPlanFactObj(record RcVc RepSpec, string Obj, date bd, date ed, integer ii)
+begin
+integer i, Month;
+boolean cont, planned;
+record VPlanSpecVc VPr;
+record TempVc Listr;
+val xxx;
+
+planned = false;
+xxx = 0;
+resetLoop(VPr);
+VPr.Objects = Obj;
+cont = true;
+while (LoopKey("Objects", VPr, 1, cont))
+    begin
+    cont = (VPr.Objects == Obj);
+    if (cont) and (VPr.Year == bd.Year) then
+        begin
+        // for (i=0; i < MatRowCnt(VPr); i=i+1)
+            // begin
+            for (Month = bd.Month; Month <= ed.Month; Month = Month + 1)
+                begin
+				// if (GetFieldValueByName(VPr, "ArtCode", i) == ArtCode) then
+					// begin
+					xxx = StringToVal(GetFieldValueByName(VPr, GetMonthName(Month) & "P", ii), M4Val);
+					// i = MatRowCnt(VPr);
+					// end;
+			    end;
+            // end;
+        end;
+    end;
+tPlanFactObj = xxx;
+  Return;
+end;
+
+function val tPerc(record RcVc RepSpec,string SalesGroup, date bd, date ed, string ArtCode, integer ii ) //record RcVc RepSpec
+begin
+record SalesGroupVc SGr;
+record UserVc Usr;
+record PercentVc Perr;
+Boolean TrHs;
+integer i;
+val Percent;
+
+Percent = 0;
+
+//TrHs = true;
+ResetLoop(Perr);
+Perr.SalesGroup = SalesGroup;
+while  (LoopMAin( Perr, 1, true))
+//while  (LoopKey("SalesGroup", Perr, 1, TrHs))
+	begin
+	//stopalert("Perr.Percent = " & Perr.Empl & Perr.Percent);
+	TrHs = ((Perr.SalesGroup == SalesGroup) and (GetMonth(Perr.FDate) == GetMonth(bd)) and (GetYear(Perr.FDate) == GetYear(bd)) );
+	if (TrHs) and nonBlank(Perr.Empl) then
+		begin
+		//stopalert("Perr.Percent = " & Perr.Empl & Perr.Percent);
+		Percent = Percent + ((tPlanFactSalesMan(RepSpec, Perr.Empl, bd, ed, ii) * Perr.Percent) / 100);
+		end;
+	if (TrHs) and nonBlank(Perr.Cust) then
+		begin
+		Percent = Percent + ((tPlanFactObj(RepSpec, Perr.Cust, bd, ed, ii) * Perr.Percent) / 100);
+		end;
+	end;	
+tPerc = Percent;
+  Return;
+end;
+
+
+//Филиал
+global
+updating
+procedure LogPlanDMn(record RcVc RepSpec)
+begin
+
+integer i, Month;
+boolean cont, planned;
+record VPlanSpecVc VPr;
+record TempVc Listr;
+val xxx;
+date bd, ed;
+string 20 SalesMan, SalesGroup; 
+record LogPlWVc LPlWr;
+record LogPlanDVc LPlDr;
+
+
+bd = RepSpec.sStartDate;
+ed = LastDayOfMonth(bd);
+
+
+
+if RepSpec.f2 == "DEL" then
+	begin
+
+	while (LoopMain(LPlDr,1,true)) 
+		begin
+		RecordDelete(LPlDr);
+		StepBack(LPlDr);
+		end;
+		
+	while (LoopMain(LPlWr,1,true)) 
+		begin
+		RecordDelete(LPlWr);
+		StepBack(LPlWr);
+		end;
+	end;
+
+
+
+if nonblank(RepSpec.f2) then //Филиал
+    begin
+	SalesGroup = RepSpec.f2;
+	Listr.f1 = IGetSalesGroupName(SalesGroup);
+
+	VPr.CustCat = SalesGroup;
+	cont = true;
+	while (LoopKey("CustCat", VPr, 1, cont))
+		begin
+		cont = (VPr.CustCat == SalesGroup);
+		if (cont) and (VPr.Year == bd.Year) and blank(VPr.Objects) then
+			begin
+			for (i=0; i < MatRowCnt(VPr); i=i+1)
+				begin
+				for (Month = bd.Month; Month <= ed.Month; Month = Month + 1)
+					begin
+					xxx = StringToVal(GetFieldValueByName(VPr, GetMonthName(Month) & "P", i), M4Val) -  tPerc(RepSpec,SalesGroup,bd,ed, GetFieldValueByName(VPr, "ArtCode", i), i );
+					tAddPlanToList(RepSpec, Listr, GetFieldValueByName(VPr, "ArtCode", i), xxx, i);
+					end;
+				end;
+			planned = true;
+			end;
+		end;
+
+	if (planned) then
+		begin
+		tGetFact(Listr, SalesGroup, "", bd, ed);
+		tOutList(RepSpec, Listr);
+		end;
+	end;
+	
+  Return;
+end;
+	
+	

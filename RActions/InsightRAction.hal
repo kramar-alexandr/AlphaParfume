@@ -1,0 +1,91 @@
+global
+function Longint InsightVcRecordDefaults(var record InsightVc Ir, record InsightVc I2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+SetLangMode(LangRussian,"RUS",2); 
+Ir.SerNr = -1;
+if (SingleUserMode) then 
+  begin
+  Ir.SerNr = NextSerNr("InsightVc", CurrentDate, -1, false, "");
+  end;
+Ir.DateIn= CurrentDate;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+Ir.CodeUsr = USr.Code;
+Ir.NameUsr = USr.Name;
+Ir.CodeDep = USr.Department;
+
+InsightVcRecordDefaults = res;
+RETURN;
+end;
+
+
+global
+function LongInt InsightVcRecordDuplicate(var record InsightVc Ir, record InsightVc I2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS",2); 
+if (SingleUserMode) then 
+  begin
+  Ir.SerNr = NextSerNr("InsightVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  Ir.SerNr = -1;
+  end;
+Ir.DateIn= CurrentDate;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+Ir.CodeUsr = USr.Code;
+Ir.NameUsr = USr.Name;
+Ir.CodeDep = USr.Department;  
+InsightVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt InsightVcRecordRemoveTest(var record InsightVc Ir, record InsightVc VT2r, LongInt long3, LongInt long4)
+BEGIN
+record UserVc USr;
+
+InsightVcRecordRemoveTest = 1;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+if ((CurrentUser <> Ir.CodeUsr) and (CurrentUser <> "DELPHI") and (CurrentUser <> "TGOR")) then //(not UserCanAction("UnOKAll",True))
+  begin
+  InsightVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+
+global
+function LongInt InsightVcRecordCheck(var record InsightVc Ir, record InsightVc I2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+Integer insertmode,updatemode,rwcnt;
+Boolean TrHs;
+
+SetLangMode(LangRussian, "RUS", 2); 
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+
+if (Ir.SerNr < 1) then
+  begin
+   Ir.SerNr = NextSerNr("InsightVc", CurrentDate, -1, false, "");
+  //res = -1;
+  end;
+
+InsightVcRecordCheck = res;
+RETURN;
+end;

@@ -1,0 +1,78 @@
+remote inner function Boolean IPVc_PasteToRateB1BankVal(var record IPVc,Integer);
+//external inner function Boolean tInSettingOR(string, string, var val);
+remote inner procedure IPVc_PasteBankVal(var record IPVc,Integer);
+
+
+function Boolean tInSettingOR(string InrGroup, string ORrSalesGroup, var val BaseRate2)
+begin
+record tBaseRate2ORVc SOr;
+boolean res;
+
+while loopMain(SOr, 1, true)
+    begin
+    if SOr.Group == InrGroup and setinset(SOr.SalesGroup,ORrSalesGroup)  then
+        begin
+        BaseRate2 = SOr.BaseRate2;
+        res = true;
+        end;
+    end;
+
+tInSettingOR = res;
+return;
+end;
+
+global
+function Boolean IPDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+BEGIN
+record IVVc IVr;
+record IPVc IPr;
+row IPVc IPrw;
+Boolean res;
+val BaseRate2;
+record INVc INr;
+row IVVc IVrw;
+
+res = inner.IPDClassAfterEditField(wn, fieldname, fn,  rownr, changed);
+
+if res and (fieldname == "InvoiceNr") then
+  begin
+  GetWindowRecord(wn, IPr);
+  if (rownr>-1) then
+    begin
+    MatRowGet(IPr, rownr, IPrw);
+    IVr.SerNr = IPrw.InvoiceNr;
+    if ReadFirstMain(IVr, 1, True) then
+      begin
+      if nonblank(IVr.AuthorizationCode) then
+        begin
+        IPrw.AuthorizationCode = IVr.AuthorizationCode;
+        IPr.AuthorizationCode = IVr.AuthorizationCode;
+        end;
+      IPrw.CustCode = IVr.CustCode; //Код клиента не подтягивался автоматически. Привет хансописателям
+      IPrw.CustName = IVr.Addr0;
+      MatRowPut(IPr, rownr, IPrw);
+
+      MatRowGet(IVr,0,IVrw);
+      INr.Code = IVrw.ArtCode;
+      ReadFirstMain(INr,1,true);
+      if tInSettingOR(Inr.Group, IVr.Objects, BaseRate2) and (IVr.CurncyCode == "USD") then
+        begin
+        IPrw.BankVal = IVr.BaseRate2 * IVr.Sum4;
+        MatRowPut(IPr, rownr, IPrw);
+        //IPVc_PasteToRateB1BankVal(IPr,rownr);
+        end;
+
+      PutWindowRecord(wn, IPr);
+      if tInSettingOR(Inr.Group, IVr.Objects, BaseRate2) and (IVr.CurncyCode == "USD") then
+              begin
+              //IPVc_PasteToRateB1BankVal(IPr,rownr);
+              IPVc_PasteBankVal(IPr,rownr);
+              end;
+      PutWindowRecord(wn, IPr);
+      end;
+    end;
+  end;
+IPDClassAfterEditField = res;
+RETURN;
+END;
+

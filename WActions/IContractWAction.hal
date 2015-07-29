@@ -1,0 +1,358 @@
+remote inner procedure M4PadString(string,Integer,string,Boolean,var string);
+remote inner procedure StripEndingSpaces(var string);
+
+//===============================================
+function boolean IGetContractFormName(string Code, var string Name)
+begin
+  record IContractFormBlock CFb;
+  row IContractFormBlock CFbrw;
+  integer i;
+  boolean found;
+
+  Name = blankval;
+  BlockLoad(CFb);
+  for (i=0; (i<MatRowCnt(CFb)) and not found; i=i+1)
+    begin
+      MatRowGet(CFb, i, CFbrw);
+      found = (CFbrw.Code == Code);
+      if found then
+        begin
+          Name = CFbrw.Name;
+        end;
+    end;
+  IGetContractFormName = found;
+  Return;
+end;
+
+//===============================================
+function boolean IGetEntprName(string Code, var string Name)
+begin
+  record tEntPrVc Entpr;
+  boolean found;
+
+  Name = blankval;
+  Entpr.Code = Code;
+  if ReadFirstMain(Entpr, 1, true) then
+    begin
+      Name = Entpr.Name;
+      found = true;
+    end;
+  IGetEntprName = found;
+  Return;
+end;
+
+//===============================================
+function boolean IGetCUName(string Code, var string Name)
+begin
+  record CUVc CUr;
+  boolean found;
+
+  Name = blankval;
+  CUr.Code = Code;
+  if ReadFirstMain(CUr, 1, true) then
+    begin
+      Name = CUr.Name;
+      found = true;
+    end;
+  IGetCUName = found;
+  Return;
+end;
+
+//===============================================
+function boolean IContractDClassContractFormCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IContractVc ICr;
+  
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ICr);
+      if not IGetContractFormName(ICr.ContractFormCode, ICr.ContractFormName) then
+        begin
+          ICr.ContractFormCode = blankval;
+        end;
+      PutWindowRecord(wn, ICr);
+    end;
+  IContractDClassContractFormCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IContractDClassEntprCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IContractVc ICr;
+  
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ICr);
+      if not IGetEntprName(ICr.EntprCode, ICr.EntprName) then
+        begin
+          ICr.EntprCode = blankval;
+        end;
+      PutWindowRecord(wn, ICr);
+    end;
+  IContractDClassEntprCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean IContractDClassCUCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IContractVc ICr;
+  
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ICr);
+      if not IGetCUName(ICr.CUCode, ICr.CUName) then
+        begin
+          ICr.CUCode = blankval;
+        end;
+      PutWindowRecord(wn, ICr);
+    end;
+  IContractDClassCUCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IContractDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "ContractFormCode": res = IContractDClassContractFormCodeEFAfter(wn, changed);
+          case "EntprCode": res = IContractDClassEntprCodeEFAfter(wn, changed);
+          case "CUCode": res = IContractDClassCUCodeEFAfter(wn, changed);
+        end;
+    end;
+  IContractDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IContractFormSClassOnOpenWindow(integer wn)
+begin
+  record IContractFormBlock CFb;
+  row IContractFormBlock CFbrw;
+  longint i;
+  string 255 s;
+  boolean res;
+
+  BlockLoad(CFb);
+  for (i=0; i<MatRowCnt(CFb); i=i+1)
+    begin
+      MatRowGet(CFb, i, CFbrw);
+      s = CFbrw.Code;
+      M4PadString(s, 12, " ", false, s);
+      s = s & CFbrw.Name;
+      SetListString(wn, i, s, false);
+    end;
+        
+  IContractFormSClassOnOpenWindow = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IContractFormSClassOnOKWindow(integer wn)
+begin
+  string 60 s;
+  Integer mwn;
+
+  mwn = MotherWindow(wn);
+  s = left(GetListString(wn,SelectedListLine(wn)), 12);
+  StripEndingSpaces(s);
+  CloseWindow(wn);
+  PasteString(mwn, s);
+  IContractFormSClassOnOKWindow = false;
+  Return;
+end;
+
+//===============================================
+global
+function string 255 IClassIContractSClassHD(var record IClassIContractVc CCr)
+begin
+  record IClassIContractVc parentCCr;
+
+  parentCCr.Code = CCr.Hierarchy;
+  ReadFirstMain(parentCCr, 1, true);
+  IClassIContractSClassHD = parentCCr.Description;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblIContractVc(string dblstr, string l, integer currepwn)
+begin
+  integer wn;
+  record IContractVc ICr;
+
+  ICr.Code = dblstr;
+  if ReadFirstMain(ICr, 1, true) then
+    begin
+      wn = OpenWindow("IContractDClass", 1, 0, "", "", ICr);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure IContractJrnRClassReportDefaults(integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "IContractJrnRClass");
+  RepSpec.flags[0] = 1; //Офиц.
+  RepSpec.flags[1] = 1; //Неофиц.
+  RepSpec.flags[2] = 1; //Схема
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классы договоров ГК", IClassIContractLClass, CGmlist, -);
+  SpawnClass(IClassIContractDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassIContractVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(104, 104, "Род.код", Hierarchy, false, Hierarchy);
+  RlColKey(204, 204, "Наименование", Description, false, Description);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Класс договора ГК", IClassIContractDClass, CGview, -);
+  SetWRect(20, 80, 600, 180);
+  //Sizeable(-1, -1, -1, -1);
+  UseView(IClassIContractVc);
+  v = 16; vs = 20; h = 100; h2 = 300;
+  EditField(h, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2, v, 80, "Иерархия", Normal, Hierarchy, false, IClassIContractSClass);
+  EditField(h, v += vs, -40,"Наименование", Normal, Description, false, 0);
+  EndWindow;
+
+  WindowBegin("Классы договоров ГК", IClassIContractSClass, CGslist, -);
+  SpawnClass(IClassIContractDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IClassIContractVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, true, Code);
+  RlColKey(100, 100, "Наименование", Description, false, Description);
+  RlColKey(-200, -200, "Род.код", Hierarchy, false, Hierarchy);
+  CalculatedColumn(-100, -100, "Род.Наим.", "IClassIContractSClassHD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Формы договоров", IContractFormTClass, CGHbl, -);
+  SetBlid(IContractFormBlock);
+  SetWRect(20, 80, 600, 357);
+  Sizeable(-1, -1, 0, 0);
+  MatrixBegin(4, 20, -31, -20, IContractFormRowType, 199);
+  MatCol(1, 32, "Код", 0, Code, false, 0);
+  MatCol(1, -390, "Наименование", 0, Name, false, 0);
+  EndMatrix;
+  EndWindow;
+
+  WindowBegin("Выберите форму договора", IContractFormSClass, CGother, -);
+  SetWRect (20, 80, 350, 420);
+  Sizeable (-1, -1, 0, 0);
+  StringList(9, 9, -20, -9);
+  EndWindow;
+
+  WindowBegin("Договора ГК", IContractLClass, CGmlist, -);
+  SpawnClass(IContractDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IContractVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(104, 104, "Комментарий", Comment, false, Comment);
+  RlColKey(-400, -400, "Контрагент", CUCode, false, CUCode);
+  RlColKey(-250, -250, "Предприятие", EntprCode, false, EntprCode);
+  RlColKey(-100, -100, "Срок действия", ValidDate, false, ValidDate);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Договор ГК", IContractDClass, CGview, -);
+  SetWRect(20, 80, 800, 400);
+  UseView(IContractVc);
+  v = 16; vs = 20; h = 150; h2 = 300;
+  EditField(h, v, 120, "Код договора", Normal, Code, false, 0);
+  EditField(-120, v, 80, "Срок действия", Normal, ValidDate, false, PasteCurDate);
+  EditField(h, v+=vs, -40, "Комментарий", Normal, Comment, false, 0);
+  EditField(h, v+=vs, 120, "Форма", Normal, ContractFormCode, false, IContractFormSClass);
+  EnterSkip(EntprCode);
+  EditFieldTL(h+200, v, -40, "", M4Str, ViewOnly, 250, ContractFormName, false, 0);
+  EditField(h, v+=vs, 120, "Предприятие", Normal, EntprCode, false, tEntPrSClass);
+  EnterSkip(CUCode);
+  EditFieldTL(h+200, v, -40, "", M4Str, ViewOnly, 250, EntprName, false, 0);
+  EditField(h, v+=vs, 120, "Контрагент", Normal, CUCode, false, CUSClass);
+  EnterSkip(Classification);
+  EditFieldTL(h+200, v, -40, "", M4Str, ViewOnly, 60, CUName, false, 0);
+  EditField(h, v+=vs, -40, "Классификация", Normal, Classification, false, IClassIContractSClass);
+  EditField(h, v+=vs, -40, "Правовые риски и угрозы", Normal, tLegRisk, false, tLegRiskSClass);
+  vm = v+=50;
+  ButtonFrame(h, v, 123, 2, "Статус");
+  RadioButton(h, v, 0, 0, "В работе", Status);
+  RadioButton(h, v+=16, 1, 0, "Архив", Status);
+  v = vm;
+  ButtonFrame(h += 200, v, 123, 3, "Вид");
+  RadioButton(h, v, 0, 0, "Официальный", ContractType);
+  RadioButton(h, v+=16, 1, 0, "Неофициальный", ContractType);
+  RadioButton(h, v+=16, 2, 0, "Схема", ContractType);
+  EndWindow;
+
+  WindowBegin("Договора ГК", IContractSClass, CGslist, -);
+  SpawnClass(IContractDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IContractVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(104, 104, "Комментарий", Comment, false, Comment);
+  RlColKey(-400, -400, "Контрагент", CUCode, false, CUCode);
+  RlColKey(-250, -250, "Предприятие", EntprCode, false, EntprCode);
+  RlColKey(-100, -100, "Срок действия", ValidDate, false, ValidDate);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Журнал договоров", IContractJrnRClass, CGRcW, RcType);
+  SetWRect(20, 80, 450, 280);
+  PeriodField(h=120, v=6, "Период");
+  EditFieldTL(h, v+=vs, 100, "Код договора", M4Code, Normal, 20, f1, false, IContractSClass);
+  EditFieldTL(h, v+=vs, 100, "Форма договора", M4Code, Normal, 20, f2, false, IContractFormSClass);
+  EditFieldTL(h, v+=vs, 100, "Предприятие", M4Code, Normal, 20, f3, false, tEntPrSClass);
+  EditFieldTL(h, v+=vs, 100, "Классификация", M4UStr, Normal, 200, f4, false, IClassIContractSClass);
+  vm = v+=40;
+  ButtonFrame(h, v, 123, 7, "Статус");
+  RadioButton(h, v, 0, 0, "Работа", flags[3]);
+  RadioButton(h, v+=16, 1, 0, "Архив", flags[3]);
+  v = vm;
+  ButtonFrame(h=270, v, 123, 7, "Вид");
+  CheckBox(h, v, 0, "Офиц.", flags[0]);
+  CheckBox(h, v+=16, 0, "Неофиц.", flags[1]);
+  CheckBox(h, v+=16, 0, "Схема", flags[2]);
+  ButtonFrame(h=120, v+=40, 123, 7, "Функция");
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+  Return;
+end;

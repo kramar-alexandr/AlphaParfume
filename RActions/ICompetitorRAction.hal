@@ -1,0 +1,301 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external procedure IOutStringLenWrap(integer, string, string, boolean, integer);
+
+//===============================================
+//Классификация конкурентов ГК
+//===============================================
+global
+function Boolean ICompetitorClassVcRecordDuplicate(var record ICompetitorClassVc CCr, record ICompetitorClassVc CC2r, longint stat, longint check)
+begin
+  longint res;
+
+  CCr.Code = blankval;
+  ICompetitorClassVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICompetitorClassVcRecordCheck(var record ICompetitorClassVc CCr, record ICompetitorClassVc CC2r, longint stat, longint check)
+begin
+  record ICompetitorClassVc parentCCr;
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(CCr.Code) then
+    begin
+      RecordCheckError(1499, "Укажите код класса!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(CCr.Desc) then
+    begin
+      RecordCheckError(1499, "Укажите наименование класса", -1, "Desc");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(CCr.Parent) then
+    begin
+      parentCCr.Code = CCr.Parent;
+      if not ReadFirstMain(parentCCr, 1, true) then
+        begin
+          RecordCheckError(1499, "Некорректная иерархия", -1, "Parent");
+          res = -1;
+        end;
+    end;
+
+  ICompetitorClassVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+//Конкуренты ГК
+//===============================================
+global
+function Boolean ICompetitorVcRecordDuplicate(var record ICompetitorVc Cr, record ICompetitorVc C2r, longint stat, longint check)
+begin
+  longint res;
+
+  Cr.Code = blankval;
+  ICompetitorVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+//Проверка строки класификаторов
+function boolean ClassSetCheck(string ClassStr, var string ErrCode)
+begin
+  record ICompetitorClassVc CCr;
+  integer i, cnt;
+  string 60 CClass;
+  boolean res;
+  
+  res = true;
+  ErrCode = blankval;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      CClass = IGetItemFromStr(ClassStr, i);
+      CCr.Code = CClass;
+      res = res and ReadFirstMain(CCr, 1, true);
+    end;
+
+  if not res then
+    begin
+      ErrCode = CClass;
+    end;
+
+  ClassSetCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICompetitorVcRecordCheck(var record ICompetitorVc Cr, record ICompetitorVc C2r, longint stat, longint check)
+begin
+  longint res;
+  string 60 ErrCode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(Cr.Code) then
+    begin
+      RecordCheckError(1499, "Укажите код код конкурента!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(Cr.Name) then
+    begin
+      RecordCheckError(1499, "Укажите наименование конкурента", -1, "Name");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(Cr.Classification) and not ClassSetCheck(Cr.Classification, ErrCode) then
+    begin
+      RecordCheckError(1120, ErrCode, -1, "Classification");
+      res = -1;
+    end;
+
+  ICompetitorVcRecordCheck = res;
+  Return;
+end;
+
+
+//===============================================
+//Отчет "Конкуренты ГК"
+//===============================================
+function string 100 ICompetitorName(string Code)
+begin
+  record ICompetitorVc Cr;
+
+  Cr.Code = Code;
+  ReadFirstMain(Cr, 1, true);
+  ICompetitorName = Cr.Name;
+  Return;
+end;
+
+//===============================================
+function string 60 OwnershipName(integer Type)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (Type)
+    begin
+      case 0: OwnershipName = "Юр. лицо";
+      case 1: OwnershipName = "Физ. лицо";
+      otherwise OwnershipName = "-";
+    end;
+  Return;
+end;
+
+//===============================================
+procedure OutCriteria(string Caption, string Value)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  StartFormat(15);
+  if nonblank(Value) then
+    begin
+    OutString(5, 0, Caption, false);
+    IOutStringLenWrap(6, 0, Value, false, 50);
+    EndFormat;
+    Gray_Divider(0, 1);
+    end;
+  Return;
+end;
+  
+//===============================================
+procedure ICompetitorRepTopLine(record RcVc RepSpec)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  StartFormat(15);
+  OutString(2, 0, "Код", false);
+  OutString(3, 0, "Наименование", false);
+  OutString(4, 0, "Форма собств.", false);
+  EndFormat;
+  if (RepSpec.ArtMode == 1) then
+    begin
+    Gray_Divider(0, 1);
+    OutString(5, 0, "Критерий", false);
+    OutString(6, 0, "Значение", false);
+    EndFormat;
+    Black_Divider(0, 1);
+    end
+  else
+    begin
+    Black_Divider(0, 1);
+    end;
+  EndFormat;
+  Return;
+end;
+
+//===============================================
+procedure ICompetitorRepHeader(record RcVc RepSpec)
+begin
+  integer rw;
+  string 255 tstr;
+
+  SetLangMode(LangRussian,"RUS", 2);
+
+  rw=2;
+  if nonblank(RepSpec.f1) then
+    begin
+    Header(rw, "Конкурент: " & ICompetitorName(RepSpec.f1) & " (" & RepSpec.f1 & ")", 0);
+    rw = rw + 1;
+    end;
+
+  if nonblank(RepSpec.f2) then
+    begin
+    Header(rw, "Классификация: " & RepSpec.f2, 0);
+    rw = rw + 1;
+    end;
+
+  if (RepSpec.ArtMode == 0) then
+    begin
+    tstr = "Сводный";
+    end
+  else
+    begin
+    tstr = "Подробный";
+    end;
+  Header(rw, tstr, 0);
+  Return;
+end;
+
+//===============================================
+global
+procedure ICompetitorRn(record RcVc RepSpec)
+begin
+  record ICompetitorVc Cr;
+  boolean cont;
+  integer Cnt;
+
+  SetLangMode(LangRussian,"RUS", 2);
+
+  StartReportJob("Конкуренты ГК");
+  ICompetitorRepHeader(RepSpec);
+  EndHeader;
+
+  SetRepCol(2, 2);
+  SetRepCol(3, 80);
+  SetRepCol(4, 420);
+  SetRepCol(5, 40);
+  SetRepCol(6, 200);
+  ICompetitorRepTopLine(RepSpec);
+
+  Cnt = 0;
+  cont = true;
+  Cr.Code = RepSpec.f1;
+  while LoopMain(Cr, 1, cont)
+    begin
+      cont = blank(RepSpec.f1) or (Cr.Code == RepSpec.f1);
+      if cont and (blank(RepSpec.f2) or SetInSet(RepSpec.f2, Cr.Classification))
+              and (RepSpec.flags[0] == 0) or ((Cr.OwnershipType + 1) == RepSpec.flags[0]) then
+        begin
+          Cnt = Cnt + 1;
+          StartFormat(15);
+          OutString(2, "DblICompetitorVc", Cr.Code, false);
+          OutString(3, 0, Cr.Name, false);
+          OutString(4, 0, OwnershipName(Cr.OwnershipType), false);
+          EndFormat;
+          if (RepSpec.ArtMode == 1) then
+            begin
+            //Общие
+            OutCriteria("Условия отсрочки", Cr.DelayTerms);
+            OutCriteria("Условия док. оформления", Cr.DocTerms);
+            OutCriteria("Условия принятия заказа", Cr.OrderTerms);
+            OutCriteria("Условия доставки товара", Cr.DeliveryTerms);
+            OutCriteria("Условия взаиморасчетов", Cr.PayTerms);
+            OutCriteria("Условия бонусирования", Cr.BonusTerms);
+            OutCriteria("Условия возврата", Cr.ReturnTerms);
+            //Продвижение
+            OutCriteria("Наличие акций", Cr.ActTerms);
+            OutCriteria("Частота появления новинок", Cr.NewsFreq);
+            OutCriteria("Cертификаты на продукцию", Cr.Certificates);
+            OutCriteria("Рекламные инструменты", Cr.Adversting);
+            //Отличия
+            OutCriteria("Сильные стороны", Cr.StrongPoint);
+            OutCriteria("Слабые стороны", Cr.WeakPoint);
+            OutCriteria("Преимущества ГК", Cr.SelfAdvantage);
+            OutCriteria("Преимущества конкурента", Cr.CompAdvantage);
+            OutCriteria("Представл. Конкурент/ГК", Cr.Representation);
+            Black_Divider(0, 1);
+            end
+          else
+            begin
+            Gray_Divider(0, 1);
+            end;
+        end;
+    end;
+
+  StartFormat(15);
+  OutString(2, 0, "Всего:", false);
+  OutString(3, 0, Cnt, false);
+  EndFormat;
+
+  EndJob;
+  Return;
+end;

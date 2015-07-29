@@ -1,0 +1,92 @@
+
+global
+procedure DExpOtgrRn(record RcVc RepSpec)
+ begin
+ record CuVc CUr;
+ record SHVC SHr;
+ row SHVc Shrw;
+ boolean trhs,testf;
+ integer i,j,k;
+ 
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportNoHeaderJob("Экспорт совмещенных отгрузок");
+ if (SetExportCodePage("CP1251")) then begin end; 
+ if (blank(RepSpec.d1)) then begin repspec.d1 = currentdate; end;
+ if (nonblank(RepSpec.f1)) then begin
+  CUr.Code = RepSpec.f1;
+  if (readfirstmain(Cur,1,true)) then begin end;
+  trhs=true;
+  Shr.OKFlag=0;
+  //==== заголовок
+      StartFormat(15);
+	   outstring(0,0," ",false);
+	   outstring(100,0,"Поставщик",false);
+	   outstring(200,0,"МАКСАН",false);
+	  EndFormat;
+      StartFormat(15);	   
+	   outstring(0,0," ",false);
+	   outstring(100,0,"Получатель",false);
+	   outstring(200,0,CUr.Name,false);
+	  EndFormat;
+	  StartFormat(15);
+	   outstring(0,0,"Ном. распоряж.",false);
+	   outstring(100,0,RepSpec.f2,false);
+	  EndFormat;
+	  StartFormat(15);
+	   outstring(0,0," ",false);
+	   outstring(100,0,"от " & RepSpec.d1,false);
+	  EndFormat;
+	  StartFormat(15);
+	   outstring(0,0," ",false);
+	  EndFormat;
+	  StartFormat(15);
+	   outstring(0,0,"Номер заказ внутр.",false);
+	  EndFormat;
+	  StartFormat(15);
+	   outstring(0,0," ",false);
+	   outstring(100,0," ",false);
+	   outstring(200,0,"Примечание: СПД Старов З.Р.",false);
+	  EndFormat;
+	  StartFormat(15);
+	   outstring(0,0,"№",false);
+	   outstring(100,0,"Код",false);
+	   outstring(200,0,"Наименование товара",false);
+	   outstring(300,0,"Ед.изм.",false);
+	   outstring(400,0,"Кол-во",false);
+	  EndFormat;
+	  j=1;
+	  Shr.OKFlag=0;
+	  SHr.ShipDate=RepSpec.d1;
+  while (loopkey("OKFlagShipDate",SHr,2,trhs)) begin
+   testf=true;
+   if (SHr.CustCode<>Cur.Code) then begin testf=false; end;
+   if (Shr.OKFlag==1) then begin testf=false; trhs=false; end;
+   if (SHr.ShipDate>RepSpec.d1) then begin testf=false; end;
+   if (testf) then begin
+    for (i=0;i<matrowcnt(SHr);i=i+1) begin
+	   matrowget(Shr,i,SHrw)
+	   StartFormat(15);
+	   outstring(0,0,j,false);
+	   outstring(100,0,right(SHrw.ArtCode,len(SHrw.ArtCode)-2),false);
+	   outstring(200,0,SHrw.Spec,false);
+	   outstring(300,0,"шт.",false);
+	   outstring(400,0,SHrw.Ordered,false);
+	   k=k+SHrw.Ordered;
+	   EndFormat;
+	   j=j+1;
+	end; // for
+   end;//testf
+  end; //while
+  	  StartFormat(15);
+	   outstring(0,0," ",false);
+	   outstring(100,0," ",false);
+	   outstring(200,0," ",false);
+	   outstring(300,0," ",false);
+	   outstring(400,0,k,false);
+	  EndFormat;
+ end;// если непустой клиент
+  
+ EndJob;
+ 
+return;
+end;

@@ -1,0 +1,197 @@
+remote updating procedure IUserAccessSetLevel(string, string, integer, integer);
+
+/*
+//===============================================
+//Наименование типа
+
+global
+function string 255 IAccessItemLClassAccTypeName(var record IAccessItemVc Ar)
+begin
+  string 60 atype;
+
+  switch (Ar.AccType)
+    begin
+      case 1: atype = USetStr(13210); //Модуль
+      case 2: atype = USetStr(13211); //Регистр
+      case 3: atype = USetStr(13212); //Настройка
+      case 4: atype = USetStr(13213); //Отчет
+      case 5: atype = USetStr(13214); //Документ
+      case 6: atype = USetStr(13215); //Экспорт
+      case 7: atype = USetStr(13216); //Импорт
+      case 8: atype = USetStr(13217); //Обслуживание
+      case 9: atype = USetStr(13218); //Действие
+      case 10: atype = USetStr(13219); //Группа отображения
+    end;
+  IAccessItemLClassAccTypeName = atype;
+  Return;
+
+end;
+*/
+
+//===============================================
+global
+function Boolean IAccessItemDClassAccNameEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record IAccessItemVc AIr;
+
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, AIr);
+      AIr.AccDesc = StringFromStringSet(3, AIr.AccName);
+      PutWindowRecord(wn, AIr);
+    end;
+  IAccessItemDClassAccNameEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IAccessItemDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "AccName": res = IAccessItemDClassAccNameEFAfter(wn, changed);
+        end;
+    end;
+  IAccessItemDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+//Настроить доступ пользователя из его карточки
+global
+procedure ISetAccessFromUserVc()
+begin
+  record UserVc Usr;
+  record RcVc RepSpec;
+  integer  wn;
+
+  wn = CurWindow;
+  GetWindowRecord(wn, Usr);
+  if (Usr.AccessGroup <> Usr.Code) then
+    begin
+      Usr.AccessGroup = Usr.Code;
+      PutWindowRecord(wn, Usr);
+    end;
+  RepSpec.repname = "ISetUserAccessRn";
+  RepSpec.f1 = Usr.Code;
+  RepSpec.Media = mtScreen;
+  RunReport(RepSpec, 0);
+  Return;
+end;
+
+//===============================================
+//Установить фильтр по типу объекта доступа
+global
+procedure DblIAccessSetType(string dblstr, string l, integer currepwn)
+begin
+  record RcVc RepSpec;
+
+  GetWindowRecord(currepwn, RepSpec);
+  CloseWindow(currepwn);
+  RepSpec.AccSpec = StringToInt(l);
+  RunReport(RepSpec, 0);
+  Return;
+end;
+
+//===============================================
+//Выбор уровней доступа для заданного элемента
+global
+procedure DblIAccessLevelList(string dblstr, string l, integer currepwn)
+begin
+  record RcVc RepSpec;
+
+  GetWindowRecord(currepwn, RepSpec);
+  RepSpec.repname = "IAccessLevelListRn";
+  RepSpec.f2 = l; //AccName
+  RepSpec.GroupsOnly = currepwn;
+  RunReport(RepSpec, 0);
+  Return;
+end;
+
+//===============================================
+//Установка уровня доступа для заданного элемента
+global
+updating procedure DblIAccessSetLevel(string dblstr, string l, integer currepwn)
+begin
+  record RcVc RepSpec;
+
+  GetWindowRecord(currepwn, RepSpec);
+  IUserAccessSetLevel(RepSpec.f1, RepSpec.f2, RepSpec.AccSpec, StringToInt(l)); //(UserCode, AccName, AccType, AccLevel)
+  CloseWindow(currepwn);
+  CloseWindow(RepSpec.GroupsOnly);
+  RepSpec.repname = "ISetUserAccessRn";
+  RunReport(RepSpec, 0);
+  Return;
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  Setting("Объекты доступа", IAccessItemLClass, modIT);
+  Register("Доступ", "Доступ", ITestLClass, modIT);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Объекты доступа", IAccessItemLClass, CGmlist, -);
+  SpawnClass(IAccessItemDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IAccessItemVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", AccName, false, AccName);
+  RlColKey(150, 150, "Описание", AccDesc, false, AccDesc);
+  RlColKey(-100, -100, "Тип", AccType, false, AccType);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Объекты доступа", IAccessItemSClass, CGslist, -);
+  SpawnClass(IAccessItemDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IAccessItemVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", AccName, false, AccName);
+  RlColKey(150, 150, "Описание", AccDesc, false, AccDesc);
+  RlColKey(-100, -100, "Тип", AccType, false, AccType);
+  SearchField("Поиск");
+  EndWindow;
+
+
+  WindowBegin("Объект доступа", IAccessItemDClass, CGview, -);
+  SetWRect(20, 80, 520, 280);
+  UseView(IAccessItemVc);
+  v = 6;
+  EditField(h=100, v, 200, "Код", Normal, AccName, false, RegisterSClass); //StrSetSClass
+  EditField(h, v+=vs, -40, "Наименование", Normal, AccDesc, false, 0);
+  ButtonFrame(h, v2 = (v+=40), 123, 7, "Тип");
+  RadioButton(h, v, 1, 0,         USetStr(13210), AccType); //Модуль
+  RadioButton(h, v+=16, 2, 0,     USetStr(13211), AccType); //Регистр
+  RadioButton(h, v+=16, 3, 0,     USetStr(13212), AccType); //Настройка
+  RadioButton(h, v+=16, 4, 0,     USetStr(13213), AccType); //Отчет
+  RadioButton(h, v+=16, 5, 0,     USetStr(13214), AccType); //Документ
+  RadioButton(h+=150, v=v2, 6, 0, USetStr(13215), AccType); //Экспорт
+  RadioButton(h, v+=16, 7, 0,     USetStr(13216), AccType); //Импорт
+  RadioButton(h, v+=16, 8, 0,     USetStr(13217), AccType); //Обслуживание
+  RadioButton(h, v+=16, 9, 0,     USetStr(13218), AccType); //Действие
+  RadioButton(h, v+=16, 20, 0,    USetStr(13219), AccType); //Группа отображения
+  EndWindow;
+
+  Return;
+end;

@@ -1,0 +1,18 @@
+//19.08.10 INAU - Позволяем менять курсы валют в звкрытых сч-ф поставщика для определенных товариСЧей
+global
+function Boolean VIDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record VIVc VIr;
+
+  res = inner.VIDClassActiveEditField(wn, fieldname, fn, wnst, rownr, changed);
+
+  GetWindowRecord(wn, VIr);
+  if (VIr.OKFlag == 1) then
+    begin
+    res = res and SetInSet(fieldname,"BaseRate1,BaseRate2,FrRate,ToRateB1,ToRateB2") and UserCanAction("UnOKAll",false); //19.08.10 INAU
+    end;
+
+  VIDClassActiveEditField = res;
+  Return;
+end;

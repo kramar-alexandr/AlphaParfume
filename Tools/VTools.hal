@@ -1,0 +1,675 @@
+external inner procedure ExtractObj(string,var Integer,var string);
+remote procedure MailAnything(string, string, string);
+remote procedure SendSMSD(string);
+
+global
+procedure AppendStr(var string Append, string Origin)
+begin
+if blank(Append) then
+	begin
+	Append = Origin;
+	end else
+	begin
+	Append = Append & "," & Origin;
+	end;
+RETURN;
+end;
+
+global
+procedure GetUserFN1(var record RcVc RepSpec, string FileName)
+begin
+record VUserBudVc UBr; //Закрепление функций - настройка!
+string 60 fn1;
+
+fn1 = GetFieldValueByName(RepSpec, FileName, -1);
+UBr.Code = CurrentUser;
+if ReadFirstMain(UBr, 1, True) then 
+	begin
+		if nonblank(UBr.Function1) then
+		begin
+		if (blank(fn1) or (not SetInSet(fn1, UBr.Function1))) then
+			begin
+			fn1 = FirstInRange(UBr.Function1, 20);
+			end;
+		end;
+	end else
+	begin
+	fn1 = "***";
+	end;
+SetFieldValueByName(RepSpec, FileName, fn1, -1);
+RETURN;
+// Учет и финансы
+end;
+
+global
+procedure UserObjAllow(var record RcVc RepSpec, string FieldName) 
+begin
+record UserVc USr, US2r;
+record VUserBudVc UBr; 
+record ObjVc OBjr, Obj2r;
+string 60 TempStr, Res;
+string 20 TmpStr;
+integer pos;
+boolean All;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+pos = 0;
+UBr.Code = CurrentUser;
+All = ReadFirstMain(UBr, 1, True) and blank(UBr.Function1);
+
+UBr.Code = CurrentUser;
+if ReadFirstMain(UBr, 1, True) then 
+	begin
+	TempStr = GetFieldValueByName(RepSpec, FieldName, -1);
+	//if blank(TempStr) and (USr.limitedAccess <> 0) then
+	if (USr.limitedAccess <> 0) then
+		begin
+		AppendStr(TempStr, Left(USr.Department, 2));
+		end;
+	
+	ExtractObj(TempStr, pos, TmpStr);
+	while nonblank(TmpStr)
+		begin
+		Objr.Code = TmpStr;
+		if ReadFirstMain(Objr, 1, true) then 
+			begin
+			switch(Objr.OTCode)
+				begin
+				case "EMP": begin
+							US2r.Code = Objr.Code;
+							ReadFirstMain(US2r, 1, True);
+							if (US2r.Department <> USr.Department) and (not All) then
+								begin
+								AppendStr(Res, USr.PersObjx);
+								end else
+								begin
+								AppendStr(Res, TmpStr);
+								end;
+							end;
+				case "PODR":begin
+							if (Left(USr.Department, 2) <> Objr.Code) and (USr.limitedAccess <> 0) then
+								begin
+								AppendStr(Res, Left(USr.Department, 2));
+								end else
+								begin
+								//if blank(UBr.Function1) then
+									begin
+									AppendStr(Res, TmpStr);
+									// end else
+									// begin
+									// AppendStr(Res, FirstInRange(UBr.Function1, 20));
+									end;
+								end;
+							end;
+				case "FN1":	begin
+							UBr.Code = USr.Code;
+							if ReadFirstMain(UBr, 1, True) then
+								begin
+								if SetInSet(Objr.Code, UBr.Function1) or blank(UBr.Function1) then
+									begin
+									AppendStr(Res, Objr.Code);
+									end else
+									begin
+									AppendStr(Res, FirstInRange(UBr.Function1, 20));
+									end;
+								end else
+								begin
+								AppendStr(Res, "Запрещен объект " & Objr.Code);
+								end;
+							end;
+				case "FN2":	begin
+							Obj2r.Code = Objr.AutoObjects;
+							if ReadFirstMain(Obj2r, 1, True) then
+								begin
+								if SetInSet(Obj2r.Code, UBr.Function1) or blank(UBr.Function1) then
+									begin
+									AppendStr(Res, Objr.Code);
+									end else
+									begin
+									Objr.Code = blankval;
+									ResetLoop(Objr);
+									ReadFirstKey("OTCode", Objr, 1, True);
+									AppendStr(Res, Objr.Code);
+									end;
+								end;
+							end;
+						otherwise 	
+						begin
+						AppendStr(Res, Objr.Code);
+						end;
+					end;//switch							  
+				end;				
+		ExtractObj(TempStr, pos, TmpStr);
+		end;	
+	end else
+	begin
+	Res = "***";
+	end;
+
+SetFieldValueByName(RepSpec, FieldName, Res, -1);
+RETURN;
+end;
+
+
+global
+updating function boolean IVVcToTT(record IVVc IVr)
+begin
+record IVTTVc THr;
+record UserVc Usr;
+row IVVc IVrw;
+
+MatRowGet(IVr, 0, IVrw);
+//StopAlert(IVrw.ArtCode & "!");
+if nonblank(IVrw.ArtCode) then 
+	begin
+	Usr.Code = CurrentUser;
+	ReadFirstMain(Usr, 1, True);
+
+	THr.IVCode = IVr.SerNr;
+	if (not  ReadFirstMain(THr, 1, True)) then
+		begin
+		THr.IVCode = IVr.SerNr;
+		THr.TransDate = IVr.ServiceDelDate;
+		THr.Stock = IVr.Location;
+		THr.CUCode = IVr.CustCode;
+		THr.Address = IVr.ShipAddr1; //IVr.ShipAddr0 & " - " & IVr.ShipAddr1;
+		THr.CUName = IVr.Addr0;
+		THr.SalesGroup = IVr.SalesGroup;
+		THr.SalesMan = CurrentUser;
+		THr.ObjStr = IVrw.Objects & "," & IVr.Objects;
+		RecordStore(THr, True);
+		IVVcToTT = True;
+		end else
+		begin
+		MessageBox(0, "Eсть товарно-транспортнаЯ!");
+		IVVcToTT = False;
+		end;
+	end;
+RETURN;
+end;
+
+global
+function string 13 FillBarcodes(LongInt ORSerNr, LongInt OrdRow)//для заполнения штрихкодов
+BEGIN
+  val res;
+  record SHVc SHr;
+  row SHVc SHrw;
+  Integer i,rwcnt,pos;
+  Boolean found;
+  found = true;
+  SHr.OrderNr = ORSerNr;
+  while (LoopKey("OrderKey",SHr,1,found)) begin
+    if (SHr.OrderNr!=ORSerNr) then begin
+      found = false;
+    end;
+    if (found) then begin
+      rwcnt = MatRowCnt(SHr);
+      for (i=0;i<rwcnt;i=i+1) begin
+        MatRowGet(SHr,i,SHrw);
+        if (SHrw.OrdRow==OrdRow) then begin
+          FillBarcodes = SHrw.Barcoderw;
+        end;
+      end;
+    end;
+  end;
+  RETURN;
+END;
+ 
+global
+function boolean CheckIfItemInPrice(record ORVc ORr, Integer rownr)
+begin
+row ORVc ORrw;
+record PLVc PLr;
+record VSetSetBlock VSet;
+boolean res;
+
+res = True;
+BlockLoad(VSet);
+MatRowGet(ORr, rownr, ORrw);
+if SetInSet(ORr.PriceList, VSet.ControlPricesList) and nonblank(ORrw.ArtCode) then
+	begin
+	PLr.PLCode = ORr.PriceList;
+	PLr.ArtCode = ORrw.ArtCode;
+	ResetLoop(PLr);
+	res = ReadFirstMain(PLr, 2, True);	
+	end;
+CheckIfItemInPrice = res;
+RETURN;
+end;
+
+global
+function val CorrectArtQuantInOrd(string ArtCode, string SalesGroup)
+begin
+record ORVc ORr;
+row ORVc ORrw;
+record SHVc SHr;
+record UserVc USr;
+Date StartDate, EndDate;
+Integer RwCnt;
+boolean Found;
+val res;
+
+res = 0;
+StartDate = CurrentDate;
+StartDate.day = StartDate.day - 1;
+EndDate = CurrentDate;
+EndDate.day = EndDate.day + 1;
+ResetLoop(ORr);
+ORr.OrdDate = StartDate;
+ORr.SalesGroup = SalesGroup;
+Found = True;
+while LoopKey("OrdDate:" & SalesGroup, ORr, 1, Found)
+	begin
+	Found = (ORr.OrdDate <= EndDate) and (ORr.SalesGroup == SalesGroup);
+	if Found and (ORr.Closed <> 1) then
+		begin
+		SHr.OrderNr = ORr.SerNr;
+		if (not ReadFirstKey("OrderKey", SHr, 1, True)) then
+			begin
+			for (RwCnt = 0; RwCnt < MatRowCnt(ORr); RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(ORr, RwCnt, ORrw);
+				if (ORrw.ArtCode == ArtCode) then
+					begin
+					res = res + ORrw.Quant;
+					end;
+				end;
+			end;
+		end;
+	end;
+
+CorrectArtQuantInOrd = res;
+RETURN;
+end;
+
+global
+function val VCheckArtQuantInStockAndOrd(string ArtCode, string Location, string SalesGroup)
+begin
+record ItemStatusVc ISSr, ISOr;
+record VSetSetBlock VSet;
+Integer i, Cnt;
+Boolean TrHs;
+val Quant;
+
+Quant = 0;
+BlockLoad(VSet);
+if (VSet.StockQuantControl == 1) then
+	begin
+	ISSr.Code = ArtCode;
+	if blank(Location) then
+		begin
+		ISSr.Location = VSet.DefaultStock;
+		end else
+		begin
+		ISSr.Location = Location;
+		end;
+	ReadFirstMain(ISSr, 2, True);
+	Quant = ISSr.Instock;
+	if (VSet.OrdQuantControl == 1) then
+		begin
+		Quant = Quant - CorrectArtQuantInOrd(ArtCode, SalesGroup);
+		end;
+	/*ISOr.Code = ArtCode;
+	ISOr.Location = Location;
+	ReadFirstMain(ISOr, 2, True);
+	Quant = Quant - ISOr.OrddOut;
+	if (Quant < 0) then
+		begin
+		Quant = 0;
+		end;
+	*/
+	end;
+
+VCheckArtQuantInStockAndOrd = Quant;
+RETURN;
+end;
+
+global
+procedure BaseRateMail(val BaseRate)
+begin
+record RSSBlock RSSb;
+row RSSBlock RSSr;
+LongInt res;
+Integer RwCnt;
+string 100 Body;
+string 20 Subj;
+
+SetLangMode(LangRussian, "RUS", 2);
+BlockLoad(RSSb);
+for(RwCnt = 0; RwCnt < MatRowCnt(RSSb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(RSSb, RwCnt, RSSr);
+	if (RSSr.RSSCode == "КУРС") then
+		begin
+		switch (RSSr.NotificationType)
+			begin
+			case	"SMS":	begin
+					Body = "/opt1/hw72/tools/course.sms";
+					Subj = "KURS_USD";
+					end; 
+			case	"MAIL": begin
+					Body = "/opt1/hw72/tools/course.txt";
+					Subj = "Курс_USD";
+					end;
+			case	"SMSD": begin
+					Subj = "";
+					end;
+			end;
+		if nonblank(Subj) then
+			begin
+			MailAnything(RSSr.NotificationAddress, Subj,  Body & " " & CurrentDate & " " & BaseRate);		
+			end else
+			begin
+			SendSMSD(RSSr.NotificationAddress & " " & BaseRate);
+			end;
+		end;
+	end;
+
+RETURN;
+end;
+
+
+global
+procedure ShowBaseERVc()
+BEGIN
+record BaseERVc BERr;
+
+BERr.Date = CurrentDate;
+ReadLastMain(BERr, 1, False);
+SetLangMode(LangRussian, "RUS", 2);
+MessageBox(0, "Курс на " & BERr.Date & "   " & BERr.Rate2);
+RETURN;
+end;
+
+
+global
+procedure MailBaseERVc()
+BEGIN
+record BaseERVc BERr;
+
+BERr.Date = CurrentDate;
+ReadLastMain(BERr, 1, False);
+BaseRateMail(BERr.Rate2);
+RETURN;
+end;
+
+
+global 
+updating procedure CUVcAddObject2(record RcVc RepSpec)
+begin
+record CUVc CUr, CU2r;
+Integer Cnt;
+
+ResetLoop(CUr);
+CUr.Code = blankval;
+while LoopMain(CUr, 1, True) 
+	begin
+	if ((CUr.CUType == 1) and (CUr.blockedFlag <> 1)) then
+		begin
+		CU2r.Code = CUr.Code;
+		ReadFirstMain(CU2r, 1, True);
+		if SetInSet("DL", CUr.Classification) and (not SetInSet("DL", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",DL";
+			end;
+		if SetInSet("SG", CUr.Classification) and (not SetInSet("DL", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",DL";
+			end;
+		if SetInSet("KO", CUr.Classification) and (not SetInSet("DS", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",DS";
+			end;
+		if SetInSet("MO", CUr.Classification) and (not SetInSet("DS", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",DS";
+			end;
+		if SetInSet("PR", CUr.Classification) and (not SetInSet("DS", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",DS";
+			end;	
+		if SetInSet("NW", CUr.Classification) and (not SetInSet("NW", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",NW";
+			end;
+		if SetInSet("RO", CUr.Classification) and (not SetInSet("RO", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",RO";
+			end;
+		if SetInSet("TT", CUr.Classification) and (not SetInSet("RO", CUr.Objects)) then
+			begin
+			CUr.Objects = CUr.Objects & ",RO";
+			end;
+		RecordUpdate(CU2r, CUr, false);
+		Cnt = Cnt + 1;
+		end;
+	end;
+MessageBox(0, Cnt & " records updated!");
+RETURN;
+end;
+
+
+global
+procedure ExportOrdMaksanDsm()
+begin
+record ORVc ORr;
+row ORVc ORrw;
+Integer RwCnt, Cnt;
+
+GetWindowRecord(CurWindow, ORr);
+if (ORr.OKFlag == 1) then
+	begin
+	SetLangMode(LangRussian, "RUS", 2);
+	CreateFile("Exprt\\" & ORr.SerNr & ".csv");
+	SetExportCodePage("CP1251");
+	OpenFile("Exprt\\" & ORr.SerNr & ".csv");
+	NewLine;
+	NewLine;
+	ExportString(";Поставщик;МАКСАН; ");
+	NewLine;
+	ExportString(";;тел.; ");
+	NewLine;
+	ExportString(";Получатель;" & ORr.Addr0 & "; ");
+	NewLine;
+	NewLine;
+	ExportString("Ном.распоряж;;" & ORr.SerNr & "; ");
+	NewLine;
+	ExportString(";" & ORr.OrdDate & "; ");
+	NewLine;
+	NewLine;
+	ExportString("Номер заказ внутр:; ");
+	NewLine;
+	ExportString("№;Код;Наименование;Ед.изм.;Кол-во; ");
+	NewLine;
+	Cnt = 0;
+	for(RwCnt = 0; RwCnt < MatRowCnt(ORr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(ORr, RwCnt, ORrw);
+		if (ORRw.Quant > 0) then
+			begin
+			ExportString((Cnt += 1) & ";" & Right(ORrw.ArtCode, len(ORrw.ArtCode) - 2) & ";" & ORrw.Spec & ";" & "шт." & ";" & ORrw.Quant & "; ");
+			NewLine;
+			end;
+		end;
+	ExportString(";;;;" & ORr.TotQty & ";");
+	CloseFile;
+	MessageBox(0, "Экспортировано в файл Exprt\\" & ORr.SerNr & ".csv");
+	end;
+
+RETURN;
+end;
+
+global
+procedure ExportStockMovMaksanDsm()
+begin
+record StockMovVc SMr;
+row StockMovVc SMrw;
+record LocationVc Lr;
+Integer RwCnt, Cnt;
+val Count;
+
+GetWindowRecord(CurWindow, SMr);
+if (SMr.OrdFlag == 1) and (SMr.SentOKFlag == 0) and (SMr.OKFlag == 0) then
+	begin
+	SetLangMode(LangRussian, "RUS", 2);
+	CreateFile("Exprt\\SM_" & SMr.SerNr & ".csv");
+	SetExportCodePage("CP1251");
+	OpenFile("Exprt\\SM_" & SMr.SerNr & ".csv");
+	NewLine;
+	NewLine;
+	Lr.Code = SMr.ToLocation;
+	ReadFirstMain(Lr, 1, True);
+	ExportString(";Поставщик;МАКСАН; ");
+	NewLine;
+	ExportString(";;тел.; ");
+	NewLine;
+	ExportString(";Получатель;" & SMr.ToLocation & " " & Lr.Name & "; ");
+	NewLine;
+	NewLine;
+	ExportString("Ном.распоряж;;" & SMr.SerNr & "; ");
+	NewLine;
+	ExportString(";" & SMr.RegDate & "; ");
+	NewLine;
+	NewLine;
+	ExportString("Номер заказ внутр:; ");
+	NewLine;
+	ExportString("№;Код;Наименование;Ед.изм.;Кол-во; ");
+	NewLine;
+	Cnt = 0;
+	Count = 0;
+	for(RwCnt = 0; RwCnt < MatRowCnt(SMr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(SMr, RwCnt, SMrw);
+		if (SMrw.OrdQuant > 0) then
+			begin
+			ExportString((Cnt += 1) & ";" & Right(SMrw.ArtCode, len(SMrw.ArtCode) - 2) & ";" & SMrw.Spec & ";" & "шт." & ";" & SMrw.OrdQuant & "; ");
+			Count = Count + SMrw.OrdQuant;
+			NewLine;
+			end;
+		end;
+	ExportString(";;;;" & Count & ";");
+	CloseFile;
+	MessageBox(0, "Экспортировано в файл Exprt\\SM_" & SMr.SerNr & ".csv");
+	end;
+
+RETURN;
+end;
+
+
+global
+updating
+procedure DblORDelete(string dblstr,string l,Integer currepwn)
+begin
+record ORVc ORr;
+
+if (CurrentUser == "DELPHI") then
+    begin
+    ORr.SerNr = l;
+    ReadFirstMain(ORr, 1, True);
+    RecordRemove(ORr);
+    end;
+RETURN;
+end;
+
+
+global
+function string 200 ConcateArtName(string ArtCode, string DocType, string LangCode)
+begin
+record VSetClassVc VSCr;
+row VSetClassVc VSCrw;
+record VClassVc VCr;
+row VClassVc VCrw;
+record INVc INr;
+record CTypeVc CTr;
+string 200 TempStr, LeftStr, MidStr, RightStr;
+string 20 KeyStr;
+string 1 FirstChar;
+Integer RowCnt, Lang, BasePos;
+Boolean NewClassTypeMatch, OldClassTypeMatch, LangMatch, Found;
+
+INr.Code = ArtCode;
+if ReadFirstMain(INr, 1, True) and nonblank(INr.BaseName) then
+	begin
+	MidStr = INr.BaseName;
+	VSCr.DocType = DocType;
+	ReadFirstMain(VSCr, 1, True);		
+	for (RowCnt = 0; RowCnt < MatRowCnt(VSCr); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(VSCr, RowCnt, VSCrw);
+		if (VSCrw.ClassType == "BNAM") then
+			begin
+			BasePos = RowCnt;
+			end;
+		end;
+	if ReadFirstMain(VSCr, 1, True)
+		begin
+		for (RowCnt = 0; RowCnt < MatRowCnt(VSCr); RowCnt = RowCnt + 1)
+			begin
+			MatRowGet(VSCr, RowCnt, VSCrw);
+			
+			if nonblank(VSCrw.ClassType) then
+				begin
+				VCr.NewClassType = VSCrw.ClassType;
+				KeyStr = "NewClassType";
+				NewClassTypeMatch = True;
+				OldClassTypeMatch = false;
+				end;
+			if nonblank(VSCrw.ClassForm) then
+				begin
+				VCr.OldClassType = VSCrw.ClassForm;
+				KeyStr = "OldClassType";
+				NewClassTypeMatch = false;
+				OldClassTypeMatch = True;
+				end;
+				Found = True;
+				ResetLoop(VCr);
+				VCr.NewClass = "";
+			while LoopKey(KeyStr, VCr, 1, (NewClassTypeMatch or OldClassTypeMatch)) 
+				begin
+				NewClassTypeMatch = (VCr.NewClassType == VSCrw.ClassType);
+				OldClassTypeMatch = (VCr.OldClassType == VSCrw.ClassForm);
+				if (NewClassTypeMatch or OldClassTypeMatch) then
+					begin
+					Found = (SetInSet(VCr.NewClass, INr.DispGroupsNew) and NewClassTypeMatch and nonblank(VCr.NewClass)) or
+						(SetInSet(VCr.OldClass, INr.DispGroups) and OldClassTypeMatch and nonblank(VCr.OldClass));
+					if Found then
+						begin
+						Found = False;
+						TempStr = "";
+						LangMatch = False;
+						for (Lang = 0; (Lang < MatRowCnt(VCr)) and (not LangMatch); Lang = Lang + 1)
+							begin
+							MatRowGet(VCr, Lang, VCrw);
+							LangMatch = (VCrw.LangCode == LangCode) or blank(VCrw.LangCode);
+							if LangMatch then
+								begin
+								TempStr = VCrw.LangStr;
+								end;
+							end;
+						if (RowCnt < BasePos) then 
+							begin
+							MatRowGet(VCr, Lang, VCrw);
+							LeftStr = LeftStr & " " & TempStr;
+							end else
+							begin
+							RightStr = RightStr & " " & TempStr;
+							end;
+						end;
+					end;
+				end;
+			end;
+		end else
+		begin
+		MidStr = INr.Name;
+		end;
+	end else
+	begin
+	MidStr = INr.Name;
+	end;
+TempStr = LeftStr & " " & MidStr & " " & RightStr;
+
+ConcateArtName = UpperCase(Left(TempStr, 1)) & Right(TempStr, len(TempStr) -1);
+RETURN;
+end;
+

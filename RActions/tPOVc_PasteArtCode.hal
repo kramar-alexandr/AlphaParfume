@@ -1,0 +1,240 @@
+external inner procedure VICalcVals(var record VIVc);
+external inner function val CalcPalletsNr(val,string);
+external inner procedure POGetRate(var record POVc);
+external inner function Boolean PODchrsum(record POVc,Integer);
+external inner function Integer VATType(string);
+external inner function string 255 POSerialNrFromPU(LongInt,Integer);
+external inner procedure BuildReservationArray(LongInt,string,var array val,var array string,var Integer);
+external inner function string 255 FindINObjects(string,string);
+external inner procedure AddExtraCostRow(record AccBlock,record BaseCurBlock,record VIVc,string,val,Integer,Integer,string);
+external inner function string 20 GetVIVATCode(record VIVc,Integer,string);
+external inner procedure GetPIPurchseCost(string,string,string,var val);
+external inner procedure GetINPurchaseControlAcc(record INVc,var string,string,string,Integer);
+external inner procedure FindPUStockAcc(string,record CostAccBlock,string,string,string,record INVc,Integer,var string,var string);
+external inner function Boolean PUVc_PasteArtCode(var record PUVc,Integer,var string,var string);
+external inner function string 20 FindFreePositionInLocArea_ExcludePositionFromArray(string,val,record INVc,Array string,Integer);
+external inner procedure CalculatePURowSum(val,val,string,var val,val,
+                                     val,val,val,val,val,
+                                     string,var val,Boolean,string,
+                                     val,val,val,val,val);
+external inner function Boolean IsQtyAllowed_QtyonPallet(val,string);
+external inner procedure RefillPURows(var record PUVc);
+external inner function Boolean GetFirstItem(var string,var record INVc);
+external inner function val DivRateToBase1(string,val,val,val,val,val,val,Roundmode);
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,Roundmode);
+external inner function val MulWithRateToBase1(var string,Date,val,Roundmode);
+external inner function Boolean ReadFirstItem(string,var record INVc,Boolean,Boolean);
+external inner procedure POMultiLineText(record POVc,record INVc,string,Integer);
+external inner function Boolean GetItemNameStr(Integer,var string,string,string,string);
+external inner procedure DivPIFactor(val,val,var val);
+external inner function Boolean FindItemVAR2(string,var string,var string,var string);
+external inner procedure GetItemVATCode(string,Integer,var string,Boolean);
+external inner procedure MulVATIV(string,val,var val,var val,Integer,Integer);
+external inner procedure VICalcEReb(record VIVc);
+external inner procedure CalcVATBaseVAT(record SMVc,Integer,Integer,Integer,var val,var val);
+external inner procedure RoundVATSum(string,string,var val);
+external inner procedure VISumup(record VIVc,var val);
+external inner procedure AddVATBase(var record SMVc,string,val,val,Integer,Integer,Integer);
+external inner procedure GetITPurchAcc(string,var string,Integer);
+external inner function Boolean GetAccName(string,var string,Integer);
+external inner procedure GetAPAcc(string,var string);
+external inner procedure SetupVATBase(var record SMVc,var Integer);
+external inner function LongInt GetCurUserLastNr(string);
+external inner function Boolean CorrectItemVAR(string,var string,var string,Boolean);
+external inner function Boolean FindItemVAR(string,var string,var string,var string,var string);
+external inner procedure CalcSum2(val,val,val,val,var val,Integer);
+external inner procedure PUCalcCostPrice(string,val,Integer,string,string,
+                                   val,val,val,val,val,
+                                   val,val,val,val,val,val,
+                                   string,var val,val,var val,string,Integer);
+external inner procedure CalcExtra(val,string,var val);
+external inner procedure CalcSum(val,val,val,val,var val,Integer);
+external inner procedure PUSumUp(var record PUVc);
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+external inner procedure POSumup(var record POVc );
+external inner function Boolean PODClassSwitchRow(Integer,Integer);
+external inner function Boolean POVc_PasteArtCode(var record POVc,Integer,Boolean);
+
+global
+function Boolean tPOVc_PasteArtCode(var record POVc POp,Integer rownr,Boolean multilinef)
+BEGIN
+Boolean res,itemfound,found,varf;
+row POVc POrw;
+record POSettingBlock POset;
+record INVc INr;
+record INVc IN2r;
+record tINKVc INKr;
+//row PIVc INKrw;
+string 255 itsz,mask,subsets,vatcode;
+Integer rwcnt,i;
+val t,price;
+string 255 tstr;
+string 255 mskrep;
+
+MatRowGet(POp,rownr,POrw);
+itemfound = GetFirstItem(POrw.ArtCode,INr);
+if (itemfound==false) then
+	begin
+	itemfound = ReadFirstItem(POrw.ArtCode,INr,true,false);
+	end
+else
+	begin
+	POrw.ArtCode = INr.Code;
+	end;
+if (itemfound) then
+	begin
+	POrw.PriceFactor = INr.PriceFactor;
+	end
+else
+	begin
+	POrw.PriceFactor = blankval;
+	end;
+//INKr.VECode = POp.VECode;
+INKr.Code = POrw.ArtCode;
+found = ReadFirstMain(INKr,1,true);
+if (found==false) then
+	begin
+	//INKr.VECode = POp.VECode;
+	INKr.Code = INr.Code;
+	found = ReadFirstMain(INKr,1,true);
+	if (FindItemVAR2(POrw.ArtCode,itsz,mask,subsets)) then
+		begin
+		if (ReadFirstItem(POrw.ArtCode,IN2r,true,true)) then
+			begin
+			INKr.Name = IN2r.Name;
+			end;
+		end;
+	end;
+if (found) then
+	begin
+	price = INKr.Price;
+	if (INKr.Curncy!=POp.CurncyCode) then
+		begin
+		t = MulWithRateToBase1(INKr.Curncy,POp.TransDate,INKr.Price,DefaultCurRoundOff);
+		price = DivRateToBase1(POp.CurncyCode,t,POp.FrRate,POp.ToRateB1,POp.ToRateB2,POp.BaseRate1,POp.BaseRate2,DefaultCurRoundOff);
+		end;
+	vatcode = POp.VEVATCode;
+	if (blank(vatcode)) then
+		begin
+		GetItemVATCode(INr.Code,POp.ExportFlag,vatcode,false);
+		end;
+	POrw.Price = price;
+	POrw.VEArtCode = "";
+	//POrw.CustomsCost = INKr.PurchaseCost;
+	POrw.Spec = INKr.Name;
+	POrw.VATCode = vatcode;
+	//POrw.UnitCode = INKr.Unittext;
+	POrw.VEUnit =  INKr.Unittext;
+	if (itemfound) then
+		begin
+		if (blank(POrw.Objects)) then
+			begin
+			POrw.Objects = FindINObjects(INr.Objects,INr.Group);
+			end;
+		end;
+	POrw.PIFactor = blankval;
+	//DivPIFactor(POrw.Quant,POrw.PIFactor,t);
+	//POrw.VEQuant = t;
+	POrw.VEQuant = POrw.Quant;
+	POrw.VEQuant = POrw.VEQuant;
+	MatRowPut(POp,rownr,POrw);
+	MatRowGet(POp,rownr,POrw);
+	res = true;
+	end
+else
+	begin
+	if (itemfound) then
+		begin
+		price = DivRateToBase1(POp.CurncyCode,INr.InPrice,POp.FrRate,POp.ToRateB1,POp.ToRateB2,POp.BaseRate1,POp.BaseRate2,DefaultCurRoundOff);
+		vatcode = POp.VEVATCode;
+		if (blank(vatcode)) then
+			begin
+			GetItemVATCode(INr.Code,POp.ExportFlag,vatcode,false);
+			end;
+		if (GetItemNameStr(1,mask,POp.LangCode,INr.Name,INr.Code)) then
+			begin
+			end;
+//     			 POrw.ArtCode = INr.Code; // Why? What if POrw has variety item?
+		POrw.Price = price;
+		POrw.VEArtCode = "";
+		POrw.Spec = mask;
+		if (multilinef==false) then
+			begin
+			POMultiLineText(POp,INr,POp.LangCode,rownr);
+			end;
+		POrw.VATCode = vatcode;
+		POrw.PIFactor = blankval;
+		POrw.VEQuant = POrw.Quant;
+		POrw.VEQuant = POrw.VEQuant;
+		INr.Code = POrw.ArtCode;
+		res = true;
+		end
+	else
+		begin
+		res = false;
+		end;
+	end;
+POrw.Objects = FindINObjects(INr.Objects,INr.Group);
+POrw.UnitCode = INr.Unittext;
+GetINPurchaseControlAcc(INr,tstr,POp.VECode,POp.Location,POrw.StockType);
+POrw.CostAcc = tstr;
+POrw.PalletNr = CalcPalletsNr(POrw.Quant,POrw.ArtCode);
+MatRowPut(POp,rownr,POrw);
+if (PODchrsum(POp,rownr)) then
+	begin
+	POSumup(POp);
+	end;
+tPOVc_PasteArtCode = res;
+
+RETURN;
+END;
+
+global
+function Boolean ttPOVc_PasteArtCode(var record POVc POp,Integer rownr,Boolean multilinef)
+BEGIN
+Boolean res,itemfound,found,varf;
+row POVc POrw;
+record POSettingBlock POset;
+record INVc INr;
+record INVc IN2r;
+record tINKVc INKr;
+//row PIVc INKrw;
+string 255 itsz,mask,subsets,vatcode;
+Integer rwcnt,i;
+val t,price;
+string 255 tstr;
+string 255 mskrep;
+
+MatRowGet(POp,rownr,POrw);
+if left(POrw.ArtCode,2) == "KA" then
+	begin
+	res = tPOVc_PasteArtCode(POp, rownr, multilinef);
+	end
+else
+	begin
+	res = POVc_PasteArtCode(POp, rownr, multilinef);
+	end;
+ttPOVc_PasteArtCode = res;
+RETURN;
+END;
+
+// global
+// function Boolean PODClassArtCodeEFAfter(Integer wn,Integer rownr,Boolean changedf)
+// BEGIN
+  // record POVc POr;
+  // row POVc POrw;
+
+  // stopalert("!!!!!!!!");
+  // GetWindowRecord(wn,POr);
+  // MatRowGet(POr,rownr,POrw);
+  // if ((changedf) or (blank(POrw.Spec) and (nonblank(POrw.ArtCode)))) then begin
+    // if (ttPOVc_PasteArtCode(POr,rownr,false)) then begin
+      // PutWindowRecord(wn,POr);
+      // if (PODClassSwitchRow(wn,rownr)) then begin end;
+    // end else begin
+      // Beep;
+    // end;
+  // end;
+  // PODClassArtCodeEFAfter = true;
+  // return;
+// end;

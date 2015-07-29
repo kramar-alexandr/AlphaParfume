@@ -1,0 +1,887 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function boolean CloseWindowByName(string);
+external function string 255 IGetObjName(string);
+remote updating procedure ra_TrnCrtFromRequPos(string, string);
+
+//===============================================
+//Наименование "родителя" в CalculatedColumn
+global
+function string 255 ITrnCrtClassLClassPD(var record ITrnCrtClassVc TCCr)
+begin
+  record ITrnCrtClassVc parentTCCr;
+
+  parentTCCr.Code = TCCr.Parent;
+  ReadFirstMain(parentTCCr, 1, true);
+  ITrnCrtClassLClassPD = parentTCCr.Desc;
+  Return;
+end;
+
+//===============================================
+function boolean ITrnCrtClassDClassParentEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record ITrnCrtClassVc TCCr;
+  record ITrnCrtClassVc parentTCCr;
+  
+  if (changed <> 0) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, TCCr);
+      parentTCCr.Code = TCCr.Parent;
+      if ReadFirstMain(parentTCCr, 1, true) then
+        begin
+          TCCr.Group = parentTCCr.Group;
+        end
+      else
+        begin
+          TCCr.Parent = blankval;
+        end;
+      PutWindowRecord(wn, TCCr);
+      SelectWindow(wn);
+    end;
+  ITrnCrtClassDClassParentEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ITrnCrtClassDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "Parent": res = ITrnCrtClassDClassParentEFAfter(wn, changed);
+        end;
+    end; 
+  ITrnCrtClassDClassAfterEditField = res;
+  Return;
+end;
+
+
+//===============================================
+//Наименование должности
+function boolean GetVPositionName(string Code, var string Name)
+begin
+  record VPositionVc VPr;
+
+  VPr.Code = Code;
+  GetVPositionName = ReadFirstMain(VPr, 1, true);
+  Name = VPr.Name;
+  Return;
+end;
+
+//===============================================
+//ФИО
+function boolean GetUserName(string Code, var string Name)
+begin
+  record UserVc Usr;
+
+  Usr.Code = Code;
+  GetUserName = ReadFirstMain(Usr, 1, true);
+  Name = Usr.Name;
+  Return;
+end;
+
+//===============================================
+function boolean ITrnCrtDClassPosCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record ITrnCrtVc TCr;
+
+  if (changed <> 0) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, TCr);
+      if not GetVPositionName(TCr.PosCode, TCr.PosName) then
+        begin
+          TCr.PosCode = blankval;
+        end;
+      PutWindowRecord(wn, TCr);
+      SelectWindow(wn);
+    end;
+  ITrnCrtDClassPosCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean ITrnCrtDClassUserCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record ITrnCrtVc TCr;
+
+  if (changed <> 0) then
+    begin
+      DeselectWindow(wn, false);
+      GetWindowRecord(wn, TCr);
+      if not GetUserName(TCr.UserCode, TCr.UserName) then
+        begin
+          TCr.UserCode = blankval;
+        end;
+      PutWindowRecord(wn, TCr);
+      SelectWindow(wn);
+    end;
+  ITrnCrtDClassUserCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ITrnCrtDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "PosCode": res = ITrnCrtDClassPosCodeEFAfter(wn, changed);
+          case "UserCode": res = ITrnCrtDClassUserCodeEFAfter(wn, changed);
+        end;
+    end; 
+  ITrnCrtDClassAfterEditField = res;
+  Return;
+end;
+
+
+//===============================================
+//Наименование профиля образования
+function string 200 EducationName(string Code)
+begin
+  record tEducationVc Er;
+
+  Er.Code = Code;
+  ReadFirstMain(Er, 1, true);
+  EducationName = Er.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование основных знаний
+function string 200 BaseKnowName(string Code)
+begin
+  record tBasicKnowVc BKr;
+
+  BKr.Code = Code;
+  ReadFirstMain(BKr, 1, true);
+  BaseKnowName = BKr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование основных наввыков
+function string 200 tSkillsName(string Code)
+begin
+  record tSkillsVc Sr;
+
+  Sr.Code = Code;
+  ReadFirstMain(Sr, 1, true);
+  tSkillsName = Sr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование основных навыков
+function string 200 LangName(string Code)
+begin
+  record tLanguagesVc Lr;
+
+  Lr.Code = Code;
+  ReadFirstMain(Lr, 1, true);
+  LangName = Lr.Name;
+  Return;
+end;
+
+//===============================================
+//Наименование уровня владения ПК
+function string 200 CompSkillName(string Code)
+begin
+  record CompSkillBlock CSr;
+  row CompSkillBlock CSrw;
+  integer i;
+  boolean found;
+  
+  BlockLoad(CSr);
+  for(i=0; (i<MatRowCnt(CSr)) and not found; i=i+1)
+    begin
+      MatRowGet(CSr, i, CSrw);
+      found = (CSrw.Code == Code);
+      if found then
+        begin
+          CompSkillName = CSrw.Comment;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Наименование владения ТС
+function string 200 TranspSkillName(string Code)
+begin
+  record TranspSkillBlock TSr;
+  row TranspSkillBlock TSrw;
+  integer i;
+  boolean found;
+  
+  BlockLoad(TSr);
+  for(i=0; (i<MatRowCnt(TSr)) and not found; i=i+1)
+    begin
+      MatRowGet(TSr, i, TSrw);
+      found = (TSrw.Code == Code);
+      if found then
+        begin
+          TranspSkillName = TSrw.Comment;
+        end;
+    end;
+  Return;
+end;
+
+//===============================================
+//Наименование личных качеств
+function string 200 BaseSkillName(string Code)
+begin
+  record BasicSkillVc BSr;
+
+  BSr.Code = Code;
+  ReadFirstMain(BSr, 1, true);
+  BaseSkillName = BSr.Name;
+  Return;
+end;
+
+//===============================================
+//Максимальное из целых чисел
+function integer MaxInt(integer i1, integer i2)
+begin
+  if i2 > i1 then
+    begin
+    MaxInt = i2;
+    end
+  else
+    begin
+    MaxInt = i1;
+    end;
+  Return;
+end;
+
+//===============================================
+//Соответствие "Образование - Поставщик"
+global
+procedure IEducationObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Crt, Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = MaxInt(IItemCountInStr(TCr.Education), IItemCountInStr(TCr.EducationObj));
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Crt = EducationName(IGetItemFromStr(TCr.Education, i));
+      Obj = IGetObjName(IGetItemFromStr(TCr.EducationObj, i));
+      SetListString(nwn, pos += 1,  Crt & " -> " & Obj, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Соответствие "Основные знания - Поставщик"
+global
+procedure IBaseKnowObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Crt, Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = MaxInt(IItemCountInStr(TCr.BaseKnow), IItemCountInStr(TCr.BaseKnowObj));
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Crt = BaseKnowName(IGetItemFromStr(TCr.BaseKnow, i));
+      Obj = IGetObjName(IGetItemFromStr(TCr.BaseKnowObj, i));
+      SetListString(nwn, pos += 1,  Crt & " -> " & Obj, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Соответствие "Основные навыки - Поставщик"
+global
+procedure ItSkillsObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Crt, Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = MaxInt(IItemCountInStr(TCr.tSkills), IItemCountInStr(TCr.tSkillsObj));
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Crt = tSkillsName(IGetItemFromStr(TCr.tSkills, i));
+      Obj = IGetObjName(IGetItemFromStr(TCr.tSkillsObj, i));
+      SetListString(nwn, pos += 1,  Crt & " -> " & Obj, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Соответствие "Иностранные языки - Поставщик"
+global
+procedure ILangSkillObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Crt, Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = MaxInt(IItemCountInStr(TCr.LangSkill), IItemCountInStr(TCr.LangSkillObj));
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Crt = LangName(IGetItemFromStr(TCr.LangSkill, i));
+      Obj = IGetObjName(IGetItemFromStr(TCr.LangSkillObj, i));
+      SetListString(nwn, pos += 1,  Crt & " -> " & Obj, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Соответствие "Владение ПК - Поставщик"
+global
+procedure ICompSkillObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Crt, Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = MaxInt(IItemCountInStr(TCr.LangSkill), IItemCountInStr(TCr.LangSkillObj));
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Crt = CompSkillName(IGetItemFromStr(TCr.CompSkill, i));
+      Obj = IGetObjName(IGetItemFromStr(TCr.CompSkillObj, i));
+      SetListString(nwn, pos += 1,  Crt & " -> " & Obj, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Соответствие "Владение ТС - Поставщик"
+global
+procedure ITranspSkillObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Crt, Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = MaxInt(IItemCountInStr(TCr.LangSkill), IItemCountInStr(TCr.LangSkillObj));
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Crt = TranspSkillName(IGetItemFromStr(TCr.TranspSkill, i));
+      Obj = IGetObjName(IGetItemFromStr(TCr.TranspSkillObj, i));
+      SetListString(nwn, pos += 1,  Crt & " -> " & Obj, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Соответствие "Личные качества - Поставщик"
+global
+procedure IBaseSkillObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Crt, Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = MaxInt(IItemCountInStr(TCr.BaseSkill), IItemCountInStr(TCr.BaseSkillObj));
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Crt = BaseSkillName(IGetItemFromStr(TCr.BaseSkill, i));
+      Obj = IGetObjName(IGetItemFromStr(TCr.BaseSkillObj, i));
+      SetListString(nwn, pos += 1,  Crt & " -> " & Obj, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Управление персоналом - "Cписок поставщиков"
+global
+procedure IPeManObjBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Obj;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.PeManObj);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Obj = IGetObjName(IGetItemFromStr(TCr.PeManObj, i));
+      SetListString(nwn, pos += 1,  Obj, false);
+    end;
+  Return;
+end;
+
+
+//===============================================
+//Образование - список критериев
+global
+procedure IEducationTrnBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.EducationTrn);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(TCr.EducationTrn, i);
+      Name = EducationName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Основные знания - список критериев
+global
+procedure IBaseKnowTrnBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.BaseKnowTrn);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(TCr.BaseKnowTrn, i);
+      Name = BaseKnowName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Основные навыки - список критериев
+global
+procedure ItSkillsTrnBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.tSkillsTrn);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(TCr.tSkillsTrn, i);
+      Name = tSkillsName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Владение иностранными языками - список критериев
+global
+procedure ILangSkillTrnBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.LangSkillTrn);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(TCr.LangSkillTrn, i);
+      Name = LangName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Владение ПК - список критериев
+global
+procedure ICompSkillTrnBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.CompSkillTrn);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(TCr.CompSkillTrn, i);
+      Name = CompSkillName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Владение транспортным средством - список критериев
+global
+procedure ITranspSkillTrnBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.TranspSkillTrn);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(TCr.TranspSkillTrn, i);
+      Name = TranspSkillName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Деловые и личные качества - список критериев
+global
+procedure IBaseSkillTrnBtn()
+begin
+  record ITrnCrtVc TCr;
+  integer wn, nwn;
+  integer i, cnt, pos;
+  string 200 Code, Name;
+
+  CloseWindowByName("InfoClass");
+  wn = CurWindow;
+  GetWindowRecord(wn, TCr);
+  nwn = OpenWindow("InfoClass", 0, wn, "", "", TCr); 
+  ClearStringList(nwn);
+  pos = 0;
+  cnt = IItemCountInStr(TCr.BaseSkillTrn);
+  for (i=0; i<cnt; i=i+1)
+    begin
+      Code = IGetItemFromStr(TCr.BaseSkillTrn, i);
+      Name = BaseSkillName(Code);
+      SetListString(nwn, pos += 1,  Code & " - " & Name, false);
+    end;
+  Return;
+end;
+
+//===============================================
+//Создание/Обновление критериев поввышения квалификации из требований к должности
+global
+updating procedure ITrnCrtFromRequPosDsm()
+begin
+  record tRequPosVc RPr;
+  integer wn;
+
+  wn = CurWindow;
+  if (WindowState(wn) == 0) then
+    begin
+      GetWindowRecord(wn, RPr);
+      ra_TrnCrtFromRequPos(RPr.CodeVPos, RPr.CodeUser);
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblITrnCrtVc(string dblstr, string l, integer currepwn)
+begin
+  integer wn;
+  record ITrnCrtVc TCr;
+
+  TCr.PosCode = FirstInRange(l, 20);
+  TCr.UserCode = LastInRange(l, 20);
+  if ReadFirstMain(TCr, 2, true) then
+    begin
+    wn = OpenWindow("ITrnCrtDClass", 1, 0, "", "", TCr);
+    end;
+  Return;
+end;
+
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);  
+  Setting("Классификация квалиф. - аттест.", ITrnCrtClassLClass, modEmp);
+  Register("Квалификация - аттестация", "Квалификация - аттестация", ITrnCrtLClass, modEmp);
+  Report("Повышение квалификации - аттестация", ITrnSrtRClass, ITrnSrtRn, 0, modEmp);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, h3, h4, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классификация критериев пов. квалификации", ITrnCrtClassLClass, CGmlist, -);
+  SpawnClass(ITrnCrtClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ITrnCrtClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-350, -350, "Группа", Group, false, Group);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ITrnCrtClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите класс критерия пов. квал.", ITrnCrtClassSClass, CGslist, -);
+  SpawnClass(ITrnCrtClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ITrnCrtClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Desc, false, Desc);
+  RlColKey(-350, -350, "Группа", Group, false, Group);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "ITrnCrtClassLClassPD", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классификация критерие пов. квал.", ITrnCrtClassDClass, CGview,-);
+  SetWRect(20, 80, 720, 190);
+  UseView(ITrnCrtClassVc);
+  v = 6;
+  EditField(h=100, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2=300, v, -40, "Наименование", Normal, Desc, false, 0);
+  EditField(h, v+=vs, 80, "Иерархия", Normal, Parent, false, ITrnCrtClassSClass);
+  EditField(h2, v, 80, "Группа", Normal, Group, false, 0);
+  EndWindow;
+
+
+  WindowBegin("Критерии пов. квалификации", ITrnCrtLClass, CGmlist, -);
+  SpawnClass(ITrnCrtDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ITrnCrtVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Должность", PosCode, false, PosCode);
+  RlColKey(100, 100, "Наименование", PosName, false, PosName);
+  RlColKey(-400, -400, "Сотр.", UserCode, false, UserCode);
+  RlColKey(-300, -300, "ФИО", UserName, false, UserName);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Критерии пов. квалификации", ITrnCrtSClass, CGslist, -);
+  SpawnClass(ITrnCrtDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ITrnCrtVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Должность", PosCode, false, PosCode);
+  RlColKey(100, 100, "Наименование", PosName, false, PosName);
+  RlColKey(-400, -400, "Сотр.", UserCode, false, UserCode);
+  RlColKey(-300, -300, "ФИО", UserName, false, UserName);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Критерии пов. квалификации", ITrnCrtDClass, CGview,-);
+  SetWRect(20, 80, 940, 480);
+  UseView(ITrnCrtVc);
+//
+  Tile(0, 120, false, "", PosCode);
+  EditField(h=150, v=8, 80, "Должность", Normal, PosCode, false, VPositionSClass);
+  EditField(h2=300, v, -200, "Наим.", Normal, PosName, false, 0);
+  EditField(h, v+=vs, 80, "Сотрудник", Normal, UserCode, false, UserSClass);
+  EditField(h2, v, -200, "ФИО", Normal, UserName, false, 0);
+  EditField(h, v+=vs, -200, "Классификация", Normal, Classification, false, ITrnCrtClassSClass);
+  ButtonFrame(h3=-180, v=16, 100, 3, "Статус");
+  RadioButton(h3, v, 0, 0, "Подготовка", Status);
+  RadioButton(h3, v+=16, 1, 0, "Работа", Status);
+  RadioButton(h3, v+=16, 2, 0, "Архив", Status);
+  TileButton(1,"Критерии квалификации");
+  TileButton(2,"Аттестация");
+//
+  Tile(1, 200, true, "", Education);
+  StaticText(h=150, v=16, "Критерий", false);
+  EditField(h, v+=16, 300, "Профиль образования", Normal, Education, false, tEducationSClass);
+  EditField(h, v+=vs, 300, "Основные знания", Normal, BaseKnow, false, tBasicKnowSClass);
+  EditField(h, v+=vs, 300, "Основные навыки", Normal, tSkills, false, tSkillsSClass);
+  EditField(h, v+=vs, 300, "Иностранные языки", Normal, LangSkill, false, tLanguagesSClass);
+  EditField(h, v+=vs, 300, "Владение ПК", Normal, CompSkill, false, CompSkillSClass);
+  EditField(h, v+=vs, 300, "Владение ТС", Normal, TranspSkill, false, TranspSkillSClass);
+  EditField(h, v+=vs, 300, "Личные качества", Normal, BaseSkill, false, BasicSkillSClass);
+  CheckBox(h, v+=vs, 0, "Управление людьми", PeMan);
+//
+  StaticText(h2=500, v=16, "Поставщик", false);
+  EditField(h2, v+=16, 300, "", Normal, EducationObj, false, ObjSClass);
+  EditField(h2, v+=vs, 300, "", Normal, BaseKnowObj, false, ObjSClass);
+  EditField(h2, v+=vs, 300, "", Normal, tSkillsObj, false, ObjSClass);
+  EditField(h2, v+=vs, 300, "", Normal, LangSkillObj, false, ObjSClass);
+  EditField(h2, v+=vs, 300, "", Normal, CompSkillObj, false, ObjSClass);
+  EditField(h2, v+=vs, 300, "", Normal, TranspSkillObj, false, ObjSClass);
+  EditField(h2, v+=vs, 300, "", Normal, BaseSkillObj, false, ObjSClass);
+  EditField(h2, v+=vs, 300, "", Normal, PeManObj, false, ObjSClass);
+//
+  ColourPushButton(h=-80, v=32,  -40, v+18, "IEducationObjBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "IBaseKnowObjBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ItSkillsObjBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ILangSkillObjBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ICompSkillObjBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ITranspSkillObjBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "IBaseSkillObjBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "IPeManObjBtn", "...", 3);
+//
+  Tile(2, 200, true, "", EducationTrn);
+  StaticText(h=150, v=16, "Критерий", false);
+  EditField(h, v+=16, 300, "Профиль образования", Normal, EducationTrn, false, tEducationSClass);
+  EditField(h, v+=vs, 300, "Основные знания", Normal, BaseKnowTrn, false, tBasicKnowSClass);
+  EditField(h, v+=vs, 300, "Основные навыки", Normal, tSkillsTrn, false, tSkillsSClass);
+  EditField(h, v+=vs, 300, "Иностранные языки", Normal, LangSkillTrn, false, tLanguagesSClass);
+  EditField(h, v+=vs, 300, "Владение ПК", Normal, CompSkillTrn, false, CompSkillSClass);
+  EditField(h, v+=vs, 300, "Владение ТС", Normal, TranspSkillTrn, false, TranspSkillSClass);
+  EditField(h, v+=vs, 300, "Личные качества", Normal, BaseSkillTrn, false, BasicSkillSClass);
+  CheckBox(h, v+=vs, 0, "Управление людьми", PeManTrn);
+//
+  StaticText(h2=470, v=16, "Зачтено", false);
+  CheckBox(h2, v+=vs, 0, "", EducationOK);
+  CheckBox(h2, v+=vs, 0, "", BaseKnowOK);
+  CheckBox(h2, v+=vs, 0, "", tSkillsOK);
+  CheckBox(h2, v+=vs, 0, "", LangSkillOK);
+  CheckBox(h2, v+=vs, 0, "", CompSkillOK);
+  CheckBox(h2, v+=vs, 0, "", TranspSkillOK);
+  CheckBox(h2, v+=vs, 0, "", BaseSkillOK);
+  CheckBox(h2, v+=vs, 0, "", PeManOK);
+//
+  StaticText(h3=520, v=16, "Комментарий", false);
+  EditField(h3, v+=16, 300, "", Normal, EducationTrnCom, false, 0);
+  EditField(h3, v+=vs, 300, "", Normal, BaseKnowTrnCom, false, 0);
+  EditField(h3, v+=vs, 300, "", Normal, tSkillsTrnCom, false, 0);
+  EditField(h3, v+=vs, 300, "", Normal, LangSkillTrnCom, false, 0);
+  EditField(h3, v+=vs, 300, "", Normal, CompSkillTrnCom, false, 0);
+  EditField(h3, v+=vs, 300, "", Normal, TranspSkillTrnCom, false, 0);
+  EditField(h3, v+=vs, 300, "", Normal, BaseSkillTrnCom, false, 0);
+  EditField(h3, v+=vs, 300, "", Normal, PeManTrnCom, false, 0);
+//
+  ColourPushButton(h=-80, v=32,  -40, v+18, "IEducationTrnBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "IBaseKnowTrnBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ItSkillsTrnBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ILangSkillTrnBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ICompSkillTrnBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "ITranspSkillTrnBtn", "...", 3);
+  ColourPushButton(h=-80, v+=vs, -40, v+18, "IBaseSkillTrnBtn", "...", 3);
+  EndWindow; 
+
+
+  WindowBegin("Повышение квалификации - аттестация", ITrnSrtRClass, CGRcW, RcType);
+  SetWRect(20, 80, 460, 280);
+  EditFieldTL(h=100, v=6, 100, "Код должности", M4Code, Normal, 20, f1, false, VPositionSClass);
+  EditFieldTL(h, v+=vs, 100, "Код сотрудника", M4Code, Normal, 20, f2, false, UserSClass);
+  EditFieldTL(h, v+=vs, -40, "Классификация", M4Code, Normal, 200, f3, false, ITrnCrtClassSClass);
+
+  ButtonFrame(h, v+=50, 123, 2, "Вид");
+  v2 = v;
+  RadioButton(h, v, 0, 0, "Все критерии", flags[1]);
+  RadioButton(h, v+=16, 1, 0, "Необходима аттестация", flags[1]);
+
+  ButtonFrame(h, v+=50, 123, 2, "Функция");
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+
+  ButtonFrame(h+=150, v = v2, 123, 3, "Статус");
+  RadioButton(h, v, 0, 0, "Подготовка", flags[0]);
+  RadioButton(h, v+=16, 1, 0, "Работа", flags[0]);
+  RadioButton(h, v+=16, 2, 0, "Архив", flags[0]);
+  EndWindow;
+
+  Return;
+end;

@@ -1,0 +1,681 @@
+external inner procedure ExtractObj(string, var Integer, var string);
+external procedure AppendStr(var string, string);
+external function string 255 IDelFromSet(string, string);
+external function string 200 tExclude(string, string);
+
+
+global
+function string 200 TranslitIt(string OriginalStr)
+begin
+Integer pos, length;
+string 200 TempStr, res;
+string 1 AChr;
+
+SetLangMode(LangRussian, "RUS", 2);
+length = len(TempStr);
+TempStr = OriginalStr;
+while (len(TempStr) <> 0)
+	begin
+	AChr = left(TempStr, 1);
+	TempStr = right(TempStr, len(TempStr) - 1);
+		switch(AChr)
+		begin
+		case "Й": AChr = "J";
+		case "й": AChr = "j";
+		case "Ц": AChr = "Ts";
+		case "ц": AChr = "ts";
+		case "У": AChr = "U";
+		case "у": AChr = "u";
+		case "К": AChr = "K";
+		case "к": AChr = "k";
+		case "Е": AChr = "E";
+		case "е": AChr = "e";
+		case "Н": AChr = "N";
+		case "н": AChr = "n";
+		case "Г": AChr = "G";
+		case "г": AChr = "g";
+		case "Ш": AChr = "Sh";
+		case "ш": AChr = "sh";
+		case "Щ": AChr = "sh";
+		case "щ": AChr = "sh";
+		case "З": AChr = "Z";
+		case "з": AChr = "z";
+		case "Х": AChr = "Kh";
+		case "х": AChr = "kh";
+		case "Ъ": AChr = "";
+		case "ъ": AChr = "";
+		case "Ф": AChr = "F";
+		case "ф": AChr = "f";
+		case "Ы": AChr = "Y";
+		case "ы": AChr = "y";
+		case "В": AChr = "V";
+		case "в": AChr = "v";
+		case "А": AChr = "A";
+		case "а": AChr = "a";
+		case "П": AChr = "P";
+		case "п": AChr = "p";
+		case "Р": AChr = "R";
+		case "р": AChr = "r";
+		case "О": AChr = "O";
+		case "о": AChr = "o";
+		case "Л": AChr = "L";
+		case "л": AChr = "l";
+		case "Д": AChr = "D";
+		case "д": AChr = "d";
+		case "Ж": AChr = "J";
+		case "ж": AChr = "j";
+		case "Э": AChr = "E";
+		case "э": AChr = "e";
+		case "Я": AChr = "Ya";
+		case "я": AChr = "ya";
+		case "Ч": AChr = "Ch";
+		case "ч": AChr = "ch";
+		case "С": AChr = "S";
+		case "с": AChr = "s";
+		case "М": AChr = "M";
+		case "м": AChr = "m";
+		case "И": AChr = "I";
+		case "и": AChr = "i";
+		case "Т": AChr = "T";
+		case "т": AChr = "t";
+		case "Ь": AChr = "";
+		case "ь": AChr = "";
+		case "Б": AChr = "B";
+		case "б": AChr = "b";
+		case "Ю": AChr = "Ju";
+		case "ю": AChr = "ju";
+		case "Ё": AChr = "Jo";
+		case "ё": AChr = "jo";
+		case ",": AChr = "_";
+		case " ": AChr = "_";
+		end;
+	res = res & AChr;
+	end;	
+TranslitIt = res;		
+RETURN;
+end;
+
+global
+function string 200 TranslitRight(string OriginalStr)
+begin
+Integer pos, length;
+string 200 TempStr, res;
+string 1 AChr;
+
+SetLangMode(LangRussian, "RUS", 2);
+length = len(TempStr);
+TempStr = OriginalStr;
+while (len(TempStr) <> 0)
+	begin
+	AChr = left(TempStr, 1);
+	TempStr = right(TempStr, len(TempStr) - 1);
+		switch(AChr)
+		begin
+		case "Й": AChr = "J";
+		case "й": AChr = "j";
+		case "Ц": AChr = "Ts";
+		case "ц": AChr = "ts";
+		case "У": AChr = "U";
+		case "у": AChr = "u";
+		case "К": AChr = "K";
+		case "к": AChr = "k";
+		case "Е": AChr = "E";
+		case "е": AChr = "e";
+		case "Н": AChr = "N";
+		case "н": AChr = "n";
+		case "Г": AChr = "G";
+		case "г": AChr = "g";
+		case "Ш": AChr = "Sh";
+		case "ш": AChr = "sh";
+		case "Щ": AChr = "sh";
+		case "щ": AChr = "sh";
+		case "З": AChr = "Z";
+		case "з": AChr = "z";
+		case "Х": AChr = "Kh";
+		case "х": AChr = "kh";
+		case "Ъ": AChr = "";
+		case "ъ": AChr = "";
+		case "Ф": AChr = "F";
+		case "ф": AChr = "f";
+		case "Ы": AChr = "Y";
+		case "ы": AChr = "y";
+		case "В": AChr = "V";
+		case "в": AChr = "v";
+		case "А": AChr = "A";
+		case "а": AChr = "a";
+		case "П": AChr = "P";
+		case "п": AChr = "p";
+		case "Р": AChr = "R";
+		case "р": AChr = "r";
+		case "О": AChr = "O";
+		case "о": AChr = "o";
+		case "Л": AChr = "L";
+		case "л": AChr = "l";
+		case "Д": AChr = "D";
+		case "д": AChr = "d";
+		case "Ж": AChr = "J";
+		case "ж": AChr = "j";
+		case "Э": AChr = "E";
+		case "э": AChr = "e";
+		case "Я": AChr = "Ya";
+		case "я": AChr = "ya";
+		case "Ч": AChr = "Ch";
+		case "ч": AChr = "ch";
+		case "С": AChr = "S";
+		case "с": AChr = "s";
+		case "М": AChr = "M";
+		case "м": AChr = "m";
+		case "И": AChr = "I";
+		case "и": AChr = "i";
+		case "Т": AChr = "T";
+		case "т": AChr = "t";
+		case "Ь": AChr = "";
+		case "ь": AChr = "";
+		case "Б": AChr = "B";
+		case "б": AChr = "b";
+		case "Ю": AChr = "Ju";
+		case "ю": AChr = "ju";
+		case "Ё": AChr = "Jo";
+		case "ё": AChr = "jo";
+		//case ",": AChr = "" "";
+		end;
+	res = res & AChr;
+	end;	
+TranslitRight = res;		
+RETURN;
+end;
+
+global
+procedure MailActivity(record ActVc Actr)
+begin
+record ConfVc Confr;
+record UserVc USr;
+string 20 UserName;
+LongInt res;
+Integer pos;
+
+SetLangMode(LangRussian, "RUS", 2);
+pos = 0;
+ExtractObj(Actr.MainPersons, pos, UserName);
+while nonblank(UserName) 
+	begin
+	Confr.AddrCode = UserName;
+	if ReadFirstKey("AddrCode", Confr, 1, True) then
+		begin
+		if nonblank(Confr.ExtEmailAddrs) then	
+			begin
+			RunProgram("./tools/1mailactivity",  Confr.ExtEmailAddrs & " " & Actr.SerNr);
+			end;
+		end;
+	USr.Code = UserName;
+	if ReadFirstMain(USr, 1, True) then
+		begin
+		if (nonblank(USr.Phone1) and (len(USr.Phone1) == 10)) then
+			begin
+			RunProgram("./tools/smsactivity",  "38" & USr.Phone1 & "@sms.kyivstar.net" & " " & TranslitIt(Actr.Comment));
+			end;
+		end;
+	ExtractObj(Actr.MainPersons, pos, UserName);
+	end;
+pos = 0;
+ExtractObj(Actr.CCPersons, pos, UserName);
+while nonblank(UserName) 
+	begin
+	Confr.AddrCode = UserName;
+	if ReadFirstKey("AddrCode", Confr, 1, True) then
+		begin
+		if nonblank(Confr.ExtEmailAddrs) then	
+			begin
+			RunProgram("./tools/1mailactivity",  Confr.ExtEmailAddrs & " " & Actr.SerNr);
+			end;
+		end;
+	USr.Code = UserName;
+	if ReadFirstMain(USr, 1, True) then
+		begin
+		if (nonblank(USr.Phone1) and (len(USr.Phone1) == 10)) then
+			begin
+			RunProgram("./tools/smsactivity",  "38" & USr.Phone1 & "@sms.kyivstar.net" & " " & TranslitIt(Actr.Comment));
+			end;
+		end;
+	ExtractObj(Actr.CCPersons, pos, UserName);
+	end;
+RETURN;
+end;
+
+global
+updating function LongInt ActVcRecordSaveAfter(var record ActVc Actr,record ActVc Act2r,LongInt stat,LongInt long4)
+BEGIN
+record ConfVc Confr;
+string 20 UserName;
+LongInt res;
+Integer pos;
+  
+res = inner.ActVcRecordSaveAfter(Actr, Act2r, stat, long4);
+MailActivity(Actr);
+
+ActVcRecordSaveAfter = res;
+RETURN;
+END;
+
+
+global
+procedure MailAnything(string EMail, string Subj, string Body)
+begin
+
+SetLangMode(LangRussian, "RUS", 2);
+
+if nonblank(EMail) then //and nonblank(Body) then	
+	begin
+	//RunProgram("./tools/mailanything",  EMail & " " & Subj & " " & Body);
+	RunProgram("./tools/mailme", EMail & " " & Subj & " " & Body);
+	//RunProgram("./tools/mailanything", Chr(Asc("")) & "Привет вам всем" & " " & Chr(Asc("")) & "Проба кавычки" & " " & "it@parfume.ua");
+	//RunProgram("./tools/mailanything",  EMail);
+	end;
+	
+RETURN;
+end;
+
+global
+procedure SendSMSD(string TextToSend)
+begin
+record RSSBlock RSSb;
+row RSSBlock RSSr;
+Integer RwCnt;
+String 200 Stri;
+Integer CntNum;
+
+//RunProgram("/opt/hw/tools/smssend", TextToSend);
+RunProgram("./tools/smssend", TextToSend);
+
+// CntNum = 0;
+// BlockLoad(RSSb);
+// for(RwCnt = 0; RwCnt < MatRowCnt(RSSb); RwCnt = RwCnt + 1)
+	// begin
+	// MatRowGet(RSSb, RwCnt, RSSr);
+	// if RSSr.NotificationType == "SMSD" then 
+		// begin 
+		// RunProgram("./tools/smssend", RSSr.NotificationAddress & " " & TextToSend);
+		// //StopAlert("./tools/smssend " & RSSr.NotificationAddress & " " & TextToSend);
+		// end;
+	// end;
+RETURN;
+end;
+
+global updating
+function boolean ActCUControlField(var record CUVc CUr, record CUVc CU2r)
+begin
+record ActVc Actr;
+row ActVc Actrw;
+record TempVc Tmp;
+row TempVc Tmprw;
+record CUCardControlBlock CCb;
+row CUCardControlBlock CCbr;
+record VSetSetBlock VSet;
+Integer RwCnt, RowCnt, pos;
+string 200 FieldName, Address;
+record tVTicketsVc VTr;
+row tVTicketsVc VTrw;
+record UserVc USr;
+
+BlockLoad(VSet);
+if (VSet.EnableCUAction == 1) then
+	begin
+	if (CUr.Person <> CU2r.Person) then
+		begin
+		Tmprw.f2 = "Изменение поля ОСНОВНОЕ КОНТАКТНОЕ ЛИЦО для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "Person");
+		Tmprw.f2 = CU2r.Person & " ==> " & CUr.Person;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;
+	if (CUr.PayDeal <> CU2r.PayDeal) then
+		begin
+		
+		Tmprw.f2 = "Изменение поля УСЛОВИЕ ОПЛАТЫ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "PayDeal");
+		Tmprw.f2 = CU2r.PayDeal & " ==> " & CUr.PayDeal;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;
+	if (CUr.RebCode <> CU2r.RebCode) then
+		begin
+		Tmprw.f2 = "Изменение поля ТАБЛИЦА СКИДОК для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "RebCode");
+		Tmprw.f2 = CU2r.RebCode & " ==> " & CUr.RebCode;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;
+	if (CUr.ContractDate <> CU2r.ContractDate) then
+		begin
+		Tmprw.f2 = "Изменение поля СРОК ДОГОВОРА для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "ContractDate");
+		Tmprw.f2 = CU2r.ContractDate & " ==> " & CUr.ContractDate;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.Comment2 <> CU2r.Comment2) then
+		begin
+		Tmprw.f2 = "Изменение поля ДОП.УСЛОВИЯ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "Comment2");
+		Tmprw.f2 = CU2r.Comment2 & " ==> " & CUr.Comment2;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.SearchKey <> CU2r.SearchKey) then
+		begin
+		Tmprw.f2 = "Изменение поля СОКР. для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "SearchKey");
+		Tmprw.f2 = CU2r.SearchKey & " ==> " & CUr.SearchKey;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.CreditLimit <> CU2r.CreditLimit) then
+		begin
+		Tmprw.f2 = "Изменение поля ЛИМИТ КРЕДИТА для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "CreditLimit");
+		Tmprw.f2 = CU2r.CreditLimit & " ==> " & CUr.CreditLimit;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.VECustID <> CU2r.VECustID) then
+		begin
+		Tmprw.f2 = "Изменение поля КУРС ВАЛЮТЫ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "VECustID");
+		Tmprw.f2 = CU2r.VECustID & " ==> " & CUr.VECustID;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.PLCode <> CU2r.PLCode) then
+		begin
+		Tmprw.f2 = "Изменение поля ПРЕЙСКУРАНТ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "PLCode");
+		Tmprw.f2 = CU2r.PLCode & " ==> " & CUr.PLCode;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.Blacklist <> CU2r.Blacklist) then
+		begin
+		Tmprw.f2 = "Изменение поля В ЧЕРНОМ СПИСКЕ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "Blacklist");
+		Tmprw.f2 = CU2r.Blacklist & " ==> " & CUr.Blacklist;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.blockedFlag <> CU2r.blockedFlag) then
+		begin
+		Tmprw.f2 = "Изменение поля ЗАКРЫТ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "blockedFlag");
+		Tmprw.f2 = CU2r.blockedFlag & " ==> " & CUr.blockedFlag;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;
+	if (CUr.Department <> CU2r.Department) then
+		begin
+		Tmprw.f2 = "Изменение поля ОФ.НАИМЕНОВАНИЕ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "Department");
+		Tmprw.f2 = CU2r.Department & " ==> " & CUr.Department;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;
+	//==== TGOR 8.01.13
+	if (CUr.Passp <> CU2r.Passp) then
+		begin
+		Tmprw.f2 = "Изменение поля Паспортные данные для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "Passp");
+		Tmprw.f2 = CU2r.Passp & " ==> " & CUr.Passp;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;
+	if (CUr.RefINN <> CU2r.RefINN) then
+		begin
+		Tmprw.f2 = "Изменение поля Справка ИНН для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "RefINN");
+		Tmprw.f2 = CU2r.RefINN & " ==> " & CUr.RefINN;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.EGRPOU <> CU2r.EGRPOU) then
+		begin
+		Tmprw.f2 = "Изменение поля Выписка ЕГРПОУ для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "EGRPOU");
+		Tmprw.f2 = CU2r.EGRPOU & " ==> " & CUr.EGRPOU;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;
+	if (CUr.RefSingle <> CU2r.RefSingle) then
+		begin
+		Tmprw.f2 = "Изменение поля Свидетельство о ед. налоге для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "RefSingle");
+		Tmprw.f2 = CU2r.RefSingle & " ==> " & CUr.RefSingle;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.RefOPP <> CU2r.RefOPP) then
+		begin
+		Tmprw.f2 = "Изменение поля Справка 4-ОПП для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "RefOPP");
+		Tmprw.f2 = CU2r.RefOPP & " ==> " & CUr.RefOPP;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.AssigDir <> CU2r.AssigDir) then
+		begin
+		Tmprw.f2 = "Изменение поля Документ о назначении директора для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "AssigDir");
+		Tmprw.f2 = CU2r.AssigDir & " ==> " & CUr.AssigDir;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.Excerpt <> CU2r.Excerpt) then
+		begin
+		Tmprw.f2 = "Изменение поля Документ о назначении директора для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "Excerpt");
+		Tmprw.f2 = CU2r.Excerpt & " ==> " & CUr.Excerpt;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;	
+	if (CUr.RefNDS <> CU2r.RefNDS) then
+		begin
+		Tmprw.f2 = "Изменение поля Свидетельство НДС для " & CUr.Code;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		AppendStr(FieldName, "RefNDS");
+		Tmprw.f2 = CU2r.RefNDS & " ==> " & CUr.RefNDS;
+		MatRowPut(Tmp, MatRowCnt(Tmp), Tmprw);
+		end;		
+	//====
+		
+	if nonblank(FieldName) then
+		begin
+		BlockLoad(CCb);
+		if (MatRowCnt(CCb) > 0) then
+			begin
+			for (RowCnt = 0; RowCnt < MatRowCnt(CCb); RowCnt = RowCnt + 1)
+				begin
+				MatRowGet(CCb, RowCnt, CCbr);
+				
+				if (SetInSet(CCbr.FieldName, FieldName) and (not SetInSet(CCbr.User, Address)) and (CCbr.User <> CurrentUser) ) then
+					begin
+					AppendStr(Address, CCbr.User);
+					end;
+				end;
+			end;
+		end;
+	
+	// if (MatRowCnt(Tmp) > 0) then
+		// begin
+		// RecordNew(Actr);
+		// Actr.SerNr = NextSerNr("ActVc", Actr.TransDate, -1, false, "");
+		// Actr.MainPersons = Address;
+		// Actr.TransDate = CurrentDate;
+		// Actr.EndDate = CurrentDate;
+		// Actr.StartTime = CurrentTime;
+		// Actr.EndTime = AddSeconds(CurrentTime, 1);
+		// Actr.PrioLevel = -1;
+		// Actr.Invalid = 0;
+		// Actr.ActType = "20307";
+		// Actr.Comment = "Изменение карточки клиента " & CUr.Name;
+		// for (RwCnt = 0; RwCnt < MatRowCnt(Tmp); RwCnt = RwCnt + 1)
+			// begin
+			// MatRowGet(Tmp, RwCnt, Tmprw);
+			// Actrw.Text = Tmprw.f2;
+			// Actrw.Signature = CurrentUser;
+			// MatRowPut(Actr, RwCnt, Actrw);
+			// end;
+		// RecordInsert(Actr, false);
+		// RecordStore(Actr, false);
+		// CreateRecordLink(Actr, CurrentCompany, Cur, CurrentCompany);
+		// end;
+		
+	if (MatRowCnt(Tmp) > 0) and (FirstInRange(Address,20)) <> "" then
+		begin
+		// --t+ 3.07.12
+		RecordNew(VTr);
+		VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+		USr.Code = CurrentUser;
+		ReadFirstMain(USr, 1, True);
+		VTr.UsrCode = USr.Code;
+		VTr.UsrName = USr.Name;
+		VTr.UsrAppoint = USr.StateJob;
+		VTr.UsrDepart = USr.Department;
+		USr.Code = FirstInRange(Address,20);
+		// if blank(USr.Code) then
+			// begin
+			// USr.Code = CurrentUser;
+			// end;
+		ReadFirstMain(USr, 1, True);
+		VTr.ServCode = USr.Code;
+		VTr.ServName = USr.Name;
+		VTr.ServAppoint = USr.StateJob;
+		VTr.ServDepart = USr.Department;
+		VTr.Copy = IDelFromSet(FirstInRange(Address,20), Address); 
+		VTr.DateSend = CurrentDate;
+		VTr.TimeSend = CurrentTime;
+		VTr.TypeOfTicket = "201";
+		VTr.Comment = "Изменение карточки клиента " & CUr.Name;
+		VTrw.SmsDate = CurrentDate;
+		VTrw.SmsTime = CurrentTime;
+		VTrw.Sign = CurrentUser;
+		VTrw.CurStatus = 0;
+		MatRowPut(VTr, 0, VTrw)
+		for (RwCnt = 0; RwCnt < MatRowCnt(Tmp); RwCnt = RwCnt + 1)
+			begin
+			MatRowGet(Tmp, RwCnt, Tmprw);
+			LineTextPut(VTr,RwCnt,Tmprw.f2);
+			end;
+		RecordInsert(VTr, false);
+		RecordStore(VTr, false);
+		CreateRecordLink(VTr, CurrentCompany, Cur, CurrentCompany);
+		end;
+		//--	
+	end;
+ActCUControlField = False;
+RETURN;
+end;
+
+
+global
+procedure tMailActivity(record tVTicketsVc VTr, integer p)
+begin
+record ConfVc Confr;
+record UserVc USr;
+record tEMailBlock EMb;
+row tEMailBlock EMbr;
+string 20 UserName;
+LongInt res;
+Integer pos, RowCnt;
+string 200 Address,Address1;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+Address1 = tExclude(VTr.Copy, VTr.Free);
+
+switch(p)
+	begin
+	// case 0: Address = VTr.UsrCode & "," & VTr.ServCode & "," & VTr.Copy ;
+	// case 1: Address = VTr.Copy ;
+	// case 2: Address = VTr.ServCode;
+	// case 3: Address = VTr.ServCode & "," & VTr.Copy ;
+	
+	case 0: Address = VTr.UsrCode & "," & VTr.ServCode & "," & Address1 ;
+	case 1: Address = Address1;
+	case 2: Address = VTr.ServCode;
+	case 3: Address = VTr.ServCode & "," & Address1;
+	
+	end;
+pos = 0;
+ExtractObj(Address, pos, UserName);
+while nonblank(UserName) 
+	begin
+	BlockLoad(EMb);
+	for (RowCnt = 0; RowCnt < MatRowCnt(EMb); RowCnt = RowCnt + 1)
+		begin
+		MatRowGet(EMb, RowCnt, EMbr);
+		if EMbr.Code == UserName then
+			begin
+			RunProgram("./tools/2mailactivity",  EMbr.EMail & " " & VTr.SerNr);
+			//stopalert("EMbr.EMail = " & EMbr.EMail );
+			end;
+		end;
+	//====
+	// Confr.AddrCode = UserName;
+	// if ReadFirstKey("AddrCode", Confr, 1, True) then
+		// begin
+		// if nonblank(Confr.ExtEmailAddrs) then	
+			// begin
+			// RunProgram("./tools/2mailactivity",  Confr.ExtEmailAddrs & " " & VTr.SerNr);
+			// end;
+		// end;
+		
+	USr.Code = UserName;
+	if ReadFirstMain(USr, 1, True) then
+		begin
+		if (nonblank(USr.Phone1) and (len(USr.Phone1) == 10)) then
+			begin
+			RunProgram("./tools/2smsactivity",  "38" & USr.Phone1 & "@sms.kyivstar.net" & " " & TranslitIt(VTr.Comment));
+			end;
+		end;
+	ExtractObj(Address, pos, UserName);
+	end;
+	
+RETURN;
+end;
+
+global
+procedure tMailFromPZP(string iniciator, longint SerNr, integer p)
+begin
+record ConfVc Confr;
+record UserVc USr;
+LongInt res;
+Integer pos, RowCnt;
+string 200 Address,Address1;
+string 250 CheckName;
+
+SetLangMode(LangRussian, "RUS", 2);
+	
+USr.Code = iniciator;
+if ReadFirstMain(USr, 1, True) then
+	begin
+	if p == 1 and USr.Cb1 == 1 then
+		begin 
+		CheckName = " проставлена подпись председателя РС";
+		end;
+	if p == 2 and USr.Cb2 == 1 then
+		begin 
+		CheckName = " проставлена галка Готова к выдаче ";
+		end;
+	if p == 3 and USr.Cb3 == 1 then
+		begin
+		CheckName = " проставлена подпись руководителя под ЗРС";
+		end;
+
+	if nonblank(USr.EMail) and (USr.Cb1 == 1 or USr.Cb2 == 1 or USr.Cb3 == 1 ) then
+		begin
+ 		RunProgram("./tools/tmailactivity",  USr.EMail & " " & SerNr & " " & CheckName);
+		end;
+	end;
+
+RETURN;
+end;
+
+
+

@@ -1,0 +1,117 @@
+// Удаление записей выбранных регистров
+// flags[0]:
+//   0 = Ничего не делаем
+//   1 = ItemHistVc
+//   2 = ItemStatusVc
+//   3 = TRVc
+//   4 = UserDefRepVc / UserDefRepLinesVc
+//   5 = NormPhoneNumVc
+
+updating procedure ItemHistVcRemove()
+begin
+  record ItemHistVc IHr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  MessageBox(0, "Удаляется ItemHistVc !")
+
+  ResetLoop(IHr);
+  while LoopMain(IHr, 1, true)
+    begin
+    RecordRemove(IHr);
+    StepBack(IHr);
+    end;
+  Return;
+end;
+
+
+updating procedure ItemStatusVcRemove()
+begin
+  record ItemStatusVc ISr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  MessageBox(0, "Удаляется ItemStatusVc !")
+
+  ResetLoop(ISr);
+  while LoopMain(ISr, 1, true)
+    begin
+    RecordRemove(ISr);
+    StepBack(ISr);
+    end;
+  Return;
+end;
+
+
+updating procedure TRVcRemove()
+begin
+  record TRVc TRr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  MessageBox(0, "Удаляется TRVc !")
+
+  ResetLoop(TRr);
+  while LoopMain(TRr, 1, true)
+    begin
+    RecordRemove(TRr);
+    StepBack(TRr);
+    end;
+  Return;
+end;
+
+
+updating procedure UserDefRepVcRemove()
+begin
+  record UserDefRepVc Rr;
+  record UserDefRepLinesVc RLr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  MessageBox(0, "Удаляются UserDefRepVc и UserDefRepLinesVc !")
+
+  ResetLoop(Rr);
+  while LoopMain(Rr, 1, true)
+    begin
+    RecordRemove(Rr);
+    StepBack(Rr);
+    end;
+
+  ResetLoop(RLr);
+  while LoopMain(RLr, 1, true)
+    begin
+    RecordRemove(RLr);
+    StepBack(RLr);
+    end;
+  Return;
+end;
+
+
+updating procedure NormPhoneNumVcRemove()
+begin
+  record NormPhoneNumVc Pr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  MessageBox(0, "Удаляется NormPhoneNumVc !")
+
+  ResetLoop(Pr);
+  while LoopMain(Pr, 1, true)
+    begin
+    RecordRemove(Pr);
+    StepBack(Pr);
+    end;
+  Return;
+end;
+
+
+global
+updating procedure IRemoveRecordsMn(record RcVc RepSpec)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  switch RepSpec.flags[0]
+    begin
+      case 1: ItemHistVcRemove;
+      case 2: ItemStatusVcRemove;
+      case 3: TRVcRemove;
+      case 4: UserDefRepVcRemove;
+      case 5: NormPhoneNumVcRemove;
+    end;
+  MessageBox(0, "Готово!")
+  Return;
+end;

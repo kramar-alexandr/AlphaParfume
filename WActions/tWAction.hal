@@ -1,0 +1,984 @@
+remote updating function Boolean MakeQAFromAC(record ApproveCostsVc, var record ActVc);
+remote updating function Boolean MakeQAFromOR(var record ORVc, var record ActVc);
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+remote procedure ttSubCIS(string,  var record TempVc);
+external function boolean ISetInSet(string, string);
+
+
+global
+function Boolean tCUAccessTClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record tCUAccessBlock CUAb;
+row tCUAccessBlock CUAbr;
+record AccessVc Acr;
+Boolean res;
+
+if (changed <> 0) then 
+	begin
+	GetWindowRecord(wn, CUAb);
+	MatRowGet(CUAb, rownr, CUAbr);
+	if (fieldname == "AccessGrCode") then  
+		begin
+		Acr.Code = CUAbr.AccessGrCode;
+		if ReadFirstMain(Acr, 1, True) then
+			begin
+			CUAbr.NameGr = Acr.Comment;
+			end;
+		end;
+	MatRowPut(CUAb, rownr, CUAbr);
+	PutWindowRecord(wn, CUAb);
+	end;
+tCUAccessTClassAfterEditField = res;
+RETURN;
+END;
+
+global
+procedure ttMyTicketRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "ttMyTicketRClass");  
+RepSpec.f1 = CurrentUser;
+//RepSpec.flags[2] = 0;
+RepSpec.flags[1] = 1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+
+global
+function Boolean QATypeSClassOnOpenWindow(integer wn)
+begin
+record VTicketTypeblock VTb;
+row VTicketTypeblock VTbr;
+//record UserVc USr;
+record tVTicketsVc VTr;
+Integer RwCnt;
+Boolean res;
+
+// USr.Code = CurrentUser;
+// ReadFirstMain(USr, 1, True);
+BlockLoad(VTb);
+for (RwCnt = 0; RwCnt < MatRowCnt(VTb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(VTb, RwCnt, VTbr);
+  //if (VTbr.Department == VTr.ServDepart)  then
+    begin
+    SetListString(wn, RwCnt, VTbr.Code & ":" & "   " & VTbr.Name, false);
+    end;
+  end;
+QATypeSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean QATypeSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+QATypeSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+procedure AlarmMessage(record ActVc Actr,Integer compno, string msg)
+begin
+Integer wn;
+record RcVc RepSpec;
+record tVTicketsVc VTr;
+boolean TrHs;
+
+if Actr.SerNr <> -1 then
+  begin
+  wn = OpenWindow("AlarmWClass",1,0,"","",RepSpec);
+  DeselectWindow(wn,false);
+  RepSpec.f1 = msg;
+  RepSpec.long1 = Actr.SerNr;
+  RepSpec.flags[0] = compno;
+  PutWindowRecord(wn,RepSpec);
+  end
+else 
+  begin
+  wn = OpenWindow("tAlarmWClass",1,0,"","",RepSpec);
+  DeselectWindow(wn,false);
+  RepSpec.f1 = msg;
+  PutWindowRecord(wn,RepSpec);
+  end;
+  return;
+end;
+
+global
+procedure tAlarmWClassOpenAct()
+begin
+Integer wn,nwn;
+record RcVc RepSpec;
+record tVTicketsVc VTr;
+boolean TrHs;
+string 20 frcu,tocu;
+
+SetLangMode(LangRussian,"RUS",2); 
+
+wn = CurWindow;
+GetWIndowRecord(wn,RepSpec);
+
+frcu = FirstInRange(RepSpec.f1,20);
+tocu = LastInRange(RepSpec.f1,20);
+
+VTr.SerNr = frcu;
+if ReadFirstMain(VTr, 1, True) then
+	begin
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	end;
+	
+CloseWindow(wn);
+
+ return;
+end;
+
+global
+updating procedure NewQADsm()
+BEGIN
+record ApproveCostsVc Ar;
+record tVTicketsVc VTr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, Ar);
+
+if MakeQAFromAC(Ar, VTr) then 
+	begin
+	nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+	WindowFieldGoto(nwn, VTr, -1, "ServCode", True);
+	//CreateRecordLink(VTr, CurrentCompany, Ar, CurrentCompany);
+	end;
+RETURN;
+end;
+
+global
+updating procedure CreateQAFromORDsm()
+BEGIN
+  record ORVc ORr;
+  record tVTicketsVc VTr;
+  Integer wn,nwn;
+  
+  wn = CurWindow;
+  if (WindowState(wn)==0) then 
+	  begin//normalstate
+		GetWindowRecord(wn,ORr);  
+		if (MakeQAFromOR(ORr,VTr)) then 
+			begin
+			nwn = OpenWindow("tVTicketsDClass",1,0,"","",VTr);
+			//CreateRecordLink(VTr,curcomp,ORp,curcomp);  
+			end;
+	  end;
+  RETURN;
+END;
+
+global
+updating procedure QAFromORLsm()
+BEGIN
+record ORVc ORr;
+record tVTicketsVc VTr;
+Integer wn;
+LongInt r;
+Integer i;
+
+i = 1;
+wn = CurWindow;
+while (GetRecordFromBrowse(ORr,wn,i)) 
+	begin
+	MakeQAFromOR(ORr,VTr);
+	i = i+1;
+	end;
+RETURN;
+END;
+
+
+
+
+
+global
+function Boolean SubCISSClassOnOpenWindow(integer wn)
+begin
+record UpCISVc UCr;
+Integer RwCnt, pwn;
+longint cnt,ii,i;
+Boolean res, TrHs, TrHs2;
+record TempVc Listr;
+row TempVc Listrw;
+string 100 HALName;
+
+pwn =  MotherWindow(wn);
+GetWindowRecord(pwn, UCr);
+HALName = UCr.HALName;
+
+ttSubCIS(HALName, Listr);
+
+cnt = MatRowCnt(Listr);
+for (i=0; i<cnt; i=i+1)
+	begin
+	MatRowGet(Listr,i,Listrw);
+	SetListString(wn, RwCnt, Listrw.f2, false);
+	RwCnt = RwCnt + 1;
+	end;	
+SubCISSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean SubCISSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+SubCISSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean RepSubCISSClassOnOpenWindow(integer wn)
+begin
+record UpCISVc UCr;
+record RcVc RepSpec;
+Integer RwCnt, pwn;
+longint cnt,ii,i;
+Boolean res, TrHs, TrHs2;
+string 100 HALName;
+record TempVc Listr;
+row TempVc Listrw;
+
+pwn =  MotherWindow(wn);
+GetWindowRecord(pwn, RepSpec);
+
+HALName = RepSpec.f2;
+RwCnt = 0;
+resetloop(UCr);
+UCr.HALName = HALName;
+
+if HALName <> "" then
+	begin
+	TrHs = true;
+	end
+else
+	begin
+	TrHs = false;
+	end;	
+while (LoopKey("HALName", UCr, 1, TrHs)) 
+	begin 
+	if (UCr.HALName == HALName) then
+		begin
+		cnt = MatRowCnt(Listr);
+		if (cnt == 0)   then
+			begin
+			Listrw.f2 = UCr.SUBName;
+			MatRowInsert(Listr, 0, Listrw);	
+			end
+		else
+			begin
+			for (ii=0; ii<cnt; ii=ii+1)
+				begin
+				MatRowGet(Listr,ii,Listrw);
+				if Listrw.f2 == UCr.SUBName then
+					begin
+					TrHs2 = true;
+					ii = cnt;
+					end;
+				end;
+			end;
+		if (TrHs2 == false) and (cnt <> 0) then
+			begin
+			Listrw.f2 = UCr.SUBName;
+			MatRowInsert(Listr, ii, Listrw);	
+			end;	
+		end;
+	end;
+cnt = MatRowCnt(Listr);
+for (i=0; i<cnt; i=i+1)
+	begin
+	MatRowGet(Listr,i,Listrw);
+	SetListString(wn, RwCnt, Listrw.f2, false);
+	RwCnt = RwCnt + 1;
+	end;	
+RepSubCISSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean RepSubCISSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+RepSubCISSClassOnOKWindow = false;
+RETURN;
+end;
+
+Function boolean FindResp(string UsrCode)
+begin
+record UserVc USr;
+
+Usr.Code = UsrCode;
+ReadFirstMain(Usr, 1, True);
+if CurrentUser == Usr.MotivRespCode then
+	begin
+	FindResp = true;
+	end;
+
+end;
+
+
+// global updating
+// function Boolean tCalcMotivRClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)  
+// begin
+// record RcVc RepSpec, RepSpecOld;
+// record UserVc USr;
+// record VDepartmentBossBlock Bossb;
+// row VDepartmentBossBlock Bossbw;
+// string 20 SupServ;
+// longint RwCnt;
+
+// GetWindowRecord(wn, RepSpec);
+// if (changed <> 0) then 
+	// begin
+	// switch fieldname
+		// begin
+		// case "f1": 	begin
+					// RepSpec.f2 = blankval;
+					// RepSpec.f3 = blankval;
+					// Usr.Code = CurrentUser;
+					// ReadFirstMain(Usr, 1, True);
+					// if ((Usr.Superior <> CurrentUser) and 
+						// not(FindResp(RepSpec.f1)) and (RepSpec.f1 <> CurrentUser) and (CurrentUser <> "ZINOVIY") 
+						// and (CurrentUser <> "YULICH") and (CurrentUser <> "OLYA") and (CurrentUser <> "LKOROL") and (RepSpec.f1 <> "")) 
+							// and (nonblank(Usr.AccessGroup) and not(SetInSet(Usr.AccessGroup, "UCHR"))) then
+						// begin
+						// RepSpec.f1 = CurrentUser;
+						// end;
+					// PutWindowRecord(wn, RepSpec);
+					// end;	
+		
+		// case "f2":	begin
+					// RepSpec.f1 = blankval;
+					// RepSpec.f3 = blankval;
+					// Usr.Code = CurrentUser;
+					// ReadFirstMain(Usr, 1, True);
+					// BlockLoad(Bossb);
+					// for (RwCnt = 0; RwCnt < MatRowCnt(Bossb); RwCnt = RwCnt + 1)
+						// begin
+						// MatRowGet(Bossb, RwCnt, Bossbw);
+						// if Bossbw.Department == RepSpec.f2 then
+							// begin
+							// SupServ = Bossbw.Boss;	
+							// end;	
+						// end;
+					// if ((SupServ <> CurrentUser) and (CurrentUser <> "ZINOVIY") and (CurrentUser <> "YULICH") and (CurrentUser <> "OLYA") 
+						// and (CurrentUser <> "LKOROL") ) 
+							// and (nonblank(Usr.AccessGroup) and not(SetInSet(Usr.AccessGroup, "UCHR"))) then
+						// begin
+						// RepSpec.f2 = blankval;
+						// RepSpec.f1 = CurrentUser;
+						// end;
+					// PutWindowRecord(wn, RepSpec);
+					// end;
+	  
+		// case "f3":	begin
+					// RepSpec.f1 = blankval;
+					// RepSpec.f2 = blankval;
+					// Usr.Code = CurrentUser;
+					// ReadFirstMain(Usr, 1, True);
+					// if not (SetInSet(Usr.AccessGroup, "UCHR,ADMIN")) then
+						// begin
+						// RepSpec.f3 = CurrentUser;
+						// end;
+					// PutWindowRecord(wn, RepSpec);
+					// end;
+		// end;
+	// UpdateBrowses("RcVc");
+// end;	
+// tCalcMotivRClassAfterEditField = True;
+// RETURN;
+// end;
+
+global
+procedure DblNewMotivVc()
+begin
+record VMotivVc Mr;
+val fr,to1,to2,br1,br2;
+Integer wn;
+
+RecordNew(Mr);
+
+Mr.Date = CurrentDate;
+Mr.OperCode = CurrentUser;
+Mr.OKFlag = 0;
+Mr.Curncy = "UAH";
+Mr.Department = "";
+Mr.UsrName = "";
+//Mr.DepName = "";
+Mr.BonusFound = 0;
+Mr.MotiveCoeff = 0;
+GetFullCurncyRate(Mr.Curncy,Mr.Date,fr,to1,to2,br1,br2); 
+Mr.CurncyRate = br2;
+Mr.TRNumber = -1; //11.05.10 INAU
+Mr.TRIntYc = -1;  //11.05.10 INAU
+Mr.HasTrans = 0;  //12.05.10 INAU
+Mr.OKUchr = 0;	//27.11.12 TGOR
+
+wn = OpenWindow("VMotiv1DClass", 1, 0, "", "", Mr); 
+
+RETURN;
+end;
+
+global
+procedure tCalcMotivRClassReportDefaults(Integer wn)
+begin
+record RcVc RepSpec;
+DeselectWindow(wn, false);
+GetWindowRecord(wn, RepSpec);
+ReportDefaults(RepSpec, "tCalcMotivRClass");  
+//RepSpec.f1 = CurrentUser;
+RepSpec.flags[1] = 1;
+PutWindowRecord(wn, RepSpec);
+SelectWindow(wn);
+RETURN;
+end;
+
+global
+function Boolean AreasSClassOnOpenWindow(integer wn)
+begin
+record AreasBlock Arb;
+row AreasBlock Arbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(Arb);
+for (RwCnt = 0; RwCnt < MatRowCnt(Arb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(Arb, RwCnt, Arbr);
+  SetListString(wn, RwCnt, Arbr.Code & ":" & "   " & Arbr.Area, false);
+  end;
+AreasSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean AreasSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+AreasSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean StockClassGrSClassOnOpenWindow(integer wn)
+begin
+record StockClassGrBlock SCb;
+row StockClassGrBlock SCbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(SCb);
+for (RwCnt = 0; RwCnt < MatRowCnt(SCb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(SCb, RwCnt, SCbr);
+  SetListString(wn, RwCnt, SCbr.Code & ":" & "   " & SCbr.NameGr, false);
+  end;
+StockClassGrSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean StockClassGrSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+StockClassGrSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean StockClassSClassOnOpenWindow(integer wn)
+begin
+record StockClassBlock SCb;
+row StockClassBlock SCbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(SCb);
+for (RwCnt = 0; RwCnt < MatRowCnt(SCb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(SCb, RwCnt, SCbr);
+  SetListString(wn, RwCnt, SCbr.Code & ":" & "   " & SCbr.Name, false);
+  end;
+StockClassSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean StockClassSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+StockClassSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+global
+function Boolean tSetSClassOnOpenWindow(integer wn)
+begin
+record StockClassGrBlock SCb;
+row StockClassGrBlock SCbr;
+Integer RwCnt;
+Boolean res;
+
+SetListString(wn, 0, "0: Новое", false);
+SetListString(wn, 1, "1: БУ", false);
+SetListString(wn, 2, "2: Восстановлено", false);
+tSetSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean tSetSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+tSetSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+global
+function Boolean LnSupSClassOnOpenWindow(integer wn)
+begin
+record LnSupBlock SCb;
+row LnSupBlock SCbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(SCb);
+for (RwCnt = 0; RwCnt < MatRowCnt(SCb); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(SCb, RwCnt, SCbr);
+  SetListString(wn, RwCnt, SCbr.Code & ":" & "   " & SCbr.NameLn, false);
+  end;
+LnSupSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean LnSupSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+LnSupSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+global
+function Boolean tIPRClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record RcVc RepSpec, RepSpecOld;
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+string 20 SupServ;
+longint RwCnt;
+
+if  fieldname == "f3" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	RepSpec.f4 = "";
+	//RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;	
+if  fieldname == "f4" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	GetWindowRecord(wn, RepSpecOld);
+	RepSpec.f3 = "";
+	//RecordUpdate(RepSpecOld, RepSpec, True);
+	PutWindowRecord(wn, RepSpec);
+	end;
+tIPRClassAfterEditField = True;	
+RETURN;
+END;
+
+
+global
+function Boolean ObjEMPSClassOnOpenWindow(integer wn)
+begin
+record ObjVc ObjrU;
+Integer RwCnt;
+Boolean res, TrHr;
+string 20 PODRu;
+record UserVc USr;
+
+ObjrU.Code = CurrentUser;
+ReadFirstmain(ObjrU, 1, true);
+PODRu = ObjrU.AutoObjects;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+RwCnt = 0;
+resetloop(ObjrU);
+ObjrU.OTCode = "EMP";
+TrHr = true;
+while LoopKey("OTCode", ObjrU, 1, true)
+	begin
+	TrHr = (ObjrU.OTCode == "EMP");
+	if (TrHr) and  (ObjrU.TerminateFlag <> 1) and (((ObjrU.AutoObjects == PODRu) and nonblank(ObjrU.AutoObjects)) 
+	  or ((SetInSet(Usr.AccessGroup, "UCHR,ADMIN,0011,1011K,FINO,FINOA,FINO1,OFMAN")))) then
+		begin
+		SetListString(wn, RwCnt, ObjrU.Code & ":" & "   " & ObjrU.Comment, false);
+		RwCnt = RwCnt + 1;
+		end;
+	end;	
+		
+ObjEMPSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean ObjEMPSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+ObjEMPSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean ObjPODRSClassOnOpenWindow(integer wn)
+begin
+record ObjVc ObjrU;
+Integer RwCnt;
+Boolean res, TrHr;
+string 20 PODRu;
+record UserVc USr;
+
+ObjrU.Code = CurrentUser;
+ReadFirstmain(ObjrU, 1, true);
+PODRu = ObjrU.AutoObjects;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+RwCnt = 0;
+resetloop(ObjrU);
+ObjrU.OTCode = "PODR";
+TrHr = true;
+while LoopKey("OTCode", ObjrU, 1, true)
+	begin
+	TrHr = (ObjrU.OTCode == "PODR");
+	if (TrHr) and  (ObjrU.TerminateFlag <> 1) and ((ObjrU.Code == PODRu) 
+	  or ((SetInSet(Usr.AccessGroup, "UCHR,ADMIN,0011,1011K,FINO,FINOA,FINO1,OFMAN")))) 
+	  then
+		begin
+		SetListString(wn, RwCnt, ObjrU.Code & ":" & "   " & ObjrU.Comment, false);
+		RwCnt = RwCnt + 1;
+		end;
+	end;	
+		
+ObjPODRSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean ObjPODRSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, FirstInRange(TmpStr, 20));
+ObjPODRSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+function Boolean tMBARClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record RcVc RepSpec, RepSpecOld;
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+string 20 SupServ;
+longint RwCnt;
+string 20 PODRu;
+record ObjVc ObjrU;
+
+ObjrU.Code = CurrentUser;
+ReadFirstmain(ObjrU, 1, true);
+PODRu = ObjrU.AutoObjects;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if  fieldname == "f2" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	RepSpec.f5 = "";
+	ObjrU.Code = RepSpec.f2;
+	if ReadFirstMain(ObjrU, 1, true) then
+		begin
+		if (ObjrU.TerminateFlag == 1) or (((ObjrU.AutoObjects <> PODRu) or blank(ObjrU.AutoObjects)) 
+		  and (not(SetInSet(Usr.AccessGroup, "UCHR,ADMIN,0011,1011K,FINO,FINOA,FINO1,OFMAN")))) then
+			begin
+			RepSpec.f2 = CurrentUser;
+			end;
+		end;
+	PutWindowRecord(wn, RepSpec);
+	end;	
+if  fieldname == "f5" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	RepSpec.f2 = "";
+	ObjrU.Code = RepSpec.f5;
+	if ReadFirstMain(ObjrU, 1, true) then
+		begin
+		if (ObjrU.TerminateFlag == 1) or ((ObjrU.Code <> PODRu) and (not(SetInSet(Usr.AccessGroup, "UCHR,ADMIN,0011,1011K,FINO,FINOA,FINO1,OFMAN")))) then
+			begin
+			RepSpec.f5 = PODRu;
+			end;
+		end;
+	PutWindowRecord(wn, RepSpec);
+	end;
+tMBARClassAfterEditField = True;	
+RETURN;
+END;
+
+global
+procedure tIVGPRClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+  
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"tIVGPRClass");  
+  RepSpec.flags[2] = 1;
+  RepSpec.flags[3] = 1;
+  RepSpec.flags[4] = 1;
+  RepSpec.flags[5] = 1;
+  //RepSpec.flags[12] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;
+
+global
+updating procedure CUDClassOnOpenFromBrowse(Integer wn)
+begin
+record CUVc CUr;
+string 250 tstr;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+GetWindowRecord(wn, CUr);
+ if setinset(CurrentUser,"NSKI,EKOX") and blank(CUr.LowPrew) then
+	begin
+	CUr.LowPrew = CurrentUser;
+	PutWindowRecord(wn, CUr);
+	end;
+
+
+RETURN;
+end;
+
+global
+function Boolean tFieldSClassOnOpenWindow(integer wn)
+begin
+record CUVc CUr;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+SetListString(wn, 0, "Основное конт. лицо", false);
+SetListString(wn, 1, "Статус клиента", false);
+SetListString(wn, 2, "Срок договора", false);
+SetListString(wn, 3, "Паспорт", false);
+SetListString(wn, 4, "Справка о ИНН", false);
+SetListString(wn, 5, "Выписка из ЕГРПОУ", false);
+SetListString(wn, 6, "Св-во о ед.налог", false);
+SetListString(wn, 7, "Док. о назн. дир.", false);
+SetListString(wn, 8, "Выдержка из устава", false);
+SetListString(wn, 9, "Св-во НДС", false);
+SetListString(wn, 10, "Справка 4-ООП", false);
+
+
+tFieldSClassOnOpenWindow = false;
+RETURN;
+end;
+
+global
+function Boolean tFieldSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+tFieldSClassOnOKWindow = false;
+RETURN;
+end;
+
+
+global
+function Boolean tTestAcDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record UserVc USr;
+record tTestAcVc TAr;
+
+if  fieldname == "Code" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, TAr);
+	Usr.Code = TAr.Code;
+    ReadFirstMain(Usr, 1, True);
+	TAr.Name = Usr.Name;
+	PutWindowRecord(wn, TAr);
+	end;
+tTestAcDClassAfterEditField = True;	
+RETURN;
+END;
+//===============================================
+global
+function Boolean t2MBARClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record RcVc RepSpec, RepSpecOld;
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+longint RwCnt;
+string 20 PODRu, FilAccStr, SupServ;
+record ObjVc ObjrU;
+string 200 AccFree;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+AccFree = Usr.ValidAccList;
+
+ObjrU.Code = CurrentUser;
+ReadFirstmain(ObjrU, 1, true);
+PODRu = ObjrU.AutoObjects;
+
+if  fieldname == "AccStr" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	if not(ISetInSet(RepSpec.AccStr, AccFree)) and (not(SetInSet(CurrentUser, "IYA,LTVERDOKHL,IYA"))) then
+	// if (not(ISetInSet(RepSpec.AccStr, FilAccStr))) and (not(ISetInSet(RepSpec.AccStr, AccFree)))
+		//and (not(SetInSet(Usr.AccessGroup, "UCHR,ADMIN,0011,1011K,FINO,FINOA,FINO1,OFMAN")))) then
+			begin
+			RepSpec.AccStr = AccFree;
+			end;
+	PutWindowRecord(wn, RepSpec);
+	end;
+	
+if  fieldname == "ObjStr" and (WindowState(wn) <> 0) and (changed == 1) then
+	begin
+	GetWindowRecord(wn, RepSpec);
+	//RepSpec.f2 = "";
+	ObjrU.Code = RepSpec.ObjStr;
+	if ReadFirstMain(ObjrU, 1, true) then
+		begin
+		if (ObjrU.TerminateFlag == 1) or ((ObjrU.Code <> PODRu) and ((ObjrU.AutoObjects <> PODRu) or blank(ObjrU.AutoObjects))) 
+    	  and (not(SetInSet(CurrentUser, "OLYA,LTVERDOKHL,IYA"))) then
+			begin
+			RepSpec.ObjStr = "";
+			end;
+		end;
+	PutWindowRecord(wn, RepSpec);
+	end;
+t2MBARClassAfterEditField = True;	
+RETURN;
+END;
+
+global
+updating procedure tINMetDsm()
+BEGIN
+record INVc INr;
+record RcVc RepSpec;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, INr);
+
+RepSpec.Media = mtScreen;
+RepSpec.f3 = INr.DispGroups;
+RepSpec.repname = "tINMetDocRn";
+RunReport(RepSpec,0);
+
+RETURN;
+end;
+
+global
+procedure tHistCURClassReportDefaults(Integer wn)
+BEGIN
+  record RcVc RepSpec;
+
+  DeselectWindow(wn,false);
+  GetWindowRecord(wn,RepSpec);
+  ReportDefaults(RepSpec,"tHistCURClass");
+  RepSpec.flags[0] = 1;
+  RepSpec.flags[1] = 1;
+  RepSpec.flags[2] = 1;
+  RepSpec.flags[3] = 1;
+  RepSpec.flags[4] = 1;
+  RepSpec.flags[5] = 1;
+  PutWindowRecord(wn,RepSpec);
+  SelectWindow(wn);
+  RETURN;
+END;

@@ -1,0 +1,89 @@
+global
+function LongInt StockTakeVcRecordDuplicate(var record StockTakeVc StockTaker,record StockTakeVc StockTake2r,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+Integer i,rwcnt;
+row StockTakeVc StockTakerw;
+
+res = inner.StockTakeVcRecordDuplicate(StockTaker, StockTake2r, stat, long4);
+
+StockTaker.LogNewUser = CurrentUser;
+StockTaker.LogNewDate = CurrentDate;
+StockTaker.LogNewTime = CurrentTime;
+StockTaker.LogSaveUser = blankval;
+StockTaker.LogSaveDate = "";
+StockTaker.LogSaveTime = "";
+StockTaker.LogOKUser = blankval;
+StockTaker.LogOKDate = "";
+StockTaker.LogOKTime = "";
+
+StockTakeVcRecordDuplicate = res;
+RETURN;
+END;
+
+
+global
+function LongInt StockTakeVcRecordDefaults(var record StockTakeVc StockTaker,record StockTakeVc StockTake2r,LongInt stat,LongInt long4)
+BEGIN
+LongInt res;
+Integer i,rwcnt;
+row StockTakeVc StockTakerw;
+
+res = inner.StockTakeVcRecordDefaults(StockTaker, StockTake2r, stat, long4);
+
+StockTaker.LogNewUser = CurrentUser;
+StockTaker.LogNewDate = CurrentDate;
+StockTaker.LogNewTime = CurrentTime;
+StockTaker.LogSaveUser = blankval;
+StockTaker.LogSaveDate = "";
+StockTaker.LogSaveTime = "";
+StockTaker.LogOKUser = blankval;
+StockTaker.LogOKDate = "";
+StockTaker.LogOKTime = "";
+
+StockTakeVcRecordDefaults = res;
+RETURN;
+END;
+
+//===============================================
+global
+procedure StockTakeVc_LogAction(var record StockTakeVc StockTaker, string ActionName)
+begin
+  if blank(GetFieldValueByName(StockTaker, "Log" & ActionName & "User", -1)) then
+    begin
+      SetFieldValueByName(StockTaker, "Log" & ActionName & "User", CurrentUser, -1);
+      SetFieldValueByName(StockTaker, "Log" & ActionName & "Date", CurrentDate, -1);
+      SetFieldValueByName(StockTaker, "Log" & ActionName & "Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+global
+updating function longint StockTakeVcRecordSave(var record StockTakeVc StockTaker, record StockTakeVc StockTake2r, longint stat, longint long4)
+begin
+longint res;
+
+res = inner.StockTakeVcRecordSave(StockTaker, StockTake2r, stat, long4);
+StockTakeVc_LogAction(StockTaker, "Save");
+
+StockTakeVcRecordSave = res;
+Return;
+end;
+
+
+global
+updating function LongInt StockTakeVcRecordCheck(var record StockTakeVc StockTakep,record StockTakeVc StockTake2p,LongInt stat,LongInt check)
+BEGIN
+LongInt res;
+
+res = inner.StockTakeVcRecordCheck(StockTakep, StockTake2p, stat, check);
+
+if (res == 0) and (StockTakep.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (StockTake2p.OKFlag == 0))) then //Установлен OK
+    begin
+      StockTakeVc_LogAction(StockTakep, "OK");
+    end;
+
+StockTakeVcRecordCheck = res;
+RETURN;
+END;
+

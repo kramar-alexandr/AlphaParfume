@@ -1,0 +1,247 @@
+global
+updating procedure DArticuls20In()
+BEGIN
+  string 255  InLine;
+  string 255  srucode,tstr;
+  string 1 ch ;
+  integer i,k;
+  record INVc INr;
+  record INVc OldINr;
+  record ObjVc Objr;
+  Boolean testf,foundf;
+  if (SetImportCodepage("CP1252")) then begin end;
+  while (TestEOF==false) begin
+    InLine = ImportField;
+	tstr = firstinrange(InLine,10);
+	OldINr.Code = tstr;
+	if (readfirstmain(OldINr,1,true)) then begin 
+	
+	if (OldINr.Group<>"TE") then begin
+	// recordnew(INr);
+	 RecordCopy(Inr,OldINr);
+	 tstr = "UA" & right(tstr,5);
+	 INr.Code=tstr;
+	 // код
+     INr.Name =OldInr.Name & " ,20%";
+	 // имя
+	// recordnew(OBjr);
+	 Objr.Code=INr.Code;
+	 Objr.Comment=INr.Name;
+	 Objr.OTCode="GOOD";
+	 if (RecordInsert(Objr,false)) then begin end;
+	 //новый объект
+	 tstr = firstinrange(InLine,20);
+	 INr.UPrice1 = OldInr.UPrice1*0.8;
+	 //цена
+	 tstr="";
+	 for (i=0;i<len(OldInr.Objects);i=i+1) begin
+	  ch=mid(OldInr.Objects,len(OldInr.Objects)-i,1);
+	  if (ch==",") then begin tstr = right(OldInr.Objects,i-1); i =len(OldInr.Objects); end;
+	 end;
+	 INr.Objects = INr.Code & ",UA," & tstr;
+	 //объект
+	 if (RecordInsert(Inr,false)) then begin end;
+	 end;// не тестер
+	end; //нет тавара
+    testf = NextImportLine(true); 
+  end;  
+  RETURN;
+END;
+
+global
+updating procedure DArticuls10In()
+ BEGIN
+  string 255  InLine;
+  string 255  srucode,tstr;
+  string 1 ch ;
+  integer i,k;
+  record INVc INr;
+  record INVc OldINr;
+  record ObjVc Objr;
+  Boolean testf,foundf;
+  if (SetImportCodepage("CP1252")) then begin end;
+  while (TestEOF==false) begin
+    InLine = ImportField;
+	tstr = firstinrange(InLine,10);
+	OldINr.Code = tstr;
+	if (readfirstmain(OldINr,1,true)) then begin 
+	
+	if (OldINr.Group<>"TE") then begin
+	// recordnew(INr);
+	 RecordCopy(Inr,OldINr);
+	 tstr = "UB" & right(tstr,5);
+	 INr.Code=tstr;
+	 // код
+     INr.Name =OldInr.Name & " ,10%";
+	 // имя
+	// recordnew(OBjr);
+	 Objr.Code=INr.Code;
+	 Objr.Comment=INr.Name;
+	 Objr.OTCode="GOOD";
+	 if (RecordInsert(Objr,false)) then begin end;
+	 //новый объект
+	 INr.UPrice1 = OldInr.UPrice1*0.9;
+	 //цена
+	 tstr="";
+	 for (i=0;i<len(OldInr.Objects);i=i+1) begin
+	  ch=mid(OldInr.Objects,len(OldInr.Objects)-i,1);
+	  if (ch==",") then begin tstr = right(OldInr.Objects,i-1); i =len(OldInr.Objects); end;
+	 end;
+	 INr.Objects = INr.Code & ",UB," & tstr;
+	 //объект
+	 if (RecordInsert(Inr,false)) then begin end;
+	 end;// не тестер
+	end; //нет тавара
+    testf = NextImportLine(true); 
+  end;  
+  RETURN;
+END;
+
+global updating
+procedure DCostChangeMn(record RcVc RepSpec)
+begin
+ record INVc Inr,OldInr;
+  
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportnoheaderJob("изменение стоимости товаров");
+
+  
+ while (LoopMain(INr,1,true)) begin
+
+    if (left(INr.Code,2)=="UA") then begin  
+	 startformat(15);
+	 Outstring(0,0,Inr.Code & " до " & INr.UPrice1, false);
+	 INr.UPrice1=INr.UPrice1*4;  
+	 RecordCopy(OldInr,Inr);
+	 if (RecordUpdate(oldInr,Inr,true)==0) then begin end;
+     Outstring(200,0,Inr.Code & " после " & INr.UPrice1, false);
+     endformat;	
+	end;
+    if (left(INr.Code,2)=="UB") then begin  
+	 startformat(15);
+	 Outstring(0,0,Inr.Code & " до " & INr.UPrice1, false);
+	 INr.UPrice1=INr.UPrice1*9;  
+	 RecordCopy(OldInr,Inr);
+	 if (RecordUpdate(oldInr,Inr,true)==0) then begin end;
+     Outstring(200,0,Inr.Code & " после " & INr.UPrice1, false);
+     endformat;		
+	end;
+  end;// while
+   StartFormat(15);
+   Outstring (0,0,"Работа завершена!",false);
+   endformat
+ endjob;
+return;
+end;
+
+global
+updating procedure DArticulsTestIn()
+ BEGIN
+  string 255  InLine;
+  string 255  srucode,tstr;
+  string 1 ch ;
+  integer i,k;
+  record INVc INr;
+  record INVc OldINr;
+  record ObjVc Objr;
+  Boolean testf,foundf;
+  if (SetImportCodepage("CP1252")) then begin end;
+  while (TestEOF==false) begin
+    InLine = ImportField;
+	tstr = firstinrange(InLine,10);
+	OldINr.Code = tstr;
+	if (readfirstmain(OldINr,1,true)) then begin 
+	
+	if (OldINr.Group=="TE") then begin
+	// recordnew(INr);
+	 RecordCopy(Inr,OldINr);
+	 tstr = "UT" & right(tstr,5);
+	 INr.Code=tstr;
+	 // код
+     INr.Name =OldInr.Name & " ,10%";
+	 // имя
+	// recordnew(OBjr);
+	 Objr.Code=INr.Code;
+	 Objr.Comment=INr.Name;
+	 Objr.OTCode="GOOD";
+	 if (RecordInsert(Objr,false)) then begin end;
+	 //новый объект
+	 INr.UPrice1 = OldInr.UPrice1*0.9;
+	 //цена
+	 tstr="";
+	 for (i=0;i<len(OldInr.Objects);i=i+1) begin
+	  ch=mid(OldInr.Objects,len(OldInr.Objects)-i,1);
+	  if (ch==",") then begin tstr = right(OldInr.Objects,i-1); i =len(OldInr.Objects); end;
+	 end;
+	 INr.Objects = INr.Code & ",UT," & tstr;
+	 //объект
+	 if (RecordInsert(Inr,false)) then begin end;
+	 end;// не тестер
+	end; //нет тавара
+    testf = NextImportLine(true); 
+  end;  
+  RETURN;
+END;
+//===========
+global updating
+procedure SDispAddMn(record RcVc RepSpec)
+Begin
+  record INVc Inr,OldInr;
+  SetLangMode(LangRussian,"RUS",2);
+  StartReportnoheaderJob("изменение стоимости товаров");
+ 
+   while (Loopkey("Group",Inr,1,true)) 
+     begin
+      /*   if Inr.Group=="CO" then
+	       begin	 	 
+	        if SetInset("BF",Inr.DispGroups) then 
+	         begin 
+               goto jump;	   
+	         end;
+              startformat(15);
+	          Outstring(0,0," до " & Inr.DispGroups, false);
+	          INr.DispGroups = INr.DispGroups & "BF,";  
+	          RecordCopy(OldInr,Inr);
+              if (RecordUpdate(oldInr,Inr,true)==0) then begin end;
+              Outstring(200,0," после " & Inr.DispGroups, false);
+              endformat;
+			  goto jump;
+	       end;
+*/	
+	    if Inr.Group=="EL" then 
+	      begin
+         	if SetInset("BE",Inr.DispGroups) then begin goto jump;  end;
+              startformat(15);
+	          Outstring(0,0," до " & Inr.DispGroups, false);
+	          if (right(Inr.DispGroups,1) <> ",") then
+				begin
+				INr.DispGroups = INr.DispGroups & ",";
+				end;
+     		  INr.DispGroups = INr.DispGroups & "BE";  
+	          RecordCopy(OldInr,Inr);
+	          if (RecordUpdate(oldInr,Inr,true)==0) then begin end;
+              Outstring(200,0," после " & Inr.DispGroups, false);
+              endformat;
+              goto jump;			  
+	      end;
+/*	      if Inr.Group=="DP" then
+	        begin  
+	          if SetInset("BG",Inr.DispGroups) then begin goto jump;  end;
+              startformat(15);
+	          Outstring(0,0," до " & Inr.DispGroups, false);
+	          INr.DispGroups = INr.DispGroups & "BG";  
+	          RecordCopy(OldInr,Inr);
+              if (RecordUpdate(oldInr,Inr,true)==0) then begin end;
+              Outstring(200,0," после " & Inr.DispGroups, false);
+              endformat;
+              goto jump;			  
+            end; 
+  */      jump:;
+     end;// while
+  
+   StartFormat(15);
+   Outstring (0,0,"Работа завершена!",false);
+   endformat
+ endjob;
+ return;
+End;

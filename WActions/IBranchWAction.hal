@@ -1,0 +1,523 @@
+external function string 100 IGetVPositionName(string);
+//updating remote procedure raIAddSubFromBranch(string);
+
+//===============================================
+//Добавить Подразделение SubBranch из карточки филиала
+global
+updating procedure IAddSubBranchBtn()
+begin
+  record IBranchVc Br;
+  record ISubBranchVc SBr;
+
+  GetWindowRecord(CurWindow, Br);
+  RecordNew(SBr);
+  SBr.BranchCode = Br.Code;
+  OpenWindow("ISubBranchDClass", 1, 0, "", "", SBr);
+  Return;
+end;
+
+//===============================================
+//Наименование "родителя" в CalculatedColumn
+global
+function string 255 IBranchClassLClassParentDesc(var record IBranchClassVc BCr)
+begin
+  record IBranchClassVc parentBCr;
+
+  parentBCr.Code = BCr.Parent;
+  ReadFirstMain(parentBCr, 1, true);
+  IBranchClassLClassParentDesc = parentBCr.Description;
+  Return;
+end;
+
+//===============================================
+//Устанавливаем SubSet для RecordList2
+global
+function Boolean IBranchDClassUpdateWindowSubset(integer wn, var string SubSetStr)
+begin
+  record IBranchVc Br;
+
+  GetWindowRecord(wn, Br);
+  SubSetStr = Br.Code;
+  IBranchDClassUpdateWindowSubset = true;
+  return;
+end;
+
+//===============================================
+//Инкасация - отв. лицо
+function boolean IBranchDClassEncashEmplEFAfter(integer wn, integer changed)
+begin
+  record IBranchVc Br;
+  record UserVc Usr;
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, Br);
+      Usr.Code = Br.EncashEmpl;
+      if ReadFirstMain(Usr, 1, true) then
+        begin
+          Br.EncashPos = Usr.VPositionCode;
+          Br.EncashPosDesc = IGetVPositionName(Br.EncashPos);
+        end;
+      Br.EncashEmplName = Usr.Name;
+      PutWindowRecord(wn, Br);
+    end;
+  IBranchDClassEncashEmplEFAfter = res;
+  Return;
+end;
+
+//===============================================
+//Инкасация - должность
+function boolean IBranchDClassEncashPosEFAfter(integer wn, integer changed)
+begin
+  record IBranchVc Br;
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, Br);
+      Br.EncashPosDesc = IGetVPositionName(Br.EncashPos);
+      PutWindowRecord(wn, Br);
+    end;
+  IBranchDClassEncashPosEFAfter = res;
+  Return;
+end;
+
+//===============================================
+//Структура филиала - должность
+function boolean IBranchDClassPosCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record IBranchVc Br;
+  row IBranchVc Brw;
+  boolean res;
+
+  if (changed <> 0) and (rownr > -1) then
+    begin
+      GetWindowRecord(wn, Br);
+      MatRowGet(Br, rownr, Brw);
+      Brw.PosDesc = IGetVPositionName(Brw.PosCode);
+      if blank(Brw.PosDesc) then
+        begin
+          Brw.PosCode = blankval;
+        end;
+      MatRowPut(Br, rownr, Brw);
+      PutWindowRecord(wn, Br);
+    end;
+  IBranchDClassPosCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function boolean IBranchDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "EncashEmpl": res = IBranchDClassEncashEmplEFAfter(wn, changed);
+          case "EncashPos": res = IBranchDClassEncashPosEFAfter(wn, changed);
+          case "PosCode": res = IBranchDClassPosCodeEFAfter(wn, rownr, changed);
+        end;
+    end;
+  IBranchDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+procedure IBranchDClassButtonFlags(integer wn, var boolean duplOK, var boolean newOK, var boolean saveOK, var boolean restOK)
+begin
+  duplOK = false;
+  newOK = false;
+  Return;
+end;
+
+//===============================================
+global
+procedure IBranchLClassButtonFlags(integer wn, var boolean duplOK, var boolean newOK, var boolean saveOK, var Boolean restOK)
+begin
+  duplOK = false;
+  newOK = false;
+  Return;
+end;
+
+//===============================================
+global
+procedure ISubBranchDClassButtonFlags(integer wn, var boolean duplOK, var boolean newOK, var boolean saveOK, var boolean restOK)
+begin
+  duplOK = false;
+  newOK = false;
+  Return;
+end;
+
+//===============================================
+global
+procedure ISubBranchLClassButtonFlags(integer wn, var boolean duplOK, var boolean newOK, var boolean saveOK, var Boolean restOK)
+begin
+  duplOK = false;
+  newOK = false;
+  Return;
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);  
+  Setting("Классификация филиалов ГК", IBranchClassLClass, modFilK);
+  Setting("Подразделения филиалов ГК", ISubBranchLClass, modFilK);
+  Register("Филиалы ГК", "Филиалы ГК", IBranchLClass, modFilK);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Классификация филиалов", IBranchClassLClass, CGmlist, -);
+  SpawnClass(IBranchClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IBranchClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Description, false, Description);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "IBranchClassLClassParentDesc", false);
+  SearchField("Поиск");
+  EndWindow;
+  
+  WindowBegin("Выберите класс филиала", IBranchClassSClass, CGslist, -);
+  SpawnClass(IBranchClassDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IBranchClassVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Description, false, Description);
+  RlColKey(-300, -300, "Род.код", Parent, false, Parent);
+  CalculatedColumn(-200, -200, "Род.наим.", "IBranchClassLClassParentDesc", false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Классификация филиала", IBranchClassDClass, CGview,-);
+  SetWRect(20, 80, 720, 360);
+  UseView(IBranchClassVc);
+  v = 6;
+  EditField(100, v, 80, "Код", Normal, Code, false, 0);
+  EditField(300, v, -40, "Наименование", Normal, Description, false, 0);
+  EditField(100, v+=vs, 80, "Иерархия", Normal, Parent, false, IBranchClassSClass);
+  EndWindow;
+
+
+  WindowBegin("Подразделения Филиалов ГК", ISubBranchLClass, CGmlist, -);
+  SpawnClass(ISubBranchDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISubBranchVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(60, 60, "Наименование", Name, false, Name);
+  RlCol(200, 200, "Офф.", HasOffice, false);
+  RlCol(250, 250, "Скл.", HasStock, false);
+  RlCol(300, 300, "Уд.тор.", HasRemoteSeller, false);
+  RlCol(350, 350, "Тел.", Phone, false);
+  RlCol(450, 450, "Адрес", Addr, false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Подразделения Филиалов ГК", ISubBranchSClass, CGslist, -);
+  SpawnClass(ISubBranchDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(ISubBranchVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(60, 60, "Наименование", Name, false, Name);
+  RlCol(200, 200, "Офф.", HasOffice, false);
+  RlCol(250, 250, "Скл.", HasStock, false);
+  RlCol(300, 300, "Уд.тор.", HasRemoteSeller, false);
+  RlCol(350, 350, "Тел.", Phone, false);
+  RlCol(450, 450, "Адрес", Addr, false);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Подразделение Филиала ГК", ISubBranchDClass, CGview,-);
+  SetWRect(20, 80, 800, 260);
+  UseView(ISubBranchVc);
+  v = 6;
+  h  = 100;
+  h2 = 300;
+  EditField(h, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2, v, -40, "Наименование", Normal, Name, false, 0);
+  EditField(h, v+=vs, 80, "Филиал", Normal, BranchCode, false, BranchSClass);
+  EditField(h, v+=vs, -40, "Адрес", Normal, Addr, false, 0);
+  EditField(h, v+=vs, 150, "Телефон", Normal, Phone, false, 0);
+  CheckBox(h=200, v+=vs, 0, "Наличие оффиса", HasOffice);
+  CheckBox(h, v+=vs, 0, "Наличие склада", HasStock);
+  CheckBox(h, v+=vs, 0, "Наличие удаленного торгового", HasRemoteSeller);
+  EndWindow;
+
+
+  WindowBegin("Филиалы ГК", IBranchLClass, CGmlist, -);
+  SpawnClass(IBranchDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IBranchVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Филиалы ГК", IBranchSClass, CGslist, -);
+  SpawnClass(IBranchDClass);
+  SetWRect(64, 80, 809, 298);
+  Sizeable(-1, -1, 0, 0);
+  UseView(IBranchVc);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(100, 100, "Наименование", Name, false, Name);
+  SearchField("Поиск");
+  EndWindow;
+
+  WindowBegin("Филиалы ГК", IBranchDClass, CGview,-);
+  SetWRect(20, 80, 800, 560);
+  UseView(IBranchVc);
+  v = 6;
+  h  = 100;
+  h2 = 300;
+  Tile(0, 110, false, "", Code);
+  EditField(h, v, 80, "Код", Normal, Code, false, 0);
+  EditField(h2, v, -40, "Наименование", Normal, Name, false, 0);
+  EditField(h, v+=vs, 80, "Категория", Normal, Cat, false, 0);
+  EditField(h2, v, 80, "Группа продажи", Normal, SalesGroup, false, SalesGroupSClass);
+  EditField(h, v+=vs, -40, "Классификация", Normal, Classification, false, IBranchClassSClass);
+
+  TileButton(1,  "Общ.");
+  TileButton(2,  "Маркет");
+  TileButton(3,  "Комм.");
+  TileButton(4,  "Фин.");
+  TileButton(5,  "Лог.");
+  TileButton(6,  "Стр.");
+  TileButton(7,  "IT");
+  TileButton(8,  "Перс.");
+  TileButton(9,  "Право");
+  TileButton(10, "Безоп.");
+  TileButton(11, "Хоз.");
+
+  //Общие
+  Tile(1, 110, true, "", StartDate);
+  EditField(h, v=6, 80, "Дата основания", Normal, StartDate, false, PasteCurDate);
+  EditField(h, v+=vs, -200, "Адрес офиса", Normal, Addr, false, 0);
+  EditField(h, v+=vs, -200, "Телефон офиса", Normal, Phone, false, 0);
+  EditField(h, v+=vs, 100, "Управляющий", Normal, ChiefCode, false, UserSClass);
+  EditField(h2, v, -200, "ФИО", Normal, ChiefName, false, 0);
+  EditField(h, v+=vs, -200, "Тел. упр.", Normal, ChiefPhone, false, 0);
+  v2 = v;
+  ButtonFrame(h=-150, v=24, 123, 3, "Состояние");
+  RadioButton(h, v,       0, 0, "В процессе откр.", Status);
+  RadioButton(h, v += 16, 1, 0, "Открыт", Status);
+  RadioButton(h, v += 16, 2, 0, "Закрыт", Status);
+  v = v2;
+  h = 100;
+  ButtonFrame(10, v+=vs+vs, -40, 0 ,"Подразделения филиала");
+  HalPushButton(-190, v, -40, v+=vs, "IAddSubBranchBtn", "Добавить подразделение");
+  RecordList2(10, v+=vs, -30, -39, "ISubBranchVc");
+  RlColKey(4, 4, "Код", Code, false, Code);
+  RlColKey(60, 60, "Наименование", Name, false, Name);
+  RlCol(200, 200, "Офф.", HasOffice, false);
+  RlCol(250, 250, "Скл.", HasStock, false);
+  RlCol(300, 300, "Уд.тор.", HasRemoteSeller, false);
+  RlCol(350, 350, "Тел.", Phone, false);
+  RlCol(450, 450, "Адрес", Addr, false);
+
+  //Маркетинг
+  Tile(2, 110, true, "", MarketSegments);
+  EditField(h=200, v=6, -40, "Сегменты рынка", Normal, MarketSegments, false, tMarkSegSClass);
+  EditField(h, v+=vs, -40, "Конкуренты", Normal, Competitors, false, ICompetitorSClass);
+  EditField(h, v+=vs, -40, "Маркетинговые агентства", Normal, MarketAgencies, false, VESClass);
+  EditField(h, v+=vs, -40, "Рекламные агентства", Normal, AdvAgencies, false, VESClass);
+
+  //Коммерция
+  Tile(3, 110, true, "", Area1);
+  EditField(h=100, v=6, -400, "Территория, обл.", Normal, Area1, false, 0);
+  EditField(h, v+=vs, -400, "", Normal, Area2, false, 0);
+  EditField(h, v+=vs, -400, "", Normal, Area3, false, 0);
+  EditField(h, v+=vs, -400, "", Normal, Area4, false, 0);
+  EditField(h, v+=vs, -400, "", Normal, Area5, false, 0);
+  v = 6;
+  StaticText(h=-200, v+8, "Стандартное ценообразование", false);
+  EditField(h, v+=vs, -40, "Отсрочка", Normal, PayDeal, false, PDSClass);
+  EditField(h, v+=vs, -40, "Прейскурант", Normal, PriceList, false, PLDefSClass);
+  EditField(h, v+=vs, -40, "Скидка/Наценка", Normal, Rebate, false, RebSClass);
+  EditField(h, v+=vs, -40, "Валюта", Normal, Curncy, false, CurncyCodeSClass);
+  v = v + 40;
+  v2 = v;
+  StaticText(20, v+=8, "Торговый", false);
+  StaticText(130, v, "Тер-я обслуж-я", false);
+  StaticText(-490, v, "Объект PLAN", false);
+  StaticText(-380, v, "Разряд", false);
+  StaticText(-270, v, "Год.оборот", false);
+
+  StaticText(h=-150, v, "Сектора продаж филиала", false);
+  CheckBox(h, v+=vs, 0, "Клиенты-дистрибьютеры", DSFlag);
+  CheckBox(h, v+=vs, 0, "Клиенты-дилеры", DLFlag);
+  CheckBox(h, v+=vs, 0, "Сетевые клиенты", NWFlag);
+  CheckBox(h, v+=vs, 0, "Рохничные клиенты", RTFlag);
+
+  v = v2;  
+  EditField(20, v+=vs, 100, "", Normal, Seller1, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller1Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller1Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller1Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller1Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller2, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller2Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller2Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller2Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller2Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller3, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller3Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller3Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller3Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller3Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller4, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller4Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller4Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller4Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller4Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller5, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller5Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller5Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller5Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller5Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller6, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller6Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller6Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller6Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller6Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller7, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller7Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller7Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller7Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller7Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller8, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller8Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller8Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller8Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller8Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller9, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller9Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller9Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller9Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller9Turnover, true, 0);
+
+  EditField(20, v+=vs, 100, "", Normal, Seller10, false, UserSClass);
+  EditField(130, v, -500,   "", Normal, Seller10Area, false, 0);
+  EditField(-490, v, -390,  "", Normal, Seller10Obj, false, ObjSClass);
+  EditField(-380, v, -280,  "", Normal, Seller10Rank, false, 0);
+  EditField(-270, v, -170,  "", Normal, Seller10Turnover, true, 0);
+  
+  //Финансы
+  Tile(4, 110, true, "", Encashments);
+  EditField(h=150, v=6, -40, "Каналы инкассации", Normal, Encashments, false, 0); //Ссылка на несуществующий ресурс "Кредитные и банковские организации"
+  EditField(h, v+=vs, 200, "День инкассации", Normal, EncashDay, false, 0);
+  EditField(h, v+=vs, 100, "Инкассация отв.лица", Normal, EncashEmpl, false, UserSClass);
+  EditField(h2=300, v, -40, "ФИО", Normal, EncashEmplName, false, 0);
+  EditField(h, v+=vs, 100, "Должность", Normal, EncashPos, false, VPositionSClass);
+  EditField(h2, v, -40, "Опис.", Normal, EncashPosDesc, false, 0);
+  EditField(h, v+=vs, -40, "Предприятия", Normal, EntPrs, false, tEntPrSClass);
+
+  //Логистика
+  Tile(5, 110, true, "", StockFlag);
+  ButtonFrame(h=100, v=24, 123, 3, "Наличие склада");
+  RadioButton(h, v,       1, 0, "Есть", StockFlag);
+  RadioButton(h, v += 16, 0, 0, "Нет", StockFlag);
+ 
+  EditField(h=500, v=6, 100, "День согласования заявки", Normal, OrderAdjDay, false, 0);
+  EditField(h2=650, v, 80, "Время", Normal, OrderAdjTime, false, PasteCurTime);
+  EditField(h, v+=vs, 100, "День подачи заявки на подбор товара", Normal, OrderDay, false, 0);
+  EditField(h2, v, 80, "Время", Normal, OrderTime, false, PasteCurTime);
+  EditField(h, v+=vs, 100, "День поставки на склад", Normal, OrderReceiveDay, false, 0);
+  EditField(h2, v, 80, "Время", Normal, OrderReceiveTime, false, PasteCurTime);
+
+  EditField(h=150, v+=40, -40, "Склады", Normal, Stocks, false, LocationSClass);
+  EditField(h, v+=vs, -40, "Транспортные средства", Normal, Vehicles, false, IVehicleSClass);
+  EditField(h, v+=vs, -40, "Маршруты доставки", Normal, DelivRoutes, false, tRouteSClass);
+  EditField(h, v+=vs, -40, "Поставщики", Normal, Suppliers, false, VESClass);
+  EditField(h, v+=vs, -40, "Складское оборудование", Normal, StockEquip, false, LocEquipSClass);
+
+  //Структура
+  Tile(6, 110, true, "", StockFlag);
+  StaticText(20, v=14, "Структура филиала", false);
+  MatrixBegin(4, 40, -31, -20, IBranchRowType, 99);
+  MatCol(1, 20, "Код должн.", 0, PosCode, false, VPositionSClass);
+  MatCol(1, 120, "Наименование", 0, PosDesc, false, 0);
+  MatCol(1, -140, "Статус", 0, PosStat, false, 0);
+  MatCol(1, -70, "Кол-во", 0, PosQnt, true, 0);
+  EndMatrix;
+
+  //IT
+  Tile(7, 110, true, "", MngWorkPlaceQnt);
+  StaticText(h=150, v=14, "Количество функциональных рабочих мест", false);
+  EditField(h, v+=vs, 80, "Управление", Normal, MngWorkPlaceQnt, true, 0);
+  EditField(h2=300, v, 80, "Продажи", Normal, SalesWorkPlaceQnt, true, 0);
+  EditField(h, v+=vs, 80, "Учет", Normal, AccWorkPlaceQnt, true, 0);
+  EditField(h2, v, 80, "Логистика", Normal, LogWorkPlaceQnt, true, 0);
+  EditField(h, v+=40, -40, "Провайдеры услуг", Normal, ServProvs, false, IServProvSClass);
+  EditField(h, v+=vs, -40, "Программное обеспечение", Normal, SoftwareList, false, SoftKindSClass);
+
+  //Персонал
+  Tile(8, 110, true, "", HRAgencies);
+  EditField(h=150, v=6, -40, "Кадровые агентства", Normal, HRAgencies, false, VESClass);
+  EditField(h, v+=vs, -40, "Обучающие компании", Normal, TrainingCompanies, false, VESClass);
+  EditField(h, v+=vs, -40, "Операторы услуг связи", Normal, CommProviders, false, VESClass);
+
+  //Право
+  Tile(9, 110, true, "", SPD);
+  EditField(h=170, v=6, 400, "СПД", Normal, SPD, false, 0);
+  EditField(h, v+=vs, 400, "ИНН", Normal, INN, false, 0);
+  EditField(h, v+=vs, 400, "ОКПО", Normal, OKPO, false, 0);
+  EditField(h, v+=vs, 400, "Паспортные данные", Normal, Passp, false, 0);
+  EditField(h, v+=vs, 400, "Справка ИНН", Normal, RefINN, false, 0);
+  EditField(h, v+=vs, 400, "Выписка ЕГРПОУ", Normal, EGRPOU, false, 0);
+  EditField(h, v+=vs, 400, "Свидетельство о ед. налоге", Normal, RefSingle, false, 0);
+  EditField(h, v+=vs, 400, "Документ о назначении директора", Normal, AssigDir, false, 0);
+  EditField(h, v+=vs, 400, "Выдержка из устава", Normal, Excerpt, false, 0);
+  EditField(h, v+=vs, 400, "Свидетельство НДС", Normal, RefNDS, false, 0);
+  EditField(h, v+=vs, 400, "Справка 4-ОПП", Normal, RefOPP, false, 0);
+  EditField(h, v+=40, -40, "Судебные контрагенты", Normal, JContractors, false, 0);
+
+  //Безопасность
+  Tile(10, 110, true, "", FinRespDocs);
+  EditField(h=180, v=6, -40, "Наличие документов мат/отв", Normal, FinRespDocs, false, 0);
+  EditField(h, v+=vs, -40, "Угрозы безопасности", Normal, SecThreats, false, ISecThreatSClass);
+
+  //Хоз. вопросы
+  Tile(11, 110, true, "", OfficeFlag);
+  ButtonFrame(h=100, v=24, 123, 3, "Наличие офиса");
+  RadioButton(h, v,       1, 0, "Есть", OfficeFlag);
+  RadioButton(h, v += 16, 0, 0, "Нет", OfficeFlag);
+
+  EditField(h2=400, v=6, -40, "Офис", Normal, OfficeList, false, OffCardSClass);
+  EditField(h=250, v+=80, -40, "Строительные и ремонтные организации", Normal, Builders, false, 0); //Ссылка на несуществующий ресурс
+  EndWindow;
+
+  Return;
+end;

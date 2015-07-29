@@ -1,0 +1,48 @@
+external inner updating function Integer PastePOInPU(record POVc,record PUVc,Integer);
+external inner function LongInt GetCurUserLastNr(string);
+external inner updating procedure AssignStockResFromPO(record POVc);
+
+
+global
+updating function LongInt RecordAction_raPastePOInPU(var record POVc POp,var record PUVc PUp)
+BEGIN
+  LongInt res,ponr,newnr;
+  record SRBlock SRRec;
+      
+  if (ReadFirstMain(POp,0,true)) then begin end;  
+  if (POp.OrderType!=kOrderTypeNormal) then begin 
+    res = 22075;
+    goto LRecordAction_raPastePOInPU;
+  end;
+  ponr = PUp.PONr;
+  RecordNew(PUp);
+  PUp.PONr = ponr;
+  if (PUp.SerNr==-1) then begin
+    BlockLoad(SRRec);
+    newnr = GetCurUserLastNr("PUVc");
+    if (newnr==-1) then begin
+      newnr = SRRec.LastPurNr;      
+    end;    
+    PUp.SerNr = NextSerNr("PUVc",PUp.TransDate,newnr,false,"");
+    if (PUp.SerNr==-1) then begin 
+      res = 1747;
+      goto LRecordAction_raPastePOInPU; 
+    end;
+  end;
+  AssignStockResFromPO(POp);
+  res = PastePOInPU(POp,PUp,299);
+  if (res!=0) then begin
+    goto LRecordAction_raPastePOInPU;
+  end;
+  if ((MatRowCnt(PUp)>0) and (PUp.SerNr!=-1)) then begin
+    if (RecordStore(PUp,false)) then begin 
+      CreateRecordLink(PUp,CurrentCompany,POp,CurrentCompany);  
+      CreateRecordLink(POp,CurrentCompany,PUp,CurrentCompany);  
+    end;
+    res = 0;
+  end;
+LRecordAction_raPastePOInPU:;  
+  RecordAction_raPastePOInPU = res;
+  RETURN;
+END;
+

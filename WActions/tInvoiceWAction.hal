@@ -1,0 +1,162 @@
+external procedure AddHelpButton(LongInt, LongInt);
+//external inner procedure Base1ToBase2(var val,Date,var val);
+remote procedure tCrRepList(longInt, var record TempVc);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+//===============================================================
+WindowBegin("Товар в инвосе", tInvoiceDClass, CGview, -);
+//DynamicWindow;
+UseView(tInvoiceVc);
+SetWRect(10, 80, 550, 210);
+BrowseButtons(True);
+vs = 20; h1 = 80; v = 30; h2 = 255; h3 = 420; 
+AddHelpButton(5, 5);
+EditField(h1, v, 80, "Код", Normal, Code, False, INSClass);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+EditField(h2, v+= vs, -30, "Наименование в инвойсе", Normal, NameInv, False, 0);
+EditField(h2, v+= vs, 80, "Цена", Normal, Koef, False, 0);
+EndWindow;
+
+WindowBegin("Товары в инвосе", tInvoiceLClass, CGmlist, DMView);
+SpawnClass(tInvoiceDClass);
+SetWRect(64, 80, 700, 400);
+Sizeable(-1, -1, 0, 0);
+UseView(tInvoiceVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(80, 80, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Наименование в инвойсе", NameInv, false, NameInv);
+RlColKey(500, 500, "Цена", Koef, false, Koef);
+//BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Товары в инвосе", tInvoiceSClass, CGslist, -);
+SpawnClass(tInvoiceDClass);
+UseView(tInvoiceVc);
+SetWRect(64,80,700,200);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(80, 80, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Наименование в инвойсе", NameInv, false, NameInv);
+RlColKey(500, 500, "Цена", Koef, false, Koef);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+return;
+End;
+
+global
+procedure tPOInfoRn(record RcVc RepSpec)
+BEGIN
+record POVc POr;
+record TempVc Listr;
+row TempVc Listrw;
+integer RwCnt;
+val v1,v2;
+
+SetLangMode(LangRussian,"RUS",2);
+
+StartReportNoHeaderJob("Товары в инвойсе");
+tCrRepList(RepSpec.long1, Listr);
+
+StartFormat(15);
+OutString(0, 0, "Наименование", true);
+OutString(40, 0, "Количество", false);
+OutString(100, 0, "Цена", true);
+OutString(200, 0, "Сумма", false);
+endFormat;
+
+for (RwCnt = 0; RwCnt < MatRowCnt(Listr); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Listr, RwCnt, Listrw);	
+	StartFormat(15);
+	OutString(0, 0, Listrw.f2, true);
+	OutString(40, 0, Listrw.f3, false);
+	OutString(100, 0, Listrw.f4, true);
+	OutString(200, 0, Listrw.f5, false);
+	// v1 = StringToVal(Listrw.f4, M45Val);
+	// v2 = StringToVal(Listrw.f5, M45Val);
+	// OutVal(160, 0, v1, M45Val, false);	
+	// OutVal(230, 0, v2, M45Val, false);	
+	endFormat;
+	end;
+	
+EndJob;	
+return;
+End;
+	
+global
+updating procedure POToExcelDsm()
+BEGIN
+record POVc POr;
+record TempVc Listr;
+Integer wn,nwn;
+record RcVc RepSpec;
+
+wn = CurWindow;
+if (WindowState(wn)==0) then 
+	begin//Rs_normal
+	GetWindowRecord(wn,POr);
+	RepSpec.repname = "tPOInfoRn";
+	RepSpec.long1 = POr.SerNr;
+	RepSpec.Media = mtExcel; //mtScreen;
+	RunReport(RepSpec,0);
+
+	end;
+RETURN;
+END;
+
+
+global
+procedure IrDClassCodeEFAfter(integer wn,  integer changed)
+begin
+record tInvoiceVc Ir;
+record INVc INr;
+val UPrice1;
+ 
+GetWindowRecord(wn, Ir);
+
+INr.Code = Ir.Code;
+if readfirstmain(INr, 1, true) then
+	begin
+	Ir.Name = INr.Name;
+	// Ir.Group = INr.Group;
+	// UPrice1 = INr.UPrice1;
+	// Base1ToBase2(UPrice1,CurrentDate,UPrice1);
+	// Ir.Price = UPrice1;
+	// INr.Unittext = Ir.Unittext;
+	// Ir.DispGroups = INr.DispGroups; 
+	// Ir.Terminated = INr.Terminated;
+	end;
+
+PutWindowRecord(wn, Ir);
+Return;
+end;
+//===============================================
+global
+function boolean tInvoiceDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tInvoiceVc Ir;
+
+GetWindowRecord(wn, Ir);
+
+if (changed <> 0) then
+    begin
+    switch (fieldname)
+        begin
+		case "Code":IrDClassCodeEFAfter(wn, changed);		
+		end;
+    end;                                                              
+
+  tInvoiceDClassAfterEditField = res;
+  Return;
+end;
+

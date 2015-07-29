@@ -1,0 +1,1032 @@
+external function Boolean CloseWindowByName(string);
+remote inner procedure ExtractObj(string, var Integer, var string);
+//external inner function Boolean SetInSet2(string,string);
+remote procedure AddRow(string , string , var record TempVc ) ;
+remote procedure FindClass(string, var string, var string, var string);
+remote function string 50 AddRowClass(string);
+external procedure AddHelpButton(LongInt, LongInt);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2, t;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+
+WindowBegin("Маршрут торгового", VoieDClass, CGview, -);
+UseView(VoieVc);
+SetWRect(10, 80, 730, 400);
+ActiveFieldOnNew("Vendeur");
+vs = 20; h = 70; v = 30; h2 = 200; h3 = 315; h4 = 505; h5 = 610; 
+AddHelpButton(5, 5);
+EditField(h, v, 65, "Номер", ViewOnly, SerNr, False, 0);
+EditField(h2, v, 65, "Создал", ViewOnly, Auteur, False, 0);
+EditField(h3, v, 80, "Дата", ViewOnly, DateCr, False, 0);
+EditField(h4, v, 65, "Сохранил", ViewOnly, Conserv, False, 0);
+EditField(h5+15, v, -30, "Дата", ViewOnly, DateCon, False, 0);
+EditField(h, v += vs, 65, "Торговый", Normal, Vendeur, False, UserSClass);
+EnterSkip(Jour);
+EditField(h2, v, 65, "Группа пр", Normal, SalesGroup, False, SalesGroupSClass);
+EditField(h3, v, 80, "День", Normal, Jour, False, JourSClass);
+EditField(h4, v, -30, "Класс-ры районов", Normal, Classif, False, CClassSClass);
+EditField(150, -40, 65, "Всего существующих", ViewOnly, SumCust, False, 0);
+EditField(350, -40, 65, "Всего потенциальных", ViewOnly, SumPCust, False, 0);
+EditField(550, -40, 65, "% существующих", ViewOnly, SumCustPer, False, 0);
+ColourPushButton(-25, v - 2, -2, v + 18, "tt1ClassInfo", "...", 3);
+CheckBox(-50, -40 , 0, "OK", OKFlag);
+MatrixBegin(10, 100, -40, -50,-,300);
+MatColTL(t = 1, 30, "Тип", 0, M4Int, ViewOnly, 20, stpt, false, 0);
+MatColTL(t = 1, 60, "Код", 0, M4Code, Normal, 20, CastCode, False, CUSClass);
+MatColTL(t, 160, "Наименование", 0, M4Str, Normal, 20, CastName, False, 0);
+MatColTL(t, 400,  "Адрес", 0, M4Str, Normal, 20, Adr, False, 0);
+MatColTL(t, -120, "Район", 0, M4Str, Normal, 20, Zone, False, 0);
+MatColTL(t, -70, "Время визита", 0, M4Time, Normal, 20, TimeV, false, PasteCurTime);
+MatColTL(t = 2, 30, "Тип", 0, M4Int, Normal, 20, stpt, false, 0);
+MatColTL(t = 2, 60, "Код", 0, M4Code, Normal, 20, PCastCode, False, PotCustSClass);
+MatColTL(t, 160, "Наименование", 0, M4Str, Normal, 20, CastName, False, 0);
+MatColTL(t, 400,  "Адрес", 0, M4Str, Normal, 20, Adr, False, 0);
+MatColTL(t, -120, "Район", 0, M4Str, Normal, 20, Zone, False, 0);
+MatColTL(t, -70, "Время визита", 0, M4Time, Normal, 20, TimeV, false, PasteCurTime);
+EndMatrix;
+MatTypedRow(stp);
+InsertRowTest;
+DeleteRowTest;
+SpecialMenu("Добавить строку для потенциального клиента", 'I', 0, "AddPCastDsm");
+
+EndWindow;
+
+WindowBegin("Маршруты торговых", VoieLClass, CGmlist, DMView);
+SpawnClass(VoieDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(VoieVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);//---
+RlColKey(100, 100, "Создал", Auteur, false, Auteur);
+RlColKey(200, 200, "Дата", DateCr, false, DateCr);
+RlColKey(300, 300, "Торговый", Vendeur, false, Vendeur);
+RlColKey(400, 400, "OK", OKFlag, false, OKFlag);
+RlColKey(420, 420, "День недели", Jour, false, Jour);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Маршруты торговых", VoieSClass, CGslist, -);
+SpawnClass(VoieDClass);
+UseView(VoieVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);//---
+RlColKey(100, 100, "Создал", Auteur, false, Auteur);
+RlColKey(200, 200, "Дата", DateCr, false, DateCr);
+RlColKey(300, 300, "Торговый", Vendeur, false, Vendeur);
+RlColKey(400, 400, "OK", OKFlag, false, OKFlag);
+RlColKey(420, 420, "День недели", Jour, false, Jour);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+
+WindowBegin("Дни недели", JourSClass,CGother,-);
+SetWRect (20,80,450,300);
+Sizeable (-1,-1,0,0);
+StringList(9,9,-40,209);
+EndWindow;
+
+WindowBegin("Стор-чек", StorCheckDClass, CGview, -);
+UseView(StorCheckVc);
+SetWRect(10, 80, 1000, 500);
+ActiveFieldOnNew("DateV");
+vs = 20; h = 90; v = 30; h2 = 215; h3 = 350; h4 = 490; h5 = 610; 
+AddHelpButton(5, 5);
+EditField(h, v, 70, "Номер", ViewOnly, SerNr, False, 0);
+EditField(h2, v, 70, "Создал", ViewOnly, Auteur, False, 0);
+EditField(h3, v, 80, "Дата", ViewOnly, DateCr, False, 0);
+EditField(h4+260, v, 70, "Сохранил", ViewOnly, Conserv, False, 0);
+EditField(h5+260, v, 79, "Дата", ViewOnly, DateCon, False, 0);
+EditField(h, v+= vs,  70, "Дата маршрута", Normal, DateV, False, PasteCurDate);
+EnterSkip(Vendeurs);
+EditField(h2, v, 70,  "День",  ViewOnly, JourSem, false, 0);
+EditField(h3, v, -40, "Торговые", Normal, Vendeurs, False, UserSClass);
+EditField(150, -40, 65, "Всего наших товаров", ViewOnly, SumAssOur, False, 0);
+EditField(350, -40, 65, "Всего товаров конк.", ViewOnly, SumAssStr, False, 0);
+EditField(550, -40, 65, "% наших товаров", ViewOnly, SumAssPer, False, 0);
+ColourPushButton(-25, v - 2, -2, v + 18, "tt2ClassInfo", "...", 3);
+CheckBox(-50, -40 , 0, "OK", OKFlag);
+MatrixBegin(10, 100, -50, -50,-,300);
+Flip(1);
+MatColTL(t = 1, 30, "Тип", 0, M4Int, ViewOnly, 20, stpt, false, 0);
+MatCol(1, 60, "Код", 0, CastCode, false, CUSClass);
+MatCol(1, 125, "Наименование", 0, CastName, false, 0);
+MatCol(1, 300, "Торговый", 0, Vendeur, false, 0);
+MatCol(1, 360, "Район", 0, Zone, false, 0);
+MatCol(1, 415, "Адрес", 0, Adr, false, 0);
+MatCol(1, 630, "Время визита", 0, TimeV, false, PasteCurTime);
+MatColTL(t = 2, 30, "Тип", 0, M4Int, ViewOnly, 20, stpt, false, 0);
+MatCol(t, 60, "Код", 0, PCastCode, false, PotCustSClass);
+MatCol(t, 125, "Наименование", 0, CastName, false, 0);
+MatCol(t, 300, "Торговый", 0, Vendeur, false, 0);
+MatCol(t, 360, "Район", 0, Zone, false, 0);
+MatCol(t, 415, "Адрес", 0, Adr, false, 0);
+MatCol(t, 630, "Время визита", 0, TimeV, false, PasteCurTime);
+
+MatCol(1, 710, "Тип", 0, Esprece, false, 0);
+MatCol(1, 750, "Специализ.", 0, Spec, false, 0);
+MatCol(1, 810, "Поставщик", 0, Fourn, false, 0);
+
+MatCol(t, 710, "Тип", 0, Esprece, false, 0);
+MatCol(t, 750, "Специализ.", 0, Spec, false, 0);
+MatCol(t, 810, "Поставщик", 0, Fourn, false, 0);
+// Flip(2);
+// MatCol(1, 35, "Код", 0, CastCode, false, CUSClass);
+// MatCol(1, 125, "Наименование", 0, CastName, false, 0);
+// MatCol(1, 300, "Тип", 0, Esprece, false, 0);
+// MatCol(1, 350, "Специализ.", 0, Spec, false, 0);
+// MatCol(1, 400, "Поставщик", 0, Fourn, false, 0);
+
+// MatCol(t = 2, 35, "Код", 0, PCastCode, false, PotCustSClass);
+// MatCol(t, 125, "Наименование", 0, CastName, false, 0);
+// MatCol(t, 300, "Тип", 0, Esprece, false, 0);
+// MatCol(t, 350, "Специализ.", 0, Spec, false, 0);
+// MatCol(t, 400, "Поставщик", 0, Fourn, false, 0);
+Flip(3);
+MatCol(1, 35, "Код", 0, CastCode, false, CUSClass);
+MatCol(1, 125, "Наименование", 0, CastName, false, 0);
+MatCol(1, 300, "Наш ассорт.", 0, AssortOur, false, 0);
+MatCol(1, 370, "Ассорт. конк", 0, AssortStr, false, 0);
+MatCol(1, 440, "% нашего товара", 0, AssortPer, false, 0);
+MatCol(1, 510, "Комментарий", 0, Comment, false, 0);
+
+MatCol(t = 2, 35, "Код", 0, PCastCode, false, PotCustSClass);
+MatCol(t, 125, "Наименование", 0, CastName, false, 0);
+MatCol(t, 300, "Наш ассорт.", 0, AssortOur, false, 0);
+MatCol(t, 370, "Ассорт. конк", 0, AssortStr, false, 0);
+MatCol(t, 440, "% нашего товара", 0, AssortPer, false, 0);
+MatCol(t, 510, "Комментарий", 0, Comment, false, 0);
+
+MatCol(1, 600, "Задача", 0, Tasks, false, 0);
+MatCol(1, -160, "Дата план.", 0, DatePl, false, PasteCurDate);
+MatCol(1, -80, "Дата факт.", 0, DateFc, false, PasteCurDate);
+
+MatCol(t, 600, "Задача", 0, Tasks, false, 0);
+MatCol(t, -160, "Дата план.", 0, DatePl, false, PasteCurDate);
+MatCol(t, -80, "Дата факт.", 0, DateFc, false, PasteCurDate);
+
+// Flip(4);
+// MatCol(1, 35, "Код", 0, CastCode, false, CUSClass);
+// MatCol(1, 125, "Наименование", 0, CastName, false, 0);
+// MatCol(1, 300, "Задача", 0, Tasks, false, 0);
+// MatCol(1, -160, "Дата план.", 0, DatePl, false, PasteCurDate);
+// MatCol(1, -80, "Дата факт.", 0, DateFc, false, PasteCurDate);
+
+// MatCol(t = 2, 35, "Код", 0, PCastCode, false, PotCustSClass);
+// MatCol(t, 125, "Наименование", 0, CastName, false, 0);
+// MatCol(t, 300, "Задача", 0, Tasks, false, 0);
+// MatCol(t, -160, "Дата план.", 0, DatePl, false, PasteCurDate);
+// MatCol(t, -80, "Дата факт.", 0, DateFc, false, PasteCurDate);
+EndMatrix;
+MatTypedRow(stp);
+InsertRowTest;
+DeleteRowTest;
+vs = 20;
+v = 100; VTab(-35,v,-16,v+vs,ToolFlip,1,"A");
+//v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,2,"B");
+v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,3,"B");
+//v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,4,"D");
+// v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,5,"E");
+// v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,6,"F");
+// v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,7,"G");
+// v=v+vs;  VTab(-35,v,-16,v+vs,ToolFlip,8,"H");
+SpecialMenu("Добавить строку для потенциального клиента", 'I', 0, "AddPCastStorDsm");
+EndWindow;
+
+WindowBegin("Стор-чеки", StorCheckLClass, CGmlist, DMView);
+SpawnClass(StorCheckDClass);
+SetWRect(64, 80, 650, 298);
+Sizeable(-1, -1, 0, 0);
+UseView(StorCheckVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);//---
+RlColKey(100, 100, "Создал", Auteur, false, Auteur);
+RlColKey(200, 200, "Дата", DateV, false, DateV);
+RlColKey(400, 400, "OK", OKFlag, false, OKFlag);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Стор-чеки", StorCheckSClass, CGslist, -);
+SpawnClass(StorCheckDClass);
+UseView(StorCheckVc);
+SetWRect(64,80,650,298);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "SerNr", SerNr, false, SerNr);//---
+RlColKey(100, 100, "Создал", Auteur, false, Auteur);
+RlColKey(200, 200, "Дата", DateCr, false, DateCr);
+RlColKey(400, 400, "OK", OKFlag, false, OKFlag);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow; 
+// ========= Потенциальные клиенты
+WindowBegin("Потенциальный клиент", PotCustDClass, CGview, -);
+UseView(PotCustVc);
+SetWRect(10, 80, 700, 250);
+ActiveFieldOnNew("Code");
+vs = 20; h = 80; v = 30; h2 = 260; 
+EditField(h, v, 80, "Код", Normal, Code, False, 0);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+EditField(h, v += vs, 80, "Продавец", Normal, SalMan, False, UserSClass);
+EditField(h2, v , -30, "Адрес", Normal, Adr, False, 0);
+EnterSkip(Classific);
+EditField(h, v += vs, 80, "Группа пр", Normal, SalesGroup, False, SalesGroupSClass);
+EditField(h2, v, -30, "Классификация", Normal, Classific, False, CClassSClass);
+EditField(h, v += vs, -30, "Конкуренты", Normal, Rival, False, RivalSClass);
+CheckBox(-100, -40 , 0, "Закрыт", Close);
+EndWindow;
+
+WindowBegin("Потенциальные клиенты", PotCustLClass, CGmlist, -);
+SpawnClass(PotCustDClass);
+SetWRect(64, 80, 700, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(PotCustVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Адрес", Adr, false, Adr);
+RlColKey(450, 450, "Продавец", SalMan, false, Name);
+RlColKey(550, 550, "Группа пр", SalesGroup, false, Adr);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Потенциальные клиенты", PotCustSClass, CGslist, -);
+SpawnClass(PotCustDClass);
+UseView(PotCustVc);
+SetWRect(64,80,700,250);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Адрес", Adr, false, Adr);
+RlColKey(450, 450, "Продавец", SalMan, false, Name);
+RlColKey(550, 550, "Группа пр", SalesGroup, false, Adr);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;  
+
+// ================ Конкуренты
+WindowBegin("Конкурент", RivalDClass, CGview, -);
+UseView(RivalVc);
+SetWRect(10, 80, 650, 200);
+ActiveFieldOnNew("Code");
+vs = 20; h = 60; v = 30; h2 = 260; 
+EditField(h, v, 70, "Код", Normal, Code, False, 0);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+EndWindow;
+
+WindowBegin("Конкуренты", RivalLClass, CGmlist, DMView);
+SpawnClass(RivalDClass);
+SetWRect(64, 80, 650, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(RivalVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Конкуренты", RivalSClass, CGslist, -);
+SpawnClass(RivalDClass);
+UseView(RivalVc);
+SetWRect(64,80,650,250);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наименование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;   
+
+WindowBegin("Клиенты в маршрутах торговых", ExistVoieRClass,CGRcW,RcType);
+SetWRect(20,80,450,200);
+v = 6; h = 150; h1 = 150;  h2 = 250;
+EditFieldTL(h, v += 20, 80, "Группа продажи", M4UStr, Normal, 21, f1, false, SalesGroupSClass);
+ButtonFrame(h - 100, v = 80, 123, 2, "Функция");
+RadioButton(h - 100, v, 0, 0, "неучтённые",ArtMode);
+RadioButton(h - 100, v += 20, 1, 0, "повторяющиеся",ArtMode);
+ButtonFrame(h + 100, v = 80, 123, 2, "Клиенты");
+RadioButton(h + 100, v, 0, 0, "все",flags[1]);
+RadioButton(h + 100, v += 20, 1, 0, "существующие",flags[1]);
+RadioButton(h + 100, v += 20, 2, 0, "потенциальные",flags[1]);
+EndWindow;  
+
+WindowBegin("Отчёт по маршрутам торговых", VoieRClass,CGRcW,RcType);
+SetWRect(20,80,450,300);
+v = 6; h = 170; h1 = 170;  h2 = 250;
+EditFieldTL(h, v += 20, 80, "Торговый", M4UStr, Normal, 21, f1, false, UserSClass);
+EditFieldTL(h, v += 20, 80,  "День", M4Str, Normal, 21, f5, false, JourSClass);
+EditFieldTL(h-30, v += 20, 50, "Время с", M4Time, Normal, 21, sStartTime, false, PasteCurTime);
+EditFieldTL(h2-25, v, 50, " до ", M4Time, Normal, 21, sEndTime, false, PasteCurTime);
+EditFieldTL(h, v += 20, 80, "Классификаторы районов", M4UStr, Normal, 21, f2, false, CClassSClass);
+EditFieldTL(h, v += 20, 80, "Группа продажи", M4UStr, Normal, 21, f3, false, SalesGroupSClass);
+ButtonFrame(h - 100, v = 150, 123, 2, "Маршруты:");
+RadioButton(h - 100, v, 0, 0, "все",ArtMode);
+RadioButton(h - 100, v += 20, 1, 0, "утверждённые",ArtMode);
+RadioButton(h - 100, v += 20, 2, 0, "неутверждённые",ArtMode);
+ButtonFrame(h + 100, v = 150, 123, 2, "Функция");
+RadioButton(h + 100, v, 0, 0, "сводный",flags[1]);
+RadioButton(h + 100, v += 20, 1, 0, "подробный",flags[1]);
+EndWindow;
+ 
+WindowBegin("Задачи из стор-чеков", SCTaskRClass,CGRcW,RcType);
+SetWRect(20,80,450,300);
+v = 6; h = 170; h1 = 170;  h2 = 250;
+PeriodField(h-35,v,"Период");
+EditFieldTL(h, v += 20, 80, "Торговый", M4UStr, Normal, 21, f1, false, UserSClass);
+EditFieldTL(h, v += 20, 80, "Директор", M4UStr, Normal, 21, f2, false, UserSClass);
+EditFieldTL(h, v += 20, 80, "Группа продажи", M4UStr, Normal, 21, f3, false, SalesGroupSClass);
+ButtonFrame(h - 100, v = 150, 123, 2, "Задачи:");
+RadioButton(h - 100, v, 0, 0, "все",ArtMode);
+RadioButton(h - 100, v += 20, 1, 0, "решённые",ArtMode);
+RadioButton(h - 100, v += 20, 2, 0, "нерешённые",ArtMode);
+RadioButton(h - 100, v += 20, 3, 0, "просроченные",ArtMode);
+RadioButton(h - 100, v += 20, 4, 0, "своевременные",ArtMode);
+ButtonFrame(h + 100, v = 150, 123, 2, "По дате");
+RadioButton(h + 100, v, 0, 0, "визита",flags[1]);
+RadioButton(h + 100, v += 20, 1, 0, "задачи план.",flags[1]);
+RadioButton(h + 100, v += 20, 2, 0, "задачи факт.",flags[1]);
+EndWindow; 
+
+
+WindowBegin("Ассортимент из стор-чеков", SCAssortRClass,CGRcW,RcType);
+SetWRect(20,80,450,180);
+v = 6; h = 170; h1 = 170;  h2 = 250;
+PeriodField(h-35,v,"Период");
+EditFieldTL(h, v += 20, 80, "Торговый", M4UStr, Normal, 21, f1, false, UserSClass);
+EditFieldTL(h, v += 20, 80, "Группа продажи", M4UStr, Normal, 21, f3, false, SalesGroupSClass);
+EditFieldTL(h, v += 20, 80, "Классификаторы районов", M4UStr, Normal, 21, f2, false, CClassSClass);
+EndWindow; 
+
+
+WindowBegin("Маршрут торгового в Excel", tSelRouteRClass,CGRcW,RcType);
+SetWRect(20,80,450,300);
+v = 6; h = 170; h1 = 170;  h2 = 250;
+EditFieldTL(h, v += 20, 80, "Торговый", M4UStr, Normal, 21, f1, false, UserSClass);
+EditFieldTL(h, v += 20, 80,  "День", M4Str, Normal, 21, f5, false, JourSClass);
+EditFieldTL(h-30, v += 20, 50, "Время с", M4Time, Normal, 21, sStartTime, false, PasteCurTime);
+EditFieldTL(h2-25, v, 50, " до ", M4Time, Normal, 21, sEndTime, false, PasteCurTime);
+EditFieldTL(h, v += 20, 80, "Классификаторы районов", M4UStr, Normal, 21, f2, false, CClassSClass);
+EditFieldTL(h, v += 20, 80, "Группа продажи", M4UStr, Normal, 21, f3, false, SalesGroupSClass);
+ButtonFrame(h , v = 150, 123, 2, "Маршруты:");
+RadioButton(h, v, 0, 0, "все",ArtMode);
+RadioButton(h, v += 20, 1, 0, "утверждённые",ArtMode);
+RadioButton(h, v += 20, 2, 0, "неутверждённые",ArtMode);
+EndWindow;
+
+ 
+end;
+
+
+global
+procedure AddRowV(record CUVc CUr, record VoieVc Vr,var integer rpos)
+begin
+row VoieVc Vrw;
+record CClassVc CCr;
+
+Vrw.stp = 1;
+Vrw.stpt = 1;
+Vrw.CastCode = CUr.Code; 
+Vrw.CastName = CUr.Name;
+Vrw.Adr = CUr.DelAddr0;
+Vrw.Zone = AddRowClass(CUr.Classification);
+MatRowPut(Vr, rpos, Vrw);
+RETURN;
+end;
+
+global
+procedure AddRowVP(record PotCustVc PCUr, record VoieVc Vr,var integer rpos)
+begin
+row VoieVc Vrw;
+record CClassVc CCr;
+
+Vrw.stp = 2;
+Vrw.stpt = 2;
+Vrw.PCastCode = PCUr.Code; 
+Vrw.CastName = PCUr.Name;
+Vrw.Adr = PCUr.Adr;
+Vrw.Zone = AddRowClass(PCUr.Classific);	
+MatRowPut(Vr, rpos, Vrw);
+RETURN;
+end;
+
+global
+procedure AddRowSC(record StorCheckVc SCr, record CUVc CUr, integer rpos)
+begin
+row StorCheckVc SCrw;
+record CClassVc CCr;
+string 20 Code1,Code2,Code3;
+
+SCrw.stp = 1;
+SCrw.stpt = 1;
+SCrw.CastCode = CUr.Code;
+SCrw.CastName = CUr.Name;
+SCrw.Adr = CUr.DelAddr0;
+SCrw.Vendeur = CUr.SalesMan;
+FindClass(CUr.Classification, Code1,Code2,Code3);
+SCrw.Zone = Code1;
+SCrw.Esprece = Code2;
+SCrw.Spec = Code3;
+
+MatRowPut(SCr, rpos, SCrw);	
+
+return;
+end;
+
+global
+procedure AddRowSCP(record StorCheckVc SCr, record PotCustVc PCUr, integer rpos)
+begin
+row StorCheckVc SCrw;
+record CClassVc CCr;
+string 20 Code1,Code2,Code3;
+
+SCrw.stp = 2;
+SCrw.stpt = 2;
+SCrw.PCastCode = PCUr.Code;
+SCrw.CastName = PCUr.Name;
+SCrw.Adr = PCUr.Adr;
+SCrw.Vendeur = PCUr.SalMan;
+FindClass(PCUr.Classific, Code1,Code2,Code3);
+SCrw.Zone = Code1;
+SCrw.Esprece = Code2;
+SCrw.Spec = Code3;
+
+MatRowPut(SCr, rpos, SCrw);	
+
+return;
+end;
+
+
+
+global
+procedure tt1ClassInfo()
+begin
+record VoieVc Vr;
+record CClassVc CCr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, Vr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", Vr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(Vr.Classif, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	CCr.Code = ClassCode;
+	if ReadFirstMain(CCr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, CCr.Code & ": " & CCr.Comment, false);
+		end;
+	ExtractObj(Vr.Classif, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+
+
+global
+function val SummC(record VoieVc Vr,integer wn)
+BEGIN
+row VoieVc Vrw;
+integer RwCnt,nr, ii;
+val Sum;
+
+Sum = 0;
+for (RwCnt = 0; RwCnt < MatRowCnt(Vr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(Vr, RwCnt , Vrw);
+	if Vrw.stpt == 1 then
+		begin
+		Sum = Sum + 1;
+		end;
+	end;  
+SummC = Sum;
+Vr.SumCust = Sum;
+Vr.SumCustPer = Vr.SumCust / (Vr.SumCust + Vr.SumPCust)  * 100;
+PutWindowRecord(wn, Vr);
+	Return;
+end;
+
+global
+function val SummPC(record VoieVc Vr,integer wn)
+BEGIN
+row VoieVc Vrw;
+integer RwCnt,nr, ii;
+val Sum;
+
+for (RwCnt = 0; RwCnt < MatRowCnt(Vr); RwCnt = RwCnt + 1)
+	begin	  
+	matRowGet(Vr, RwCnt , Vrw);
+	if Vrw.stpt == 2 then
+		begin
+		Sum = Sum + 1;
+		end;
+	end;  
+SummPC = Sum;
+Vr.SumPCust = Sum;
+Vr.SumCustPer = Vr.SumCust / (Vr.SumCust + Vr.SumPCust) * 100;
+PutWindowRecord(wn, Vr);
+Return;
+end;
+
+global
+function Boolean VoieDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record VoieVc Vr;
+row VoieVc Vrw;
+Boolean res;
+integer RwCnt, pos;
+record CUVc CUr;
+record UserVc USr;
+string 200 key;
+string 20 ClassCode;
+record PotCustVc PCUr;
+record TempVc Tmpr;
+row TempVc Tmprw;
+
+if (changed <> 0) and (fieldname == "Classif") then 
+	begin
+	GetWindowRecord(wn, Vr);
+	USr.Code = Vr.Vendeur;
+	if not(ReadFirstMain(USr, 1, true)) then
+		begin
+		MessageBox(0, "Внесите код торгового представителя!");
+		Vr.Classif = "";
+		PutWindowRecord(wn, Vr);
+		end
+	else
+		begin
+		while (MatRowCnt(Vr) > 0) 
+			begin 
+			MatRowDelete(Vr,0); 
+			end;
+		RwCnt = MatRowCnt(Vr);
+		AddRow(Vr.Vendeur, Vr.Classif, Tmpr)	
+		for (RwCnt = 0; RwCnt < MatRowCnt(Tmpr); RwCnt = RwCnt + 1)
+			begin	  
+			matRowGet(Tmpr, RwCnt , Tmprw);
+			Vrw.stp = StringToInt(Tmprw.f2);
+			Vrw.stpt = StringToInt(Tmprw.f3);
+			if Vrw.stpt == 1 then
+				begin
+				Vrw.CastCode = Tmprw.f4;
+				Vrw.PCastCode = "";
+				end
+			else
+				begin	
+				Vrw.PCastCode = Tmprw.f4;
+				Vrw.CastCode = "";
+				end;
+			Vrw.CastName = Tmprw.f5;
+			Vrw.Adr = Tmprw.f6;
+			Vrw.Zone = Tmprw.f7;
+			matrowinsert(Vr, RwCnt, Vrw);
+			end; 
+		
+		PutWindowRecord(wn, Vr);
+		SummC(Vr,wn);
+		SummPC(Vr,wn);
+		end;
+	end;
+if (changed <> 0) and (fieldname == "CastCode") then 
+	begin
+	GetWindowRecord(wn, Vr);
+	MatRowGet(Vr, rownr, Vrw);
+	CUr.Code = Vrw.CastCode;
+	ReadFirstMain(CUr, 1, true);
+	AddRowV(CUr, Vr, rownr);
+	PutWindowRecord(wn, Vr);
+	SummC(Vr, wn);
+	end;
+if (changed <> 0) and (fieldname == "PCastCode") then 
+	begin
+	GetWindowRecord(wn, Vr);
+	MatRowGet(Vr, rownr, Vrw);
+	PCUr.Code = Vrw.PCastCode;
+	ReadFirstMain(PCUr, 1, true);
+	AddRowVP(PCUr, Vr, rownr);
+	PutWindowRecord(wn, Vr);
+	SummPC(Vr,wn);
+	end;
+
+if (changed <> 0) and (fieldname == "Vendeur") then 
+	begin
+	GetWindowRecord(wn, Vr);
+	USr.Code = Vr.Vendeur;
+	if ReadFirstMain(USr, 1, true) then
+		begin
+		Vr.SalesGroup = Usr.SalesGroup;
+		PutWindowRecord(wn, Vr);
+		end;
+	end;	
+
+VoieDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+procedure AddPCastDsm()
+begin
+record VoieVc Vw;
+row VoieVc Vwr;
+Integer wn;
+
+GetWindowRecord(CurWindow, Vw);
+Vwr.stp = 2;
+Vwr.stpt = 2;
+MatRowInsert(Vw, WindowActiveRow(CurWindow) + 1, Vwr);
+PutWindowRecord(CurWindow, Vw);
+RETURN;
+end;
+
+// global
+// function Boolean VoieDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+// BEGIN
+// Boolean res,resL;
+// record VoieVc Vr,V2r;
+// row VoieVc V2rw;
+ 
+// if  (changed != 0) and fieldname == "stpt" then //
+	// begin
+	// GetWindowRecord(wn, Vr);
+	// GetPrevWindowRecord(wn, V2r);
+	// MatRowGet(V2r, rownr, V2rw);
+	// if nonblank(V2rw.CastName) then
+		// begin
+		// res = false;
+		// end;
+	// end;	
+  // VoieDClassActiveEditField = res;
+  // RETURN;
+// END;
+
+
+global
+function Boolean JourSClassOnOpenWindow(integer wn)
+begin
+Boolean res;
+
+SetListString(wn, 0,  "Понедельник", false);
+SetListString(wn, 1,  "Вторник", false);
+SetListString(wn, 2,  "Среда", false);
+SetListString(wn, 3,  "Четверг", false);
+SetListString(wn, 4,  "Пятница", false);
+SetListString(wn, 5,  "Суббота", false);
+SetListString(wn, 6,  "Воскресенье", false);
+
+JourSClassOnOpenWindow = res;
+RETURN;
+end;
+
+global
+function Boolean JourSClassOnOKWindow(integer wn)
+begin
+string 20 TmpStr;
+Integer mwn;
+
+mwn = MotherWindow(wn);
+TmpStr = GetListString(wn, SelectedListLine(wn));
+CloseWindow(wn);
+PasteString(mwn, TmpStr);
+JourSClassOnOKWindow = false;
+RETURN;
+end;
+
+global
+procedure tt2ClassInfo()
+begin
+record StorCheckVc SCr;
+record UserVc CUr;
+Integer wn, nwn, pos, RwCnt, RowCnt;
+string 20 ClassCode;
+
+CloseWindowByName("InfoClass");
+wn = CurWindow;
+GetWindowRecord(wn, SCr);
+nwn = OpenWindow("InfoClass", 0, wn, "VClassPosVc", "", SCr); 
+ClearStringList(nwn);
+pos = 0;
+ExtractObj(SCr.Vendeurs, pos, ClassCode);
+RwCnt = -1;
+while nonblank(ClassCode) 
+	begin
+	CUr.Code = ClassCode;
+	if ReadFirstMain(CUr, 1, true) then
+		begin
+		SetListString(nwn, RwCnt += 1, CUr.Code & ": " & CUr.Name, false);
+		end;
+	ExtractObj(SCr.Vendeurs, pos, ClassCode);
+	end;
+RETURN;
+end;
+
+
+// function val SummAssOur(record StorCheckVc SCr,integer wn)
+// BEGIN
+// row StorCheckVc SCrw;
+// integer RwCnt,nr, ii;
+// val Sum;
+
+// for (RwCnt = 0; RwCnt < MatRowCnt(SCr); RwCnt = RwCnt + 1)
+	// begin	  
+	// matRowGet(SCr, RwCnt , SCrw);
+	// Sum = Sum + SCrw.AssortOur;
+	// end;  
+// SummAssOur = Sum;
+// SCr.SumAssOur = Sum;
+// SCr.SumAssPer = SCr.SumAssOur / (SCr.SumAssStr + SCr.SumAssOur);
+// PutWindowRecord(wn, SCr);
+// Return;
+// end;
+
+// procedure SummAssStr(record StorCheckVc SCr, integer wn)
+// BEGIN
+// row StorCheckVc SCrw;
+// integer RwCnt,nr, ii;
+// val Sum;
+
+
+// PutWindowRecord(wn, SCr);
+// Return;
+// end;
+
+
+
+global
+function Boolean StorCheckDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record StorCheckVc SCr;
+row StorCheckVc SCrw;
+Boolean res;
+integer RwCnt, pos, rpos, i;
+record CUVc CUr;
+record UserVc USr;
+string 200 key, tstr;
+string 20 ClassCode;
+record VoieVc Vr;
+row VoieVc Vrw;
+record PotCustVc PCUr;
+val Sum;
+string 20 Code1,Code2,Code3;
+
+if (changed <> 0) and (fieldname == "Vendeurs") then 
+	begin
+	GetWindowRecord(wn, SCr);
+		rpos = 0;
+		while (MatRowCnt(SCr) > 0) 
+			begin 
+			MatRowDelete(SCr,0); 
+			end;
+		 	
+		pos = 0;
+		ExtractObj(SCr.Vendeurs, pos, ClassCode);
+		while nonblank(ClassCode) 
+			begin
+			Vr.Vendeur = ClassCode;
+			Vr.Jour = SCr.JourSem;
+			Vr.OKFlag = 1;
+			if (ReadFirstKey("VendJourOK", Vr, 3, true)) then
+				begin
+				RwCnt = MatRowCnt(Vr);
+				for (i = 0; i < rwcnt; i = i + 1)
+					begin
+					MatRowGet(Vr, i, Vrw);
+					if Vrw.stpt == 1 then
+						begin
+						CUr.Code = Vrw.CastCode;
+						if ReadFirstMain(CUr, 1, true) then
+							begin
+							SCrw.stp = 1;
+							SCrw.stpt = 1;
+							SCrw.CastCode = CUr.Code;
+							SCrw.CastName = CUr.Name;
+							SCrw.Adr = CUr.DelAddr0;
+							SCrw.Vendeur = CUr.SalesMan;
+							Code1 = "";
+							Code2 = "";
+							Code3 = "";
+							FindClass(CUr.Classification, Code1,Code2,Code3);
+							SCrw.Zone = Code1;
+							SCrw.Esprece = Code2;
+							SCrw.Spec = Code3;
+
+							MatRowPut(SCr, rpos, SCrw);	
+							//AddRowSC(SCr, CUr, rpos);
+							end;
+						end
+					else
+						begin
+						PCUr.Code = Vrw.PCastCode;
+						if ReadFirstMain(PCUr, 1, true) then
+							begin
+							SCrw.stp = 2;
+							SCrw.stpt = 2;
+							SCrw.PCastCode = PCUr.Code;
+							SCrw.CastName = PCUr.Name;
+							SCrw.Adr = PCUr.Adr;
+							SCrw.Vendeur = PCUr.SalMan;
+							Code1 = "";
+							Code2 = "";
+							Code3 = "";
+							FindClass(PCUr.Classific, Code1,Code2,Code3);
+							SCrw.Zone = Code1;
+							SCrw.Esprece = Code2;
+							SCrw.Spec = Code3;
+
+							MatRowPut(SCr, rpos, SCrw);	
+							//AddRowSCP(SCr, PCUr, rpos);
+							end;	
+						end;
+					rpos = rpos + 1;
+					end;
+				end
+			else
+				begin
+				MessageBox(0, "Для " & ClassCode & " нет утверждённых маршрутов на заданный день недели!");
+				end;
+			ExtractObj(SCr.Vendeurs, pos, ClassCode);
+			end;	
+		PutWindowRecord(wn, SCr);
+		end;
+
+if (changed <> 0) and (fieldname == "CastCode") then 
+	begin
+	GetWindowRecord(wn, SCr);
+	MatRowGet(SCr, rownr, SCrw);
+	CUr.Code = SCrw.CastCode;
+	ReadFirstMain(CUr, 1, true);	
+	AddRowSC(SCr, CUr, rownr);
+	PutWindowRecord(wn, SCr);
+	end;
+if (changed <> 0) and (fieldname == "PCastCode") then 
+	begin
+	GetWindowRecord(wn, SCr);
+	MatRowGet(SCr, rownr, SCrw);
+	PCUr.Code = SCrw.PCastCode;
+	ReadFirstMain(PCUr, 1, true);	
+	AddRowSCP(SCr, PCUr, rownr);
+	PutWindowRecord(wn, SCr);
+	end;	
+if (changed <> 0) and (fieldname == "AssortOur") then 
+	begin
+	GetWindowRecord(wn, SCr);
+	matRowGet(SCr, rownr , SCrw)
+	SCrw.AssortPer = SCrw.AssortOur / (SCrw.AssortStr + SCrw.AssortOur) * 100;
+	MatrowPut(SCr, rownr , SCrw);
+	Sum = 0;
+	for (RwCnt = 0; RwCnt < MatRowCnt(SCr); RwCnt = RwCnt + 1)
+		begin	  
+		matRowGet(SCr, RwCnt , SCrw);
+		Sum = Sum + SCrw.AssortOur;
+		end;  
+	SCr.SumAssOur = Sum;
+	SCr.SumAssPer = SCr.SumAssOur / (SCr.SumAssStr + SCr.SumAssOur) * 100;
+	PutWindowRecord(wn, SCr);
+	end;
+if (changed <> 0) and (fieldname == "AssortStr") then 
+	begin
+	GetWindowRecord(wn, SCr);
+	matRowGet(SCr, rownr , SCrw)
+	SCrw.AssortPer = SCrw.AssortOur / (SCrw.AssortStr + SCrw.AssortOur) * 100;
+	MatrowPut(SCr, rownr , SCrw);
+	Sum = 0;
+	for (RwCnt = 0; RwCnt < MatRowCnt(SCr); RwCnt = RwCnt + 1)
+		begin	  
+		matRowGet(SCr, RwCnt , SCrw);
+		Sum = Sum + SCrw.AssortStr;
+		end;  
+	SCr.SumAssStr = Sum;
+	SCr.SumAssPer = SCr.SumAssOur / (SCr.SumAssStr + SCr.SumAssOur) * 100;
+	PutWindowRecord(wn, SCr);
+	end;	
+if (changed <> 0) and (fieldname == "DateV") then 
+	begin
+	GetWindowRecord(wn, SCr);
+	
+	switch (GetDateId(SCr.DateV))
+		begin	
+		case 1: SCr.JourSem = "Понедельник";
+		case 2: SCr.JourSem = "Вторник";
+		case 3: SCr.JourSem = "Среда";
+		case 4: SCr.JourSem = "Четверг";
+		case 5: SCr.JourSem = "Пятница";
+		case 6: SCr.JourSem = "Суббота";
+		case 7: SCr.JourSem = "Воскресенье";
+		end;	
+	PutWindowRecord(wn, SCr);
+	end;
+StorCheckDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+function Boolean PotCustDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record PotCustVc PCr;
+Boolean res;
+record UserVc USr;
+
+if (changed <> 0) and (fieldname == "SalMan") then 
+	begin
+	GetWindowRecord(wn, PCr);
+	USr.Code = PCr.SalMan;
+	if ReadFirstMain(USr, 1, true) then
+		begin
+		PCr.SalesGroup = Usr.SalesGroup;
+		PutWindowRecord(wn, PCr);
+		end;
+	end;
+	
+PotCustDClassAfterEditField = res;
+RETURN;
+END;
+
+global
+procedure AddPCastStorDsm()
+begin
+record StorCheckVc Vw;
+row StorCheckVc Vwr;
+Integer wn;
+
+GetWindowRecord(CurWindow, Vw);
+Vwr.stp = 2;
+Vwr.stpt = 2;
+MatRowInsert(Vw, WindowActiveRow(CurWindow) + 1, Vwr);
+PutWindowRecord(CurWindow, Vw);
+RETURN;
+end;
+
+
+global 
+function Boolean StorCheckDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record StorCheckVc SCr, SC2r;
+row StorCheckVc SCrw;
+Boolean res;
+val SumO, SumS;
+integer RwCnt;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetPrevWindowRecord(wn, SC2r);    
+	res = (SC2r.OKFlag == 0);
+	GetWindowRecord(wn, SCr);  
+	if res then
+		begin
+		matRowGet(SCr, rownr , SCrw);
+		SCr.SumAssStr = SCr.SumAssStr - SCrw.AssortStr;
+		SCr.SumAssOur = SCr.SumAssOur - SCrw.AssortOur;
+		SCr.SumAssPer = SCr.SumAssOur / (SCr.SumAssStr + SCr.SumAssOur) * 100; 
+		PutWindowRecord(wn, SCr);
+		end;
+	end;
+StorCheckDClassDeleteRowTest = res;
+return;
+end;
+
+
+global 
+function Boolean VoieDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record VoieVc Vr, V2r;
+row VoieVc Vrw;
+Boolean res;
+val SumO, SumS;
+integer RwCnt;
+
+res = true;
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetPrevWindowRecord(wn, V2r);    
+	res = (V2r.OKFlag == 0);
+	GetWindowRecord(wn, Vr);  
+	if res then
+		begin
+		matRowGet(Vr, rownr , Vrw);
+		if Vrw.stpt == 1 then
+			begin
+			Vr.SumCust = Vr.SumCust - 1;
+			end
+		else
+			begin
+			Vr.SumPCust = Vr.SumPCust - 1;
+			end;
+		Vr.SumCustPer = Vr.SumCust / (Vr.SumCust + Vr.SumPCust)  * 100;
+		PutWindowRecord(wn, Vr);
+		end;
+	end;
+VoieDClassDeleteRowTest = res;
+return;
+end;
+

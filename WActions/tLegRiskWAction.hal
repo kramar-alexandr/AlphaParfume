@@ -1,0 +1,172 @@
+event DefineWindows
+begin
+record tVTicketsVc TVr;
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+v = 6; h = 180;  vs = 20; h1 = 250;  h2 = 350;
+//=================================================================================== Правовые риски и угрозы
+WindowBegin("Правовые риски и угрозы",tLegRiskDClass,CGview,-);
+SetWRect(20,80,750,350);
+UseView(tLegRiskVc);
+EditFieldTL(h, v = 15 , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, -30, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, -30, "Классификация", M4UStr, Normal, 250, ListCl, false, tLegRiskClSClass);
+EditFieldTL(h, v += vs, -30, "Причина возникновения риска", M4Str, Normal, 250, Cause, false, 0);
+EditFieldTL(h, v += vs, -30, "Факторы риска", M4Str, Normal, 250, Factor, false, 0);
+EditFieldTL(h, v += vs, -30, "Метод минимизации риска", M4Str, Normal, 250, Method, false, 0);
+ButtonFrame(h2, v += 40, 123, 2, "Вид");
+RadioButton(h2, v, 0, 0, "Случившиеся",LRType);
+RadioButton(h2, v += 20, 1, 0, "Текущие",LRType);
+RadioButton(h2, v += 20, 2, 0, "Предполагаемые",LRType);
+EndWindow;
+
+WindowBegin("Правовые риски и угрозы",tLegRiskLClass, CGmlist, -);
+SpawnClass(tLegRiskDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLegRiskVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Правовые риски и угрозы",tLegRiskSClass, CGslist, -);
+SpawnClass(tLegRiskDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLegRiskVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+WindowBegin("Правовые риски и угрозы. Классификация", tLegRiskClDClass, CGview, 0);
+UseView(tLegRiskClVc);
+SetWRect(64, 80, 550, 300);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, tLegRiskGrSClass);
+// StaticText(25,v+=35,"Примечания",false);
+// TextField(25, v += 5, -21, -20, Math, 0);
+EndWindow; 
+
+WindowBegin("Правовые риски и угрозы. Классификация",tLegRiskClLClass, CGmlist, -);
+SpawnClass(tLegRiskClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLegRiskClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Правовые риски и угрозы. Классификация",tLegRiskClSClass, CGslist, -);
+SpawnClass(tLegRiskClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLegRiskClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Правовые риски и угрозы. Группы классификаций", tLegRiskGrDClass, CGview, 0);
+UseView(tLegRiskGrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Правовые риски и угрозы. Группы классификаций", tLegRiskGrLClass, CGmlist, -);
+SpawnClass(tLegRiskGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLegRiskGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Правовые риски и угрозы. Группы классификаций",tLegRiskGrSClass, CGslist, -);
+SpawnClass(tLegRiskGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tLegRiskGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Правовые риски и угрозы", tLegRiskRClass,CGRcW,RcType);
+SetWRect(20,80,450,280);
+v = 6; h = 50; h1 = 150;  h2 = 250;
+EditFieldTL(h1, v += 20, 80, "Код риска", M4UStr, Normal, 21, f2, false, tLegRiskSClass);
+EditFieldTL(h1, v += 20, 80, "Код договора", M4UStr, Normal, 21, f1, false, IContractSClass);
+EditFieldTL(h1, v += 20, 80, "Контрагент", M4UStr, Normal, 21, f5, false, CUSClass);
+EditFieldTL(h1, v += 20, 80, "Предприятие", M4Code, Normal, 20, f3, false, tEntPrSClass);
+EditFieldTL(h1, v += 20, 80, "Классификация", M4UStr, Normal, 21, f4, false, tLegRiskClSClass);
+PeriodField(h1,v += 20,"Период");
+CheckBox(h2 + 60, v, 0, "по периоду", flags[3]);
+//EditFieldTL(h1, v += 20, 80, "Дата", M4Date, Normal, 21, d1, false, PasteCurDate);
+ButtonFrame(h, v = 170, 123, 2, "Функция");
+RadioButton(h, v, 0, 0, "Сводный",ArtMode);
+RadioButton(h, v += 20, 1, 0, "Подробный",ArtMode);
+ButtonFrame(h2, v = 170, 123, 2, "Статус риска");
+CheckBox(h2, v , 0, "Случившиеся", flags[0]);
+CheckBox(h2, v += 20, 0, "Текущие", flags[1]);
+CheckBox(h2, v += 20, 0, "Предполагаемые", flags[2]);
+EndWindow;    
+
+return;
+end;
+
+// global
+// function Boolean tEntPrDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+// BEGIN
+// record VPositionVc SPr;
+// record ProfClassVc tSPr;
+// record tEntPrVc EPr;
+// row tEntPrVc EPrw;
+// Boolean res;
+
+
+// if (changed <> 0) and (fieldname == "Post") then 
+	// begin
+	
+	// GetWindowRecord(wn, EPr);
+	// MatRowGet(EPr, rownr, EPrw);
+	// if EPr.EType == 3 then
+		// begin
+		// SPr.Code = EPrw.Post;
+		// ReadFirstMain(SPr, 1, true); 
+		// EPrw.NamePost = SPr.Name;
+		// end
+	// else
+		// begin
+		// tSPr.KP = EPrw.Post;	
+		// ReadFirstKey("KP", tSPr, 1, true); 
+		// EPrw.NamePost = tSPr.PNR; 
+		// end;
+	// MatRowPut(EPr,rownr,EPrw);	
+	// PutWindowRecord(wn, EPr);
+	// end;
+// tEntPrDClassAfterEditField = res;
+// RETURN;
+// END;

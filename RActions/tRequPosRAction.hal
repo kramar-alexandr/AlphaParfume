@@ -1,0 +1,290 @@
+external inner procedure ExtractObj(string, var Integer, var string);
+external function boolean InRange(string,string);
+
+global
+function LongInt tRequPosVcRecordCheck(var record  tRequPosVc PRr, record  tRequPosVc PR2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode;
+record UserVc USr;
+Integer pos, i, ii, n;
+string 20 ClassCode;
+
+SetLangMode(LangRussian, "RUS", 2); 
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+ii = 0;
+if nonblank(PRr.Education) then
+	begin
+	n = 0;
+	i = 0;
+	pos = 0;
+	ExtractObj(PRr.Education, pos, ClassCode);
+	while nonblank(ClassCode) 
+		begin
+		n = n + 1;
+		if not(SetInSet(ClassCode, PRr.EducationS)) then
+			begin
+			i = i + 1;
+			ii = ii + 1;
+			end;
+		ExtractObj(PRr.Education, pos, ClassCode);
+		end;
+	if i > 0 then 
+		begin
+		PRr.EducationF = 1;
+		end
+	else
+		begin
+		PRr.EducationF = 0;
+		end;
+	end
+else
+	begin
+	PRr.EducationF = 0;
+	end;	
+//=====================	
+if PRr.WorkingTerm <> PRr.WorkingTermS then
+	begin
+	PRr.WorkingTermF = 1;
+	ii = ii + 1;
+	end
+else
+	begin
+	PRr.WorkingTermF = 0;
+	end;
+//=====================
+
+if nonblank(PRr.BasicKnow) then
+	begin
+	n = 0;
+	i = 0;
+	pos = 0;
+	ExtractObj(PRr.BasicKnow, pos, ClassCode);
+	
+	while nonblank(ClassCode) 
+		begin
+		n = n + 1;
+		if not(SetInSet(ClassCode, PRr.BasicKnowS)) then
+			begin
+			i = i + 1;
+			ii = ii + 1;
+			end;
+		ExtractObj(PRr.BasicKnow, pos, ClassCode);
+		end;
+	if i > 0 then 
+		begin
+		PRr.BasicKnowF = 1;
+		end
+	else
+		begin
+		PRr.BasicKnowF = 0;
+		end;
+	end
+else
+	begin
+	PRr.BasicKnowF = 0;
+	end;
+//====================
+if nonblank(PRr.BasicSkill) then
+	begin
+	n = 0;
+	i = 0;
+	pos = 0;
+	ExtractObj(PRr.BasicSkill, pos, ClassCode);
+	
+	while nonblank(ClassCode) 
+		begin
+		n = n + 1;
+		if not(SetInSet(ClassCode, PRr.BasicSkillS)) then
+			begin
+			i = i + 1;
+			ii = ii + 1;
+			end;
+		ExtractObj(PRr.BasicSkill, pos, ClassCode);
+		end;
+	if i > 0 then 
+		begin
+		PRr.BasicSkillF = 1;
+		end
+	else
+		begin
+		PRr.BasicSkillF = 0;
+		end;
+	end
+else
+	begin
+	PRr.BasicSkillF = 0;
+	end;
+//====================
+if nonblank(PRr.LangSkill) then
+	begin
+	n = 0;
+	i = 0;
+	pos = 0;
+	ExtractObj(PRr.LangSkill, pos, ClassCode);
+	
+	while nonblank(ClassCode) 
+		begin
+		n = n + 1;
+		if not(SetInSet(ClassCode, PRr.LangSkillS)) then
+			begin
+			i = i + 1;
+			ii = ii + 1;
+			end;
+		ExtractObj(PRr.LangSkill, pos, ClassCode);
+		end;
+	if i > 0 then 
+		begin
+		PRr.LangSkillF = 1;
+		end
+	else
+		begin
+		PRr.LangSkillF = 0;
+		end;
+	end
+else
+	begin
+	PRr.LangSkillF = 0;
+	end;
+//=================
+if nonblank(PRr.CompSkill) then
+	begin
+	n = 0;
+	i = 0;
+	pos = 0;
+	ExtractObj(PRr.CompSkill, pos, ClassCode);
+	
+	while nonblank(ClassCode) 
+		begin
+		n = n + 1;
+		if not(SetInSet(ClassCode, PRr.CompSkillS)) then
+			begin
+			i = i + 1;
+			ii = ii + 1;
+			end;
+		ExtractObj(PRr.CompSkill, pos, ClassCode);
+		end;
+	if i > 0 then 
+		begin
+		PRr.CompSkillF = 1;
+		end
+	else
+		begin
+		PRr.CompSkillF = 0;
+		end;
+	end
+else
+	begin
+	PRr.CompSkillF = 0;
+	end;
+//===================		
+if nonblank(PRr.TranspSkill) then
+	begin
+	n = 0;
+	i = 0;
+	pos = 0;
+	ExtractObj(PRr.TranspSkill, pos, ClassCode);
+	
+	while nonblank(ClassCode) 
+		begin
+		n = n + 1;
+		if not(SetInSet(ClassCode, PRr.TranspSkillS)) then
+			begin
+			i = i + 1;
+			ii = ii + 1;
+			end;
+		ExtractObj(PRr.TranspSkill, pos, ClassCode);
+		end;
+	if i > 0 then 
+		begin
+		PRr.TranspSkillF = 1;
+		end
+	else
+		begin
+		PRr.TranspSkillF = 0;
+		end;
+	end
+else
+	begin
+	PRr.TranspSkillF = 0;
+	end;
+//=================
+if nonblank(PRr.tSkills) then
+	begin
+	n = 0;
+	i = 0;
+	pos = 0;
+	ExtractObj(PRr.tSkills, pos, ClassCode);
+	
+	while nonblank(ClassCode) 
+		begin
+		n = n + 1;
+		if not(SetInSet(ClassCode, PRr.tSkillsS)) then
+			begin
+			i = i + 1;
+			ii = ii + 1;
+			end;
+		ExtractObj(PRr.tSkills, pos, ClassCode);
+		end;
+	if i > 0 then 
+		begin
+		PRr.tSkillsF = 1;
+		end
+	else
+		begin
+		PRr.tSkillsF = 0;
+		end;
+	end
+else
+	begin
+	PRr.tSkillsF = 0;
+	end;
+//================
+if PRr.PeMan <> PRr.PeManS then
+	begin
+	PRr.PeManF = 1;
+	ii = ii + 1;
+	end
+else
+	begin
+	PRr.PeManF = 0;
+	end;
+//=================		
+if not(InRange(PRr.AgeS, PRr.Age)) then
+	begin
+	PRr.AgeF = 1;
+	ii = ii + 1;
+	end
+else
+	begin
+	PRr.AgeF = 0;
+	end;
+//=================
+if PRr.Sex <> PRr.SexS then
+	begin
+	PRr.SexF = 1;
+	ii = ii + 1;
+	end
+else
+	begin
+	PRr.SexF = 0;
+	end;
+//=================
+if PRr.MPeMan <> PRr.MPeManS then
+	begin
+	PRr.MPeManF = 1;
+	ii = ii + 1;
+	end
+else
+	begin
+	PRr.MPeManF = 0;
+	end;
+
+PRr.SummInc = ii;
+	
+  tRequPosVcRecordCheck = res;
+RETURN;
+end;

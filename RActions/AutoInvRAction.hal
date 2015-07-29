@@ -1,0 +1,142 @@
+external inner function val GetStockQty(string,string,Date,Boolean);
+
+global
+function Longint AutoInvVcRecordDefaults(var record AutoInvVc AIr, record AutoInvVc AI2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+record UserVc USr;
+boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then 
+	begin
+	AIr.SerNr = NextSerNr("AutoInvVc", CurrentDate, -1, false, "");
+	end
+else
+	begin
+	AIr.SerNr = -1;
+	end;
+ 
+AIr.DateAI = CurrentDate;
+AIr.UsrCode = CurrentUser;
+
+AutoInvVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function LongInt AutoInvVcRecordDuplicate(var record AutoInvVc AIr, record AutoInvVc AI2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+integer i;
+SetLangMode(LangRussian,"RUS",2);
+if (SingleUserMode) then 
+  begin
+  AIr.SerNr = NextSerNr("AutoInvVc", CurrentDate, -1, false, "");
+  end 
+else
+  begin
+  AIr.SerNr = -1;
+  end;
+  
+AIr.DateAI = CurrentDate;
+AIr.UsrCode = CurrentUser;
+
+AutoInvVcRecordDuplicate = res; 
+RETURN;
+END;
+
+global
+updating function LongInt AutoInvVcRecordRemoveTest(var record AutoInvVc AIr, record AutoInvVc AI2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc USr;
+
+AutoInvVcRecordRemoveTest = 1;
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+
+if (not UserCanAction("UnOKAll",True)) then 
+  begin
+  AutoInvVcRecordRemoveTest = 0;
+  end;
+RETURN;
+END;
+
+global
+function LongInt AutoInvVcRecordCheck(var record AutoInvVc AIr, record AutoInvVc AI2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+integer insertmode, updatemode, RwCnt;
+record UserVc USr;
+row AutoInvVc AIrw;
+
+SetLangMode(LangRussian, "RUS", 2);
+res = 0;     
+insertmode = 1;
+updatemode = 2;
+
+USr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+if (stat <> updatemode) and (AIr.SerNr < 1) then
+	begin
+	AIr.SerNr = NextSerNr("AutoInvVc", CurrentDate, -1, false, "");
+	end;
+if (stat == updatemode) and (AIr.SerNr < 1) then
+	begin
+	res = -1;
+	end;
+if  AI2r.OKFlag == 1 and (not UserCanAction("UnOKAll",True)) then
+	  begin
+	  res = -1;
+	  end;
+  
+if (AIr.OKFlag <> AI2r.OKFlag) and  (AIr.OKFlag == 0) and (not UserCanAction("UnOKAll",True)) then
+	  begin
+	  res = -1;
+	  end;
+	  
+// for (RwCnt = 0; RwCnt < MatRowCnt(AIr); RwCnt = RwCnt + 1)
+	// begin	  
+	// matRowGet(AIr, RwCnt , AIrw);
+	// if (AIrw.LocQty > AIrw.HansaQty) then
+		// begin	 
+		// MessageBox(0, "Проверьте остатки товара: " & AIrw.ArtCode);	
+		// res = -1;
+		// end;
+	//end;  
+  AutoInvVcRecordCheck = res;
+RETURN;
+end;
+//========================================================================================
+
+
+// подпрограммы для заполнения таблицы
+
+global
+procedure AddRowAI(var record AutoInvVc AIr)
+begin
+row AutoInvVc AIrw;
+integer RwCnt,nr, ii;
+record INVc INr;
+boolean TrHs, exist;
+val StockQty, sum;
+
+TrHs = true;
+While (LoopKey("DICode:" & AIr.InCl, INr, 1, TrHs)) 
+	begin
+	StockQty = GetStockQty(INr.Code, AIr.LocCode, CurrentDate, false);
+	if (TrHs) and (StockQty <> 0) and (SetInSet(AIr.InCl,INr.DispGroups)) then //and (INr.Terminated == 0) and (INr.NotForSales == 0) 
+		begin
+		AIrw.ArtCode = INr.Code;
+		AIrw.ArtName = INr.Name;
+		AIrw.HansaQty = StockQty;
+		AIrw.LocQty = blankval;
+		MatRowInsert(AIr, nr, AIrw);
+		nr = nr +1;
+		end;
+	AIr.TotSum = blankval;	
+	end;
+Return;
+end;

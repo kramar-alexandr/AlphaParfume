@@ -1,0 +1,376 @@
+external procedure AddHelpButton(LongInt, LongInt);
+
+event DefineWindows
+
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+//===============================================================
+WindowBegin("Паспорт офиса", OffCardDClass, CGview, -);
+//DynamicWindow;
+UseView(OffCardVc);
+SetWRect(10, 80, 700, 500);
+BrowseButtons(True);
+ActiveFieldOnNew("Code");
+vs = 20; h = 100; v = 30; h2 = 250; h3 = 500; 
+Tile(0,120,false,"",Code);
+AddHelpButton(5, 5);
+EditField(h, v, 60, "Код", Normal, Code, False, 0);
+EditField(h2, v, -40, "Наименование", Normal, Name, False, 0);
+EditField(h, v += vs, 60, "Подразделение", Normal, PODRCode, False, DepSClass);
+EditField(h2, v, -40, "Наименование", Normal, PODRName, False, 0);
+EditField(h, v += vs, -40, "Адрес", Normal, Adr, False, 0);
+TileButton(1,"Общая информация");
+TileButton(2,"Конструктивные особенности");
+TileButton(3,"Обеспечение");
+Tile(1,470,false,"1",Kol);
+v = 10;
+EditField(h2, v, 80, "Количество помещений", Normal, Kol, False, 0);
+EditField(h3, v, 80, "Этажность", Normal, Floors, False, 0);
+EditField(h, v += vs, -40, "Классификация", Normal, Classific, False, tOffClSClass);
+EditField(h3, -40, 40, "Общая площадь", Normal, GSquare, False, 0);
+MatrixBegin(50, 80, -50, -50,-,100);
+MatCol(1, 25, "Размер помещений", 0, Size, false, 0);
+MatCol(1, -70, "Площадь", 0, Square, false, 0);
+EndMatrix;
+InsertRowTest;
+DeleteRowTest;
+Tile(2,470,false,"2",Description);
+v = 10; h2 = 300;
+EditField(h, v, -40, "Описание", Normal, Description, False, 0);
+StaticText(10, v += 40 ,"Вид внутренней отделки",false);
+EditField(h, v += vs, 130, "Пол", Normal, Ground, False, 0);
+EditField(h2, v, 130, "Стены", Normal, Wall, False, 0);
+EditField(h3,v , 130, "Окна", Normal, Windows, False, 0);
+EditField(h, v += vs, 130, "Двери", Normal, Doors, False, 0);
+EditField(h2, v, 130, "Потолок", Normal, Ceiling, False, 0);
+EditField(h3,v, 130, "Освещение", Normal, Lighting, False, 0);
+EditField(h,  v += vs, 130, "Эл.проводка", Normal, Wiring, False, 0);
+EditField(h2, v, 130, "Крыша", Normal, Roof, False, 0);
+EditField(h3, v, 130, "Рампа", Normal, Ramp, False, 0);
+EditField(h2,v += 40, 150, "Отопление(городское/электрообогреватели)", Normal, TypeHeating, False, 0);
+StaticText(10, v += 40 ,"Наличие учёта коммунальных платежей",false);
+h = 200; h2 = 350;
+EditField(h, v += vs, 100, "Электроэнергия", Normal, Electricity, False, 0);
+EditField(h2+50, v, 100, "Газ", Normal, Gas, False, 0);
+EditField(h, v += vs, 100, "Вода", Normal, Water, False, 0);
+EditField(h2+50, v, 100, "Отопление", Normal, Heating, False, 0);
+Tile(3,470,false,"3",PeriodHoz);
+v = 10; h = 100; h2 = 300;
+EditField(h, v += vs, 100, "Период", Normal, PeriodHoz, False, 0);
+EditField(h2, v, 80, "Хоз.нужды", Normal, Hoz, False, 0);
+EditField(h3-30, v, -40, "Комментарий", Normal, KommentHoz, False, 0);
+EditField(h, v += vs, 100, "Период", Normal, PeriodKofe, False, 0);
+EditField(h2, v, 80, "Кофе-тайм", Normal, Kofe, False, 0);
+EditField(h, v += vs, 100, "Период", Normal, PeriodRent, False, 0);
+EditField(h2, v, 80, "Аренда", Normal, Rent, False, 0);
+EditField(h, v += 30, -40, "Система безоп.", Normal, Bezp, False, 0);
+StaticText(10, v += 40 ,"Ответственные лица",false);
+h = 200; h2 = 300;
+EditField(h, v += vs, 80, "Охрана труда", Normal, CodeOT, False, UserSClass);
+EditField(h2, v, 200, "", Normal, NameOT, False, 0);
+EditField(h, v += vs, 80, "Электрохозяйство", Normal, CodeEL, False, UserSClass);
+EditField(h2, v, 200, "", Normal, NameEL, False, 0);
+EditField(h, v += vs, 80, "Пожарная безопастность", Normal, CodePZ, False, UserSClass);
+EditField(h2, v, 200, "", Normal, NamePZ, False, 0);
+//EditField(h = 100, v += 40, -40, "Неисправности", Normal, Defect, False, RegDefSClass);
+SpecialMenu("Неисправности",'N',0,"RegDefDsm");
+SpecialMenu("Оснащённость",'O',0,"tASDsm");
+EndWindow;
+
+WindowBegin("Паспорт офиса", OffCardLClass, CGmlist, DMView);
+SpawnClass(OffCardDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(OffCardVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(80, 80, "Имя", Name, false, Name);
+RlColKey(300, 300, "Подразделение", PODRCode, false, PODRCode);
+BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Паспорт офиса", OffCardSClass, CGslist, -);
+SpawnClass(OffCardDClass);
+UseView(OffCardVc);
+SetWRect(64,80,500,250);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(80, 80, "Имя", Name, false, Name);
+RlColKey(300, 300, "Подразделение", PODRCode, false, PODRCode);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+
+//=================================================
+WindowBegin("Офисы. Классификация", tOffClDClass, CGview, 0);
+UseView(tOffClVc);
+SetWRect(64, 80, 550, 300);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EditFieldTL(h, v += vs, 80, "Группа классификации", M4Code, Normal, 20, CodeGr, false, tOffGrSClass);
+StaticText(25,v+=35,"Примечания",false);
+TextField(25, v += 5, -21, -20, Math, 0);
+EndWindow; 
+
+WindowBegin("Офисы. Классификация",tOffClLClass, CGmlist, -);
+SpawnClass(tOffClDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tOffClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, CodeGr);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Офисы. Классификация",tOffClSClass, CGslist, -);
+SpawnClass(tOffClDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tOffClVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+RlColKey(500, 500, "Группа", CodeGr, false, Code);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+
+WindowBegin("Офисы. Группы классификаций", tOffGrDClass, CGview, 0);
+UseView(tOffGrVc);
+SetWRect(64, 80, 450, 250);
+v = 10; vs = 20; h = 100; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, 0);
+EditFieldTL(h, v += vs, 250, "Наименование", M4Str, Normal, 250, Name, false, 0);
+EndWindow; 
+
+WindowBegin("Офисы. Группы классификаций", tOffGrLClass, CGmlist, -);
+SpawnClass(tOffGrDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tOffGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Офисы. Группы классификаций",tOffGrSClass, CGslist, -);
+SpawnClass(tOffGrDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(tOffGrVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+//============================
+WindowBegin("Неисправности", RegDefDClass, CGview, 0);
+UseView(RegDefVc);
+SetWRect(64, 80, 700, 500);
+v = 10; vs = 20; h = 150; 
+EditFieldTL(h, v , 80, "Код", M4Code, Normal, 20, Code, false, OffCardSClass);
+EditFieldTL(h, v += vs, -40, "Наименование", M4Str, Normal, 200, Name, false, 0);
+MatrixBegin(10, 80, -40, -40,-,100);
+MatCol(1, 25, "Неисправность", 0, Def, false, 0);
+MatCol(1, -180, "Дата дефекта", 0, DataDef, false, PasteCurDate);
+MatCol(1, -90, "Дата коррекции", 0, DataCor, false, PasteCurDate);
+EndMatrix;
+EndWindow; 
+
+WindowBegin("Неисправности",RegDefLClass, CGmlist, -);
+SpawnClass(RegDefDClass);
+SetWRect(64, 80, 680, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(RegDefVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Неисправности",RegDefSClass, CGslist, -);
+SpawnClass(RegDefDClass);
+SetWRect(64, 80, 500, 250);
+Sizeable(-1, -1, 0, 0);
+UseView(RegDefVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(100, 100, "Наменование", Name, false, Name);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+return;
+end;
+//=====================================================================================  SUB
+
+
+global updating
+function Boolean OffCardDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+Boolean res;
+record OffCardVc OCr;
+row OffCardVc OCrw;
+record UserVc USr;
+string 255 tstr;
+record DepVc Depr;
+Integer RwCnt;
+val Sum;
+
+if  fieldname == "PODRCode" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, OCr);
+	Depr.Code = OCr.PODRCode;
+	ReadFirstMain(Depr, 1, True);
+	OCr.PODRName = Depr.Description;
+	PutWindowRecord(wn, OCr);
+	end;	
+	
+if  fieldname == "CodeOT" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, OCr);
+	Usr.Code = OCr.CodeOT;
+	ReadFirstMain(Usr, 1, True);
+	OCr.NameOT = USr.Name;
+	PutWindowRecord(wn, OCr);
+	end;	
+
+if  fieldname == "CodeEL" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, OCr);
+	Usr.Code = OCr.CodeEL;
+	ReadFirstMain(Usr, 1, True);
+	OCr.NameEL = USr.Name;
+	PutWindowRecord(wn, OCr);
+	end;	
+	
+if  fieldname == "CodePZ" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, OCr);
+	Usr.Code = OCr.CodePZ;
+	ReadFirstMain(Usr, 1, True);
+	OCr.NamePZ = USr.Name;
+	PutWindowRecord(wn, OCr);
+	end;		
+	
+if  fieldname == "Square" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, OCr);
+	for (RwCnt = 0; RwCnt < MatRowCnt(OCr); RwCnt = RwCnt + 1)
+		begin	  
+		matRowGet(OCr, RwCnt , OCrw);
+		Sum = Sum + OCrw.Square;
+		end; 
+	OCr.GSquare = Sum;	
+	PutWindowRecord(wn, OCr);
+	end;	
+	 	
+	
+OffCardDClassAfterEditField = True;
+RETURN;
+end;
+
+global 
+function Boolean OffCardDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+record OffCardVc OCr, OC2r;
+row OffCardVc OCrw;
+Boolean res;
+val SumO, SumS;
+integer RwCnt;
+
+if (WindowState(wn) == 0 or WindowState(wn) == 2) then 
+	begin
+	GetWindowRecord(wn, OCr);  
+	matRowGet(OCr, rownr , OCrw);
+	OCr.GSquare = OCr.GSquare - OCrw.Square;
+	PutWindowRecord(wn, OCr);
+	end;
+OffCardDClassDeleteRowTest = true;
+return;
+end;
+
+
+global updating
+function Boolean RegDefDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+Boolean res;
+record RegDefVc RDr;
+row RegDefVc RDrw;
+record OffCardVc OCr;
+record UserVc USr;
+string 255 tstr;
+record DepVc Depr;
+Integer RwCnt;
+val Sum;
+
+if  fieldname == "Code" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, RDr);
+	OCr.Code = RDr.Code;
+	ReadFirstMain(OCr, 1, True);
+	RDr.Name = OCr.Name;
+	PutWindowRecord(wn, RDr);
+	end;	
+	
+
+RegDefDClassAfterEditField = True;
+RETURN;
+end;
+
+global
+updating procedure RegDefDsm()
+BEGIN
+record RegDefVc RDr;
+record OffCardVc OCr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, OCr);
+RDr.Code = OCr.Code;
+if readfirstmain(RDr, 1 , true) then
+	begin
+	nwn = OpenWindow("RegDefDClass", 1, 0, "", "", RDr);
+	end
+else
+	begin
+	RecordNew(RDr);
+	RDr.Code = OCr.Code;
+	RDr.Name = OCr.Name;
+	nwn = OpenWindow("RegDefDClass", 1, wn, "", "", RDr);
+	end;
+RETURN;
+end;
+
+global
+updating procedure tASDsm()
+BEGIN
+record RCVc RepSpec;
+record OffCardVc OCr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, OCr);
+
+  RepSpec.repname = "ASXOZRn";
+  RepSpec.f1 = OCr.PODRCode;
+  RepSpec.Media = mtScreen;
+//  RepSpec.f2 = "";
+  RunReport(RepSpec,0);
+  
+RETURN;
+end;
+

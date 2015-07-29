@@ -1,0 +1,342 @@
+external function boolean PayCheck(record CUVc);
+external function boolean PayCheck2(record CUVc);
+external function boolean PayCheck3(record CUVc);
+external function boolean PayCheck4(record CUVc, record ORVc);
+external function boolean PayCheck5(record CUVc, record ORVc);
+external procedure CreateORHistFromOR(record ORVc);
+external procedure ORHist_RecordRemove(integer,longint,longint);
+external function Integer PayTermType(string);
+external procedure ISetCCDFlagToOR(var record ORVc); //24.09.12 INAU - признак ГТД из карточки клиента
+external procedure ISetOrderNoncashLocation(var record ORVc); //19.12.12 INAU - устанавливаем "белый" склад
+external procedure ISortORMatrix(record ORVc); //15.10.13 INAU - Сортировка товара
+external procedure tXXX(var record ORVc);
+external function boolean tLimKred(var record ORVc);
+
+
+procedure ORVc_LogAction(var record ORVc ORr, string ActionName)
+begin
+  if blank(GetFieldValueByName(ORr,"Log"&ActionName&"User",-1)) then
+    begin
+      SetFieldValueByName(ORr,"Log"&ActionName&"User", CurrentUser, -1);
+      SetFieldValueByName(ORr,"Log"&ActionName&"Date", CurrentDate, -1);
+      SetFieldValueByName(ORr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+
+global
+function LongInt ORVcRecordCheck(record ORVc ORr, record ORVc OR2r, LongInt stat, LongInt check)
+begin
+  longint res;
+  integer insertmode, updatemode;
+  record CUVc CUr;
+  record VSetSetBlock VSb; //24.12.12
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  res = 0;
+  insertmode = 1;//Rs_insert
+  updatemode = 2;//Rs_update
+
+  res = 0;
+
+  BlockLoad(VSb);
+
+  ORr.PRCode = blankval;
+  if (CurrentUser == "DELPHI") and (ORr.Invalid <> 0) then
+    begin
+    ORr.Invalid = 0;
+    end;
+
+  CUr.Code = ORr.CustCode;
+  ReadFirstMain(CUr, 1, true);
+
+  if (res == 0) and blank(CUr.SearchKey) then
+    begin
+    MessageBox(0, "Не заполнено поле СОКР.");
+    res = -1;
+    end;
+
+  //By DELPHI проверка на срок договора
+  if (res == 0) and (ReadFirstMain(CUr, 1, true) and (CUr.PayDeal != "0") and (CUr.PayDeal != "S0") and ((CUr.ContractDate < CurrentDate) or Blank(CUr.ContractDate))
+                and (CurrentDate > StringToDate("30.11.2009")) and (ORr.Closed <> 1)) then
+    begin
+    RecordCheckError(31009,CUr.Name & " - """ & CUr.ContractDate & """",-1,"CustCode");
+    res = -1;
+    end;
+  //End By DELPHI
+
+  //By DELPHI проверка на ИНН
+  if (res == 0) and (ReadFirstMain(CUr, 1, true) and (CUr.PayDeal != "0") and (CUr.PayDeal != "S0") and Blank(CUr.VATNr)) then 
+    begin
+    RecordCheckError(31012, CUr.Name, -1, "CustCode");
+    res = -1;
+    end;
+  //End By DELPHI
+  
+  //=====проверка на задолженность
+  if (res == 0) and (PayCheck(CUr) and (ORr.Closed <> 1)) then
+    begin
+    RecordCheckError(31007,ORr.Addr0,-1,"CustCode");
+    res = -1;
+    end;
+
+  if (res == 0) and (PayCheck2(CUr) and (ORr.Closed <> 1))then //By DELPHI
+    begin
+    RecordCheckError(31007, CUr.SearchKey, -1, "CustCode");
+    res = -1;
+    end;
+
+  //BY DELPHI Проверка на задолженность и черный список
+  if (res == 0) and (PayCheck3(CUr) and (ORr.Closed <> 1)) then
+    begin
+    RecordCheckError(31010, ORr.Addr0, -1, "CustCode");
+    res = -1;
+    end;
+  //=======
+
+  //BY DELPHI
+  if (res == 0) and nonblank(CUr.CreditLimit) and (CUr.CreditLimit > 0) and (CUr.CreditLimit < ORr.Sum4) and (ORr.Closed <> 1) then //если установленный лимит кредита меньше суммы счета
+    begin
+    RecordCheckError(1164, CUr.SearchKey, -1, "CustCode");
+    res = -1;
+    end;
+
+  if (res == 0) and PayCheck5(CUr, ORr) and (ORr.Closed <> 1) then //если установленный лимит кредита меньше суммы неотгруженныx счетов
+    begin
+    RecordCheckError(31013, ORr .Addr0, -1, "CustCode");
+    res = -1;
+    end;
+  //end By DELPHI
+
+//25.01.12 INAU - флаг "Закрыт"
+  if (res == 0) and (ORr.Closed==1) and ((stat==1) or ((stat==2) and (OR2r.Closed==0))) then
+    begin
+      if blank(ORr.PlanShip) then
+        begin
+        RecordCheckError(1058,"",-1,"PlanShip");
+        res = -1;
+        end;
+      if (res == 0) and blank(ORr.PlanShipTime) then
+        begin
+        RecordCheckError(1058,"",-1,"PlanShipTime");
+        res = -1;
+        end;
+    end;
+//===
+
+//25.01.12 INAU
+  if (res == 0) and blank(ORr.DespatchDate) then
+    begin
+    RecordCheckError(1058,"",-1,"DespatchDate");
+    res = -1;
+    end;
+
+  if (res == 0) and blank(ORr.DespatchTime) then
+    begin
+    RecordCheckError(1058,"",-1,"DespatchTime");
+    res = -1;
+    end;
+//===
+
+//10.02.14 INAU
+  if  (res == 0) and (VSb.DeliveryTimeCheck == 1) and nonblank(CUr.PlanDeliveryTime)
+                 and (ORr.DespatchTime <> CUr.PlanDeliveryTime) then //Проверяем время доставки план
+    begin
+    RecordCheckError(1499, "Время доставки план не соответствует клиенту", -1, "DespatchTime");
+    res = -1;
+    end;
+//===
+
+  //15.10.13 INAU - Сортировка товара по коду
+  if (res == 0) and (ORr.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (OR2r.OKFlag == 0))) then
+    begin
+    ISortORMatrix(ORr);
+    end;
+
+  //24.12.12 INAU - Требовать заполнение склада
+  if (res == 0) and blank(ORr.Location) then
+    begin
+      RecordCheckError(1499, "Укажите склад!", -1, "Location");
+      res = -1;
+    end;
+
+  //24.09.12 INAU - Установка признка ГТД из карточки клиента при первом сохранении
+  if (res == 0) and (stat == insertmode) then
+    begin stopalert(1);
+    ISetCCDFlagToOR(ORr);
+    end;
+
+  //19.12.12 INAU - "белая" продажа
+  if (res == 0) and (ORr.CCDFlag == 1) then
+    begin
+      if blank(VSb.NoncashLocation) or blank(VSb.CashLocation) then
+        begin
+        RecordCheckError(1499, "Проверьте настройку складов б/н продажи!", -1, "Location");
+        res = -1;
+        end
+      else
+        begin
+        ISetOrderNoncashLocation(ORr); //19.12.12 INAU - "белая" продажа
+        end;
+    end;
+
+  if (res == 0) and tLimKred(ORr) and (ORr.OKFlag <> 1) then
+    begin
+    RecordCheckError(1499, "Лимит превышен!", -1, "BaseSum4");
+    res = -1;
+    end;
+
+  if (res == 0) then //26.11.09 INAU
+    begin
+    ORVc_LogAction(ORr,"Save");
+    if (ORr.OKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (OR2r.OKFlag==0))) then //Подтверждено
+      begin
+      ORVc_LogAction(ORr, "OK");
+      end;
+    end;
+
+  if (res == 0) and (ORr.OKFlag == 0) and (OR2r.OKFlag == 1) then
+    begin
+    ORHist_RecordRemove(-1, ORr.SerNr, 0);
+    end;
+
+  if (res == 0) then
+    begin
+    res = inner.ORVcRecordCheck(ORr, OR2r, stat, check);
+    end;
+
+  ORVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+function LongInt ORVcRecordRemoveTest(var record ORVc ORr,record ORVc OR2r,LongInt long3,LongInt long4)
+begin
+  longint res;
+
+  res = inner.ORVcRecordRemoveTest(ORr, OR2r, long3, long4);
+
+  if (ORr.Invalid == 1) and (CurrentUser <> "DELPHI") then
+    begin
+    res = 0;
+    end;
+
+  ORVcRecordRemoveTest = res;
+  Return;
+end;
+
+
+global
+updating function LongInt ORVcRecordUpdate(var record ORVc ORr,record ORVc OR2r,LongInt long3,LongInt long4)
+begin
+  longint res;
+
+  res = inner.ORVcRecordUpdate(ORr, OR2r, long3, long4);
+
+  tXXX(ORr);
+
+  if (ORr.OKFlag <> 0) and (OR2r.OKFlag == 0) then
+    begin
+    CreateORHistFromOR(ORr);
+    end;   
+
+  ORVcRecordUpdate = res; 
+  Return;
+end;
+
+
+global
+updating function LongInt ORVcRecordSave(var record ORVc ORr,record ORVc OR2r,LongInt long3,LongInt long4)
+begin
+  longint res;
+
+  res = inner.ORVcRecordSave(ORr, OR2r, long3, long4);
+
+  tXXX(ORr);
+
+  if ORr.OKFlag <> 0 then
+    begin
+    CreateORHistFromOR(ORr);
+    end;
+
+  ORVcRecordSave = res;
+  Return;
+end;
+
+
+global
+function LongInt ORVcRecordDefaults(var record ORVc ORr, record ORVc OR2r, LongInt long3, LongInt long4)
+begin
+  longint res;
+
+  res = inner.ORVcRecordDefaults(ORr, OR2r, long3, long4);
+  ORr.Invalid = 0;
+  ORVc_LogAction(ORr, "New"); //26.11.09 INAU
+  ORVcRecordDefaults = res;  
+  Return;
+end;
+
+
+global
+function LongInt ORVcRecordDuplicate(var record ORVc ORr,record ORVc OR2r,LongInt long3,LongInt long4)
+begin
+  longint res;
+
+  res = inner.ORVcRecordDuplicate(ORr, OR2r, long3, long4);
+
+  ORr.Invalid = 0;
+
+  ORr.PlanShipTime = "";
+  ORr.DespatchDate = "";
+  ORr.DespatchTime = "";
+
+  ORr.LogNewDate= "";
+  ORr.LogNewTime= "";
+  ORr.LogSaveUser = blankval;
+  ORr.LogSaveDate= "";
+  ORr.LogSaveTime= "";
+  ORr.LogOKUser = blankval;
+  ORr.LogOKDate = "";
+  ORr.LogOKTime = "";
+  ORVc_LogAction(ORr,"New"); //26.11.09 INAU
+
+  ORVcRecordDuplicate = res;
+  Return;
+end;
+
+
+global
+function LongInt ORVcRecordInvalidateTest(var record ORVc ORr,record ORVc OR2r,LongInt long3,LongInt long4)
+begin
+  record SHVc SHr;
+  record IVVc IVr;
+  LongInt res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+  SHr.OrderNr = ORr.SerNr;
+  IVr.OrderNr = ORr.SerNr;
+  if ((ORr.LogNewUser == CurrentUser) 
+    and (not ReadFirstKey("OrderKey", SHr, 1, True)) 
+    and (not ReadFirstKey("OrderNr", IVr, 1, True)) 
+    and (ORr.OKFlag == 1)) then
+      begin
+      if nonblank(ORr.SenceInvalid) then
+        begin
+        res = 1;
+        ORr.Invalid = 1;
+        end 
+      else
+        begin
+        MessageBox(0, "Заполните причину!");
+        end;
+      end else
+      begin
+      MessageBox(0, "Нельзя аннулировать!");
+      end;
+  ORVcRecordInvalidateTest = res;  
+  RETURN;
+end;

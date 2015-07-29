@@ -1,0 +1,213 @@
+remote inner procedure GetUserAccessGroup(string, var string);
+external inner function Boolean ActiveField(record IVVc, record IVVcm, Integer, string, Integer, Boolean);
+external inner procedure GetFullCurncyRate(var string, Date, var val, var val, var val, var val, var val);
+remote procedure IGetCommonInvoice(record IVVc, var record IVVc);
+
+global
+function Boolean IVDClassAlienCurncyEFAfter(Integer wn, Integer fn, Integer changed)
+begin
+  Boolean res;
+  record IVVc IVr;
+  record CurncyCodeVc CCr;
+  record CUVc CUr;
+  val fr,to1,to2,br1,br2;
+
+  if (changed) then
+    begin
+      GetWindowRecord(CurWindow, IVr);
+      CCr.CurncyCode = IVr.AlienCurncy;
+      if ReadFirstMain(CCr, 1, true) and (IVr.CurncyCode == "USD") then
+        begin
+        CUr.Code = IVr.CustCode;
+        ReadFirstMain(CUr, 1, true);
+        IVr.AlienToRateB1 = CUr.AlienToRateB1;
+        if blank(IVr.AlienToRateB1) then
+          begin
+          GetFullCurncyRate(IVr.AlienCurncy, IVr.TransDate, fr, to1, to2, br1, br2);
+          IVr.AlienToRateB1 = to1;
+          end;
+        end
+      else
+        begin
+        IVr.AlienCurncy = blankval;
+        IVr.AlienToRateB1 = blankval;
+        end;
+      PutWindowRecord(CurWindow, IVr);
+    end;
+
+  IVDClassAlienCurncyEFAfter = res;
+  Return;
+end;
+
+
+global
+function Boolean IVDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)
+begin
+  Boolean res;
+
+  res = inner.IVDClassAfterEditField(wn, fieldname, fn, rownr, changed);
+  switch (fieldname)
+    begin
+      case "AlienCurncy": res = IVDClassAlienCurncyEFAfter(wn, fn, changed);
+    end;
+
+  IVDClassAfterEditField = res;
+  Return;
+end;
+
+
+global
+function Boolean IVDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record IVVc IVr;
+  record VSetSetBlock VSet;
+  string 10 accgroup;
+
+  res = inner.IVDClassActiveEditField(wn,fieldname,fn,wnst,rownr,changed);
+
+  GetUserAccessGroup(CurrentUser,accgroup);
+
+  GetWindowRecord(wn,IVr);
+  if (res) and (rownr>=0) and (fieldname=="Objects") and (IVr.OKFlag==0) then
+    begin
+    res = (accgroup == "ADMIN");
+    end;
+
+  switch (fieldname)
+    begin
+      case "PayDeal": res = (IVr.OKFlag == 0) and UserCanAction("CanEditPayDeal",false);
+      case "Price":  res = (IVr.OKFlag == 0) and UserCanAction("CanEditPayDeal",false);
+      case "vRebate": res = (IVr.OKFlag == 0) and UserCanAction("CanEditPayDeal",false);
+      case "Sum": res = (IVr.OKFlag == 0) and UserCanAction("CanEditPayDeal",false);
+      case "PrintMan": res = (IVr.OKFlag == 1) and blank(IVr.PrintMan);
+      case "PrintDay": res = (IVr.OKFlag == 1) and blank(IVr.PrintDay);
+      case "PostMan": res = (IVr.OKFlag == 1) and blank(IVr.PostMan);
+      case "PostDay": res = (IVr.OKFlag == 1) and blank(IVr.PostDay);
+      case "RetMan": res = (IVr.OKFlag == 1) and blank(IVr.RetMan);
+      case "RetDay": res = (IVr.OKFlag == 1) and blank(IVr.RetDay);
+      case "ArchMan": res = (IVr.OKFlag == 1) and blank(IVr.ArchMan);
+      case "ArchDay": res = (IVr.OKFlag == 1) and blank(IVr.ArchDay);
+      case "SalesMan": res = (IVr.OKFlag == 0) or (accgroup == "ADMIN");
+
+      case "PayDate":
+        BlockLoad(VSet);
+        res = ((IVr.OKFlag == 0) and UserCanAction("UnOKAll",false)) or
+              ((VSet.ChangePayDate == 1) and (SetInSet(CurrentUser, VSet.UserChangePayDate) or blank(VSet.UserChangePayDate)));
+
+      case "InvDate":
+        BlockLoad(VSet);
+        res = (IVr.OKFlag == 0) or (IVr.InvType <> 1) or (VSet.InvDateFromShipDate==0);
+
+      case "Num1C": res = True;
+      case "PlanPayDate": res = (IVr.OKFlag <> 0);
+    end;
+
+  IVDClassActiveEditField = res;
+  Return;
+end;
+
+
+global
+procedure IVVcToExcelLsm()
+begin
+record IVVc IVr;
+record RcVc RepSpec;
+Integer wn;
+Integer RwCnt;
+
+RwCnt = 1;
+wn = CurWindow;
+while GetRecordFromBrowse(IVr, CurWindow,  RwCnt)
+	begin
+	if nonblank(RepSpec.f1) then
+		begin
+		RepSpec.f1 = RepSpec.f1 & "," & IVr.SerNr;
+		end else
+		begin
+		RepSpec.f1 = IVr.SerNr;
+		end;
+	RwCnt = RwCnt + 1;
+	end;
+RepSpec.f2 = IVr.Addr0;
+RepSpec.repname = "IVVcToExcelCn";
+RepSpec.Media = -1;
+RunExport(RepSpec, False);
+RETURN;
+end;
+
+
+global
+procedure IVVcToExcel2Lsm()
+begin
+record IVVc IVr;
+record RcVc RepSpec;
+Integer wn;
+Integer RwCnt;
+
+RwCnt = 1;
+wn = CurWindow;
+while GetRecordFromBrowse(IVr, CurWindow,  RwCnt)
+	begin
+	if nonblank(RepSpec.f1) then
+		begin
+		RepSpec.f1 = RepSpec.f1 & "," & IVr.SerNr;
+		end else
+		begin
+		RepSpec.f1 = IVr.SerNr;
+		end;
+	RwCnt = RwCnt + 1;
+	end;
+RepSpec.f2 = IVr.Addr0;
+RepSpec.repname = "IVVcToExcel2Cn";
+RepSpec.Media = -1;
+RunExport(RepSpec, False);
+RETURN;
+end;
+
+
+global
+procedure IVVcToExcel2Lsm()
+begin
+record IVVc IVr;
+record RcVc RepSpec;
+Integer wn;
+Integer RwCnt;
+
+RwCnt = 1;
+wn = CurWindow;
+while GetRecordFromBrowse(IVr, CurWindow,  RwCnt)
+	begin
+	if nonblank(RepSpec.f1) then
+		begin
+		RepSpec.f1 = RepSpec.f1 & "," & IVr.SerNr;
+		end else
+		begin
+		RepSpec.f1 = IVr.SerNr;
+		end;
+	RwCnt = RwCnt + 1;
+	end;
+RepSpec.f2 = IVr.Addr0;
+RepSpec.repname = "IVVcToExcel2Cn";
+RepSpec.Media = -1;
+RunExport(RepSpec, False);
+RETURN;
+end;
+
+
+//Сводная накладная
+global
+procedure ICommonInvoiceLsm()
+begin
+  record IVVc IVr;
+  record IVVc CommonIVr;
+
+  if GetRecordFromBrowse(IVr, CurWindow, 1) then
+    begin
+    IGetCommonInvoice(IVr, CommonIVr);
+    PrintDocument(CommonIVr, "InvForm", false);
+    end;
+  Return;
+end;
+
+

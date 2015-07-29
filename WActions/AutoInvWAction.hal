@@ -1,0 +1,333 @@
+external inner function val GetStockQty(string,string,Date,Boolean);
+external function Boolean ORDClassArtCodeEFAfter(Integer,Integer,Integer);
+external function Boolean ORDClassCustCodeEFAfter(Integer,Integer,Integer,Integer);
+external function Boolean ORDClassQuantEFAfter(Integer,Integer,Integer,Integer);
+external inner function Boolean GetItemPriceDiscount3(string,val,var record INVc,string,val,val,val,val,val,string,string,string,string,
+                                                      var val,var string,var val,var string,var val,var string,Integer,var Boolean,Date,Time,
+                                                      string,Boolean,var Boolean,string,var string,var val,string,string,var string);
+external function string 10 DReturnVal();
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+remote procedure AddRowAI(var record AutoInvVc);
+
+event DefineWindows
+begin
+record tVTicketsVc TVr;
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+
+WindowBegin("Реализация по остаткам", AutoInvDClass, CGview, -);
+UseView(AutoInvVc);
+SetWRect(10, 80, 800, 450);
+BrowseButtons(True);
+vs = 20; h = 130; v = 20; h1 = 280; h2 = 450;  h4 = 550;
+ActiveFieldOnNew("LocCode");
+EditField(h, v, 80, "Номер",ViewOnly, SerNr, False, 0);
+EditField(h1, v, 80, "Создал", ViewOnly, UsrCode, False, 0);
+EditField(h, v += vs, 80, "Дата", ViewOnly, DateAI, False, 0);
+EditField(h1, v, 80, "Склад", Normal, LocCode, False, LocationSClass);
+EnterSkip(InCl);
+EditField(h2 + 50, v, 80, "Классификация товара", Normal, InCl, False, DISClass);
+EnterSkip(SerNr);
+EditField(h, v += vs, 80, "Код клиента", ViewOnly, CustCode, False, 0);
+EditField(h1, v, -40, "Имя", ViewOnly, CustName, False, 0);
+EditField(-130, -25 , 80, "Сумма", ViewOnly, TotSum, False, 0);
+CheckBox(20, -25, 0, "ОК", OKFlag);
+MatrixBegin(20,  v += 40, -53, -30, AutoInvRowType, 900);
+MatCol(1, 50, "Код товара", 0, ArtCode, true, INSClass);
+MatCol(1, 130, "Наименование", 0, ArtName, false, 0);
+MatCol(1, -250, "Ост/Hansa", 0, HansaQty, true, 0);
+MatCol(1, -190, "Ост/Факт", 0, LocQty, true, 0);
+MatCol(1, -130, "Продано", 0, SoldQty, true, 0);
+MatCol(1, -70, "Сумма", 0, Sum, true, 0);
+EndMatrix;
+SpecialMenu("Создать Сч.кл.",'O',0,"CreateORDsm");
+SpecialMenu("Создать задачу",'Q',0,"CreateQAFromAIDsm");
+EndWindow;
+
+WindowBegin("Реализация по остаткам", AutoInvLClass, CGmlist, DMView);
+SpawnClass(AutoInvDClass);
+SetWRect(64, 80, 700, 300);
+Sizeable(-1, -1, 0, 0);
+UseView(AutoInvVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Номер", SerNr, false, SerNr);
+RlColKey(100, 100, "OK", OKFlag, false, OKFlag);
+RlColKey(130, 130, "Склад", LocCode, false, LocCode);
+RlColKey(180, 180, "Код клиента", CustCode, false, CustCode);
+RlColKey(280, 280, "Имя", CustName, false, CustName);
+RlColKey(600, 600, "Классификация", InCl, false, InCl);
+SearchField("Поиск");
+EndWindow;  
+
+WindowBegin("Клиенты/Склад", CustLocTClass, CGHbl, HBlRecType);
+SetBlid(CustLocBlock);
+SetWRect(64, 80, 550, 440);
+Sizeable(-1,-1,-1,0);
+v = 20; vs = 20; h = 10; 
+MatrixBegin(h, v, -21, -10, CustLocRowType, 999);
+MatCol(1, h = 30, "Клиент", 60, Cust, false, CUSClass);
+MatCol(1, h = 150, "Склад", 60, Loc, false, LocationSClass);
+EndMatrix;
+EndWindow;
+
+ return;
+end;
+
+//===============================================
+//Цена указанного товара по указанному прайсу
+function val GetItemCUPrice(record INVc INr, record CUVc CUr)
+begin
+  val res;
+  val Price, vReb;
+  val from,to1,to2,base1,base2;
+  string 255 tstr;
+  val tval;
+  boolean tbool;
+
+  GetFullCurncyRate(CUr.CurncyCode,CurrentDate,from,to1,to2,base1,base2);
+
+  if (nonblank(CUR.VECustID)) then 
+    begin
+      base2 = StringToVal(CUr.VECustID,M4Val);
+    end
+  else
+    begin
+      base2 = stringtoval(DReturnVal,M4Val);
+    end;
+
+  GetItemPriceDiscount3(INr.Code,1,INr,CUr.CurncyCode,
+                        from,to1,to2,base1,base2,
+                        CUr.LangCode,CUr.CustCat,CUr.PLCode,CUr.RebCode,
+                        Price,tstr,vReb,tstr,tval,tstr,
+                        0,tbool,CurrentDate,"",CUr.Code,true,tbool,CUr.PayDeal,tstr,tval,tstr,"",tstr);
+
+  GetItemCUPrice = Price - Price/100*vReb;
+  Return;
+end;
+
+
+function val Summ(record AutoInvVc AIr)
+BEGIN
+row AutoInvVc AIrw;
+integer RwCnt,nr, ii;
+val Sum;
+
+for (RwCnt = 0; RwCnt < MatRowCnt(AIr); RwCnt = RwCnt + 1)
+  begin
+  matRowGet(AIr, RwCnt , AIrw);
+  Sum = Sum + AIrw.Sum;
+  end;
+Summ = Sum;
+
+  Return;
+end;
+
+global
+function Boolean AutoInvDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+record CustLocBlock CLb;
+row CustLocBlock CLbr;
+record CUVc CUr;
+record AutoInvVc AIr, AI2r;
+row AutoInvVc AIrw;
+integer RwCnt,nr, ii;
+record INVc INr;
+boolean TrHs, exist;
+val StockQty, sum;
+
+if  fieldname == "InCl" and (WindowState(wn) <> 0) and (changed == 1) then
+  begin
+  nr = 0;
+  GetWindowRecord(wn, AIr);
+  //GetWindowRecord(wn, AI2r);
+  BlockLoad(CLb);
+  for (RwCnt = 0; RwCnt < MatRowCnt(CLb); RwCnt = RwCnt + 1)
+    begin
+    MatRowGet(CLb, RwCnt, CLbr);
+    if CLbr.Loc == AIr.LocCode then
+      begin
+      AIr.CustCode = CLbr.Cust;
+      end;
+    end;
+  while (MatRowCnt(AIr) > 0)
+    begin
+    MatRowDelete(AIr,0);
+    end;
+  Cur.Code = AIr.CustCode;
+  ReadFirstMain(CUr, 1, True);
+  AIr.CustName = CUr.Name;
+  //===
+  AddRowAI(AIr);
+  PutWindowRecord(wn, AIr);
+
+  end;
+
+if  fieldname == "LocQty" and (WindowState(wn) <> 0) and (changed == 1)  then	//
+  begin
+  GetWindowRecord(wn, AIr);
+  matRowGet(AIr, rownr , AIrw);
+  if (AIrw.LocQty > AIrw.HansaQty) then
+    begin
+    MessageBox(0, "Значение не может быть больше, чем было!");
+    end
+  else
+    begin
+    AIrw.SoldQty = AIrw.HansaQty - AIrw.LocQty;
+    //if AIrw.SoldQty <> 0 then
+      begin
+      INr.Code = AIrw.ArtCode;
+      ReadFirstMain(INr, 1, true);
+      CUr.Code = AIr.CustCode;
+      ReadFirstMain(CUr, 1, true);
+      Sum = AIrw.SoldQty * GetItemCUPrice(INr, CUr);
+      AIrw.Sum = Sum;
+      MatRowPut(AIr, rownr, AIrw);
+      AIr.TotSum = Summ(AIr);
+      PutWindowRecord(wn, AIr);
+      end;
+    end;
+  end;
+
+if  fieldname == "LocQty"  and (changed == 0)  then	//and (WindowState(wn) <> 0)
+  begin
+  GetWindowRecord(wn, AIr);
+  matRowGet(AIr, rownr , AIrw);
+  AIrw.LocQty = AIrw.HansaQty;
+  MatRowPut(AIr, rownr, AIrw);
+  //AIr.TotSum = Summ(AIr);
+  PutWindowRecord(wn, AIr);
+  end;
+
+if  fieldname == "ArtCode" and (WindowState(wn) <> 0)  then	// and (changed == 1)
+  begin
+  exist = false;
+  GetWindowRecord(wn, AIr);
+  matRowGet(AIr, rownr , AIrw);
+  INr.Code = AIrw.ArtCode;
+  ReadFirstMain(INr, 1, true);
+  StockQty = GetStockQty(AIrw.ArtCode, AIr.LocCode, CurrentDate, false);
+  if (StockQty <> 0) and (SetInSet(AIr.InCl,INr.DispGroups)) and (INr.Terminated == 0) and (INr.NotForSales == 0)  then //
+    begin
+    AIrw.ArtName = INr.Name;
+    AIrw.HansaQty = StockQty;
+    MatRowPut(AIr, rownr, AIrw);
+    PutWindowRecord(wn, AIr);
+    for (RwCnt = 0; RwCnt < MatRowCnt(AIr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(AIr, RwCnt , AIrw);
+      if INr.Code == AIrw.ArtCode and RwCnt <>  rownr then
+        begin
+        MessageBox(0, "Товар с таким кодом уже есть!");
+        exist = true;
+        end;
+      end;
+    end;
+
+  end;
+
+AutoInvDClassAfterEditField = True;	
+RETURN;
+END;
+
+
+
+updating procedure PutInOR(integer nwn, integer nr, record ORVc ORr, string ArtCode, integer SoldQty)
+BEGIN
+row ORVc ORrw;
+
+GetWindowRecord(nwn,ORr); 
+ORrw.ArtCode = ArtCode;
+ORrw.Quant = SoldQty;
+MatRowInsert(ORr, nr, ORrw);
+PutWindowRecord(nwn,ORr); 
+ORDClassArtCodeEFAfter(nwn,nr,1);
+ORDClassQuantEFAfter(nwn,1,nr,1);
+  RETURN;
+END;
+
+global
+updating procedure CreateORDsm()
+BEGIN
+record ORVc ORr;
+row ORVc ORrw;
+Integer wn,nwn,rownr, nr, RwCnt;
+record AutoInvVc AIr, AI2r;
+row AutoInvVc AIrw;
+  
+SetLangMode(LangRussian, "RUS", 2);
+
+nr = 0;  
+wn = CurWindow;
+if (WindowState(wn)==0) then 
+  begin
+  GetWindowRecord(wn,AIr);
+  if AIr.OKFlag == 1 then
+    begin
+    RecordNew(ORr);
+    nwn = OpenWindow("ORDClass",1,0,"","",ORr);
+    ORr.Location = AIr.LocCode;
+    ORr.CustCode = AIr.CustCode;
+    PutWindowRecord(nwn,ORr);
+    ORDClassCustCodeEFAfter(nwn,1,0,1);
+    for (RwCnt = 0; RwCnt < MatRowCnt(AIr); RwCnt = RwCnt + 1)
+      begin
+      matRowGet(AIr, RwCnt , AIrw);
+      if (AIrw.SoldQty > 0) then
+        begin
+        PutInOR(nwn, nr, ORr, AIrw.ArtCode, AIrw.SoldQty);
+        nr = nr + 1;
+        end;
+      end;
+    CreateRecordLink(ORr, CurrentCompany, AIr, CurrentCompany);
+    end;
+  end;
+  RETURN;
+END;
+
+
+global
+function Boolean AutoInvDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+Boolean res,resL;
+record CUVc CUr;
+record UserVc USr;
+record AutoInvVc AIr;
+row AutoInvVc AIrw;
+Integer RwCnt;
+  
+res = true;
+resL = False;
+Usr.Code = CurrentUser;
+ReadFirstMain(USr,1,true);
+// BlockLoad(CUAb);
+// for (RwCnt = 0; RwCnt < MatRowCnt(CUAb); RwCnt = RwCnt + 1)
+  // begin
+  // MatRowGet(CUAb, RwCnt, CUAbr);
+  // if (Usr.AccessGroup == CUAbr.AccessGrCode) then
+    // begin
+    // resL = true;
+    // RwCnt = MatRowCnt(CUAb);
+    // end;
+  // end;
+
+GetWindowRecord(wn, AIr);
+if (changed != 0) then
+  begin
+    switch(fieldname)
+    begin
+    case "ArtName": res = False;
+    case "HansaQty": res = False;
+    case "SoldQty": res = False;
+    case "Sum": res = False;
+    end;
+  end;
+
+  AutoInvDClassActiveEditField = res;
+  RETURN;
+END;
+
+
+
+

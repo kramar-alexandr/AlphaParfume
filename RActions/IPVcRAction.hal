@@ -1,0 +1,479 @@
+//20.11.13 INAU - from Tools21.hal
+global
+function Integer IsUnOKAllowed_IPVc(record IPVc IPp)
+BEGIN
+  record DBLockBlock DBLockRec;
+  record ARPayHistVc ARPayHistr;
+  Integer res;
+  row IPVc IPrw;//IPRowType
+  Integer i,rwcnt;
+
+  res = 0;
+  BlockLoad(DBLockRec);
+  if (IPp.TransDate<=DBLockRec.SLLock) then
+    begin
+    res = 1046;
+    end;
+
+/*
+  if (res==0) then begin
+    rwcnt = MatRowCnt(IPp);
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(IPp,i,IPrw);
+      if (IPrw.CUPNr!=-1) then begin
+        ARPayHistr.CUPNr = IPrw.CUPNr;
+        ARPayHistr.FileName = "IVVc";
+        if (ReadFirstMain(ARPayHistr,2,true)) then begin
+          res = 22060;
+          goto LIsUnOKAllowed_IPVc;
+        end;
+      end;
+    end;
+  end;
+*/
+
+LIsUnOKAllowed_IPVc:;
+  IsUnOKAllowed_IPVc = res;
+  RETURN;
+END;
+//===
+
+
+procedure IPVc_LogAction(var record IPVc IPr, string ActionName) //Добвавлено 26.11.09 INAU
+begin
+  if blank(GetFieldValueByName(IPr,"Log"&ActionName&"User",-1)) then
+    begin
+      SetFieldValueByName(IPr,"Log"&ActionName&"User", CurrentUser, -1);
+      SetFieldValueByName(IPr,"Log"&ActionName&"Date", CurrentDate, -1);
+      SetFieldValueByName(IPr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+function boolean tFindDis(Record IPVc IPr, longint IPrwInvoiceNr)
+begin
+boolean res;
+row IPVc IPRw;
+integer i;
+
+  for (i=0; (i < MatRowCnt(IPr)); i=i+1)
+      begin
+      MatRowGet(IPr,i,IPrw);
+      if (IPrw.InvoiceNr == IPrwInvoiceNr) AND ((IPrw.stp==5) or (IPrw.stp==6)) then
+        begin
+        res = true;
+        end;
+      end;
+
+tFindDis = res;
+  Return;
+end;
+
+
+function boolean tZapret(Record IPVc IPr, integer i, var val SumDis)
+begin
+val x;
+boolean res;
+record tIPCtrlSetVc tIPCr;
+row IPVc IPRw;
+
+ReadFirstMain(tIPCr, 1, true);
+x = tIPCr.Persent;
+
+SumDis = 0;
+
+MatRowGet(IPr,i-1,IPrw);
+
+/*
+if tFindDis(IPr, IPrw.InvoiceNr)  then //если ЕСТЬ СТРОКА СО СКИДКОЙ ИЛИ СПИСАНИЕМ с этим же номером сч.ф
+    begin
+    SumDis = ((((IPrw.InvOutstand - IPrw.BankVal) / IPrw.InvOutstand) * 100));
+    stopalert("SumDis=" & SumDis);
+    end
+else
+    begin
+    if IPrw.InvCurncy <> IPrw.RecCurncy then
+        begin
+        SumDis = 100 - ((IPrw.BankVal / (IPrw.InvOutstand * IPrw.BaseRate2BankVal)) * 100);
+        end;
+    end;
+*/
+/*
+if IPrw.InvCurncy == "USD" and  IPrw.RecCurncy  == "USD" then
+    begin
+
+
+    end;
+if IPrw.InvCurncy == "UAH" and  IPrw.RecCurncy  == "USD" then
+    begin
+
+
+    end;
+if IPrw.InvCurncy == "UAH" and  IPrw.RecCurncy  == "UAH" then
+    begin
+
+
+    end;
+*/
+if (IPrw.stp==1) then
+    begin
+    //if IPrw.BankCurncy <> IPrw.RecCurncy then
+
+    if IPrw.InvCurncy <> IPrw.RecCurncy then
+        begin
+        SumDis = 100 - ((IPrw.RecVal / (IPrw.InvOutstand * IPrw.BaseRate2BankVal)) * 100);
+        end
+      else
+        begin
+        SumDis = ((((IPrw.InvOutstand - IPrw.RecVal) / IPrw.InvOutstand) * 100));
+        end;
+    end;
+
+res = (SumDis > x) and NONblank(x) and x > 0;
+
+tZapret = res;
+Return;
+end;
+
+function boolean tZapret2(Record IPVc IPr, integer i, var val SumDis)
+begin
+val x;
+boolean res;
+record tIPCtrlSetVc tIPCr;
+row IPVc IPRw;
+
+ReadFirstMain(tIPCr, 1, true);
+x = tIPCr.Persent;
+
+SumDis = 0;
+
+MatRowGet(IPr,i,IPrw);
+
+if (IPrw.stp==1) then
+    begin
+    if IPrw.BankCurncy <> IPrw.RecCurncy then
+
+    //if IPrw.InvCurncy <> IPrw.RecCurncy then
+        begin
+        SumDis = 100 - ((IPrw.BankVal / (IPrw.InvOutstand * IPrw.BaseRate2BankVal)) * 100);
+        end
+      else
+        begin
+        SumDis = ((((IPrw.InvOutstand - IPrw.BankVal) / IPrw.InvOutstand) * 100));
+        end;
+    end;
+
+res = (SumDis > x) and NONblank(x) and x > 0;
+
+tZapret2 = res;
+Return;
+end;
+
+function boolean tPravo(string User)
+begin
+record tIPCtrlSetVc tIPCr;
+boolean res;
+
+ReadFirstMain(tIPCr, 1, true);
+
+res = (setinset(User, tIPCr.SupSing) and nonblank(tIPCr.SupSing))
+        or (setinset(User, tIPCr.SubSupSing) and nonblank(tIPCr.SubSupSing));
+
+tPravo = res;
+Return;
+end;
+
+updating
+procedure tAddHist(longint IPrSerNr, date IPrTransDate, string IPrwCustCode, longint IPrwInvoiceNr, val IPrwInvVal, val IPrwBankVal, val SumDis)
+begin
+record tIPCtrlHistVc IPCHr, IPCH2r, IPCH3r;
+record UserVc USr;
+boolean bool, TrHs;
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, true);
+
+bool = false;
+
+ResetLoop(IPCHr);
+IPCHr.IPSerNr = IPrSerNr;
+IPCHr.IVSerNr = IPrwInvoiceNr;
+TrHs = true;
+
+if ReadFirstKey("IPIVSerNr" ,IPCHr, 2, TrHs)  then
+    begin
+    IPCHr.IPDate = IPrTransDate;
+    //IPCHr.IPCust = IPrwCustCode;
+    IPCHr.EmpDir = USr.SalesGroup;
+    IPCHr.EmpCode = CurrentUser;
+    //IPCHr.IVSerNr = IPrwInvoiceNr;
+    IPCHr.IVSum = IPrwInvVal;
+    IPCHr.IPSum = IPrwBankVal;
+    IPCHr.Persent = SumDis;
+    IPCH2r.SerNr = IPCHr.SerNr;
+    ReadFirstMain(IPCH2r, 1, true);
+    recordUpdate(IPCH2r, IPCHr, true);
+    end
+  else
+    begin
+    RecordNew(IPCH3r);
+    IPCH3r.SerNr = NextSerNr("tIPCtrlHistVc", CurrentDate, -1, false, "");
+    IPCH3r.IPSerNr = IPrSerNr;
+    IPCH3r.IPDate = IPrTransDate;
+    IPCH3r.IPCust = IPrwCustCode;
+    IPCH3r.EmpDir = USr.SalesGroup;
+    IPCH3r.EmpCode = CurrentUser;
+    IPCH3r.IVSerNr = IPrwInvoiceNr;
+    IPCH3r.IVSum = IPrwInvVal;
+    IPCH3r.IPSum = IPrwBankVal;
+    IPCH3r.Persent = SumDis;
+    recordstore(IPCH3r, true);
+    end;
+
+Return;
+end;
+
+function boolean NotFoundStp56(Record IPVc IPr, longint IPrwInvoiceNr)
+begin
+val x;
+boolean res;
+record tIPCtrlSetVc tIPCr;
+row IPVc IPRw;
+integer i;
+
+res = true;
+
+for (i=0; (i < MatRowCnt(IPr)); i=i+1)
+        begin
+        MatRowGet(IPr,i,IPrw);
+        if ((IPrw.stp==5) or (IPrw.stp==6)) and IPrw.InvoiceNr == IPrwInvoiceNr then
+         begin
+         res = false;
+         end;
+        end;
+
+
+NotFoundStp56 = res;
+Return;
+end;
+
+global
+updating
+function LongInt IPVcRecordCheck(var record IPVc IPp,record IPVc IP2p,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+  row IPVc IPRw;
+  record TRVc TR1r;
+  Integer insertmode,updatemode;
+  integer i;
+  val SumDis;
+  record tIPCtrlHistVc IPCHr;
+
+  insertmode = 1;//Rs_insert
+  updatemode = 2;//Rs_update    
+  res = 0;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+/*
+  for (i=0; (i < MatRowCnt(IPp)) and (res == 0); i=i+1)
+    begin
+    MatRowGet(IPp,i,IPrw);
+    if (IPrw.stp==1) or (IPrw.stp==5) or (IPrw.stp==6) or (IPrw.stp==7) then
+      begin
+      if (IPrw.RecVal < 0) then
+        begin
+        RecordCheckError(1854," или отрицательным",i,"RecVal");
+        res = -1;
+        end;
+      end;
+    end;
+*/
+//======= заполнить настройку контроля платежей
+
+if IPp.OKFlag <> IP2p.OKFlag and IPp.OKFlag == 1 then
+    begin
+    for (i=0; (i < MatRowCnt(IPp)) and (res == 0); i=i+1)
+        begin
+        MatRowGet(IPp,i,IPrw);
+        if (IPrw.stp==5) or (IPrw.stp==6) then //or (IPrw.stp==1)  or (IPrw.stp==7)
+          begin
+          if tZapret(IPp, i, SumDis) then
+            begin
+            if tPravo(CurrentUser) then
+                begin
+               // запись в регистр истории
+                MatRowGet(IPp,i-1,IPrw);
+                tAddHist(IPp.SerNr, IPp.TransDate, IPrw.CustCode, IPrw.InvoiceNr, IPrw.InvOutstand, IPrw.BankVal, SumDis);
+                end
+            else
+                begin
+                //messagebox(0, "У вас не прав на подпись платежей по сч.ф. со скидкой больше 10%");
+                RecordCheckError(1854," или у вас не прав на подпись платежей по сч.ф. со скидкой больше заявленной",i,"RecVal");
+                res = -1;
+                end;
+
+            end
+          else
+            begin
+            IPCHr.IPSerNr = IPp.SerNr;
+            IPCHr.IVSerNr = IPrw.InvoiceNr;
+            if ReadFirstKey("IPIVSerNr" ,IPCHr, 2, true)  then
+                begin
+                RecordDelete(IPCHr);
+                StepBack(IPCHr);
+                end;
+            end;
+          end
+        else
+          begin
+          /*IPCHr.IPSerNr = IPp.SerNr;
+          IPCHr.IVSerNr = IPrw.InvoiceNr;
+          if ReadFirstKey("IPIVSerNr" ,IPCHr, 2, true)  then
+            begin
+            RecordDelete(IPCHr);
+            StepBack(IPCHr);
+            end;*/
+          end;
+
+        // sorry... but I'm tired of guessing...
+        if (IPrw.stp==1) and (IPrw.RecVal == IPrw.InvOutstand) and NotFoundStp56(IPp, IPrw.InvoiceNr) then // or (IPrw.stp==7)
+          begin
+          if tZapret2(IPp, i, SumDis)  then
+            begin
+            if tPravo(CurrentUser) then
+                begin
+               // запись в регистр истории
+               MatRowGet(IPp,i,IPrw);
+                tAddHist(IPp.SerNr, IPp.TransDate, IPrw.CustCode, IPrw.InvoiceNr, IPrw.InvOutstand, IPrw.BankVal, SumDis);
+                end
+            else
+                begin
+                //messagebox(0, "У вас не прав на подпись платежей по сч.ф. со скидкой больше 10%");
+                RecordCheckError(1854," или у вас не прав на подпись платежей по сч.ф. со скидкой больше заявленной",i,"RecVal");
+                res = -1;
+                end;
+
+            end
+          else
+            begin
+            IPCHr.IPSerNr = IPp.SerNr;
+            IPCHr.IVSerNr = IPrw.InvoiceNr;
+            if ReadFirstKey("IPIVSerNr" ,IPCHr, 2, true)  then
+                begin
+                RecordDelete(IPCHr);
+                StepBack(IPCHr);
+                end;
+            end;
+          end
+        else
+          begin
+          /*IPCHr.IPSerNr = IPp.SerNr;
+          IPCHr.IVSerNr = IPrw.InvoiceNr;
+          if ReadFirstKey("IPIVSerNr" ,IPCHr, 2, true)  then
+            begin
+            RecordDelete(IPCHr);
+            StepBack(IPCHr);
+            end;*/
+          end;
+
+        end;
+    end;
+//========
+  if (res == 0) then
+    begin
+    res = inner.IPVcRecordCheck(IPp, IP2p, stat, long4);
+    end;
+
+  if (res == 0) then
+    begin
+    TR1r.TransDate = IPp.TransDate;
+    TR1r.Number = IPp.SerNr;
+    if not(ReadFirstKey("TransDate", TR1r,2,true)) and ((IPp.OKFlag <> IP2p.OKFlag) and (IPp.OKFlag == 1))  then
+      begin
+      res = -1;
+      MessageBox(0, "Создавать запись операции запрещено.");
+      end;
+    end;
+
+  if (res == 0) then
+    begin
+      IPVc_LogAction(IPp,"Save"); 
+      if (IPp.OKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (IP2p.OKFlag==0))) then //OKFlag
+        begin
+        IPVc_LogAction(IPp, "OK");
+        end;
+    end;
+
+  IPVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+function LongInt IPVcRecordDefaults(var record IPVc IPr,record IPVc IP2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.IPVcRecordDefaults(IPr, IP2r, stat, long4);
+  IPVc_LogAction(IPr, "New") //Добвавлено 26.11.09 INAU
+  IPVcRecordDefaults = res; 
+  Return;
+end;
+
+
+global
+function LongInt IPVcRecordDuplicate(var record IPVc IPr,record IPVc IP2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+  
+  res = inner.IPVcRecordDuplicate(IPr, IP2r, stat, long4);
+  IPr.Prntdf = 0;
+  //26.11.09 INAU
+  IPr.LogNewUser=blankval;
+  IPr.LogNewDate="";
+  IPr.LogNewTime="";
+  IPr.LogSaveUser=blankval;
+  IPr.LogSaveDate="";
+  IPr.LogSaveTime="";
+  IPr.LogOKUser=blankval;
+  IPr.LogOKDate="";
+  IPr.LogOKTime="";
+  IPVc_LogAction(IPr, "New"); //26.11.09 INAU
+  
+  IPVcRecordDuplicate = res; 
+  Return;
+end;
+
+
+global
+updating function LongInt IPVcRecordUpdateAfter(var record IPVc IPr, record IPVc IP2r, LongInt stat, LongInt long4)
+begin
+  record CUVc CUr, CU2r;
+  row IPVc IPrw;
+  LongInt res;
+  Integer RwCnt;
+
+  res = inner.IPVcRecordUpdateAfter(IPr, IP2r, stat, long4);
+
+  if ((IPr.OKFlag <> 0) and (IP2r.OKFlag == 0)) then
+    begin
+    for(RwCnt = 0; RwCnt < MatRowCnt(IPr); RwCnt = RwCnt + 1)
+      begin
+      MatRowGet(IPr, RwCnt, IPrw);
+      CUr.Code = IPrw.CustCode;
+      if ReadFirstMain(CUr, 1, True) then
+        begin
+        if nonblank(CUr.CreditLimit) then
+          begin
+          CU2r.Code = CUr.Code;
+          ReadFirstMain(CU2r, 1, True);
+          CUr.CreditLimit = blankval;  //Обнуляем лимит кредита, если произошла проплата
+          RecordUpdate(CU2r, CUr, False);
+          end;
+        end;
+      end;
+    end;
+  IPVcRecordUpdateAfter = res;
+  Return;
+end;

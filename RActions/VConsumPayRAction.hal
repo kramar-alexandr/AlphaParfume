@@ -1,0 +1,296 @@
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+external inner function Boolean DateLocked(Date,string);
+external inner function Boolean DateWarned(Date,string);
+
+global
+procedure VConsumPayGetRate(var record VConsumPayVc VCPr)
+BEGIN
+  val from,to1,to2,base1,base2;
+  val sum;
+  string 5 crncy;
+  record CUVc CUR;
+  
+  crncy = VCPr.Curncy;
+  GetFullCurncyRate(crncy,VCPr.TransDate,from,to1,to2,base1,base2);
+  VCPr.Curncy = crncy;
+  VCPr.CurncyRate = base2;
+  RETURN;
+END;
+
+global
+function LongInt VConsumPayVcRecordDefaults(var record VConsumPayVc Expr,record VConsumPayVc Exp2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+  string 255 tstr;
+  string 10 curcode;
+  val fr,to1,to2,br1,br2;
+  longint newnr;
+  
+  newnr = -1; 
+  Expr.TransDate = CurrentDate;
+  Expr.Code = NextSerNr("VConsumPayVc",Expr.TransDate,newnr,false,"");
+  Expr.Curncy = "UAH";
+  VConsumPayGetRate(Expr);
+  VConsumPayVcRecordDefaults = res; 
+  RETURN;
+END;
+
+global
+updating function LongInt VConsumPayVcRecordCheck(var record VConsumPayVc VCr,record VConsumPayVc VCr2, LongInt stat, LongInt check)
+begin
+longint newnr;
+
+if (VCr.Code<=0) then 
+	begin
+	newnr = -1;
+	VCr.Code = NextSerNr("VConsumPayVc",VCr.TransDate,newnr,false,"");
+	VCr.Curncy = "UAH";
+    VConsumPayGetRate(VCr);
+	end;
+VConsumPayVcRecordCheck = 0;
+RETURN;
+end;
+
+global
+function LongInt VConsumPayVcRecordDuplicate(var record VConsumPayVc VCPr,record VConsumPayVc VCP2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+
+  VCPr.Code = -1;
+  if (SingleUserMode) then begin
+    VCPr.Code = NextSerNr("VConsumPayVc",VCPr.TransDate,-1,false,"");
+  end;
+  VCPr.OKSign = 0;
+  VConsumPayVcRecordDuplicate = res; 
+  RETURN;
+END;
+
+global
+updating function LongInt VConsumVcRecordCheck(var record VConsumVc VCr,record VConsumVc VCr2, LongInt stat, LongInt check)
+begin
+record VConsumVc VConsr;
+
+VConsr.Code = VCr.Code;
+if blank(VCr.Code) then
+	begin
+	VConsumVcRecordCheck = -1;
+	end else
+	begin
+	if (VCr.Code != VCr2.Code) then
+		begin
+		VCr.Code = VCr2.Code;
+		end;
+VConsumVcRecordCheck = 0;
+	end;
+RETURN;
+end;
+
+global
+function LongInt VConsumVcRecordDuplicate(var record VConsumVc VCPr,record VConsumVc VCP2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+  VCPr.Code = "";
+  VConsumVcRecordDuplicate = res; 
+  RETURN;
+END;
+
+global
+procedure VConsumTurnoverRn(record RcVc RepSpec)
+BEGIN
+  Date sd,ed;
+  record VConsumVc VCr;
+  record VConsumPayVc VCPr;
+  record DepVc Depr;
+  row VConsumPayVc VCPrw;
+  Integer rwcnt, cnt, i, j, k;
+  Boolean TrHs, Yes;
+  val Summa, Count;
+  string 255 ObjStr;
+  string 1 Comma;
+  Boolean PrintF;
+  
+SetLangMode(LangRussian, "RUS", 2);
+StartReportJob("Отчет по обороту расходных материалов");
+Header(1,"Пользователь: " & CurrentUser, 1);
+Header(2,"Период " & RepSpec.sStartDate & ":" & RepSpec.sEndDate, 1);
+
+Comma = "";
+if nonblank(RepSpec.sStartDate) then
+	begin
+	if nonblank(RepSpec.f2) then
+		begin
+		ObjStr = RepSpec.f2;
+		Comma = ",";
+		end;
+	if nonblank(RepSpec.f3) then
+		begin
+		ObjStr = ObjStr & Comma & RepSpec.f3;
+		end;
+if nonblank(RepSpec.f1) then
+		begin
+		ObjStr = "";
+		RepSpec.f4 = "";
+		Header(2,"Код: " & RepSpec.f1, 0);
+		end;
+if nonblank(ObjStr) then
+	begin
+	Header(2,"Объекты: " & ObjStr, 0);
+	end;
+EndHeader;
+
+	Black_Divider(0, 400);
+	StartFormat(15);
+		OutString(0, 0, " №", False);
+		OutString(50,0, "Дата", False);
+		OutString(190,0, "Сумма", True);
+		OutString(290,0, "Объекты", False);
+		EndFormat;
+	if nonblank(ObjStr) then
+		begin
+		Gray_Divider(0, 400);
+		StartFormat(15);
+		OutString(50, 0, "Код", False);
+		OutString(130,0, "Наименование", False);
+		OutString(350,0, "Цена", True);
+		EndFormat;
+		end;
+	Black_Divider(0, 400);
+	
+	TrHs = True;
+	Summa = 0;
+	Count = 0;
+	while LoopKey("TransDate", VCPr, 1, TrHs)
+		begin
+		TrHs = (VCPr.TransDate >= RepSpec.sStartDate) and (VCPr.TransDate <= RepSpec.sEndDate);
+		if nonblank(RepSpec.f1) then
+			begin
+			rwcnt = MatRowCnt(VCPr);
+			for (cnt=0; cnt < rwcnt; cnt = cnt + 1) 
+				begin
+				MatRowGet(VCPr, cnt, VCPrw);
+				if (VCPrw.ConsCode == RepSpec.f1) then
+					begin
+					VCr.Code = VCPrw.ConsCode;
+					if ReadFirstMain(VCr, 1, True) then
+						begin
+						Depr.Code = VCr.Department;
+						ReadFirstMain(Depr, 1, True);
+						end;
+					
+					StartFormat(15);
+					OutString(0,"DblVConsumPayVc", VCPr.Code, False);
+					OutString(50,0, VCPr.TransDate, False);
+					OutString(190,0, VCPrw.PayVal & " " & VCPr.Curncy, True);
+					OutString(290,0, VCPrw.ObjStrx, False);
+					OutString(380,0, Depr.Description, False);
+					EndFormat;
+					if (VCPr.Curncy == "UAH") then
+						begin
+						Summa = Summa + VCPrw.PayVal;
+						end else
+						begin
+						Summa = Summa + VCPrw.PayVal / VCPr.CurncyRate;
+						end;
+					Count = Count + 1;
+					end;
+				end;
+			end;
+		  if blank(RepSpec.f1) then
+			begin
+			rwcnt = MatRowCnt(VCPr);
+			PrintF = True;
+			for (cnt=0; cnt < rwcnt; cnt = cnt + 1)  
+				begin
+				MatRowGet(VCPr, cnt, VCPrw);
+				VCr.Code = VCPrw.ConsCode;
+				if ReadFirstMain(VCr, 1, True) then 
+					begin
+					Depr.Code = VCr.Department;
+					ReadFirstMain(Depr, 1, True);
+					end;
+				if (SetInSet(ObjStr, VCPrw.ObjStrx) and SetInSet(RepSpec.f4, VCr.Department))  then
+					begin
+					if PrintF then 
+						begin
+						Gray_Divider(0, 400);
+						StartFormat(15);
+						OutString(0, "DblVConsumPayVc", VCPr.Code, False);
+						OutString(50,0, VCPr.TransDate, False);
+						OutString(190,0, VCPrw.PayVal & " " & VCPr.Curncy, True);
+						EndFormat;
+						PrintF = False;
+						end;
+					StartFormat(15);
+					OutString(50, "DblVConsumVc", VCPrw.ConsCode, False);
+					OutString(130, 0, VCPrw.Name, False);
+					OutString(350, 0, VCPrw.PayVal & " " & VCPr.Curncy, True);
+					OutString(130,0, Depr.Description, False);
+					OutString(290,0, VCPrw.ObjStrx, False);
+					EndFormat;
+					if (VCPr.Curncy == "UAH") then
+						begin
+						Summa = Summa + VCPrw.PayVal;
+						end else
+						begin
+						Summa = Summa + VCPrw.PayVal / VCPr.CurncyRate;
+						end;
+					Count = Count + 1;
+					end;
+				end;
+			end;
+		
+		end;
+	
+	Black_Divider(0, 400);
+	StartFormat(15);
+	EndFormat;
+	StartFormat(15);
+	OutString(0,0, "Итого: ", False);
+	OutString(90, 0, Count & " шт.", False);
+	OutString(160, 0, "на сумму: "   & Summa & " UAH", False);
+	EndFormat;
+	StartFormat(15);
+	EndFormat;
+	Black_Divider(0, 400);
+	end;
+  EndJob;
+  RETURN;
+END;
+
+global
+procedure DblVConsumPayVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record VConsumPayVc VCPr;
+
+  if (nonblank(l)) then begin
+    VCPr.Code = l;
+  end else begin
+    VCPr.Code = dblstr;
+  end;
+  if (nonblank(VCPr.Code)) then begin
+    if (ReadFirstMain(VCPr,1,true)) then begin  
+      wn = OpenWindow("VConsumPayDClass",1,0,"","",VCPr);
+    end; 
+  end;
+  return;
+end;
+
+global
+procedure DblVConsumVc(string dblstr,string l,Integer currepwn)
+begin
+  Integer wn;
+  record VConsumVc VCr;
+
+  if (nonblank(l)) then begin
+    VCr.Code = l;
+  end else begin
+    VCr.Code = dblstr;
+  end;
+  if (nonblank(VCr.Code)) then begin
+    if (ReadFirstMain(VCr,1,true)) then begin  
+      wn = OpenWindow("VConsumDClass",1,0,"","",VCr);
+    end; 
+  end;
+  return;
+end;

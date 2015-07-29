@@ -1,0 +1,210 @@
+external updating procedure IRetOrdVc_OnCreatedDocRemove(longint, longint); //13.02.11 INAU
+
+
+procedure StockMovVc_LogAction(var record StockMovVc StockMovr, string ActionName) //Добвавлено 25.11.09 INAU
+begin
+  if blank(GetFieldValueByName(StockMovr,"Log"&ActionName&"User",-1)) then
+    begin
+    SetFieldValueByName(StockMovr,"Log"&ActionName&"User", CurrentUser, -1);
+    SetFieldValueByName(StockMovr,"Log"&ActionName&"Date", CurrentDate, -1);
+    SetFieldValueByName(StockMovr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+
+global
+updating function LongInt StockMovVcRecordCheck(var record StockMovVc SMp,record StockMovVc SM2p,LongInt stat,LongInt check)
+BEGIN
+  LongInt res;
+  row StockMovVc StockMovrw;
+  integer i, cntrw;
+  integer insertmode, updatemode;
+
+  res = 0;
+  insertmode = 1;//Rs_insert
+  updatemode = 2;//Rs_update
+
+//Здесь проверка и удаление строк с ноликом!
+  if ((SM2p.SentOKFlag==0) and (SMp.SentOKFlag!=0)) then 
+    begin
+      cntrw = MatRowCnt(SMp);
+      for (i = cntrw - 1; i >= 0; i = i - 1)
+        begin
+          MatRowGet(SMp, i, StockMovrw);
+          if (StockMovrw.SentQuant == 0) then
+            begin
+            MatRowDelete(SMp, i);
+            end;
+        end;
+    end;
+//Конец проверки и удаления
+
+  if (res <> -1) and (SMp.SentOKFlag==1) and ((stat==1) or ((stat==2) and (SM2p.SentOKFlag==0))) then
+    begin
+      SMp.ActSendDate = CurrentDate;
+      SMp.ActSendTime = CurrentTime;
+      if blank(SMp.Gather) then
+        begin
+        res = -1;
+        end;
+    end;
+
+  if ((res <> -1) and (SM2p.OKFlag == 0) and (SMp.OKFlag <> 0) and blank(SMp.Gather)) then
+    begin
+    res = -1;
+    end;
+
+  if ((res == 0) and (SMp.OrdFlag <> 0) and (blankdate(SMp.PlanSendDate) or blanktime(SMp.PlanSendTime) or blankdate(SMp.PlanArrDate) or blanktime(SMp.PlanArrTime)) ) then
+    begin
+    res = -1;
+    end;
+
+  if (res <> -1) then
+    begin
+    res = inner.StockMovVcRecordCheck(SMp, SM2p, stat, check);
+    end;
+
+   //25.11.09 INAU
+  if (res <> -1) then
+    begin
+      StockMovVc_LogAction(SMp, "Save");
+      if (SMp.OrdFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (SM2p.OrdFlag==0))) then //Подтверждено
+        begin
+        StockMovVc_LogAction(SMp, "Confirm");
+        end;
+      if (SMp.SentOKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (SM2p.SentOKFlag==0))) then //Отправлено
+        begin
+        StockMovVc_LogAction(SMp, "Send");
+        end;
+      if (SMp.OKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (SM2p.OKFlag==0))) then //Подтверждено
+        begin
+        StockMovVc_LogAction(SMp, "Recive");
+        end;
+    end;
+    
+  StockMovVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+function LongInt StockMovVcRecordDefaults(var record StockMovVc StockMovr,record StockMovVc StockMov2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.StockMovVcRecordDefaults(StockMovr, StockMov2r, stat, long4);
+  StockMovr.PlanSendTime = CurrentTime;
+  StockMovr.PlanSendDate = CurrentDate;
+  StockMovVc_LogAction(StockMovr,"New"); //25.11.09 INAU
+  StockMovVcRecordDefaults = res; 
+  Return;
+end;
+
+
+global
+function LongInt StockMovVcRecordDuplicate(var record StockMovVc StockMovr,record StockMovVc StockMov2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.StockMovVcRecordDuplicate(StockMovr, StockMov2r, stat, long4);
+  
+ //25.11.09 INAU
+  StockMovr.LogNewUser=blankval;
+  StockMovr.LogNewDate="";
+  StockMovr.LogNewTime="";
+  StockMovr.LogSaveUser=blankval;
+  StockMovr.LogSaveDate="";
+  StockMovr.LogSaveTime="";
+  StockMovr.LogConfirmUser=blankval;
+  StockMovr.LogConfirmDate="";
+  StockMovr.LogConfirmTime="";
+  StockMovr.LogSendUser=blankval;
+  StockMovr.LogSendDate="";
+  StockMovr.LogSendTime="";
+  StockMovr.LogReciveUser=blankval;
+  StockMovr.LogReciveDate="";
+  StockMovr.LogReciveTime="";
+  StockMovr.LogPrintUser=blankval; //15.03.13 INAU
+  StockMovr.LogPrintDate="";
+  StockMovr.LogPrintTime="";
+  StockMovr.TTCode = -1;
+  StockMovVc_LogAction(StockMovr,"New"); //25.11.09 INAU
+  StockMovr.ToLocation = blankval; //15.03.13 INAU
+  StockMovr.ThrouLocation = blankval;
+  StockMovVcRecordDuplicate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt StockMovVcRecordRemove(var record StockMovVc StockMovr,record StockMovVc StockMov2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.StockMovVcRecordRemove(StockMovr,StockMov2r,stat,long4);
+  IRetOrdVc_OnCreatedDocRemove(StockMovr.IRetOrdNr, StockMovr.SerNr); //13.02.11 INAU
+  StockMovVcRecordRemove = res;
+  Return;
+end;
+
+
+//14.12.09 INAU
+global
+updating procedure StockMovVc_LogPrint(record StockMovVc SMr)
+begin
+  record StockMovVc oldSMr;
+  
+  ReadFirstMain(SMr,0,true); stopalert("=" & SMr.LogPrintTime);
+  RecordCopy(oldSMr,SMr);
+  StockMovVc_LogAction(SMr,"Print");
+  RecordUpdate(oldSMr,SMr,false);
+end;
+
+
+global
+function LongInt StockMovVcRecordRemoveTest(var record StockMovVc StockMovr,record StockMovVc StockMov2r,LongInt long3,LongInt long4)
+BEGIN
+  LongInt res;
+  record DBLockBlock DBLockRec;
+
+  res = 1;
+  BlockLoad(DBLockRec);
+  if ((StockMovr.TransDate<=DBLockRec.DeleteBeforeDate) and nonblank(DBLockRec.DeleteBeforeDate)) then begin
+    goto LStockMovVcRecordRemoveTest;
+  end;
+  if (StockMovr.OKFlag!=0) then begin
+    if (long3>0) then begin
+      MessageBox(1544,"");
+    end;
+    res = 0;
+  end;
+  if (StockMovr.SentOKFlag!=0) then begin
+    if (long3>0) then begin
+      MessageBox(1544,"");
+    end;
+    res = 0;
+  end;
+ if (StockMovr.OrdFlag!=0) and (StockMovr.Sign <> CurrentUser) then begin
+    if (long3>0) then begin
+      MessageBox(1544,"");
+    end;
+    res = 0;
+  end;
+LStockMovVcRecordRemoveTest:;
+
+  StockMovVcRecordRemoveTest = res;
+  RETURN;
+END;
+
+
+global
+updating function LongInt StockMovVcRecordRemove(var record StockMovVc StockMovr,record StockMovVc StockMov2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.StockMovVcRecordRemove(StockMovr,StockMov2r,stat,long4);
+  IRetOrdVc_OnCreatedDocRemove(StockMovr.IRetOrdNr, StockMovr.SerNr); //13.02.11 INAU
+  StockMovVcRecordRemove = res;
+	Return;
+end;

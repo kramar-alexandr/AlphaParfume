@@ -1,0 +1,61 @@
+procedure SDVc_LogAction(var record SDVc SDr, string ActionName)
+begin
+  if blank(GetFieldValueByName(SDr,"Log"&ActionName&"User",-1)) then
+    begin
+      SetFieldValueByName(SDr,"Log"&ActionName&"User", CurrentUser, -1);
+      SetFieldValueByName(SDr,"Log"&ActionName&"Date", CurrentDate, -1);
+      SetFieldValueByName(SDr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+
+global
+updating function LongInt SDVcRecordCheck(var record SDVc SDp,record SDVc SD2p,LongInt stat,LongInt check)
+BEGIN
+LongInt res;
+Integer insertmode,updatemode;
+  
+insertmode = 1;//Rs_insert
+updatemode = 2;//Rs_update
+res = inner.SDVcRecordCheck(SDp, SD2p, stat, check);
+SDVc_LogAction(SDp,"Save");
+      if (SDp.OKFlag==1) and ((stat==insertmode) or ((stat==updatemode) and (SD2p.OKFlag==0))) then //Подтверждено
+        begin
+          SDVc_LogAction(SDp, "OK");
+        end;
+  SDVcRecordCheck = res;
+  RETURN;
+END;		
+
+ global
+function LongInt SDVcRecordDefaults(var record SDVc SDr,record SDVc SD2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+
+  res = inner.SDVcRecordDefaults(SDr, SD2r, stat, long4) ;
+  SDVc_LogAction(SDr,"New"); 
+  SDVcRecordDefaults = res;
+  RETURN;
+END;
+
+global
+function LongInt SDVcRecordDuplicate(var record SDVc SDr,record SDVc SD2r,LongInt stat,LongInt long4)
+BEGIN
+  LongInt res;
+  res = inner.SDVcRecordDuplicate(SDr, SD2r, stat, long4);
+  //INAU 21.02.13
+  SDr.LogNewUser = CurrentUser;
+  SDr.LogNewDate = CurrentDate;
+  SDr.LogNewTime = CurrentTime;
+  SDr.LogSaveUser = blankval;
+  SDr.LogSaveDate = "";
+  SDr.LogSaveTime = "";
+  SDr.LogOKUser = blankval;
+  SDr.LogOKDate = "";
+  SDr.LogOKTime = "";
+  //==
+//  SDVc_LogAction(SDr,"New"); 
+  SDVcRecordDuplicate = res;
+  RETURN;
+END;

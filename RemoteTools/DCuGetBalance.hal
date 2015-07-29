@@ -1,0 +1,191 @@
+external inner function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+external inner function Boolean CheckIfIVOpen(Date,record IVVc,string,var val,Boolean,Boolean);
+
+
+
+procedure CUGetStartBalanceNotFullMonthDifVal(record CUVc CUr,string colns,Date sd,Boolean basecurf,var val sumUAH, var val sumUSD)
+BEGIN
+  val res;
+  record IPrsVc IPrsr;
+  record IVVc IVr;
+  record IPVc IPr;
+  row IPVc IPrw;
+  Integer i,rwcnt;
+  Boolean TrHs,testf;
+  val opensum;
+  val t;
+  val fr,to1,to2,br1,br2;
+  record BaseCurBlock bcur;
+  record CLInVc CLInr;
+  row CLInVc CLInrw;
+  record CLOutVc CLOutr;
+  row CLOutVc CLOutrw;
+
+  BlockLoad(bcur);
+  //sumUAH = 5;
+  //sumUSD = 7;
+  TrHs = true;
+  IPrsr.CustCode = CUr.Code;
+  IPrsr.TransDate = AddYear(IPrsr.TransDate,1980);
+  IPrsr.TransDate = AddMonth(IPrsr.TransDate,1);
+  IPrsr.TransDate = AddDay(IPrsr.TransDate,1);
+  while (LoopKey("CustTransKey",IPrsr,2,TrHs)) begin
+    if (TrHs) then begin
+      if (IPrsr.CustCode!=CUr.Code) then begin
+        TrHs = false;
+      end;
+    end;
+    if (TrHs) then begin
+      if (IPrsr.TransDate>=sd) then begin TrHs = false; end;
+    end;
+
+    if (TrHs) then begin
+      switch (IPrsr.TransType) begin
+        case 0:
+		  
+          testf = true;
+          IVr.SerNr = IPrsr.TransNr;
+          if (ReadFirstMain(IVr,1,true)==false) then begin testf = false; end;        
+          if (IVr.Invalid!=0) then begin testf = false; end;          
+          if (IVr.OKFlag==0) then begin testf = false; end;          
+          if (IVr.InvType==3) then begin
+            if (IVr.CredInv>0) then begin testf = false; end;
+          end;
+          if (IVr.InvType==2) then begin testf = false; end;
+          switch (colns) begin
+            case "paidvalue": testf = false;
+          end;
+          if (testf) then begin
+            if (CheckIfIVOpen(sd,IVr,colns,opensum,false,basecurf)) then begin 
+					if IVr.CurncyCode == "USD" then begin
+					
+						sumUSD = sumUSD + opensum;
+						end else begin
+						sumUAH = sumUAH + opensum;
+					end;
+              //res = res + opensum;
+            end;
+          end;
+        case 1:
+          if (IPrsr.IVNr==-1) then begin
+            IPr.SerNr = IPrsr.TransNr;
+            if (ReadFirstMain(IPr,1,true)) then begin
+              if (IPr.RejectedFlag==0) then begin
+                rwcnt = MatRowCnt(IPr);
+                for (i=0;i<rwcnt;i=i+1) begin
+                  MatRowGet(IPr,i,IPrw);
+                  if (IPrw.ovst==0) then begin
+                    if (IPrw.InvoiceNr==IPrsr.IVNr) then begin
+                      if (IPrw.stp==1) then begin
+                        if (IPrw.PayDate==IPrsr.CustDate) then begin
+                          // switch (colns) begin
+                            // case "grossprofit":
+                            // case "salesexclvat":
+                            // case "paidvalue":
+                              // t = IPrw.InvVal;
+                              // if ((blank(CUr.CurncyCode)) or (CUr.CurncyCode==bcur.BaseCur1)) then begin          
+                                // GetFullCurncyRate(CUr.CurncyCode,IPr.TransDate,fr,to1,to2,br1,br2);
+                                // t = MulRateToBase1(CUr.CurncyCode,t,fr,to1,to2,br1,br2,DefaultCurRoundOff);
+                              // end;
+                              // res = res - t;
+                            //otherwise 
+										 if IPrw.RecCurncy == "USD" then 
+										 begin
+											sumUSD = sumUSD - IPrw.InvVal;
+											end else begin
+											sumUAH = sumUAH - IPrw.InvVal;
+										 end;
+                          //end;
+                        end;
+                      end;
+                    end;
+                  end;
+                end;
+              end;              
+            end;
+          end;
+        case 3:            
+          if (IPrsr.IVNr==-1) then begin
+            CLInr.SerNr = IPrsr.TransNr;
+            if (ReadFirstMain(CLInr,1,true)) then begin
+              if (CLInr.Invalid==0) then begin
+                rwcnt = MatRowCnt(CLInr);
+                for (i=0;i<rwcnt;i=i+1) begin
+                  MatRowGet(CLInr,i,CLInrw);
+                  if (CLInrw.Type==4) then begin
+                    if (CLInr.CUCode==IPrsr.CustCode) then begin
+                      // switch (colns) begin
+                        // case "grossprofit":
+                        // case "salesexclvat":
+                        // case "paidvalue":
+                          // t = CLInrw.Sum;
+                          // if ((blank(CUr.CurncyCode)) or (CUr.CurncyCode==bcur.BaseCur1)) then begin          
+                            // t = MulRateToBase1(CLInr.CurncyCode,t,CLInr.FrRate,CLInr.ToRateB1,CLInr.ToRateB2,CLInr.BaseRate1,CLInr.BaseRate2,DefaultCurRoundOff);
+                          // end;
+                          // res = res - t;
+                        // otherwise res = res - CLInrw.Sum;
+                      // end;
+								if IPrw.RecCurncy == "USD" then 
+								begin
+									sumUSD = sumUSD - CLInrw.Sum;
+									end else begin
+									sumUAH = sumUAH - CLInrw.Sum;
+								end;
+                    end;
+                  end;
+                end;
+              end;
+            end;
+          end;
+        case 5:            
+          if (true) then begin
+//          if (IPrsr.IVNr==-1) then begin
+            CLOutr.SerNr = IPrsr.TransNr;
+            if (ReadFirstMain(CLOutr,1,true)) then begin
+              if (CLOutr.Invalid==0) then begin
+                rwcnt = MatRowCnt(CLOutr);
+                for (i=0;i<rwcnt;i=i+1) begin
+                  MatRowGet(CLOutr,i,CLOutrw);
+                  if (CLOutrw.Type==5) then begin
+                    if (CLOutr.CUCode==IPrsr.CustCode) then begin
+                      // switch (colns) begin
+                        // case "grossprofit":
+                        // case "salesexclvat":
+                        // case "paidvalue":
+                          // t = CLOutrw.Sum;
+                          // if ((blank(CUr.CurncyCode)) or (CUr.CurncyCode==bcur.BaseCur1)) then begin          
+                            // t = MulRateToBase1(CLOutr.CurncyCode,t,CLOutr.FrRate,CLOutr.ToRateB1,CLOutr.ToRateB2,CLOutr.BaseRate1,CLOutr.BaseRate2,DefaultCurRoundOff);
+                          // end;
+                          // res = res + t;
+                        // otherwise res = res + CLOutrw.Sum;
+                      // end;
+								if IPrw.RecCurncy == "USD" then 
+								begin
+									sumUSD = sumUSD + CLOutrw.Sum;
+									end else begin
+									sumUAH = sumUAH + CLOutrw.Sum;
+								end;
+                    end;
+                  end;
+                end;
+              end;
+            end;
+          end;
+      end;
+    end;
+  end;  
+  //CUGetStartBalanceNotFullMonth = res;          
+  RETURN;
+END;
+
+
+global
+procedure CUGetStartBalanceloc(record CUVc CUr,string colns,Date sd,var val v,Boolean basecurf,var val sumUAH, var val sumUSD)
+BEGIN
+  Date ld;
+    ld = AddDay(sd,-1);
+    CUGetStartBalanceNotFullMonthDifVal(CUr,colns,sd,basecurf,sumUAH,sumUSD);
+	 
+  RETURN;
+END;

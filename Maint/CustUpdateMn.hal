@@ -1,0 +1,118 @@
+external function string 255 DelSubStr(string, string);
+global updating 
+procedure DCustUpdate1Rn(record RcVc RepSpec)
+begin
+record CUvc CUr;
+ boolean testf,TrHs;
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportnoheaderJob("изменение курса в карточке клиента");
+TrHs = true;
+ while (LoopKey("Group",CUr,1,TrHs)) begin
+  if (setinset(CUr.CustCat,RepSpec.f2)) then begin  
+   CUr.VECustID=RepSpec.f3; 
+   StartFormat(15);
+	outstring (100,0, CUr.Code & "   " & CUr.CustCat & "        " & CUr.VECustID , false);
+   Endformat;
+    if (RecordStore(CUr,true)) then begin end; 
+  end; 
+ end;// while
+ endjob;
+ return
+end;
+	
+global updating 
+procedure DCustUpdateMn(record RcVc RepSpec)
+begin
+record CUvc CUr;
+ boolean testf,TrHs;
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportnoheaderJob("изменение валюты клиента");
+TrHs = true;
+ while (LoopKey("Group",CUr,1,TrHs)) begin
+  if (setinset(CUr.CustCat,RepSpec.f2)) then begin  
+   //if (blank(CUr.CurncyCode)) or (CUr.CurncyCode=="USD")  then begin CUr.CurncyCode="UAH"; 
+   //New Course Since 01.11.2008
+   if (nonblank(CUr.CurncyCode)) and (CUr.CurncyCode<>"USD")  then begin CUr.CurncyCode="USD"; 
+    if (RecordStore(CUr,true)) then begin end; 
+   end;
+  end; 
+ end;// while
+ endjob;
+ return
+end;
+
+//16/01/09 DELPHI исправления в карточках клиентов 
+
+global updating 
+procedure VCustUpdateMnALL(record RcVc RepSpec)
+begin
+record CUvc CUr;
+ boolean testf,TrHs;
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportnoheaderJob("Редактирование карточки клиента");
+TrHs = True;
+if (nonblank(RepSpec.f2)) then 
+	begin
+	CUr.CustCat = RepSpec.f2;
+	while (LoopKey("Group", CUr, 1, TrHs)) 
+		begin
+		if (setinset(CUr.CustCat, RepSpec.f2) and nonblank(CUr.CustCat)) then 
+			
+			begin 
+			if (nonblank(repSpec.f3) and SetInSet(RepSpec.f3, CUr.Objects)) then 
+				begin
+				CUr.Objects = DelSubstr(RepSpec.f3, CUr.Objects);
+				if (RepSpec.flags[0]==1) then 
+					begin
+					CUr.Classification = CUr.Classification & "," & RepSpec.f3;
+					end;
+				end;
+			
+			if (nonblank(RepSpec.f4) and blank(RepSpec.f3)) then
+				begin
+				CUr.Classification = DelSubstr(RepSpec.f4, CUr.Classification);
+				if (RepSpec.flags[1]==1) then
+					begin
+					CUr.Classification = CUr.Classification & "," & RepSpec.f5;
+					end;
+				end;
+			if (RecordStore(CUr,true)) then begin end;
+			StartFormat(15);
+			OutString(0, 0, CUr.Code & " " & CUr.Objects & " " & CUr.Classification, False);
+			EndFormat;
+			end else
+			begin
+			TrHs = False;
+			end;
+     
+		end;
+	end; 
+ endjob;
+ return
+end;
+//16/01/09 END DELPHI
+
+
+//21/01/09 END DELPHI
+
+global updating 
+procedure DACCUpdateRn(record RcVc RepSpec)
+begin
+ boolean testf,TrHs;
+ record TRVc trr;
+ row trvc trrw;
+ SetLangMode(LangRussian,"RUS",2);
+ StartReportnoheaderJob("изменение Валюты клинета");
+TrHs = true;
+Trr.Number = repspec.f2;
+if (readfirstmain(Trr,1,true)) then begin 
+ //stopalert("sdfsdf" & Trr.Number);
+ matrowget(trr,1,trrw);
+ trrw.Objects = "18,OSMEB";
+ end;
+ //MatrowPut(trr,1,trrw);
+ //if (RecordStore(trr,true)) then begin end; 
+
+ endjob;
+ return
+end;

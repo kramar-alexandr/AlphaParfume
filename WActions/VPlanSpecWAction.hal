@@ -1,0 +1,856 @@
+remote procedure IFillVPlanObj(var record IVPlanSetObjVc);
+remote updating procedure IFillVPlanSG(integer, date, date);
+remote updating procedure IRemoveVPlanSG(integer);
+external inner function LongInt DateDiff(Date, Date);
+remote procedure GetIVPlanStatPeriod(integer, var date, var date);
+external function string 255 IGetObjName(string);
+external function string 255 IGetArtName(string);
+external procedure AddHelpButton(LongInt, LongInt);
+external function boolean InRange(string, string);
+
+
+global
+function Boolean INInPlan(string ArtCode, Integer Data)
+begin
+record VPlanINBlock PINb;
+row VPlanINBlock PINbr;
+Integer RwCnt;
+Boolean res;
+
+BlockLoad(PINb);
+for (RwCnt = 0; (RwCnt < MatRowCnt(PINb)) and (not res); RwCnt = RwCnt + 1)
+  begin
+  MatRowGet(PINb, RwCnt, PINbr);
+  res = (Data >= GetYear(PINbr.StartDate)) and (Data <= GetYear(PINbr.EndDate)) and InRange(ArtCode, PINbr.ArtCode);
+  end;
+INInPlan = res;
+RETURN;
+end;
+
+
+global
+function string 5 GetMonthName(Integer Mnth)
+begin
+string 5 tstr;
+
+switch(Mnth)
+  begin
+  case 1: tstr = "Jan";
+  case 2: tstr = "Feb";
+  case 3: tstr = "Mar";
+  case 4: tstr = "Apr";
+  case 5: tstr = "May";
+  case 6: tstr = "Jun";
+  case 7: tstr = "Jul";
+  case 8: tstr = "Aug";
+  case 9: tstr = "Sep";
+  case 10: tstr = "Oct";
+  case 11: tstr = "Nov";
+  case 12: tstr = "Dec";
+  end;
+GetMonthName = tstr;
+RETURN;
+end;
+
+
+global
+function string 20 DiapFromGroup(string RepSpecStr)
+begin
+  string 20 res;
+  record INVc INr;
+
+  INr.Group  = RepSpecStr;
+  if (ReadFirstKey("Group",INr,1,true)) then
+    begin
+    res =INr.Code;
+    end;
+  if (ReadLastKey("Group",INr,1,true)) then
+    begin
+    res =res &":"&INr.Code;
+    end;
+  DiapFromGroup=res;
+  return;
+end;
+
+
+global
+function boolean VPlanObjDClassAfterEditField(Integer wn, string FieldName, Integer fn, Integer rownr, Integer changed)
+begin
+  record IVPlanSetObjVc VSOr;
+
+  if (FieldName == "Obj") and (changed <> 0) then
+    begin
+      GetWindowRecord(wn, VSOr)
+      VSOr.ObjName = IGetObjName(VSOr.Obj);
+      PutWindowRecord(wn, VSOr)
+    end;
+
+  VPlanObjDClassAfterEditField = true;
+  Return;
+end;
+
+global
+function boolean VPlanSGDClassAfterEditField(Integer wn, string FieldName, Integer fn, Integer rownr, Integer changed)
+begin
+  record IVPlanSetSGVc VSSGr;
+
+  if (FieldName == "ArtCode") and (changed <> 0) then
+    begin
+      GetWindowRecord(wn, VSSGr)
+      VSSGr.ArtName = IGetArtName(VSSGr.ArtCode);
+      PutWindowRecord(wn, VSSGr)
+    end;
+
+  VPlanSGDClassAfterEditField = true;
+  Return;
+end;
+
+
+global
+procedure FillVPlanObjDsm()
+begin
+  record IVPlanSetObjVc VSOr;
+  integer wn;
+  date bd, ed;
+  longint DaysInPeriod;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  wn = CurWindow;
+  if (WindowState(wn) == 0) then
+    begin //Rs_insert
+      GetWindowRecord(wn, VSOr);
+      GetIVPlanStatPeriod(VSOr.Year, bd, ed);
+      DaysInPeriod = DateDiff(ed, bd);
+      if (DaysInPeriod > 0) and (DaysInPeriod < 400) then
+        begin
+          IFillVPlanObj(VSOr);
+        end
+      else
+        begin
+          MessageBox(0, "Неверный период сбора статистики! Проверьте настройки!");
+        end;
+      PutWindowRecord(wn, VSOr);
+    end;
+  Return;
+end;
+
+global
+updating procedure FillVPlanSGLsm()
+begin
+  record IVPlanSetSGVc VSSGr;
+  integer Year;
+  date bd, ed;
+  longint DaysInPeriod;
+  record VSetSetBlock VSr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  BlockLoad(VSr);
+//  Year = GetYear(CurrentDate) + 1; //На следующий год
+//  Year = GetYear(CurrentDate); //На текущий год
+  Year = VSr.SalesPlanYear;
+  GetIVPlanStatPeriod(Year, bd, ed);
+  DaysInPeriod = DateDiff(ed, bd);
+  if (bd <> ed) and (DaysInPeriod > 0) and (DaysInPeriod < 400) then
+    begin
+      VSSGr.Year = Year;
+      if ReadFirstKey("Year", VSSGr, 1, true) then
+        begin
+          MessageBox(0, "Уже существуют записи за " & Year & " год!");
+        end
+      else
+        begin
+          IFillVPlanSG(Year, bd, ed);
+        end;
+    end
+  else
+    begin
+      MessageBox(0, "Неверный период сбора статистики! Проверьте настройки!");
+    end;
+  Return;
+end;
+
+global
+updating procedure RemoveVPlanSGLsm()
+begin
+  record VSetSetBlock VSr;
+
+  BlockLoad(VSr);
+  IRemoveVPlanSG(VSr.SalesPlanYear);
+  Return;
+end;
+
+global
+updating procedure IVPlanToExcelDsm()
+begin
+  record VPlanSpecVc VPr;
+  record RcVc RepSpec;
+  integer wn;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  wn = CurWindow;
+  if WindowState(wn) == 0 then
+    begin
+      GetWindowRecord(wn, VPr);
+      RepSpec.repname = "IVPlanToExcelRn";
+      RepSpec.f1 = VPr.SerNr;
+      RepSpec.Media = mtExcel;
+      RunReport(RepSpec, 0);
+    end;
+  Return;
+end;
+
+
+
+function Boolean VPlanSpecDClassArtCodeEFAfter(Integer wn, Integer rownr, Integer changed)
+begin
+record VPlanSpecVc VPr, VP2r;
+row VPlanSpecVc VPrw, VP2rw;
+record INVc INr;
+Integer RwCnt;
+Boolean res;
+
+if (changed <> 0) then
+  begin
+  GetWindowRecord(wn, VPr);
+  GetPrevWindowRecord(wn, VP2r);
+  if (VPr.SMFlag <> 1) then
+    begin
+    MatRowGet(VPr, rownr, VPrw);
+    INr.Code = VPrw.ArtCode;
+    VPrw.ArtName = "";
+    if ReadFirstMain(INr, 1, True) and INInPlan(INr.Code, VPr.Year) then
+      begin
+      VPrw.ArtName = INr.Name;
+      end;
+    MatRowPut(VPr, rownr, VPrw);
+    PutWindowRecord(wn, VPr);
+    end;
+  end;
+VPlanSpecDClassArtCodeEFAfter = res;
+RETURN;
+end;
+
+global
+function Integer GetMonthByName(string Name)
+begin
+Integer res;
+
+switch (Name)
+  begin
+  case "Jan" : res = 1;
+  case "Feb" : res = 2;
+  case "Mar" : res = 3;
+  case "Apr" : res = 4;
+  case "May" : res = 5;
+  case "Jun" : res = 6;
+  case "Jul" : res = 7;
+  case "Aug" : res = 8;
+  case "Sep" : res = 9;
+  case "Oct" : res = 10;
+  case "Nov" : res = 11;
+  case "Dec" : res = 12;
+  end;
+GetMonthByName = res;
+RETURN;
+end;
+
+function val SetNewVal(val NewVal, val DefVal, boolean flag)
+begin
+  if flag then
+    begin
+      SetNewVal = NewVal;
+    end
+  else
+    begin
+      SetNewVal = DefVal;
+    end;
+  Return;
+end;
+
+function Boolean MonthChanged(Integer wn, Integer rownr, Integer changed, string fieldname)
+begin
+record VPlanSpecVc VPr, VP2r;
+row VPlanSpecVc VPrw, VP2rw;
+Integer RwCnt, Cnt;
+Boolean res;
+if (changed <> 0) then
+  begin
+  GetWindowRecord(wn, VPr);
+  GetPrevWindowRecord(wn, VP2r);
+  MatRowGet(VPr, rownr, VPrw);
+  MatRowGet(VP2r, rownr, VP2rw);
+  if (VP2r.SMFlag == 1) then
+    begin
+    if (GetMonth(CurrentDate) <= GetMonthByName(Left(fieldname, 3))) then
+      begin
+        switch(fieldname)
+          begin
+            case "JanP" : VPrw.FebP = SetNewVal((VPrw.Qua1P - VPrw.JanP - VPrw.MarP), VPrw.FebP, (VPr.Manual1Flag == 0));
+            case "FebP" : VPrw.MarP = SetNewVal((VPrw.Qua1P - VPrw.JanP - VPrw.FebP), VPrw.MarP, (VPr.Manual1Flag == 0));
+            case "MarP" : VPrw.MarP = SetNewVal((VPrw.Qua1P - VPrw.JanP - VPrw.FebP), VPrw.MarP, (VPr.Manual1Flag == 0));
+            case "AprP" : VPrw.MayP = SetNewVal((VPrw.Qua2P - VPrw.AprP - VPrw.JunP), VPrw.MayP, (VPr.Manual2Flag == 0));
+            case "MayP" : VPrw.JunP = SetNewVal((VPrw.Qua2P - VPrw.MayP - VPrw.AprP), VPrw.JunP, (VPr.Manual2Flag == 0));
+            case "JunP" : VPrw.JunP = SetNewVal((VPrw.Qua2P - VPrw.MayP - VPrw.AprP), VPrw.JunP, (VPr.Manual2Flag == 0));
+            case "JulP" : VPrw.AugP = SetNewVal((VPrw.Qua3P - VPrw.JulP - VPrw.SepP), VPrw.AugP, (VPr.Manual3Flag == 0));
+            case "AugP" : VPrw.SepP = SetNewVal((VPrw.Qua3P - VPrw.AugP - VPrw.JulP), VPrw.SepP, (VPr.Manual3Flag == 0));
+            case "SepP" : VPrw.SepP = SetNewVal((VPrw.Qua3P - VPrw.AugP - VPrw.JulP), VPrw.SepP, (VPr.Manual3Flag == 0));
+            case "OctP" : VPrw.NovP = SetNewVal((VPrw.Qua4P - VPrw.OctP - VPrw.DecP), VPrw.NovP, (VPr.Manual4Flag == 0));
+            case "NovP" : VPrw.DecP = SetNewVal((VPrw.Qua4P - VPrw.NovP - VPrw.OctP), VPrw.DecP, (VPr.Manual4Flag == 0));
+            case "DecP" : VPrw.DecP = SetNewVal((VPrw.Qua4P - VPrw.NovP - VPrw.OctP), VPrw.DecP, (VPr.Manual4Flag == 0));
+          end;
+        MatRowPut(VPr, rownr, VPrw);
+      end
+    else
+      begin
+      MatRowPut(VPr, rownr, VP2rw);
+      end;
+    end;
+
+  //Суммы
+  MatRowGet(VPr, rownr, VPrw);
+  VPrw.Qua1P = VPrw.JanP + VPrw.FebP + VPrw.MarP;
+  VPrw.Qua2P = VPrw.AprP + VPrw.MayP + VPrw.JunP;
+  VPrw.Qua3P = VPrw.JulP + VPrw.AugP + VPrw.SepP;
+  VPrw.Qua4P = VPrw.OctP + VPrw.NovP + VPrw.DecP;
+  VPrw.YeaP = VPrw.Qua1P + VPrw.Qua2P + VPrw.Qua3P + VPrw.Qua4P;
+  MatRowPut(VPr, rownr, VPrw);
+  PutWindowRecord(wn, VPr);
+  end;
+MonthChanged = False;
+RETURN;
+end;
+
+function Boolean VPlanSpecDClassButtonAction(string fieldname, Integer wn, Integer value)
+begin
+record VPlanSpecVc VPr, VP2r;
+record UserVc USr;
+Boolean res;
+
+res = True;
+GetWindowRecord(wn, VPr);
+GetPrevWindowRecord(wn, VP2r);
+
+switch (fieldname)
+  begin
+  case "SMFlag": begin
+          if (VP2r.SMFlag <> 0) and (VP2r.SuFlag <> 0) then
+          begin
+          res = False;
+          end else
+          begin
+          VPr.SalesMan = CurrentUser;
+          PutWindowRecord(wn, VPr);
+          end;
+        end;
+  case "SuFlag": begin
+          if (VP2r.SuFlag <> 0) and (VP2r.OKFlag <> 0) then
+          begin
+          res = False;
+          end else
+          begin
+          USr.Code = VPr.SalesMan;
+          ReadFirstMain(USr, 1, True);
+          if (USr.Supervisor == CurrentUser) then
+            begin
+            VPr.Superior = CurrentUser;
+            PutWindowRecord(wn, VPr);
+            end else
+            begin
+            res = False;
+            end;
+          end;
+        end;
+  case "OKFlag": begin
+          if (VP2r.OKFlag <> 0) then
+          begin
+          res = False;
+          end else
+          begin
+          USr.Code = VPr.Superior;
+          ReadFirstMain(USr, 1, True);
+          if (USr.Supervisor == CurrentUser) then
+            begin
+            VPr.Boss = CurrentUser;
+            PutWindowRecord(wn, VPr);
+            end else
+            begin
+            res = False;
+            end;
+          end;
+        end;
+
+  case "OK1Flag":
+    begin
+      USr.Code = CurrentUser;
+      ReadFirstMain(USr, 1, True);
+      res = (nonblank(USr.AccessGroup) and SetInSet(USr.AccessGroup, "UCHR,ADMIN,1011K")) or CurrentUser == "AOCHER";
+      if res then
+        begin
+          if (VPr.OK1Flag == 0) then
+            begin
+              VPr.OK1User = USr.Code;
+            end
+          else
+            begin
+              VPr.OK1User = blankval;
+            end;
+          PutWindowRecord(wn, VPr);
+        end;
+    end;
+  case "OK2Flag":
+    begin
+      USr.Code = CurrentUser;
+      ReadFirstMain(USr, 1, True);
+      res = (nonblank(USr.AccessGroup) and SetInSet(USr.AccessGroup, "UCHR,ADMIN,1011K")) or CurrentUser == "AOCHER";
+      if res then
+        begin
+          if (VPr.OK2Flag == 0) then
+            begin
+              VPr.OK2User = USr.Code;
+            end
+          else
+            begin
+              VPr.OK2User = blankval;
+            end;
+          PutWindowRecord(wn, VPr);
+        end;
+    end;
+  case "OK3Flag":
+    begin
+      USr.Code = CurrentUser;
+      ReadFirstMain(USr, 1, True);
+      res = (nonblank(USr.AccessGroup) and SetInSet(USr.AccessGroup, "UCHR,ADMIN,1011K")) or CurrentUser == "AOCHER";
+      if res then
+        begin
+          if (VPr.OK3Flag == 0) then
+            begin
+              VPr.OK3User = USr.Code;
+            end
+          else
+            begin
+              VPr.OK3User = blankval;
+            end;
+          PutWindowRecord(wn, VPr);
+        end;
+    end;
+  case "OK4Flag":
+    begin
+      USr.Code = CurrentUser;
+      ReadFirstMain(USr, 1, True);
+      res = (nonblank(USr.AccessGroup) and SetInSet(USr.AccessGroup, "UCHR,ADMIN,1011K")) or CurrentUser == "AOCHER";
+      if res then
+        begin
+          if (VPr.OK4Flag == 0) then
+            begin
+              VPr.OK4User = USr.Code;
+            end
+          else
+            begin
+              VPr.OK4User = blankval;
+            end;
+          PutWindowRecord(wn, VPr);
+        end;
+    end;
+
+  end;
+VPlanSpecDClassButtonAction = res;
+RETURN;
+end;
+
+global
+function Boolean VPlanSpecDClassOKFlagButtonAction(Integer wn,Integer value)
+BEGIN
+Boolean res;
+
+VPlanSpecDClassOKFlagButtonAction = VPlanSpecDClassButtonAction("OKFlag",wn,value);
+RETURN;
+END;
+
+global
+function Boolean VPlanSpecDClassSuFlagButtonAction(Integer wn,Integer value)
+BEGIN
+Boolean res;
+
+VPlanSpecDClassSuFlagButtonAction = VPlanSpecDClassButtonAction("SuFlag",wn,value);
+RETURN;
+END;
+
+global
+function Boolean VPlanSpecDClassSMFlagButtonAction(Integer wn,Integer value)
+BEGIN
+Boolean res;
+
+VPlanSpecDClassSMFlagButtonAction = VPlanSpecDClassButtonAction("SMFlag",wn,value);
+RETURN;
+END;
+
+
+global
+function Boolean VPlanSpecDClassOK1FlagButtonAction(Integer wn,Integer value)
+begin
+boolean res;
+
+VPlanSpecDClassOK1FlagButtonAction = VPlanSpecDClassButtonAction("OK1Flag",wn,value);
+Return;
+end;
+
+global
+function Boolean VPlanSpecDClassOK2FlagButtonAction(Integer wn,Integer value)
+begin
+boolean res;
+
+VPlanSpecDClassOK2FlagButtonAction = VPlanSpecDClassButtonAction("OK2Flag",wn,value);
+Return;
+end;
+
+global
+function Boolean VPlanSpecDClassOK3FlagButtonAction(Integer wn,Integer value)
+begin
+boolean res;
+
+VPlanSpecDClassOK3FlagButtonAction = VPlanSpecDClassButtonAction("OK3Flag",wn,value);
+Return;
+end;
+
+global
+function Boolean VPlanSpecDClassOK4FlagButtonAction(Integer wn,Integer value)
+begin
+boolean res;
+
+VPlanSpecDClassOK4FlagButtonAction = VPlanSpecDClassButtonAction("OK4Flag",wn,value);
+Return;
+end;
+
+
+global
+function Boolean VPlanSpecDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+BEGIN
+Boolean res;
+
+switch (fieldname)
+  begin
+  case "ArtCode": res = VPlanSpecDClassArtCodeEFAfter(wn, rownr, changed);
+  case "JanP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "FebP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "MarP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "AprP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "MayP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "JunP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "JulP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "AugP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "SepP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "OctP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "NovP": res = MonthChanged(wn, rownr, changed, fieldname);
+  case "DecP": res = MonthChanged(wn, rownr, changed, fieldname);
+  //case "Comment": res = CommentIt(wn, rownr, changed, fieldname);
+  end;
+VPlanSpecDClassAfterEditField = res;
+RETURN;
+END;
+
+
+global
+function boolean VPlanSpecDClassActiveEditField(integer wn, string fieldname, integer fn, integer wnst, integer rownr, integer changed)
+begin
+  boolean res;
+  record VPlanSpecVc VPr;
+
+  GetWindowRecord(wn, VPr);
+
+  switch (fieldname)
+    begin
+      case "ArtCode": res = (VPr.OK1Flag + VPr.OK2Flag + VPr.OK3Flag + VPr.OK4Flag) == 0;
+      case "JanP": res = VPr.OK1Flag == 0;
+      case "FebP": res = VPr.OK1Flag == 0;
+      case "MarP": res = VPr.OK1Flag == 0;
+      case "AprP": res = VPr.OK2Flag == 0;
+      case "MayP": res = VPr.OK2Flag == 0;
+      case "JunP": res = VPr.OK2Flag == 0;
+      case "JulP": res = VPr.OK3Flag == 0;
+      case "AugP": res = VPr.OK3Flag == 0;
+      case "SepP": res = VPr.OK3Flag == 0;
+      case "OctP": res = VPr.OK4Flag == 0;
+      case "NovP": res = VPr.OK4Flag == 0;
+      case "DecP": res = VPr.OK4Flag == 0;
+      otherwise res = true;
+    end;
+  VPlanSpecDClassActiveEditField = res;
+  Return;
+end;
+
+global
+function Boolean VPlanSpecDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+  record VPlanSpecVc VPr;
+
+  GetWindowRecord(wn, VPr);
+  VPlanSpecDClassDeleteRowTest = (VPr.OK1Flag + VPr.OK2Flag + VPr.OK3Flag + VPr.OK4Flag) == 0;
+  Return;
+end;
+
+
+
+
+event DefineWindows
+begin
+record SalesGroupVc SGr;
+record VPlanSpecVc VPr;
+real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l;
+Integer Cnt, wn;
+string 255 label;
+SetLangMode(LangRussian, "RUS", 2);
+
+WindowBegin("Тип клиента", VCUTypeSClass, CGother, -);
+SetWRect (20, 80, 450, 300);
+Sizeable (-1, -1, 0, 0);
+StringList(9, 9, -40, 209);
+EndWindow;
+
+WindowBegin("План продаж", VPlanSpecDClass, CGview, -);
+DynamicWindow;
+SetWRect(20,80,900,500);
+Sizeable(-1,-1,0,0);
+UseView(VPlanSpecVc);
+AddHelpButton(-110, 6);
+h = 90; h2 = 290; h3 = 10; h4 = 390; h5 = 490; vs = 20; v = 10;
+if (GetWindowClass(CurWindow) == "VPlanSpecDClass") then
+  begin
+  GetWindowRecord(CurWindow, VPr);
+  end;
+if blank(VPr.CustCat) then
+  begin
+  Tile(0, 120, false, "", Year);
+  EditFieldTL(h, v, 80, "Год", M4Int, Normal, 4, Year, False, 0);
+  end else
+  begin
+  Tile(0, 100, false, "", Year);
+  EditFieldTL(h, v, 80, "Год", M4Int, ViewOnly, 4, Year, False, 0);
+  end;
+//EditFieldTL(h2, v, 80, "Категория", M4Code, ViewOnly, 4, CustCat, False, 0);
+EditFieldTL(h2, v, 80, "Категория", M4Code, Normal, 4, CustCat, False, 0);
+EditFieldTL(h5, v, 80, "Тип клиента", M4Code, ViewOnly, 20, Objects, False, 0);
+EnterSkip(Math);
+EditField(h, v += vs, -20, "Комментарий", Normal, Comment, False, 0);
+EnterSkip(Math);
+CheckBox(h, v += vs , 0, "ОК", SMFlag);
+EditField(160, v, 100, "", ViewOnly, SalesMan, False, 0);
+CheckBox(280, v, 0, "Согл.", SuFlag);
+EditField(350, v, 100, "", ViewOnly, Superior, False, 0);
+CheckBox(480, v, 0, "Утв.", OKFlag);
+EditField(550, v, 80, "", ViewOnly, Boss, False, 0);
+v = v + 20;
+Cnt = 2;
+if (GetWindowClass(CurWindow) == "VPlanSpecDClass") then
+  begin
+  GetWindowRecord(CurWindow, VPr);
+  end;
+
+//if blank(VPr.CustCat) then
+//  begin
+//  ResetLoop(SGr);
+//  while LoopMain(SGr, 1, True)
+//    begin
+//    if (SGr.Closed <> 1) then
+//      begin
+//      ColourPushButton(h, v, h += 70, v + 20, "PlanPodrOpen_" & SGr.SGroupCode, SGr.SGroupName, 15);
+//      h = h + 5;
+//      end;
+//    end;
+//  end;
+
+TileButton(1, "Планы");
+TileButton(2, "Итоги");
+Tile(1, 170, true, "1", Math);
+v = 18;
+MatrixBegin(h3, v, -53, -20, VPlanSpecRowType, 2001);
+Flip(0);
+MatCol(1, 32, "Код", 0, ArtCode, false, INSClass);
+EnterSkip("Jan");
+Flip(1);
+MatColTL(1, 100, "Наименование", 0, M4Str, ViewOnly, 0, ArtName, false, 0);
+MatCol(1, -370, "Январь", 0, JanP, true, 0);
+MatCol(1, -300, "Февраль", 0, FebP, true, 0);
+MatCol(1, -230, "Март", 0, MarP, true, 0);
+MatColTL(1, -160, "1 квартал", 0, M4Val, ViewOnly, 0,  Qua1P, true, 0);
+MatColTL(1, -80, "Год", 0, M4Val, ViewOnly, 0, YeaP, true, 0);
+Flip(2);
+MatColTL(1, 100, "Наименование", 0, M4Str, ViewOnly, 0, ArtName, false, 0);
+MatCol(1, -370, "Апрель", 0, AprP, true, 0);
+MatCol(1, -300, "Май", 0, MayP, true, 0);
+MatCol(1, -230, "Июнь", 0, JunP, true, 0);
+MatColTL(1, -160, "2 квартал", 0, M4Val, ViewOnly, 0,  Qua2P, true, 0);
+MatColTL(1, -80, "Год", 0, M4Val, ViewOnly, 0, YeaP, true, 0);
+Flip(3);
+MatColTL(1, 100, "Наименование", 0, M4Str, ViewOnly, 0, ArtName, false, 0);
+MatCol(1, -370, "Июль", 0, JulP, true, 0);
+MatCol(1, -300, "Август", 0, AugP, true, 0);
+MatCol(1, -230, "Сентябрь", 0, SepP, true, 0);
+MatColTL(1, -160, "3 квартал", 0, M4Val, ViewOnly, 0,  Qua3P, true, 0);
+MatColTL(1, -80, "Год", 0, M4Val, ViewOnly, 0, YeaP, true, 0);
+Flip(4);
+MatColTL(1, 100, "Наименование", 0, M4Str, ViewOnly, 0, ArtName, false, 0);
+MatCol(1, -370, "Октябрь", 0, OctP, true, 0);
+MatCol(1, -300, "Ноябрь", 0, NovP, true, 0);
+MatCol(1, -230, "Декабрь", 0, DecP, true, 0);
+MatColTL(1, -160, "4 квартал", 0, M4Val, ViewOnly, 0,  Qua4P, true, 0);
+MatColTL(1, -80, "Год", 0, M4Val, ViewOnly, 0, YeaP, true, 0);
+EndMatrix;
+VTab(-35, v, -16, v += vs, ToolFlip, 1, "I");
+VTab(-35, v, -16, v += vs, ToolFlip, 2, "II");
+VTab(-35, v, -16, v += vs, ToolFlip, 3, "III");
+VTab(-35, v, -16, v += vs, ToolFlip, 4, "IV");
+InsertRowTest;
+DeleteRowTest;
+Tile(2, 180, true, "2", Text);
+h = 90; h2 = 260; h3 = 410;
+v = 0;
+
+EditField(50, v += vs, 80, "Янв.", ViewOnly, SumJanP, True, 0);
+EditField(170, v, 80, "Фев.", ViewOnly, SumFebP, True, 0);
+EditField(290, v, 80, "Мар.", ViewOnly, SumMarP, True, 0);
+EditField(430, v, 80, "Iкв.", ViewOnly, Sum1P, True, 0);
+CheckBox(530, v , 0, "Откл. авторасчет", Manual1Flag);
+CheckBox(670, v , 0, "OK I", OK1Flag);
+EditField(730, v, 80, "", ViewOnly, OK1User, False, 0);
+
+EditField(50, v += vs, 80, "Апр.", ViewOnly, SumAprP, True, 0);
+EditField(170, v, 80, "Май", ViewOnly, SumMayP, True, 0);
+EditField(290, v, 80, "Июнь", ViewOnly, SumJunP, True, 0);
+EditField(430, v, 80, "IIкв.", ViewOnly, Sum2P, True, 0);
+CheckBox(530, v , 0, "Откл. авторасчет", Manual2Flag);
+CheckBox(670, v , 0, "OK II", OK2Flag);
+EditField(730, v, 80, "", ViewOnly, OK2User, False, 0);
+
+EditField(50, v += vs, 80, "Июль", ViewOnly, SumJulP, True, 0);
+EditField(170, v, 80, "Авг.", ViewOnly, SumAugP, True, 0);
+EditField(290, v, 80, "Сен.", ViewOnly, SumSepP, True, 0);
+EditField(430, v, 80, "IIIкв.", ViewOnly, Sum3P, True, 0);
+CheckBox(530, v , 0, "Откл. авторасчет", Manual3Flag);
+CheckBox(670, v , 0, "OK III", OK3Flag);
+EditField(730, v, 80, "", ViewOnly, OK3User, False, 0);
+
+EditField(50, v += vs, 80, "Окт.", ViewOnly, SumOctP, True, 0);
+EditField(170, v, 80, "Ноя", ViewOnly, SumNovP, True, 0);
+EditField(290, v, 80, "Дек.", ViewOnly, SumDecP, True, 0);
+EditField(430, v, 80, "IVкв.", ViewOnly, Sum4P, True, 0);
+CheckBox(530, v , 0, "Откл. авторасчет", Manual4Flag);
+CheckBox(670, v , 0, "OK IV", OK4Flag);
+EditField(730, v, 80, "", ViewOnly, OK4User, False, 0);
+EditField(430, v += vs, 80, "Год", ViewOnly, SumYeaP, True, 0);
+ButtonFrame(90, v + 38, 700, 3, "Обсуждение");
+TextField(20, 140, -50, -20, Text, 0);
+SpecialMenu("Заполнить ассортимент",' ', 1, "FillVPlanSpecByArtDsm");
+SpecialMenu("Экспортировать",' ', 1, "IVPlanToExcelDsm");
+EndWindow;
+
+
+WindowBegin("План продаж", VPlanSpecLClass, CGmlist, VPlanSpecView);
+SetWRect(64, 80, 609, 298);
+SpawnClass(VPlanSpecDClass);
+Sizeable(-1, -1, 0, 0);
+UseView(VPlanSpecVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4,  "Год", Year, True, Year);
+RlColKey(60, 60, "Группа", CustCat, True, CustCat);
+RlColKey(120, 120, "Тип клиента", Objects, True, Objects);
+RlColKey(180, 180, "Комментарий", Comment, False, Comment);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Настройка планов - Группы", VPlanCCTClass, CGHbl, HBlRecType);
+SetBlid(VPlanSPodrSetBlock);
+SetWRect(20, 80, 600, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, VPlanSPodrSetRowType, 199);
+MatColTL(1, h = 24, "Группа продажи", 0, M4Code, Normal, 20, CustCat, false, SalesGroupSClass);
+MatColTL(1, h += 80, "С даты", 0, M4Date, Normal, 20, StartDate, false, PasteCurDate);
+MatColTL(1, h += 80, "По дату", 0, M4Date, Normal, 20, EndDate, false, PasteCurDate);
+MatColTL(1, h += 80, "Группа товаров", 0, M4UStr, Normal, 100, INGroup, false, ITSClass);
+MatColTL(1, h += 180, "%", 0, M4Val, Normal, 20, Percent, True, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Настройка планов - Объекты", VPlanObjTClass, CGHbl, HBlRecType);
+SetBlid(VPlanSetObjBlock);
+SetWRect(20, 80, 600, 357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 60, -31, -20, VPlanSPodrSetRowType, 199);
+MatColTL(1, h = 24, "Объект", 0, M4Code, Normal, 20, Objects, false, ObjSClass);
+MatColTL(1, h += 80, "Группа", 0, M4Code, Normal, 20, CustCat, false, SalesGroupSClass);
+MatColTL(1, h += 80, "С даты", 0, M4Date, Normal, 20, StartDate, false, PasteCurDate);
+MatColTL(1, h += 80, "По дату", 0, M4Date, Normal, 20, EndDate, false, PasteCurDate);
+MatColTL(1, h += 80, "Товары", 0, M4UStr, Normal, 100, ArtCode, false, INSClass);
+MatColTL(1, h += 180, "%", 0, M4Val, Normal, 20, Percent, True, 0);
+EndMatrix;
+EndWindow;
+
+//29.03.12 INAU
+WindowBegin("Планы - Объекты", VPlanObjLClass, CGmlist, -);
+SetWRect(64, 80, 600, 500);
+SpawnClass(VPlanObjDClass);
+Sizeable(-1, -1, 0, 0);
+UseView(IVPlanSetObjVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4,  "Группа", SalesGroup, false, SalesGroup);
+RlColKey(100, 100, "Год", Year, false, Year);
+RlColKey(200, 200, "Объект", Obj, false, Obj);
+RlColKey(400, 400, "Наименование", ObjName, false, ObjName);
+SearchField("Найти");
+EndWindow;
+
+WindowBegin("Настройка планов - Объекты", VPlanObjDClass, CGView, -);
+UseView(IVPlanSetObjVc);
+SetWRect(20, 80, 400, 357);
+Sizeable(-1, -1, 0, 0);
+EditField(100, v = 8, 80, "Год", Normal, Year, false, 0);
+EditField(300, v, 80, "Группа продажи", Normal, SalesGroup, false, SalesGroupSClass);
+EditField(100, v += vs, 80, "Объект", Normal, Obj, false, ObjSClass);
+EditField(300, v, -40, "Наименование", Normal, ObjName, false, 0);
+MatrixBegin(4, v += 40, -31, -20, VPlanSetObjRowType, 2001);
+MatCol(1, 32, "Код", 0, ArtCode, false, INSClass);
+MatCol(1, 100, "Наименование", 0, ArtName, false, 0);
+MatCol(1, -100, "%", 0, Percent, false, 0);
+EndMatrix;
+SpecialMenu("Заполнить...",' ', 1, "FillVPlanObjDsm");
+EndWindow;
+
+//06.06.12 INAU
+WindowBegin("Планы - Группы продажи", VPlanSGLClass, CGmlist, -);
+SetWRect(64, 80, 600, 500);
+SpawnClass(VPlanSGDClass);
+Sizeable(-1, -1, 0, 0);
+UseView(IVPlanSetSGVc);
+RecordList(4, 17, -21, -39);
+RlColKey(4, 4,  "Товар", ArtCode, false, ArtCode);
+RlColKey(100, 100, "Год", Year, false, Year);
+RlColKey(200, 200, "Наименование", ArtName, false, ArtName);
+SearchField("Найти");
+SpecialMenu("Заполнить...",' ', 1, "FillVPlanSGLsm");
+SpecialMenu("Удалить...",' ', 1, "RemoveVPlanSGLsm");
+EndWindow;
+
+WindowBegin("Настройка планов - Группы продажи", VPlanSGDClass, CGView, -);
+UseView(IVPlanSetSGVc);
+SetWRect(20, 80, 400, 357);
+Sizeable(-1, -1, 0, 0);
+EditField(80, v = 8, 80, "Товар", Normal, ArtCode, false, INSClass);
+EditField(300, v, -40, "Наименование", Normal, ArtName, false, 0);
+EditField(80, v += vs, 80, "Год", Normal, Year, false, 0);
+MatrixBegin(4, v += 40, -31, -20, VPlanSetObjRowType, 299);
+MatCol(1, 32, "Группа продажи", 0, SalesGroup, false, SalesGroupSClass);
+MatColTL(1, -100, "%", 0, M4Val, Normal, 20, Percent, false, 0);
+EndMatrix;
+EndWindow;
+
+WindowBegin("Настройка планов - Статистика", IVPlanStatTClass, CGHbl, HBlRecType);
+SetBlid(IVPlanStatBlock);
+SetWRect(20,80,532,357);
+Sizeable(-1, -1, 0, 0);
+MatrixBegin(4, 20, -31, -20, IVPlanStatRowType, 199);
+MatCol(1, h = 24, "Год", 0, Year, false, 0);
+MatCol(1, h += 80, "Стат. период", 0, StatPeriod, false, PerSClass);
+EndMatrix;
+EndWindow;
+
+RETURN;
+end;

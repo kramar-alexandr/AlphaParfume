@@ -1,0 +1,242 @@
+//external function string 255 IGetArtName(string);
+
+//===============================================
+procedure GetICCDeclarationQnt(string ArtCode, var val Qnt, var val Rest)
+begin
+  record ICCDeclarationVc ICCDr;
+  row ICCDeclarationVc ICCDrw;
+  integer i, rwcnt;
+  
+  Qnt = 0;
+  Rest = 0;
+  ICCDr.ArtCode = ArtCode;
+  ReadFirstMain(ICCDr, 1, true);
+  rwcnt = MatRowCnt(ICCDr);
+  for (i=0; i<rwcnt; i=i+1)
+    begin
+      MatRowGet(ICCDr, i, ICCDrw);
+      Qnt = Qnt + ICCDrw.Qnt;
+      Rest = Rest + ICCDrw.Rest;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+function string 255 ICCDeclarationLClassQnt(var record ICCDeclarationVc ICCDr)
+begin
+  val Qnt, Rest;
+  
+  GetICCDeclarationQnt(ICCDr.ArtCode, Qnt, Rest);
+  ICCDeclarationLClassQnt = Qnt & " / " & Rest;
+  Return;
+end;
+
+//===============================================
+function boolean ICCDeclarationDClassArtCodeEFAfter(integer wn, integer changed)
+begin
+  boolean res;
+  record ICCDeclarationVc ICCDr;
+  record INVc INr;
+  
+  if (changed <> 0) then
+    begin
+      GetWindowRecord(wn, ICCDr);
+      INr.Code = ICCDr.ArtCode;
+      if ReadFirstMain(INr, 1, true) then
+        begin
+          ICCDr.ArtName = INr.Name;
+        end
+      else
+        begin
+          ICCDr.ArtCode = blankval;
+          ICCDr.ArtName = blankval;
+        end;
+      PutWindowRecord(wn, ICCDr);
+    end;
+  ICCDeclarationDClassArtCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean ICCDeclarationDClassCCDCodeEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record ICCDeclarationVc ICCDr;
+  row ICCDeclarationVc ICCDrw, ICCD2rw;
+  integer i, rwcnt;
+  boolean found;
+
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) and (rownr > -1) then
+    begin
+      found = false;
+      GetWindowRecord(wn, ICCDr);
+      MatRowGet(ICCDr, rownr, ICCDrw);
+      rwcnt = MatRowCnt(ICCDr);
+      for (i=0; (i<rwcnt) and not found; i=i+1)
+        begin
+          MatRowGet(ICCDr, i, ICCD2rw);
+          found = (ICCD2rw.CCDCode == ICCDrw.CCDCode) and (i <> rownr);
+        end;
+      if found then
+        begin
+          MessageBox(0, "ГТД уже существует!");
+          ICCDrw.CCDCode = blankval;
+          MatRowPut(ICCDr, rownr, ICCDrw);
+          PutWindowRecord(wn, ICCDr);
+        end;
+    end;
+  ICCDeclarationDClassCCDCodeEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean ICCDeclarationDClassQntEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record ICCDeclarationVc ICCDr;
+  row ICCDeclarationVc ICCDrw;
+  
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) and (rownr > -1) then
+    begin
+      GetWindowRecord(wn, ICCDr);
+      MatRowGet(ICCDr, rownr, ICCDrw);
+      if (ICCDrw.Qnt < 0) then
+        begin
+          MessageBox(0, "Неверное значение!");
+          ICCDrw.Qnt = 0;
+          MatRowPut(ICCDr, rownr, ICCDrw);
+          PutWindowRecord(wn, ICCDr);
+        end;
+    end;
+  ICCDeclarationDClassQntEFAfter = res;
+  Return;
+end;
+
+//===============================================
+function boolean ICCDeclarationDClassRestEFAfter(integer wn, integer rownr, integer changed)
+begin
+  boolean res;
+  record ICCDeclarationVc ICCDr;
+  row ICCDeclarationVc ICCDrw;
+  boolean Err;
+  
+  SetLangMode(LangRussian,"RUS",2);
+  if (changed <> 0) and (rownr > -1) then
+    begin
+      Err = false;
+      GetWindowRecord(wn, ICCDr);
+      MatRowGet(ICCDr, rownr, ICCDrw);
+      if (ICCDrw.Rest < 0) then
+        begin
+          ICCDrw.Rest = 0;
+          Err = true;
+        end;
+      if (ICCDrw.Rest > ICCDrw.Qnt) then
+        begin
+          ICCDrw.Rest = ICCDrw.Qnt;
+          Err = true;
+        end;
+        
+      if Err then
+        begin
+          MessageBox(0, "Неверное значение!");
+          MatRowPut(ICCDr, rownr, ICCDrw);
+          PutWindowRecord(wn, ICCDr);
+        end;
+    end;
+  ICCDeclarationDClassRestEFAfter = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICCDeclarationDClassAfterEditField(integer wn, string fieldname, integer fn, integer rownr, integer changed)
+begin
+  boolean res;
+
+  if (changed <> 0) then
+    begin
+      switch (fieldname)
+        begin
+          case "ArtCode": res = ICCDeclarationDClassArtCodeEFAfter(wn, changed);
+          case "CCDCode": res = ICCDeclarationDClassCCDCodeEFAfter(wn, rownr, changed);
+          case "Qnt": res = ICCDeclarationDClassQntEFAfter(wn, rownr, changed);
+          case "Rest": res = ICCDeclarationDClassRestEFAfter(wn, rownr, changed);
+        end;
+    end;
+  ICCDeclarationDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean ICCDeclarationDClassOnOKWindow(Integer wn)
+begin
+  record ICCDeclarationVc ICCDr;
+  row ICCDeclarationVc ICCDrw;
+  integer i, rwcnt;
+  boolean res;
+  
+  SetLangMode(LangRussian,"RUS",2);
+  GetWindowRecord(wn, ICCDr);
+
+  res = nonblank(ICCDr.ArtCode);
+  if not res then
+    begin
+      MessageBox(0, "Неверный код товара");
+    end;
+    
+  rwcnt = MatRowCnt(ICCDr);
+  for (i=0; (i<rwcnt) and res; i=i+1)
+    begin
+      MatRowGet(ICCDr, i, ICCDrw);
+      if blank(ICCDrw.CCDCode) then
+        begin
+          MessageBox(0, "Проверьте номера ГТД");
+          res = false;
+        end;
+    end;
+  
+  ICCDeclarationDClassOnOKWindow = res;
+  return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real i, h, h1, h2, h3, h4, h5, h6, v, vs, vm, hl, l, t;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Остатки по ГТД", ICCDeclarationLClass, CGMList, -);
+  SetWRect(20,80,600,400);
+  Sizeable(-1,-1,0,0);
+  UseView(ICCDeclarationVc);
+  SpawnClass(ICCDeclarationDClass);
+  RecordList(4,17,-21,-20);
+  RLColKey(5, 5, "Код", ArtCode, false, ArtCode);
+  RLColKey(120, 120, "Наименование", ArtName, false, ArtName);
+  CalculatedColumn(-150, -150, "Кол-во / Остаток", "ICCDeclarationLClassQnt", true);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("Остатки по ГТД", ICCDeclarationDClass, CGView, -);
+  SetWRect (20,80,600,510);
+//  Sizeable (-1,-1,0,0);
+  UseView(ICCDeclarationVc);
+  vs = 20;
+  EditField(h=50, v=8, 100, "Код", Normal,ArtCode, false, INSCLass);
+  EnterSkip(Math);
+  EditField(h+200 , v, -40, "Наименование", ViewOnly, ArtName, false, ArtName);
+  MatrixBegin(4, v+=40, -30, -20, ICCDeclarationRowType, 199);
+  MatCol(1, 30, "№ Грузовой таможенной декларации (ГТД)", 0, CCDCode, false, 0);
+  MatCol(1, -200, "Количество", 0, Qnt, true, 0);
+  MatCol(1, -100, "Остаток", 0, Rest, true, 0);
+  EndMatrix;
+  EndWindow;
+
+  Return;
+end;

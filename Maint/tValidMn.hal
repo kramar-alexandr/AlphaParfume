@@ -1,0 +1,389 @@
+external procedure IOutStringLen(integer, string, string, boolean, integer);
+remote function boolean tAccessUsr(string);
+remote function Boolean Creator(string);
+remote procedure tListQuest(var record TempVc);
+remote procedure tListCodeQu(string, var record TempVc);
+external function integer tCentr(String);
+external procedure PrintAlpha();
+
+global
+procedure tQuestionRn(record RcVc RepSpec)
+begin
+record tQuestionsVc Qr;
+record ValidVc Vr;
+row tQuestionsVc Qrw;
+row ValidVc Vrw;
+integer i,k, Sum;
+val Pers;
+
+   SetLangMode(LangRussian,"RUS",2);
+   
+Vr.SerNr = RepSpec.f2;
+readfirstmain(Vr, 1, true);
+
+if  MatRowCnt(Vr) > RepSpec.frc then
+	begin
+	MatRowGet(Vr, RepSpec.frc, Vrw);
+	StartReportNoHeaderJob("Ответьте на вопрос");
+	StartFormat(15);
+	if RepSpec.frc > 0 then
+		begin
+		OutStringID(30, "DblPrevQu", "НАЗАД", False, Vr.SerNr);
+		end;
+	OutStringID(400, "DblNextQu", "ВПЕРЕД", False, Vr.SerNr);
+	EndFormat;
+	EndFormat;
+	EndFormat;
+	EndFormat;
+	OutString(0, 0, "Вопрос №" & RepSpec.frc + 1, false);
+	EndFormat;
+	EndFormat;
+	Qr.SerNr = Vrw.QuestNum;
+	readfirstmain(Qr, 1, true);
+	OutText(0, 85, Qr)
+	//OutString(0, 0, Qr.Quest, false);
+	EndFormat;
+	Gray_Divider(0,1);
+	EndFormat;
+	OutString(30, 0, "Варианты ответов:", false);
+	EndFormat;
+	Gray_Divider(30,120);
+	EndFormat;
+
+	for (i = 0; i < MatRowCnt(Qr); i = i + 1)
+		begin
+		MatRowGet(Qr, i ,Qrw);
+		OutString(30, 0, i + 1, true);
+		IOutStringLen(32, "DblNextQ", Qrw.Answer, false,80);
+		//OutString(32, "DblNextQ", Qrw.Answer, false);
+		EndFormat;
+		EndFormat;
+		end;
+	EndJob;
+	end
+else
+	begin
+	StartReportNoHeaderJob("Результат");
+	StartFormat(15);
+	EndFormat;	
+	OutStringID(30, "DblPrevQu", "НАЗАД", False, Vr.SerNr);
+	EndFormat;
+	EndFormat;
+	OutString(100, 0, "После просмотра результата вернуться к тестированию нельзя.", False);
+	EndFormat;
+	EndFormat;
+	OutStringID(200, "DblResQ", " ВАШ РЕЗУЛЬТАТ", False, Vr.SerNr);
+	EndFormat;
+	EndJob;
+	end;
+return;
+end;
+
+global
+procedure tQuestResRn(record RcVc RepSpec)
+begin
+
+StartReportNoHeaderJob("Результат");
+StartFormat(15);
+EndFormat;
+EndFormat;
+OutString(140, 0, "Правильных ответов - "  & RepSpec.vals0 & "  % ", False);
+EndFormat;
+EndJob;
+
+return;
+end;
+
+global
+procedure tResValidRn(record RcVc RepSpec)
+begin
+record tQuestionsVc Qr;
+record ValidVc Vr;
+row tQuestionsVc Qrw;
+row ValidVc Vrw;
+integer i,k, Sum;
+val Pers;
+record QTypeVc QUr;
+boolean TrHs;
+
+   SetLangMode(LangRussian,"RUS",2);
+   
+StartReportJob("Результаты аттестации");
+
+if	RepSpec.long1 > 0 then
+	begin	
+	Header(1,"Номер аттестации " & RepSpec.long1,1);
+	Vr.SerNr = RepSpec.long1;
+	ReadFirstMain(Vr, 0, true);
+	if (tAccessUsr(Vr.UserCode) or Creator(Vr.QTypeCode))  then
+		begin
+		//RepSpec.f1 = Vr.UserName;
+		RepSpec.sStartDate = Vr.DateCon;
+		RepSpec.sEndDate = Vr.DateCon;
+		end
+	else
+		begin
+		RepSpec.long1 = -1;
+		RepSpec.f1 = CurrentUser;
+		RepSpec.sStartDate = CurrentDate;
+		RepSpec.sEndDate = CurrentDate;
+		end;
+	end;
+// if	blank(RepSpec.f1) and blank(RepSpec.f2) and blank(RepSpec.f3) then
+	// begin	
+	// RepSpec.f1 = CurrentUser ;
+	// end;
+if nonblank(RepSpec.f1) and blank(RepSpec.f2) then
+	begin
+	Header(2,"Сотрудник " & RepSpec.f1,1);
+	end;
+if nonblank(RepSpec.f2) and blank(RepSpec.f1) then
+	begin	
+	Header(2,"Отдел " & RepSpec.f2,1);
+	end;
+Header(2,"За период " & RepSpec.sStartDate & " : " & RepSpec.sEndDate,0);	
+if nonblank(RepSpec.f3) then
+	begin	
+	QUr.Code = RepSpec.f3;
+	readfirstmain(QUr, 1, true);
+	Header(3,"Тест " & QUr.Name,0);
+	end;
+EndHeader;   
+
+StartFormat(15);
+OutString(0, 0, "Номер", False);
+OutString(60, 0, "Дата", False);
+OutString(150, 0, "Сотрудник", False);
+OutString(420, 0, "Результат(%)", False);
+EndFormat;
+Black_Divider(0,1);
+
+if	RepSpec.long1 > 0 then
+	begin	
+	StartFormat(15);
+	OutString(0, 0, Vr.SerNr, False);
+	OutString(60, 0, Vr.DateCon, False);
+	OutString(150, 0, Vr.UserName, False);
+	OutString(420, 0, Vr.Pers, False);
+	EndFormat;
+	OutString(60, 0, "ТЕСТ:   ", True);
+	OutString(60, 0, Vr.QTypeName, False);
+	EndFormat;
+	Gray_Divider(0,1);
+	if RepSpec.ArtMode == 1 then
+		begin
+		for (i = 0; i < MatRowCnt(Vr); i = i + 1)
+			begin
+			MatRowGet(Vr, i ,Vrw);
+			OutString(30, 0, i + 1 & ".", true);	
+			OutString(35, 0, "Вопрос:", false);	
+			Qr.SerNr = Vrw.QuestNum;
+			readfirstmain(Qr, 1, true);
+			OutText(75, 85, Qr);
+			EndFormat;
+			OutString(35, 0, "Ответ:", false);
+			IOutStringLen(75, 0, Vrw.Answer, false,60);
+			EndFormat;
+			// OutString(35, 0, "Балл:", false);
+			// OutString(75, 0, Vrw.Ball, false);
+			// EndFormat;
+			Gray_Divider(30,1);
+			end;
+		EndFormat;
+		Black_Divider(0,1);	
+		end;
+	end
+else
+	begin
+	ResetLoop(Vr);	
+	Vr.DateCon = RepSpec.sStartDate;	
+	Vr.OKFlag = 1;
+	TrHs = True;
+	while (LoopKey("DateConOK", Vr, 2, TrHs)) 
+		begin 
+		TrHs = (Vr.DateCon <= RepSpec.sEndDate);
+		if TrHs and (tAccessUsr(Vr.UserCode) or Creator(Vr.QTypeCode) or Vr.UserCode == CurrentUser)
+		  and (((Vr.QTypeCode == RepSpec.f3) or (RepSpec.f3 == ""))
+		  and ((Vr.UserPodr == RepSpec.f2) or (RepSpec.f2 == ""))  
+		  and ((Vr.UserCode == RepSpec.f1) or (RepSpec.f1 == "")))
+		  then
+			begin
+			StartFormat(15);
+			OutString(0, 0, Vr.SerNr, False);
+			OutString(60, 0, Vr.DateCon, False);
+			OutString(150, 0, Vr.UserName, False);
+			OutString(420, 0, Vr.Pers, False);
+			EndFormat;
+			OutString(60, 0, "ТЕСТ:   ", True);
+			OutString(60, 0, Vr.QTypeName, False);
+			EndFormat;
+			Gray_Divider(0,1);
+			if RepSpec.ArtMode == 1 then
+				begin
+				for (i = 0; i < MatRowCnt(Vr); i = i + 1)
+					begin
+					MatRowGet(Vr, i ,Vrw);
+					OutString(30, 0, i + 1 & ".", true);	
+					OutString(35, 0, "Вопрос:", false);	
+					Qr.SerNr = Vrw.QuestNum;
+					readfirstmain(Qr, 1, true);
+					OutText(75, 85, Qr);
+					EndFormat;
+					OutString(35, 0, "Ответ:", false);
+					IOutStringLen(75, 0, Vrw.Answer, false,55);
+					EndFormat;
+					// OutString(35, 0, "Балл:", false);
+					// OutString(75, 0, Vrw.Ball, false);
+					// EndFormat;
+					Gray_Divider(30,1);
+					end;
+				EndFormat;
+				Black_Divider(0,1);	
+				end;
+			end;
+		end;	
+	end;
+EndJob;
+return;
+end;  
+
+function string 200 tTestName(string f1)
+begin
+record QTypeVc Qr;
+
+Qr.Code = f1;
+readfirstmain(Qr, 1, true);
+tTestName = Qr.Name;
+return;
+end;  
+
+
+global
+procedure tStValidRn(record RcVc RepSpec)
+begin
+record tQuestionsVc Qr;
+record ValidVc Vr;
+row tQuestionsVc Qrw;
+row ValidVc Vrw;
+integer i, Sum, ii;
+val Pers, PerVal, k, SumPer;
+record QTypeVc QUr;
+boolean TrHs;
+record TempVc Listr;
+row TempVc Listrw;
+
+   SetLangMode(LangRussian,"RUS",2);
+   
+StartReportNoHeaderJob("Статистика по аттестации");
+
+QUr.Code = RepSpec.f1;
+readfirstmain(QUr, 1, true);
+
+if (tAccessUsr(CurrentUser) or Creator(QUr.Code))  then
+	begin
+	StartFormat(15);
+	OutString(60, 0, "ТЕСТ:   ", True);
+	OutString(90, 0, tTestName(RepSpec.f1), False);
+	EndFormat;	
+	EndFormat;
+	OutString(0, 0, "Сотрудники, ответившие на 100%: ", False);
+	EndFormat;	
+	ResetLoop(Vr);	
+	k = 0;
+	SumPer = 0;
+	Vr.QTypeCode = RepSpec.f1;	
+	TrHs = True;
+	while (LoopKey("QTypeCode", Vr, 1, TrHs)) 
+		begin 
+		TrHs = (Vr.QTypeCode == RepSpec.f1);
+		if TrHs  then
+			begin
+			k = k + 1;
+			SumPer = SumPer + Vr.Pers;
+			if Vr.Pers == 100 then
+				begin
+				StartFormat(15);
+				OutString(0, 0, Vr.UserName, False);
+				EndFormat;
+				Gray_Divider(0,1);	
+				end;
+			end;	
+		end;
+	PerVal = SumPer / k;
+	OutString(0, 0, "Средний балл по компании: " & PerVal , False);
+	EndFormat;
+	EndFormat;
+	OutString(0, 0, " % неправильных ответов", False);
+	OutString(200, 0, "Вопрос", False);
+	EndFormat;
+	Black_Divider(0,1);
+	tListCodeQu(RepSpec.f1, Listr);
+	tListQuest(Listr);
+	for (ii=0; ii<MatRowcnt(Listr); ii=ii+1)
+		begin
+		MatRowGet(Listr,ii,Listrw);
+		Pers = (StringtoVal(Listrw.f3, M4Val) *100) / k;//
+		Qr.SerNr = StringToLongInt(Listrw.f2);
+		ReadFirstMain(Qr, 1, true);
+		OutString(0, 0, Pers, False);
+		OutText(40, 85, Qr);
+		Gray_Divider(0,1);
+		end;
+	end;
+EndFormat;	
+Black_Divider(0,1);	
+EndJob;
+return;
+end;  
+
+
+global
+procedure tSertPrintRn(record RcVc RepSpec)
+begin
+String 255 tstr;
+
+SetLangMode(LangRussian,"RUS",2);
+   
+StartReportJob("Сертификат");
+EndHeader;
+
+StartFormat(15);
+EndFormat;	
+EndFormat;
+OutString(tCentr("СЕРТИФИКАТ"), 0, "СЕРТИФИКАТ", False);
+EndFormat;	
+EndFormat;
+EndFormat;	
+EndFormat;
+tstr = "Настоящий сертификат подтверждает, что";
+OutString(tCentr(tstr), 0, tstr, False);
+EndFormat;	
+EndFormat;
+tstr = RepSpec.f1;
+OutString(tCentr(tstr), 0, tstr, False);
+EndFormat;	
+EndFormat;
+tstr = "аттестован(а) по курсу";
+OutString(tCentr(tstr), 0, tstr, False);
+EndFormat;	
+EndFormat;
+tstr = RepSpec.f2; // tTestName(RepSpec.f2)
+OutString(tCentr(tstr), 0, tstr, False);
+EndFormat;	
+EndFormat;
+tstr = "с оценкой  " & RepSpec.vals0 & "  баллов."; 
+OutString(tCentr(tstr), 0, tstr, False);
+EndFormat;	
+EndFormat;
+EndFormat;	
+EndFormat;
+OutString(450, 0, RepSpec.d1, true);
+EndFormat;	
+EndFormat;
+
+// Black_Divider(0,1);
+// EndFormat;	
+// Black_Divider(0,1);	
+EndJob;
+return;
+end;  

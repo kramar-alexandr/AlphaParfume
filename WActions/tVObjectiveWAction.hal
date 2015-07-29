@@ -1,0 +1,272 @@
+remote function LongInt tUserInVTicketSet(string);
+remote updating procedure ActAfterTask(record VObjectiveVc) ;
+remote function LongInt tFindActTestTask(record VObjectiveVc, var LongInt);
+
+global
+updating procedure VObjectiveDClassOnOpenFromBrowse(Integer wn)
+begin
+record VObjectiveVc VOBr;
+record UserVc USr;
+boolean res;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+GetWindowRecord(wn, VOBr);
+res = ((USr.Department == VOBr.ServDepart) or (USr.Department == VOBr.UsrDepart) or (CurrentUser == "ZINOVIY"));
+if (not res) then
+	begin
+	CloseWindow(wn);
+	end;	
+RETURN;
+end;
+
+global updating
+function Boolean VObjectiveDClassAfterEditField(Integer wn,string fieldname,Integer fn, Integer rownr,Integer changed)  
+begin
+Boolean res;
+record VObjectiveVc VOBr, VOB2r;
+record UserVc USr;
+string 255 tstr;
+Boolean TrHs;
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+if  fieldname == "ServCode" and (WindowState(wn) <> 0)  then
+	begin
+	GetWindowRecord(wn, VOBr);
+	GetWindowRecord(wn, VOB2r);
+	if  (tUserInVTicketSet(CurrentUser) == 1)  then
+		begin
+		Usr.Code = VOBr.ServCode;
+		ReadFirstMain(Usr, 1, True);
+		if (USr.Department == VOBr.ServDepart) then
+			begin
+			VOBr.ServName = USr.Name;
+			VOBr.ServAppoint = USr.StateJob;
+			VOBr.ServDepart = USr.Department;
+			end
+		else
+			begin
+			VOBr.ServCode = "";
+			end;
+		end
+	else
+		begin
+		VOBr.ServCode = "";
+		end;
+	RecordUpdate(VOB2r, VOBr, True);
+	PutWindowRecord(wn, VOBr);
+	end;	
+	
+	if (((tUserInVTicketSet(Usr.Code) <> 1)  or (VOBr.DateEnd < CurrentDate))and (fieldname == "DateEnd")) and (WindowState(wn) <> 0) then 
+		begin
+		GetWindowRecord(wn, VOBr);
+		GetWindowRecord(wn, VOB2r);
+		VOBr.DateEnd = "";
+		RecordUpdate(VOB2r, VOBr, True);
+		PutWindowRecord(wn, VOBr);
+		end;
+	if (tUserInVTicketSet(Usr.Code) <> 1) and (fieldname == "TimeEnd") and (WindowState(wn) <> 0) then 
+		begin
+		GetWindowRecord(wn, VOBr);
+		GetWindowRecord(wn, VOB2r);
+		VOBr.TimeEnd = "";
+		RecordUpdate(VOB2r, VOBr, True);
+		PutWindowRecord(wn, VOBr);
+		end;
+	if (tUserInVTicketSet(Usr.Code) <> 1) and (fieldname == "ActionType") and (WindowState(wn) <> 0) then 
+		begin
+		GetWindowRecord(wn, VOBr);
+		GetWindowRecord(wn, VOB2r);
+		VOBr.ActionType = "";
+		RecordUpdate(VOB2r, VOBr, True);
+		PutWindowRecord(wn, VOBr);
+		end;	
+if fieldname == "UsrCode" and (WindowState(wn) <> 0) then
+	begin
+	GetWindowRecord(wn, VOBr);
+	GetWindowRecord(wn, VOB2r);
+	Usr.Code = VOBr.UsrCode;
+	ReadFirstMain(Usr, 1, True);
+	VOBr.UsrName = USr.Name;
+	VOBr.UsrAppoint = USr.StateJob;
+	VOBr.UsrDepart = USr.Department;
+	VOBr.UsrGroup = USr.SalesGroup;
+	RecordUpdate(VOB2r, VOBr, True);
+	PutWindowRecord(wn, VOBr);
+	end;
+		
+		//удаление всех записей из ТЗ на изменение любого поля
+	
+	 // TrHs = true;
+  // while (LoopMain(VOBr,1,TrHs)) 
+	  // begin
+		// if (TrHs) then 
+			// begin
+			// RecordDelete(VOBr);
+			// StepBack(VOBr);
+	   // end;
+ // end;
+	VObjectiveDClassAfterEditField = True;
+	end;	
+	
+	
+
+global  
+function Boolean VObjectiveDClassActiveEditField(Integer wn,string fieldname,Integer fn,Integer wnst,Integer rownr,Integer changed)
+BEGIN
+record VObjectiveVc VOBr, VOB2r;
+record UserVc USr;
+Boolean res;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+string 20 SupUsr, SupServ;
+longint RwCnt;
+
+GetWindowRecord(wn, VOBr);
+
+BlockLoad(Bossb);
+for (RwCnt = 0; RwCnt < MatRowCnt(Bossb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Bossb, RwCnt, Bossbw);
+	if Bossbw.Department == VOBr.ServDepart then
+		begin
+		SupServ = Bossbw.Boss;	
+		end;	
+	end;
+
+res = True;
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+
+
+
+if nonblank(VOBr.ServDepart) and ((Usr.Department <> VOBr.ServDepart)) then
+	begin
+	res = False;
+	end;
+if nonblank(VOBr.ServDepart) and (Usr.Department == VOBr.UsrDepart) then
+	begin
+	res = True;
+	end; 	
+if (VOBr.SendFlag == 1) or (VOBr.RecFlag == 1) then
+	begin
+	res = False;
+	end;
+	
+if (nonblank(VOBr.UsrCode) and (fieldname == "UsrCode")) then
+	begin
+	res = False;
+	end;
+if (nonblank(VOBr.ServDepart) and (fieldname == "ServDepart")) then
+	begin
+	res = False;
+	end;
+
+if (VOBr.StartFlag == 1) and ((fieldname == "ServCode") or (fieldname == "ActionType") or (fieldname == "DateEnd") or (fieldname == "TimeEnd")) then
+	begin
+	res = True;
+	end
+else 
+	begin
+	if (VOBr.StartFlag == 1) then
+		begin
+		res = False;
+		end;
+	end; 
+if (VOBr.StartFlag == 1) and (fieldname == "Concordance") and CurrentUser == SupServ then
+	begin
+	res = True;
+	end;
+VObjectiveDClassActiveEditField = res;
+end;	
+
+global
+updating procedure ActAfterTask1Dsm()
+BEGIN
+record VObjectiveVc VOBr, VOB2r;
+Integer wn;
+record UserVc USr;
+LongInt nAct;
+
+SetLangMode(LangRussian,"RUS",2);
+
+wn = CurWindow;
+GetWindowRecord(wn, VOBr);
+GetPrevWindowRecord(wn, VOB2r);
+
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr, 1, True);
+if (tUserInVTicketSet(Usr.Code) == 1) then
+begin
+	if (WindowState(wn)==0) and (VOBr.SendFlag ==1) and (VOBr.TestFlag == 1) and (VOBr.SolFlag == 0) and (tFindActTestTask(VOBr, nAct) == 1)then 
+		begin 
+		ActAfterTask(VOBr);
+		VOBr.TestFlag = 0;
+		VOBr.DateSol = "";
+		VOBr.TimeSol = "";
+		VOBr.DateTest = "";  
+		VOBr.TimeTest = "";
+		PutWindowRecord(wn, VOBr);
+		WindowDoOk(wn, 0);
+		UpdateBrowses("VObjectiveVc");
+		end; 
+end;
+  RETURN;
+END;
+
+
+global
+updating procedure ConcordItDsm()
+BEGIN
+record VObjectiveVc VOBr;
+Integer wn, RwCnt;
+record UserVc USr;
+record VDepartmentBossBlock Bossb;
+row VDepartmentBossBlock Bossbw;
+string 20 SupUsr, SupServ;
+Boolean TrHs;
+
+SetLangMode(LangRussian,"RUS",2);
+
+wn = CurWindow;
+GetWindowRecord(wn, VOBr);
+BlockLoad(Bossb);
+for (RwCnt = 0; RwCnt < MatRowCnt(Bossb); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Bossb, RwCnt, Bossbw);
+	if Bossbw.Department == VOBr.UsrDepart then
+		begin
+		SupUsr = Bossbw.Boss;	
+		end;
+	if Bossbw.Department == VOBr.ServDepart then
+		begin
+		SupServ = Bossbw.Boss;	
+		end;	
+	end;
+
+if (WindowState(wn)==0) and (VOBr.StartFlag <> 1) and ((CurrentUser == SupUsr) or (CurrentUser == SupServ)) then 
+	begin 
+	if blank(VOBr.Concordance) then
+		begin
+		VOBr.Concordance = CurrentUser;
+		PutWindowRecord(wn, VOBr);
+		WindowDoOk(wn, 0);
+		UpdateBrowses("VObjectiveVc");
+		end
+	else
+		begin
+		VOBr.Concordance = VOBr.Concordance & "," & CurrentUser;
+		PutWindowRecord(wn, VOBr);
+		WindowDoOk(wn, 0);
+		UpdateBrowses("VObjectiveVc");
+		end;
+
+	end;
+
+  RETURN;
+END;
+
+
+

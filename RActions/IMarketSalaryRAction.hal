@@ -1,0 +1,369 @@
+external function integer IItemCountInStr(string);
+external function string 50 IGetItemFromStr(string, integer);
+external function string 100 IGetVPositionName(string);
+
+//===============================================
+//Классификация должностных окладов на рынке труда
+//===============================================
+global
+function Boolean IMarketSalaryClassVcRecordDuplicate(var record IMarketSalaryClassVc MSCr, record IMarketSalaryClassVc MSC2r, longint stat, longint check)
+begin
+  longint res;
+
+  MSCr.Code = blankval;
+  IMarketSalaryClassVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IMarketSalaryClassVcRecordCheck(var record IMarketSalaryClassVc MSCr, record IMarketSalaryClassVc MSC2r, longint stat, longint check)
+begin
+  longint res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(MSCr.Code) then
+    begin
+      RecordCheckError(1499, "Укажите код класса!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and blank(MSCr.Desc) then
+    begin
+      RecordCheckError(1499, "Укажите наименование класса", -1, "Desc");
+      res = -1;
+    end;
+
+  IMarketSalaryClassVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+//Должностные оклады на рынке труда
+//===============================================
+global
+function Boolean IMarketSalaryVcRecordDuplicate(var record IMarketSalaryVc MSr, record IMarketSalaryVc MS2r, longint stat, longint check)
+begin
+  longint res;
+
+  MSr.Code = blankval;
+  IMarketSalaryVcRecordDuplicate = res;
+  Return;
+end;
+
+//===============================================
+//Проверка кода должности
+function boolean CheckVPosition(string PosCode)
+begin
+  record VPositionVc VPr;
+
+  VPr.Code = PosCode;
+  CheckVPosition = ReadFirstMain(VPr, 1, true);
+  Return;
+end;
+
+//===============================================
+//Проверка строки классов
+global
+function boolean ClassSetCheck(string ClassStr, var string ErrCode)
+begin
+  record IMarketSalaryClassVc MSCr;
+  integer i, cnt;
+  string 60 MSClass;
+  boolean res;
+  
+  res = true;
+  ErrCode = blankval;
+  cnt = IItemCountInStr(ClassStr);
+  for (i=0; (i < cnt) and res; i=i+1)
+    begin
+      MSClass = IGetItemFromStr(ClassStr, i);
+      MSCr.Code = MSClass;
+      res = res and ReadFirstMain(MSCr, 1, true);
+    end;
+
+  if not res then
+    begin
+      ErrCode = MSClass;
+    end;
+
+  ClassSetCheck = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean IMarketSalaryVcRecordCheck(var record IMarketSalaryVc MSr, record IMarketSalaryVc MS2r, longint stat, longint check)
+begin
+  longint res;
+  string 20 ErrCode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+
+  if blank(MSr.Code) then
+    begin
+      RecordCheckError(1499, "Код не указан!", -1, "Code");
+      res = -1;
+    end;
+
+  if (res == 0) and not CheckVPosition(MSr.PositionCode) then
+    begin
+      RecordCheckError(1499, "Неверный код должности", -1, "PositionCode");
+      res = -1;
+    end;
+
+  if (res == 0) and nonblank(MSr.Classification) and not ClassSetCheck(MSr.Classification, ErrCode) then
+    begin
+      RecordCheckError(1120, ErrCode, -1, "Classification");
+      res = -1;
+    end;
+
+  IMarketSalaryVcRecordCheck = res;
+  Return;
+end;
+
+//===============================================
+//Отчет "Должностные оклады на рынке труда"
+//===============================================
+//f1 - Код оклада
+//f2 - Код должности
+//f3 - Классификация
+//flags[0] - Статус
+
+//===============================================
+//Наименование статуса
+function string 100 GetSalaryStatusName(integer Status)
+begin
+  string 100 Name;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (Status)
+    begin
+      case 0: Name = "Официальный";
+      case 1: Name = "Управленческий (на исп. срок)";
+      case 2: Name = "Управленческий (после исп. срока)";
+    end;
+  GetSalaryStatusName = Name;
+  Return;
+end;
+
+//===============================================
+//Проверяем запись на соответствие
+function boolean IMarketSalaryRnCheck(record RcVc RepSpec, record IMarketSalaryVc MSr)
+begin
+  IMarketSalaryRnCheck = (blank(RepSpec.f1) or (MSr.Code == RepSpec.f1)) and
+                       (blank(RepSpec.f2) or (MSr.PositionCode == RepSpec.f2)) and
+                       (blank(RepSpec.f3) or SetInSet(MSr.Classification, RepSpec.f2)) and
+                       (MSr.Status == RepSpec.flags[0]);
+  Return;
+end;
+
+//===============================================
+//Выбираем ключ и инициируем record
+procedure IMarketSalaryRnSetKey(record RcVc RepSpec, var string KeyStr, var record IMarketSalaryVc MSr)
+begin
+  KeyStr = blankval;
+
+  if nonblank(RepSpec.f1) then //Код оклада
+    begin
+      KeyStr = "Code";
+      MSr.Code = RepSpec.f1;
+    end;
+
+  if blank(KeyStr) and nonblank(RepSpec.f2) then //Код должности
+    begin
+      KeyStr = "PositionCode";
+      MSr.PositionCode = RepSpec.f2;
+    end;
+
+  if blank(KeyStr) then //В противном случае
+    begin
+      KeyStr = "PositionName"; //Сортируем по наименованию
+    end;
+
+  Return;
+end;
+
+//===============================================
+//Сводный
+procedure IMarketSalaryRnOutRec(record IMarketSalaryVc MSr)
+begin
+  StartFormat(15);
+  OutString(2, "DblIMarketSalaryVc", MSr.Code, false);
+  OutString(3, "IDblVPositionVc", MSr.PositionCode, false);
+  OutString(4, 0, MSr.PositionName, false);
+  OutString(5, 0, MSr.SalaryMin, true);
+  OutString(6, 0, MSr.SalaryMax, true);
+  OutString(7, 0, MSr.SalaryAvg, true);
+  OutString(8, 0, MSr.SalaryTot, true);
+  EndFormat;
+  Gray_Divider(0, 1);
+  Return;
+end;
+
+//===============================================
+//Подробный
+procedure IMarketSalaryRnOutRecEx(record IMarketSalaryVc MSr)
+begin
+  integer h1, h2;
+
+  h1 = 12;
+  h2 = 200;
+
+  StartFormat(15);
+  OutString(h1, 0, "Код:", false);
+  OutString(h2, "DblIMarketSalaryVc", MSr.Code, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+  
+  OutString(h1, 0, "Код должности:", false);
+  OutString(h2, "IDblVPositionVc", MSr.PositionCode, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+
+  OutString(h1, 0, "Наименование должности:", false);
+  OutString(h2, 0, MSr.PositionName, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+
+  OutString(h1, 0, "Минимальный оклад:", false);
+  OutString(h2, 0, MSr.SalaryMin, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+
+  OutString(h1, 0, "Максимальный оклад:", false);
+  OutString(h2, 0, MSr.SalaryMax, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+
+  OutString(h1, 0, "Средний оклад:", false);
+  OutString(h2, 0, MSr.SalaryAvg, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+
+  OutString(h1, 0, "Совокупный оклад", false);
+  EndFormat;
+  OutString(h1, 0, "(вкл. мотивацию, %, бонусы и пр.):", false);
+  OutString(h2, 0, MSr.SalaryTot, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+
+  OutString(h1, 0, "На дату:", false);
+  OutString(h2, 0, MSr.ActDate, false);
+  EndFormat;
+  Gray_Divider(0, 1);
+
+  OutString(h1, 0, "Статус:", false);
+  OutString(h2, 0, GetSalaryStatusName(MSr.Status), false);
+  EndFormat;
+  Black_Divider(0, 1);
+
+  Return;
+end;
+
+//===============================================
+procedure IMarketSalaryRnHeader(record RcVc RepSpec)
+begin
+  integer rw;
+  string 255 tstr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  rw = 2;
+  if nonblank(RepSpec.f1) then //Код оклада
+    begin
+      Header(rw, "Код: " & RepSpec.f1, 0);
+      rw = rw + 1;
+    end;
+
+  if nonblank(RepSpec.f2) then //Код должности
+    begin
+      Header(rw, "Должность: " & RepSpec.f2 & " (" & IGetVPositionName(RepSpec.f2) & ")", 0);
+      rw = rw + 1;
+    end;
+
+  if nonblank(RepSpec.f3) then
+    begin
+      Header(rw, "Классификация: " & RepSpec.f3, 0);
+      rw = rw + 1;
+    end;
+
+  Header(rw, "Статус: " & GetSalaryStatusName(RepSpec.flags[0]), 0);
+
+  switch (RepSpec.ArtMode)
+    begin
+      case 0: Header(rw, "Сводный", 1);
+      case 1: Header(rw, "Подробный", 1);
+    end;
+  rw = rw + 1;
+end;
+
+//===============================================
+procedure IMarketSalaryRnTopLine(record RcVc RepSpec)
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  if (RepSpec.ArtMode == 0) then
+    begin
+      StartFormat(15);
+      OutString(2, 0, "Оклад", false);
+      OutString(3, 0, "Должность", false);
+      OutString(4, 0, "Наименование", false);
+      OutString(5, 0, "Мин.", true);
+      OutString(6, 0, "Макс.", true);
+      OutString(7, 0, "Средний", true);
+      OutString(8, 0, "Совокуп.", true);
+      EndFormat;
+      Black_Divider(0, 1);
+      EndFormat;
+    end;
+  Return;
+end;
+
+//===============================================
+global
+procedure IMarketSalaryRn(record RcVc RepSpec)
+begin
+  record IMarketSalaryVc MSr;
+  boolean cont;
+  string 20 KeyStr;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  StartReportJob("Оклады должностей на рынке труда");
+  IMarketSalaryRnHeader(RepSpec);
+  EndHeader;
+
+  SetRepCol(2, 2);
+  SetRepCol(3, 50);
+  SetRepCol(4, 130);
+  SetRepCol(5, 330);
+  SetRepCol(6, 380);
+  SetRepCol(7, 430);
+  SetRepCol(8, 480);
+  IMarketSalaryRnTopLine(RepSpec);
+
+  ResetLoop(MSr);
+  IMarketSalaryRnSetKey(RepSpec, KeyStr, MSr);
+  cont = true;
+  while LoopKey(KeyStr, MSr, 1, cont)
+    begin
+      cont = (blank(RepSpec.f1) or (MSr.Code == RepSpec.f1)) and
+             (blank(RepSpec.f2) or (MSr.PositionCode == RepSpec.f2));
+
+      if cont and IMarketSalaryRnCheck(RepSpec, MSr) then
+        begin
+          switch (RepSpec.ArtMode)
+            begin
+              case 0: IMarketSalaryRnOutRec(MSr); //Сводный
+              case 1: IMarketSalaryRnOutRecEx(MSr); //Подробный
+            end;
+        end;
+    end;
+
+  EndJob;
+  
+  Return;
+end;

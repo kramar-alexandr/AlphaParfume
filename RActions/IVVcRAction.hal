@@ -1,0 +1,363 @@
+external function boolean InRange(string,string);
+external function integer CountBallForIVVc(record IVVc, record IVVC, Integer);
+external procedure GlueDoubleRows(record IVVc);
+external procedure PlanFactFromIV(record IVVc, Integer);
+external procedure PlanFactCUFromIV(record IVVc, Integer);
+external function Date IGetShipDateIVVc(record IVVc, Date); //27.12.11 INAU
+external inner procedure IVVc_CalculatePayDate(var record IVVc); //27.12.11 INAU
+external inner procedure IIVDiscountBySum(var record IVVc); //03.02.12 INAU (level0)
+external updating procedure tOnCheckAfter (record IVVc);
+external updating procedure tDelRecIV (record IVVc);
+external updating procedure StoreIVPlanPayHist(var record IVVc, record IVVc); //20.06.13 INAU
+external updating procedure ORHist_RecordRemove(integer, longint, LongInt);
+external updating procedure CreateORHistFromIV(record IVVc);
+external function string 20 IGetUserAccessGroup(string); //10.09.14 INAU
+external function boolean ICheckSHDateOpened(longint); //10.09.14 INAU
+
+
+global
+procedure IVVc_LogAction(var record IVVc IVr, string ActionName) //Добвавлено 26.11.09 INAU
+begin
+  if blank(GetFieldValueByName(IVr,"Log"&ActionName&"User",-1)) then
+    begin
+//      stopalert(ActionName & "* * * " & CurrentUser);
+      SetFieldValueByName(IVr,"Log"&ActionName&"User", CurrentUser, -1);
+      SetFieldValueByName(IVr,"Log"&ActionName&"Date", CurrentDate, -1);
+      SetFieldValueByName(IVr,"Log"&ActionName&"Time", CurrentTime, -1);
+    end;
+  Return;
+end;
+
+
+global
+function boolean tIVOpenPrepExists(string custcode, LongInt SerNr) // 5-11-12 TGOR
+begin
+  record ARPayVc ARPayr;
+
+  tIVOpenPrepExists = false;
+
+  ARPayr.CustCode = custcode;
+  if (ReadFirstKey("CustCode",ARPayr,1,true)) then
+    begin
+    ARPayr.CUPNr = SerNr;
+    if not(ReadFirstMain(ARPayr,1,true)) then
+      begin
+      tIVOpenPrepExists = true;
+      end;
+    end;
+  Return;
+end;
+
+
+updating function boolean IVVcToTT(record IVVc IVr)
+begin
+record IVTTVc THr;
+record UserVc Usr;
+row IVVc IVrw;
+record VSetTTBlock TTb;
+
+BlockLoad(TTb);
+if (TTb.EnableIVTTVc==1) then //Включена запись IVTTVc. 27.03.10 INAU
+  begin
+  MatRowGet(IVr, 0, IVrw);
+  //StopAlert(IVrw.ArtCode & "!");
+  if nonblank(IVrw.ArtCode) then 
+    begin
+    Usr.Code = CurrentUser;
+    ReadFirstMain(Usr, 1, True);
+
+    THr.IVCode = IVr.SerNr;
+    //if (not  ReadFirstMain(THr, 1, True)) then
+      begin
+      THr.IVCode = IVr.SerNr;
+      THr.TransDate = IVr.ServiceDelDate;
+      THr.Stock = IVr.Location;
+      THr.CUCode = IVr.CustCode;
+      THr.Address = IVr.ShipAddr1; //IVr.ShipAddr0 & " - " & IVr.ShipAddr1;
+      THr.CUName = IVr.Addr0;
+      THr.SalesGroup = IVr.SalesGroup;
+      THr.SalesMan = CurrentUser;
+      THr.ObjStr = IVrw.Objects & "," & IVr.Objects;
+      RecordStore(THr, True);
+      IVVcToTT = True;
+      //end else
+      //begin
+      //MessageBox(0, "Eсть товарно-транспортнаЯ!");
+      //IVVcToTT = False;
+      end;
+    end;
+  end
+else
+  begin
+  IVVcToTT = False;
+  end;
+  
+RETURN;
+end;
+
+/*
+global
+function Integer MakeTransFromIV(var record TRVc gTRp,var record SMVc gSMp,record IVVc IVp,Boolean rpt,Boolean inclqty)
+begin
+  integer res;
+  stopalert("MakeTransFromIV");
+  res = inner.MakeTransFromIV(gTRp, gSMp, IVp, rpt, inclqty);
+  gTRp.TransDate = IGetShipDateIVVc(IVp, gTRp.TransDate); //27.12.11 INAU - корректируем TransDate по дате последней отгрузки
+  MakeTransFromIV = res;
+  Return;
+end;
+*/
+
+global
+updating function LongInt IVVcRecordCheck(var record IVVc IVp,record IVVc IV2p,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+  row IVVc IVrw;
+  record VSetSetBlock VSet;
+  integer insertmode, updatemode;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  res = 0;
+
+  BlockLoad(VSet);
+
+  insertmode = 1;//Rs_insert
+  updatemode = 2;//Rs_update
+
+  IIVDiscountBySum(IVp); //03.02.12 INAU
+  if (IVp.OKFlag == 0) and (IVp.InvType == 1) and (VSet.InvDateFromShipDate==1) then //27.12.11 INAU - Подставляем дату продажи
+    begin
+    IVp.InvDate = IGetShipDateIVVc(IVp, IVp.InvDate);
+    IVVc_CalculatePayDate(IVp);
+    end;
+
+  if (IVp.OKFlag == 1) and ((stat == 1) or ((stat == 2) and (IV2p.OKFlag == 0))) then //28.06.13 INAU
+    begin
+    IVp.PlanPayDate = IVp.PayDate;
+    end;
+
+  if (IVp.OKFlag == 1) and blankdate(IVp.PlanPayDate) then //28.06.13 INAU
+    begin
+    RecordCheckError(1058, "", -1, "PlanPayDate");
+    res = -1;
+    end;
+
+  if (res == 0) and (IVp.OKFlag == 0) and (IVp.InvType == 1) and (VSet.InvDateFromShipDate == 1) then //27.12.11 INAU - Подставляем дату продажи
+    begin
+    IVp.InvDate = IGetShipDateIVVc(IVp, IVp.InvDate);
+    IVVc_CalculatePayDate(IVp);
+    end;
+
+  MatRowGet(IVp, 0, IVrw); // 29.11.12 TGOR
+  if tIVOpenPrepExists(IVp.CustCode, IVrw.CUPNr) and (IVp.OKFlag == 1) then
+    begin
+    RecordCheckError(2025,"",-1,"SerNr");
+//    res = -1;
+    end;
+
+  if (res == 0) and (IVp.OKFlag == 1) and ((stat == insertmode) or ((stat == updatemode) and (IV2p.OKFlag == 0))) then //OKFlag
+    begin
+    if (IVp.InvType == 1) and
+      (not (ICheckSHDateOpened(IVp.OrderNr) or SetInSet(IGetUserAccessGroup(CurrentUser), "1011,1011K"))) then //Проверяем, находится ли отгрузка в открытой неделе
+        begin
+        MessageBox(0, "Не разрешено, т.к. отгрузка по этой Сч/ф датирована закрытой неделей. Пожалуйста, обратитесь в Службу 4.");
+        res = -1;
+        end;
+    end;
+
+  if (res == 0) then
+    begin
+    res = inner.IVVcRecordCheck(IVp, IV2p, stat, long4);
+    end;
+
+  if (res == 0) then
+    begin
+      IVVc_LogAction(IVp,"Save"); 
+      if (IVp.OKFlag == 1) and ((stat == insertmode) or ((stat == updatemode) and (IV2p.OKFlag == 0))) then //OKFlag
+        begin
+        IVVc_LogAction(IVp, "OK");
+        IVVcToTT(IVp);
+        end;
+      if (IVp.Invalid <> 0) and ((stat == insertmode) or ((stat == updatemode) and (IV2p.Invalid == 0))) then //Аннулировал
+        begin
+        IVVc_LogAction(IVp, "Annul");
+        end;
+   
+      //Автозаполнение факта в планах   
+      if (IVp.OKFlag == 0) and (IV2p.OKFlag <> 0) and ((stat == insertmode) or (stat == updatemode)) then
+        begin
+        if (VSet.FillPlanFromIVVc == 1) then 
+          begin
+          PlanFactFromIV(IVp, -1); //Планы по торговым
+          end;
+        if (VSet.FillPlanCUFromIVVc == 1) then
+          begin
+          PlanFactCUFromIV(IVp, -1); //Планы по контрагентам
+          end;
+        end;
+      if ((IVp.Invalid!=0) and (IV2p.Invalid==0)) then 
+        begin
+        if (VSet.FillPlanFromIVVc == 1) then
+          begin
+          PlanFactFromIV(IVp, -1);
+          end;
+        if (VSet.FillPlanCUFromIVVc == 1) then
+          begin
+          PlanFactCUFromIV(IVp, -1);
+          end;
+        end;
+      if ((IVp.OKFlag <> 0)  and ((IV2p.OKFlag == 0) or (stat == insertmode))) then
+        begin
+        if (VSet.FillPlanFromIVVc == 1) then
+          begin
+          PlanFactFromIV(IVp, 1);
+          end;
+        if (VSet.FillPlanCUFromIVVc == 1) then
+          begin
+          PlanFactCUFromIV(IVp, 1);
+          end;
+        end;
+    end;
+
+  CountBallForIVVc(IVp, IVp, res); //By DELPHI Расчет баллов
+
+  IVVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+function LongInt IVVcRecordDefaults(var record IVVc IVr,record IVVc IV2r,LongInt long3,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.IVVcRecordDefaults(IVr, IV2r, long3, long4);
+  IVVc_LogAction(IVr,"New"); //26.11.09 INAU
+
+  IVVcRecordDefaults = res;
+  Return;
+end;
+
+
+global
+function LongInt IVVcRecordDuplicate(var record IVVc IVr,record IVVc IV2r,LongInt long3,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.IVVcRecordDuplicate(IVr, IV2r, long3, long4);
+
+  IVr.LogNewUser=blankval;
+  IVr.LogNewDate="";
+  IVr.LogNewTime="";
+  IVr.LogSaveUser=blankval;
+  IVr.LogSaveDate="";
+  IVr.LogSaveTime="";
+  IVr.LogOKUser=blankval;
+  IVr.LogOKDate="";
+  IVr.LogOKTime="";
+  IVr.LogAnnulUser=blankval;
+  IVr.LogAnnulDate="";
+  IVr.LogAnnulTime="";
+  IVVc_LogAction(IVr,"New");
+  IVr.PlanPayDate = "";
+  IVr.PlanPayUser = blankval;
+
+  IVVcRecordDuplicate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt IVVcRecordUpdateAfter(var record IVVc IVr, record IVVc IV2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+
+res = inner.IVVcRecordUpdateAfter(IVr, IV2r, stat, long4);
+
+if ((IVr.OKFlag <> 0) and (IV2r.OKFlag == 0)) then
+  begin
+  tOnCheckAfter (IVr);
+  end;
+
+if (((IVr.OKFlag == 0) and (IV2r.OKFlag <> 0)) or ((IVr.OKFlag <> 0) and ((IVr.Invalid)<>0))) then
+  begin
+  tDelRecIV(IVr);
+  end;
+
+StoreIVPlanPayHist(IVr, IV2r);
+
+IVVcRecordUpdateAfter = res;
+RETURN;
+END;
+
+
+global
+updating function LongInt IVVcRecordSaveAfter(var record IVVc IVr,record IVVc IV2r,LongInt long3,LongInt long4)
+BEGIN
+LongInt res;
+
+res = inner.IVVcRecordSaveAfter(IVr, IV2r, long3, long4);
+
+if (IVr.OKFlag <> 0) then
+  begin
+  tOnCheckAfter (IVr);
+  end;
+
+IVVcRecordSaveAfter = res;
+RETURN;
+END;
+
+
+global
+updating function LongInt IVVcRecordSave(var record IVVc IVr,record IVVc IV2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+  record VSetSetBlock VSet;
+
+  res = inner.IVVcRecordSave(IVr,IV2r,stat,long4);
+
+  BlockLoad(VSet);
+  if (IVr.InvType == 1) and (VSet.InvDateFromShipDate==1) then //27.12.11 INAU - Подставляем дату продажи
+    begin
+    IVr.InvDate = IGetShipDateIVVc(IVr, IVr.InvDate);
+//    IVVc_CalculatePayDate(IVp);
+    end;
+
+  CreateORHistFromIV(IVr);
+  IVVcRecordSave = res;
+return;
+end;
+
+
+global
+updating function LongInt IVVcRecordUpdate(var record IVVc IVr,record IVVc IV2r,LongInt stat,LongInt long4)
+begin
+  longint res;
+
+  res = inner.IVVcRecordUpdate(IVr,IV2r,stat,long4);
+  CreateORHistFromIV(IVr);
+  if IVr.OKFlag == 0 and IV2r.OKFlag == 1 then
+    begin
+    ORHist_RecordRemove(1,IVr.OrderNr,IVr.SerNr);
+    end;
+
+  if (IVr.InvType <> 3) and (IV2r.OKFlag == 1) and (IVr.PlanPayDate <> IV2r.PlanPayDate) then
+    begin
+    IVr.PlanPayUser = CurrentUser;
+    end;
+
+  IVVcRecordUpdate = res;
+  Return;
+end;
+
+
+global
+updating function LongInt IVVcRecordRemove(var record IVVc IVr,record IVVc IV2r,LongInt stat,LongInt long4)
+begin
+  LongInt res;
+
+  res = inner.IVVcRecordRemove(IVr,IV2r,stat,long4);
+  ORHist_RecordRemove(1,IVr.OrderNr,IVr.SerNr);
+  IVVcRecordRemove = res;
+end;

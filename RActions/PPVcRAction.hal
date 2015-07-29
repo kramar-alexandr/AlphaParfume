@@ -1,0 +1,133 @@
+external procedure PPVc_LogAction(var record PPVc, string);
+external inner procedure GetFullCurncyRate (var string,Date,var val,var val,var val,var val,var val);
+
+
+global
+updating function longint PPVcRecordCheck(var record PPVc PPr, record PPVc PP2r, longint stat, longint long4)
+begin
+  longint res;
+  record TRVc TR1r;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  res = inner.PPVcRecordCheck(PPr, PP2r, stat, long4);
+
+  //=== 22.05.13 TGOR
+  TR1r.TransDate = PPr.TransDate;
+  TR1r.Number = PPr.SerNr;
+  if not(ReadFirstKey("TransDate", TR1r,2,true)) and ((PPr.DoneFlag <> PP2r.DoneFlag) and (PPr.DoneFlag == 1)) then
+    begin
+    res = -1;
+    MessageBox(0, "Создавать запись операции запрещено.");
+    end;
+  //===
+
+  if (res == 0) and (PPr.SentFlag == 1) and ((stat == 1) or ((stat == 2) and (PP2r.SentFlag == 0))) then //Заказано
+    begin
+      PPVc_LogAction(PPr, "Sent");
+    end;
+
+  if (res == 0) and (PPr.OrderedFlag == 1) and ((stat == 1) or ((stat == 2) and (PP2r.OrderedFlag == 0))) then //Утверждено
+    begin
+      PPVc_LogAction(PPr, "Ordered");
+    end;
+
+  if (res == 0) and (PPr.DoneFlag == 1) and ((stat == 1) or ((stat == 2) and (PP2r.DoneFlag == 0))) then //OK
+    begin
+      PPVc_LogAction(PPr, "Done");
+    end;
+
+  if (res == 0) and (PPr.Invalid == 1) and ((stat == 1) or ((stat == 2) and (PP2r.Invalid == 0))) then //Запись аннулирована
+    begin
+      PPVc_LogAction(PPr, "Annul");
+    end;
+
+  PPVcRecordCheck = res;
+  Return;
+end;
+
+
+global
+updating function longint PPVcRecordSave(var record PPVc PPr, record PPVc PP2r, longint stat, longint long4)
+begin
+  longint res;
+
+  res = inner.PPVcRecordSave(PPr, PP2r, stat, long4);
+  PPVc_LogAction(PPr, "Save");
+
+  PPVcRecordSave = res;
+  Return;
+end;
+
+
+global
+function longint PPVcRecordDefaults(var record PPVc PPr, record PPVc PP2r, longint long3, longint long4)
+begin
+  longint res;
+  string 10 curcode;
+  val fr,to1,to2,br1,br2;
+
+  res = inner.PPVcRecordDefaults(PPr, PP2r, long3, long4);
+
+  curcode = "UAH"; //Diff from HAL
+  GetFullCurncyRate(curcode,PPr.TransDate,fr,to1,to2,br1,br2);
+  PPr.CurncyCode = curcode;
+  PPr.FrRate = fr;
+  PPr.ToRateB1 = to1;
+  PPr.ToRateB2 = to2;
+  PPr.BaseRate1 = br1;
+  PPr.BaseRate2 = br2;
+
+  PPr.LogNewUser = CurrentUser;
+  PPr.LogNewDate = CurrentDate;
+  PPr.LogNewTime = CurrentTime;
+  PPr.LogSaveUser = blankval;
+  PPr.LogSaveDate = "";
+  PPr.LogSaveTime = "";
+  PPr.LogSentUser = blankval;
+  PPr.LogSentDate = "";
+  PPr.LogSentTime = "";
+  PPr.LogOrderedUser = blankval;
+  PPr.LogOrderedDate = "";
+  PPr.LogOrderedTime = "";
+  PPr.LogDoneUser = blankval;
+  PPr.LogDoneDate = "";
+  PPr.LogDoneTime = "";
+  PPr.LogAnnulUser = blankval;
+  PPr.LogAnnulDate = "";
+  PPr.LogAnnulTime = "";
+
+  PPVcRecordDefaults = res;
+  Return;
+end;
+
+
+global
+function longint PPVcRecordDuplicate(var record PPVc PPr, record PPVc PP2r, longint long3, longint long4)
+begin
+  longint res;
+
+  res = inner.PPVcRecordDuplicate(PPr, PP2r, long3, long4);
+
+  PPr.LogNewUser = CurrentUser;
+  PPr.LogNewDate = CurrentDate;
+  PPr.LogNewTime = CurrentTime;
+  PPr.LogSaveUser = blankval;
+  PPr.LogSaveDate = "";
+  PPr.LogSaveTime = "";
+  PPr.LogSentUser = blankval;
+  PPr.LogSentDate = "";
+  PPr.LogSentTime = "";
+  PPr.LogOrderedUser = blankval;
+  PPr.LogOrderedDate = "";
+  PPr.LogOrderedTime = "";
+  PPr.LogDoneUser = blankval;
+  PPr.LogDoneDate = "";
+  PPr.LogDoneTime = "";
+  PPr.LogAnnulUser = blankval;
+  PPr.LogAnnulDate = "";
+  PPr.LogAnnulTime = "";
+
+  PPVcRecordDuplicate = res;
+  Return;
+end;

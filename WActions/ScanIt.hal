@@ -1,0 +1,536 @@
+external inner function val CalculateSerialNrQuantity(string,string,string,Boolean,val,val,val,val);
+remote inner procedure CalcSHWeight(var record SHVc,Boolean);
+remote inner procedure SHSumUp(var record SHVc);
+
+
+procedure SHChangeShip(record SHVc SHr,Integer rownr)
+begin
+  row SHVc SHrw;
+  record ORVc ORr;
+  row ORVc ORrw;
+  record MainStockBlock MainStockRec;
+  record RoundBlock RoundRec;
+  val t;
+
+  BlockLoad(MainStockRec);
+  MatRowGet(SHr,rownr,SHrw);
+  if (MainStockRec.DelOrdQty==0) then begin
+    if (SHrw.Ship>SHrw.Ordered) then begin
+      MessageBox(1303,"");
+    end;
+  end;
+  if (SHrw.Ship<0) then begin
+    SHrw.Ship = 0;
+  end;
+  CalcSHWeight(SHr,true);
+  BlockLoad(RoundRec);
+  ORr.SerNr = SHr.OrderNr;
+  if (ReadFirstMain(ORr,1,true)) then begin
+    if ((SHrw.OrdRow<MatRowCnt(ORr)) and (SHrw.OrdRow>-1)) then begin
+      MatRowGet(ORr,SHrw.OrdRow,ORrw);
+      t = ORrw.Sum/ORrw.Quant;
+      SHr.TAX1Sum = t * SHrw.Ship;
+    end;
+  end;  
+  MatRowPut(SHr,rownr,SHrw);
+  SHSumUp(SHr);  
+  Return;          
+end;
+
+
+global
+updating function Boolean SHDClassBeforeEditField(Integer wn,string fieldname,Integer fn, Integer rownr)
+begin
+  Boolean res;
+  record SHVc SHvr;
+  row SHVc SHvrw;
+  record SHVc SHvr2;
+  row SHVc SHvrw2;
+  record RcVc rcv;
+  record BarcodeVc Barr;
+  Integer RwCnt, i;
+  Boolean Founded;
+  Integer Kvo;
+  
+  if (fieldname == "DelAddrCode") then
+    begin
+    SetLangMode(LangRussian,"RUS",2);
+    GetWindowRecord(wn,SHvr);
+      Barr.Barcode = SHvr.Barcode;
+    if ReadFirstMain(Barr, 1, True) then
+      begin
+      RwCnt = MatRowCnt(SHvr);
+      Founded = False;
+      for (i=0; (i < RwCnt) and (not Founded); i = i + 1) 
+        begin
+        MatRowGet(SHvr, i, SHvrw);
+        Founded = (SHvrw.ArtCode == Barr.Itemcode);
+        end;
+      if Founded then
+        begin
+        GetWindowRecord(wn,SHvr2);
+        if SHVr.Check1 == 0 then
+          begin
+          MatRowGet(SHvr2, i - 1, SHvrw2);
+          SHvr.DelAddrCode = SHvrw2.Ship;
+          SHvr.IName = SHvrw2.Spec;
+          PutWindowRecord(wn, SHvr);
+          end else
+          begin
+          MatRowGet(SHvr2, i - 1, SHvrw2);
+          SHvrw.Ship = SHvrw2.Ship + 1;
+          SHvrw.Ship = CalculateSerialNrQuantity(SHvrw.ArtCode,"","",false,SHvrw.UnitXval,SHvrw.UnitYval,SHvrw.UnitZval,SHvrw.Ship);
+          MatRowPut(SHVr, i - 1, SHvrw);
+          SHChangeShip(SHvr,i - 1);
+          SHvr.DelAddrCode = SHvrw.Ship;
+          SHvr.IName = SHvrw2.Spec;
+          PutWindowRecord(wn, SHvr);
+          WindowFieldGoto(wn, SHvr, - 1, "Barcode", True);
+          end;
+        end else
+        begin
+        if SHVr.Check1 <> 0 then
+          begin
+          MessageBox(0, "Не найден в заказе: " & SHvr.Barcode);
+          end;
+        SHvr.Barcode = "";
+        SHvr.DelAddrCode = 0;
+        SHvr.IName = "";
+        
+        PutWindowRecord(wn, SHvr);
+        end;
+      end else
+      begin 
+      if SHVr.Check1 <> 0 then
+        begin
+        MessageBox(0, "Нет такого щтрих-кода: " & SHvr.Barcode);
+        end;
+      end;
+    end;
+  SHDClassBeforeEditField = True;
+  Return;
+end;
+
+
+global
+updating function Boolean SHDClassDelAddrCodeEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record SHVc SHvr;
+  row SHVc SHvrw;
+  record SHVc SHvr2;
+  row SHVc SHvrw2;
+  record RcVc rcv;
+  record BarcodeVc Barr;
+  Integer RwCnt, i;
+  Boolean Founded;
+  Integer Kvo;
+ 
+  SetLangMode(LangRussian,"RUS",2);
+  res = true;
+
+  GetWindowRecord(wn,SHvr);
+  if SHvr.Check1 == 0 then
+  begin
+  //StopAlert("DelAddrCodeEFAfter");
+    Barr.Barcode = SHvr.Barcode;
+  if ReadFirstMain(Barr, 1, True) then
+    begin
+    //StopAlert(Barr.Itemcode);
+    RwCnt = MatRowCnt(SHvr);
+    Founded = False;
+    for (i=0; (i < RwCnt) and (not Founded); i = i + 1)
+      begin
+      MatRowGet(SHvr, i, SHvrw);
+      Founded = (SHvrw.ArtCode == Barr.Itemcode);
+
+      end;
+    if Founded then
+      begin
+      GetWindowRecord(wn,SHvr2);
+      MatRowGet(SHvr2, i - 1, SHvrw2);
+      if (SHvr2.Check1 <> 0) then
+        begin
+        SHvrw.Ship = SHvrw2.Ship + StringToVal(SHVr.DelAddrCode, M4Val);
+        end else
+        begin
+        SHvrw.Ship = StringToVal(SHVr.DelAddrCode, M4Val);
+        end;
+      SHvrw.Ship = CalculateSerialNrQuantity(SHvrw.ArtCode,"","",false,SHvrw.UnitXval,SHvrw.UnitYval,SHvrw.UnitZval,SHvrw.Ship);
+      SHvrw.Barcoderw = SHvr.Barcode;
+      MatRowPut(SHvr, i - 1, SHvrw);
+      SHChangeShip(SHvr,i - 1);
+      PutWindowRecord(wn,SHvr);
+      //MatRowPut(SHvr, i - 1, SHvrw);
+
+      //PutWindowRecord(wn, SHvr);
+      end else
+      begin
+      MessageBox(0, "Не найден в заказе: " & SHvr.Barcode);
+      end;
+    end
+    else
+    begin
+    MessageBox(0, "Нет такого штрих-кода: " & SHvr.Barcode);
+    end;
+  end;
+  SHDClassDelAddrCodeEFAfter = res;
+  Return;
+end;
+
+
+global 
+procedure ScanIt()
+begin
+  Integer wn;
+  record SHVc SHvr;
+  
+  wn = CurWindow;
+  WindowFieldGoto(wn, SHvr, -1, "Barcode", False);
+  Return;
+end;
+
+
+global 
+procedure ClearIt()
+begin
+  Integer wn, i;
+  record SHVc SHvr;
+  row SHVc SHvrw;
+  
+  wn = CurWindow;
+  GetWindowRecord(wn, SHvr);
+  if (SHvr.Check1 == 0) then
+    begin
+    for (i = 0; i < MatRowCnt(SHvr); i = i + 1)
+      begin
+      MatRowGet(SHvr, i, SHvrw);
+      SHvrw.Ship = 0;
+      MatRowPut(SHvr, i, SHvrw);
+      end;
+    PutWindowRecord(wn, SHvr);
+    end;
+  Return;
+end;
+
+
+global
+updating function Boolean RetDClassBeforeEditField(Integer wn,string fieldname,Integer fn, Integer rownr)
+begin
+  Boolean res;
+  record RetVc Retr;
+  row RetVc Retrr;
+  record RetVc Retr2;
+  row RetVc Retrr2;
+  record BarcodeVc Barr;
+  Integer RwCnt, i;
+  Boolean Founded;
+  Integer Kvo;
+  
+  if (fieldname == "BQuant") then
+    begin
+    GetWindowRecord(wn, Retr);
+      Barr.Barcode = Retr.Barcode;
+    if ReadFirstMain(Barr, 1, True) then
+      begin
+      RwCnt = MatRowCnt(Retr);
+      Founded = False;
+      for (i=0; (i < RwCnt - 1) and (not Founded); i = i + 1) 
+        begin
+        MatRowGet(Retr, i, Retrr);
+        Founded = (Retrr.ArtCode == Barr.Itemcode);
+        end;
+      if Founded then
+        begin
+        GetWindowRecord(wn,Retr2);
+        MatRowGet(Retr2, i - 1, Retrr2);
+        Retr.BQuant = Retrr2.Quant;
+        Retr.IName = Retrr2.Spec;
+        PutWindowRecord(wn, Retr);
+        end else
+        begin
+        MessageBox(0, "Не найден в возврате: " & Retr.Barcode);
+        Retr.BQuant = 0;
+        Retr.IName = "";
+        Retr.Barcode = "";
+        PutWindowRecord(wn, Retr);			
+        end;
+      end else
+      begin
+      MessageBox(0, "Нет такого штрих-кода: " & Retr.Barcode);
+      Retr.Barcode = "";
+      PutWindowRecord(wn, Retr);
+      end;
+    end;
+  RetDClassBeforeEditField = True;
+  Return;
+end;
+
+
+global
+updating function Boolean RetDClassBQuantEFAfter(Integer wn,Integer fn, Integer rownr,Integer changed)
+begin
+  Boolean res;
+  record RetVc Retr;
+  row RetVc Retrr;
+  record RetVc Retr2;
+  row RetVc Retrr2;
+  record BarcodeVc Barr;
+  Integer RwCnt, i;
+  Boolean Founded;
+  Integer Kvo;
+ 
+  SetLangMode(LangRussian,"RUS",2);
+  res = true;
+  begin
+    GetWindowRecord(wn,Retr);
+    Barr.Barcode = Retr.Barcode;
+  if ReadFirstMain(Barr, 1, True) then
+    begin
+    RwCnt = MatRowCnt(Retr);
+    Founded = False;
+    for (i=0; (i < RwCnt - 1) and (not Founded); i = i + 1)
+      begin
+      MatRowGet(Retr, i, Retrr);
+      Founded = (Retrr.ArtCode == Barr.Itemcode);
+
+      end;
+    if Founded then
+      begin
+      GetWindowRecord(wn,Retr2);
+      MatRowGet(Retr2, i - 1, Retrr2);
+      if (Retr2.AddIt <> 0) then
+        begin
+        Retrr.Quant = Retrr2.Quant + Retr.BQuant;
+        end else
+        begin
+        Retrr.Quant = Retr.BQuant;
+        end;
+      MatRowPut(Retr, i - 1, Retrr);
+
+      PutWindowRecord(wn, Retr);
+      end else
+      begin
+      //MessageBox(0, "Не найден в возврате: " & Retr.Barcode);
+      end;
+    end
+    else
+    begin
+    //MessageBox(0, "Нет такого штрих-кода: " & Retr.Barcode);
+    end;
+  end;
+  RetDClassBQuantEFAfter = res;
+  Return;
+end;
+
+
+global 
+procedure ScanItRet()
+begin
+  Integer wn;
+  record RetVc Retr;
+  
+  wn = CurWindow;
+  WindowFieldGoto(wn, Retr, -1, "Barcode", False);
+  Return;
+end; 
+
+
+global 
+procedure ClearItRet()
+begin
+  Integer wn, i;
+  record RetVc SHvr;
+  row RetVc SHvrw;
+  
+  wn = CurWindow;
+  GetWindowRecord(wn, SHvr);
+  for (i = 0; i < MatRowCnt(SHvr); i = i + 1)
+    begin
+    MatRowGet(SHvr, i, SHvrw);
+    SHvrw.Quant = 0;
+    MatRowPut(SHvr, i, SHvrw);
+    end;
+  PutWindowRecord(wn, SHvr);
+  Return;
+end;
+
+//Поступления
+
+global 
+procedure ScanItPU()
+begin
+  Integer wn;
+  record PUVc Retr;
+  
+  wn = CurWindow;
+  WindowFieldGoto(wn, Retr, -1, "Barcode", False);
+  Return;
+end; 
+
+
+//Перемещения
+global
+procedure ScanItMov()
+begin
+  Integer wn;
+  record StockMovVc SMr;
+  
+  wn = CurWindow;
+  WindowFieldGoto(wn, SMr, -1, "Barcode", False);
+  Return;
+end; 
+
+
+global
+updating function Boolean StockMovDClassBArcodeEFAfter(Integer wn, Integer changed)
+begin
+  Boolean res;
+  record StockMovVc SHvr;
+  row StockMovVc SHvrw;
+  record StockMovVc SHvr2;
+  row StockMovVc SHvrw2;
+  record RcVc rcv;
+  record BarcodeVc Barr;
+  Integer RwCnt, i;
+  Boolean Founded;
+  Integer Kvo;
+  string 20 fieldname;
+   
+  SetLangMode(LangRussian,"RUS",2);
+  res = true;
+  
+  GetWindowRecord(wn,SHvr);
+  if (SHvr.OrdFlag <> 0) then 
+    begin
+    
+      Barr.Barcode = SHvr.Barcode;
+    if ReadFirstMain(Barr, 1, True) then
+      begin
+      RwCnt = MatRowCnt(SHvr);
+      Founded = False;
+      for (i=0; (i < RwCnt) and (not Founded); i = i + 1) 
+        begin
+        MatRowGet(SHvr, i, SHvrw);
+        Founded = (SHvrw.ArtCode == Barr.Itemcode);
+        
+        end;
+      if Founded then
+        begin
+        GetWindowRecord(wn,SHvr2);
+        MatRowGet(SHvr2, i - 1 , SHvrw2);
+        
+        if(SHvr2.SentOKFlag == 0) and nonblank(SHvr2.ThrouLocation) then
+          begin
+          fieldname = "SentQuant";
+          if blank(SHvrw2.SentQuant) then
+            begin
+            SHvrw2.SentQuant = 0;
+            end;
+          end else
+          begin
+          fieldname = "Quant";
+          if blank(SHvrw2.Quant) then
+            begin
+            SHvrw2.Quant = 0;
+            end;
+          end;
+        
+        SHVr.BQuant = StringToVal(GetFieldValueByName(SHvr2, fieldname, i - 1), M4Val);
+        SHVr.IName = SHvrw2.Spec & ":" & (i - 1);
+        //SetFieldValueByName(SHvr, fieldname, StringToVal(GetFieldValueByName(SHvr2, fieldname, i - 1), M4Val) + StringToVal(SHVr.BQuant, M4Val), i - 1);
+              
+        PutWindowRecord(wn, SHvr);
+        
+        end else
+        begin
+        SHVr.IName = "";
+        SHVr.Barcode = "";
+        SHVr.IName = "";
+        SHVr.BQuant = 0;
+        PutWindowRecord(wn, SHvr);
+        MessageBox(0, "Не найден в заказе: " & SHvr.Barcode);
+        end;
+      end
+      else
+      begin
+      DeselectWindow(wn, True);
+      MessageBox(0, "Нет такого штрих-кода: " & SHvr.Barcode);
+      SHVr.IName = "";
+      SHVr.Barcode = "";
+      SHVr.IName = "";
+      SHVr.BQuant = 0;
+      PutWindowRecord(wn, SHvr);
+      end;
+    end;
+  StockMovDClassBArcodeEFAfter = res;
+  
+  Return;
+end;
+
+
+global
+updating function Boolean StockMovDClassBQuantEFAfter(Integer wn, Integer changed)
+begin
+  Boolean res;
+  record StockMovVc SHvr;
+  row StockMovVc SHvrw;
+  record StockMovVc SHvr2;
+  row StockMovVc SHvrw2;
+  record RcVc rcv;
+  record BarcodeVc Barr;
+  Integer RwCnt, i;
+  Boolean Founded;
+  Integer Kvo;
+  string 20 fieldname;
+   
+  SetLangMode(LangRussian,"RUS",2);
+  res = true;
+  
+  GetWindowRecord(wn,SHvr);
+  if (SHvr.OrdFlag <> 0) then 
+    begin
+    Barr.Barcode = SHvr.Barcode;
+    if ReadFirstMain(Barr, 1, True) then
+      begin
+      RwCnt = MatRowCnt(SHvr);
+      Founded = False;
+      for (i=0; (i < RwCnt) and (not Founded); i = i + 1) 
+        begin
+        MatRowGet(SHvr, i, SHvrw);
+        Founded = (SHvrw.ArtCode == Barr.Itemcode);
+        end;
+      end;	
+      if Founded then
+      begin
+      GetWindowRecord(wn,SHvr2);
+      MatRowGet(SHvr2, i - 1 , SHvrw2);
+      if(SHvr2.SentOKFlag == 0) and nonblank(SHvr2.ThrouLocation) then
+        begin
+        fieldname = "SentQuant";
+        if blank(SHvrw2.SentQuant) then
+          begin
+          SHvrw2.SentQuant = 0;
+          end;
+        end else
+        begin
+        fieldname = "Quant";
+        if blank(SHvrw2.Quant) then
+          begin
+          SHvrw2.Quant = 0;
+          end;
+        end;
+      if (SHvr2.AddIt <> 0) then
+        begin
+        SetFieldValueByName(SHvr, fieldname, StringToVal(GetFieldValueByName(SHvr2, fieldname, i - 1), M4Val) + StringToVal(SHVr.BQuant, M4Val), i - 1);
+        end else
+        begin
+        SetFieldValueByName(SHvr, fieldname, StringToVal(SHVr.BQuant, M4Val), i - 1);
+        end;
+      PutWindowRecord(wn, SHvr);
+      end;
+    end;
+  StockMovDClassBQuantEFAfter = res;
+
+  Return;
+end;

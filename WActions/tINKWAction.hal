@@ -1,0 +1,163 @@
+external procedure AddHelpButton(LongInt, LongInt);
+external inner procedure Base1ToBase2(var val,Date,var val);
+remote function boolean AddINtoPlan(record tINKVc);
+
+event DefineWindows
+begin
+real i,h,h1,h2,h3,h4,h5, h6, v,vs,vm,hl,l, vs2;
+string 255 label;
+SetLangMode(LangRussian,"RUS",2);
+
+//===============================================================
+WindowBegin("Список канцтоваров", tINKDClass, CGview, -);
+//DynamicWindow;
+UseView(tINKVc);
+SetWRect(10, 80, 550, 280);
+BrowseButtons(True);
+vs = 20; h1 = 80; v = 30; h2 = 255; h3 = 420; 
+AddHelpButton(5, 5);
+Tile(0, 80, false, "", Code);
+EditField(h1, v, 80, "Код", Normal, Code, False, INSClass);
+EditField(h2, v, -30, "Наименование", Normal, Name, False, 0);
+TileButton(1,"Данные");
+TileButton(2,"История"); 
+Tile(1, 200, False, "1", Price);
+v = 10;
+EditField(h1, v, 80, "Цена", Normal, Price, False, 0);
+EditField(h2, v, 80, "Валюта", Normal, Curncy, False, CurncyCodeSClass);
+EditField(h3, v, -30, "Ед. измерения", Normal, Unittext, false, UnitSClass);
+EditField(h1, v+= vs, 80, "Группа", ViewOnly, Group, False, 0);
+EditField(h2, v, -30, "Классификация", Normal, DispGroups, False, DISClass);
+EditField(h1, v+= vs, 80, "Поставщик", Normal, VECode, False, VESClass);
+EditField(h2 - 70, v, -30, "", ViewOnly, VEName, False, 0);
+CheckBox(h3 - 70, v+= 40, 0, "Закрыт", Terminated);
+Tile(2, 200, False, "1", UserCode);
+v = 10;
+EditField(h1, v, 80, "Сотрудник", ViewOnly, UserCode, False, 0);
+EditField(h2, v, 80, "Дата сохр.", ViewOnly, DateCh, False, 0);
+SpecialMenu("Добавить товар в планы по канцтоварам",'A',0,"AddINtoPlanDsm");
+EndWindow;
+
+WindowBegin("Список канцтоваров", tINKLClass, CGmlist, DMView);
+SpawnClass(tINKDClass);
+SetWRect(64, 80, 700, 400);
+Sizeable(-1, -1, 0, 0);
+UseView(tINKVc);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(80, 80, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Цена", Price, false, Price);
+RlColKey(360, 360, "Код.пост.", VECode, false, VECode);
+RlColKey(420, 420, "Назв.пост.", VEName, false, VEName);
+RlColKey(-60, -60, "Закрыт", Terminated, false, Terminated);
+//BrowseSubsetButton(-40, -15);
+SearchField("Поиск");
+EndWindow;
+
+WindowBegin("Список канцтоваров", tINKSClass, CGslist, -);
+SpawnClass(tINKDClass);
+UseView(tINKVc);
+SetWRect(64,80,500,200);
+RecordList(4, 17, -21, -39);
+RlColKey(2, 2, "Код", Code, false, Code);
+RlColKey(80, 80, "Наименование", Name, false, Name);
+RlColKey(300, 300, "Цена", Price, false, Price);
+RlColKey(360, 360, "Код.пост.", VECode, false, VECode);
+RlColKey(420, 420, "Назв.пост.", VEName, false, VEName);
+RlColKey(-60, -60, "Закрыт", Terminated, false, Terminated);
+BrowseSubsetButton(-40, -15);
+SearchField("Hайти");
+EndWindow;
+
+return;
+End;
+
+//=============================================
+global
+updating procedure AddINtoPlanDsm()
+BEGIN
+record tINKVc INKr;
+Integer wn,nwn;
+
+wn = CurWindow;
+GetWindowRecord(wn, INKr);
+if AddINtoPlan(INKr) then
+	begin
+	MessageBox(0,"Товар в планы занесён");
+	end;
+
+RETURN;
+end;
+
+//=============================================
+global
+function string 250 tGetVEName(string VECode)
+begin
+record CUVc VEr;
+
+VEr.Code = VECode;
+ReadFirstMain(VEr,1,true);
+tGetVEName = VEr.Name;
+return;
+End;
+
+//===============================================
+global
+procedure INKDClassVECodeEFAfter(integer wn,  integer changed)
+begin
+record tINKVc INKr;
+ 
+GetWindowRecord(wn, INKr);
+INKr.VEName = tGetVEName(INKr.VECode);
+PutWindowRecord(wn, INKr);
+Return;
+end;
+
+//===============================================
+global
+procedure INKDClassCodeEFAfter(integer wn,  integer changed)
+begin
+record tINKVc INKr;
+record INVc INr;
+val UPrice1;
+ 
+GetWindowRecord(wn, INKr);
+
+INr.Code = INKr.Code;
+if readfirstmain(INr, 1, true) and INr.Group == "KA" then
+	begin
+	INKr.Name = INr.Name;
+	INKr.Group = INr.Group;
+	UPrice1 = INr.UPrice1;
+	Base1ToBase2(UPrice1,CurrentDate,UPrice1);
+	INKr.Price = UPrice1;
+	INr.Unittext = INKr.Unittext;
+	INKr.DispGroups = INr.DispGroups; 
+	INKr.Terminated = INr.Terminated;
+	end;
+
+PutWindowRecord(wn, INKr);
+Return;
+end;
+
+//===============================================
+global
+function boolean tINKDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+Boolean res;
+record tINKVc INKr;
+
+GetWindowRecord(wn, INKr);
+
+if (changed <> 0) then
+    begin
+    switch (fieldname)
+        begin
+		case "Code":INKDClassCodeEFAfter(wn, changed);		
+		case "VECode": INKDClassVECodeEFAfter(wn, changed);			  
+		end;
+    end;                                                              
+
+  tINKDClassAfterEditField = res;
+  Return;
+end;

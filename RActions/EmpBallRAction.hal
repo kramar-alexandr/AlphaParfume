@@ -1,0 +1,768 @@
+//external inner function Integer DaysInMonth(Integer, Integer);
+
+global 
+function Boolean IAmSuperior(string Code)
+begin
+record UserVc USr;
+
+USr.Code = Code;
+ReadFirstMain(USr, 1, True);
+IAmSuperior = (USr.Supervisor == CurrentUser);
+RETURN;
+end;
+
+global
+function Boolean CheckEmpRatingRows(string Criteria, string User)
+begin
+record EmpCriteriaVc ECr;
+row EmpCriteriaVc ECrw;
+Integer RwCnt;
+Boolean res;
+
+ECr.Code = User;
+if ReadFirstMain(ECr, 1, True) then
+	begin
+	for(RwCnt = 0; (RwCnt < MatRowCnt(ECr)) and (not res); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(ECr, RwCnt, ECrw);
+		res = (ECrw.Criteria == Criteria) and ((ECrw.Person == CurrentUser) or blank(ECrw.Person));
+		end;
+	end;
+CheckEmpRatingRows = res;
+RETURN;
+end;
+
+global
+procedure FillEmpRatingRows(var record EmpRatingVc Er)
+begin
+record EmpCriteriaVc ECr, EC2r;
+record UserVc USr;
+record CriteriaVc Cr;
+row EmpCriteriaVc ECrw;
+row EmpRatingVc Erw;
+Integer RowCnt, RwCnt;
+
+ECr.Code = Er.Code;
+if ReadFirstMain(ECr, 1, True) then
+	begin
+	for(RwCnt = 0; RwCnt < MatRowCnt(ECr); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(ECr, RwCnt, ECrw);
+		Cr.Code = ECrw.Criteria;
+		ReadFirstMain(Cr, 1, True);
+		if ((blank(ECrw.Person) or (ECrw.Person == CurrentUser)) and (ECrw.CriteriaType == 0)) or 
+									((ECrw.CriteriaType == 1) and IAmSuperior(ECr.Code)) then
+			begin
+			Erw.Criteria = ECrw.Criteria;
+			Erw.CriteriaName = ECrw.CriteriaName;
+			Erw.CriteriaType = Cr.CriteriaType;
+			Erw.Person = ECrw.Person;
+			MatRowPut(Er, MatRowCnt(Er), Erw);
+			end;
+		end;
+	end;
+RETURN;
+end;
+
+global
+function Boolean CheckVoteDate(string Code, Date TransDate)
+begin
+record EmpRatingVc E2r;
+Date StartDate, EndDate;
+Boolean TrHs, res;
+
+StartDate.day = 1;
+StartDate.month = GetMonth(TransDate);
+StartDate.year = GetYear(TransDate);
+EndDate.day = DaysInMonth(StartDate.year, StartDate.month);
+EndDate.month = StartDate.month;
+EndDate.year = StartDate.year;
+E2r.TransDate = StartDate;
+E2r.Code = Code;
+TrHs = True;
+ResetLoop(E2r);
+E2r.User = CurrentUser;
+while LoopKey("SerNr:" & CurrentUser, E2r, 1, TrHs and (not res))
+	begin
+	TrHs = (E2r.User == CurrentUser);
+	res = (E2r.Code == Code) and (E2r.OKFlag == 1) and (E2r.TransDate >= StartDate) and (E2r.TransDate <= EndDate);
+	end;
+CheckVoteDate = res;
+RETURN;
+end;
+
+global
+function Longint EmpRatingVcRecordDefaults(var record EmpRatingVc Er, record EmpRatingVc E2r, LongInt stat, LongInt long4)
+begin
+Longint res;
+
+Er.User = CurrentUser;
+Er.TransDate = CurrentDate;
+Er.OKFlag = 0;
+if SingleUserMode then
+	begin
+	Er.SerNr = NextSerNr("EmpRatingVc", CurrentDate, -1, False, "");
+	end;
+EmpRatingVcRecordDefaults = res;
+RETURN;
+end;
+
+procedure EmpRatingCountBall(var record EmpRatingVc Er)
+begin
+row EmpRatingVc Erw;
+val SumBall, SumBallSpec, MaxBall, MaxBallSpec;
+Integer RwCnt;
+
+SumBall = 0;
+SumBallSpec = 0;
+MaxBall = 0;
+MaxBallSpec = 0;
+for(RwCnt = 0; RwCnt < MatRowCnt(Er); RwCnt = RwCnt + 1)
+	begin
+	MatRowGet(Er, RwCnt, Erw);
+	if (Erw.CriteriaType == 0) then
+		begin
+		MaxBall = MaxBall + 5;
+		SumBall = SumBall + Erw.Ball;
+		end else
+		begin
+		MaxBallSpec = MaxBallSpec + 5;
+		SumBallSpec = SumBallSpec + Erw.Ball;
+		end;
+	end;
+Er.SumBall = SumBall;
+Er.SumBallSpec = SumBallSpec;
+Er.MaxBall = MaxBall;
+Er.MaxBallSpec = MaxBallSpec;
+RETURN;
+end;
+
+global updating
+function LongInt EmpRatingVcRecordCheck(var record EmpRatingVc Er, record EmpRatingVc E2r, LongInt stat, LongInt long4)
+BEGIN
+record UserVc Usr;
+row EmpRatingVc Erw, E2rw;
+LongInt res;
+Integer insertmode, updatemode;
+Boolean TrHs;
+Integer RwCnt;
+
+
+res = 0;
+insertmode = 1;
+updatemode = 2;
+SetLangMode(LangRussian, "RUS", 2);
+if blank(Er.Code) then
+	begin
+	RecordCheckError(31018, "", -1, "Code");
+	res = -1;
+	end;
+if (MatRowCnt(Er) < 1) then
+	begin
+	RecordCheckError(31019, "", 0, "Criteria");
+	res = -1;
+	end;
+if  CheckVoteDate(Er.Code, Er.TransDate) then
+	begin
+	RecordCheckError(31020, "", -1, "Code");
+	res = -1;
+	end;
+if (Er.OKFlag == 1) then
+	begin
+	TrHs = True;
+	for(RwCnt = 0; RwCnt < MatRowCnt(Er) and TrHs; RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(Er, RwCnt, Erw);
+		TrHs = (Erw.Ball > 0);
+		if (not TrHs) then
+			begin
+			RecordCheckError(31021, "", RwCnt, "Ball");
+			res = -1;
+			end;
+		if (Erw.Ball > 5) then
+			begin
+			RecordCheckError(31022, "", RwCnt, "Ball");
+			TrHs = False;
+			res = -1;
+			end;
+		end;
+	end;
+if (stat == updatemode) and (E2r.OKFlag > 0) then
+	begin
+	RecordCheckError(31023, "", -1, "Code");
+	res = -1;
+	end;
+	
+if (res == 0) then
+	begin
+	EmpRatingCountBall(Er);
+	end;
+if (stat == insertmode) then
+	begin
+	Er.SerNr = NextSerNr("EmpRatingVc", CurrentDate, -1, False, "");
+	end;	
+if (Er.SerNr < 0) then
+	begin
+	res = -1;
+	RecordCheckError(31024, "", -1, "SerNr");
+	end;	
+EmpRatingVcRecordCheck = res;
+RETURN;
+end;
+
+global
+procedure GetEmpRatingBal(var record RcVc RepSpec)
+begin
+record EmpRatingVc Er;
+val MaxBall, SumBall, MaxBallSpec, SumBallSpec, RatingCount;
+Integer RwCnt;
+Boolean TrHs;
+
+ResetLoop(Er);
+Er.Code = RepSpec.f1;
+Er.TransDate = RepSpec.sStartDate;
+TrHs = True;
+MaxBall = 0;
+SumBall = 0;
+MaxBallSpec = 0;
+SumBallSpec = 0;
+RatingCount = 0;
+while LoopKey("TransDate", Er, 2, TrHs)
+	begin
+	TrHs = (Er.TransDate >= RepSpec.sStartDate) and (Er.TransDate <= RepSpec.sEndDate) and 
+		(Er.Code == RepSpec.f1);
+	if TrHs and (Er.OKFlag == 1) then
+		begin
+		MaxBall = MaxBall + Er.MaxBall;
+		SumBall = SumBall + Er.SumBall;
+		MaxBallSpec = MaxBallSpec + Er.MaxBallSpec;
+		SumBallSpec = SumBallSpec + Er.SumBallSpec;
+		RatingCount = RatingCount + 1;
+		RepSpec.f2 = Er.Name;
+		end;
+	end;
+// RepSpec.vals0 = Round(MaxBall / RatingCount, 0);
+// RepSpec.vals1 = Round(SumBall / RatingCount, 0);
+RepSpec.vals0 = MaxBall;
+RepSpec.vals1 = SumBall;
+RepSpec.vals2 = RatingCount;
+RepSpec.vals3 = MaxBallSpec;
+RepSpec.vals4 = SumBallSpec;
+RETURN;
+end;
+
+global
+procedure GetUserVoteCnt(var record RcVc RepSpec)
+begin
+record EmpRatingVc Er;
+record EmpCriteriaVc ECr;
+record UserVc USr;
+val EmpCount, UserCount, UserVoteCount, RatingCount;
+Integer RwCnt;
+Boolean TrHs;
+
+TrHs = True;
+EmpCount = 0;
+RatingCount = 0;
+UserCount = 0;
+UserVoteCount = 0;
+ResetLoop(Er);
+Er.TransDate = RepSpec.sStartDate;
+while LoopKey("TransDate", Er, 1, TrHs)
+	begin
+	TrHs = (Er.TransDate >= RepSpec.sStartDate) and (Er.TransDate <= RepSpec.sEndDate);
+	if TrHs and (Er.OKFlag == 1) then
+		begin
+		RatingCount = RatingCount + 1;
+		end;
+	end;
+ResetLoop(ECr);
+ECr.Code = blankval;
+while LoopMain(ECr, 1, True) 
+	begin
+	EmpCount = EmpCount + 1;
+	end;
+ResetLoop(USr);
+USr.Code = blankval;
+while LoopMain(USr, 1, True) 
+	begin
+	if (USr.Closed <> 1) and (USr.AccessGroup <> "NOUSR") then
+		begin
+		UserCount = UserCount + 1;
+		Er.TransDate = RepSpec.sStartDate;
+		if ReadFirstKey("SubTransDate:" & USr.Code, Er, 1, False) then
+			begin
+			UserVoteCount = UserVoteCount + 1;
+			end;
+		end;
+	end;	
+RepSpec.vals0 = EmpCount;
+RepSpec.vals1 = RatingCount;
+RepSpec.vals2 = UserCount;
+RepSpec.vals3 = UserVoteCount;
+RETURN;
+end;
+
+global
+procedure GetEmpRatingBalDet(var record TempVc Tmp, var record RcVc RepSpec)
+begin
+record EmpRatingVc Er;
+row EmpRatingVc Erw;
+row TempVc Tmpr;
+val MaxBall, SumBall, MaxBallSpec, SumBallSpec, RatingCount, Ball, Count;
+Integer RwCnt, RowCnt;
+Boolean TrHs, Found;
+
+for(RwCnt = MatRowCnt(Tmp) - 1; RwCnt >= 0; RwCnt = RwCnt - 1)
+	begin
+	MatRowDelete(Tmp, RwCnt);
+	end;
+	
+ResetLoop(Er);
+Er.Code = RepSpec.f1;	
+Er.TransDate = RepSpec.sStartDate;
+TrHs = True;
+MaxBall = 0;
+SumBall = 0;
+MaxBallSpec = 0;
+SumBallSpec = 0;
+RatingCount = 0;
+Count = 0;
+while LoopKey("TransDate", Er, 2, TrHs)
+	begin
+	TrHs = (Er.TransDate >= RepSpec.sStartDate) and (Er.TransDate <= RepSpec.sEndDate) and 
+		(Er.Code == RepSpec.f1); 
+	if TrHs and (Er.OKFlag == 1) then
+		begin
+		RepSpec.f2 = Er.Name;
+		MaxBall = MaxBall + Er.MaxBall;
+		SumBall = SumBall + Er.SumBall;
+		MaxBallSpec = MaxBallSpec + Er.MaxBallSpec;
+		SumBallSpec = SumBallSpec + Er.SumBallSpec;
+		RatingCount = RatingCount + 1;
+		for(RowCnt = 0; RowCnt < MatRowCnt(Er); RowCnt = RowCnt + 1)
+			begin
+			Found = True;
+			MatRowGet(Er, RowCnt, Erw);
+			for(RwCnt = 0; (RwCnt < MatRowCnt(Tmp)) and Found; RwCnt = RwCnt + 1)
+				begin
+				MatRowGet(Tmp, RwCnt, Tmpr);
+				Found = (Tmpr.f2 <> Erw.Criteria);
+				end;
+			if (not Found) then
+				begin
+				Ball = StringToVal(Tmpr.f4, M4Val);
+				Count = StringToVal(Tmpr.f6, M4Val);
+				Ball = Ball + Erw.Ball;
+				Count = Count + 1;
+				Tmpr.f4 = Ball;
+				Tmpr.f6 = Count;
+				Tmpr.f5 = Erw.CriteriaType;
+				MatRowPut(Tmp, RwCnt - 1, Tmpr);
+				end else
+				begin
+				Tmpr.f2 = Erw.Criteria;
+				Tmpr.f3 = Erw.CriteriaName;
+				Tmpr.f4 = Erw.Ball;
+				Tmpr.f6 = 1;
+				Tmpr.f5 = Erw.CriteriaType;
+				MatRowPut(Tmp, MatRowCnt(Tmp), Tmpr);
+				end;
+			end;
+		end;
+	end;
+// RepSpec.vals0 = Round(MaxBall / RatingCount, 0);
+// RepSpec.vals1 = Round(SumBall / RatingCount, 0);
+RepSpec.vals0 = MaxBall;
+RepSpec.vals1 = SumBall;
+RepSpec.vals2 = RatingCount;
+RepSpec.vals3 = MaxBallSpec;
+RepSpec.vals4 = SumBallSpec;
+RETURN;
+end;
+
+global updating
+procedure EmpRatingRn(record RcVc RepSpec)
+begin
+record EmpCriteriaVc ECr;
+record TempVc Tmp;
+record UserVc USr;
+row TempVc Tmpr;
+Integer RwCnt;
+
+if (RepSpec.flags[1] == 1) then
+	begin
+	RepSpec.flags[0] = 0;
+	RepSpec.repname = "EmpRatingGrRn";
+	RepSpec.Media = mtScreen;
+	RunReport(RepSpec, 0);
+	end else
+	begin
+
+	SetLangMode(LangRussian, "RUS", 2);
+	StartReportJob("Рейтинг сотрудников");
+
+	Header(1, "За период  " & RepSpec.sStartDate & " : " & RepSpec.sEndDate, 1); 
+	Header(2, CurrentUser, 0);
+	if nonblank(RepSpec.f1) then 
+		begin 
+		Header(2, "Сотрудник: " & RepSpec.f1, 1);
+		end;
+	if (RepSpec.flags[0] == 0) then
+		begin
+		Header(3, "Сводный", 1);
+		end else
+		begin
+		Header(3, "Подробный", 1);
+		end;
+	EndHeader;
+	StartFormat(15);
+	OutString(40, 0, "Сотрудник", False);
+	OutString(100, 0, "Ф.И.О.", False);
+	OutString(300, 0, "МВБ", True);
+	OutString(350, 0, "ФНБ", True);
+	OutString(400, 0, "Голосов", True);
+	EndFormat;
+	Black_Divider(0, 1);
+	if (RepSpec.flags[0] == 0) then
+		begin
+		if blank(RepSpec.f1) then
+			begin
+			ResetLoop(ECr);
+			ECr.Code = blankval;
+			while LoopMain(ECr, 1, True)
+				begin
+				if (IAmSuperior(ECr.Code) or (ECr.Code == CurrentUser) or (CurrentUser == "ZINOVIY") or (CurrentUser == "DELPHI")) then
+					begin
+					RepSpec.f1 = ECr.Code;
+					GetEmpRatingBal(RepSpec);
+					StartFormat(15);
+					OutString(40, 0, ECr.Code, False);
+					OutString(100, 0, ECr.Name, False);
+					OutString(300, 0, RepSpec.vals0, True);
+					OutString(350, 0, RepSpec.vals1, True);
+					OutString(400, 0, RepSpec.vals2, True);
+					EndFormat;
+					StartFormat(15);
+					Black_Divider(100, 400);
+					OutString(100, 0, "Результат", False);
+					OutString(300, 0, RepSpec.vals0 + RepSpec.vals3, True);
+					OutString(350, 0, RepSpec.vals1 + RepSpec.vals4, True);
+					OutString(400, 0, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 100, DefaultCurRoundOff) & "%", True);
+					EndFormat;
+					EndFormat;
+					end;
+				end;
+			//Итоговые показатели явки
+			Gray_Divider(0, 1);
+			GetUserVoteCnt(RepSpec);
+			StartFormat(15);
+			OutString(20, 0, "Всего оцениваемых:", False);
+			OutString(350, 0, RepSpec.vals0, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "Всего оценок:", False);
+			OutString(350, 0, RepSpec.vals1, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "Всего сотрудников:", False);
+			OutString(350, 0, RepSpec.vals2, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "Всего проголосовавших:", False);
+			OutString(350, 0, RepSpec.vals3, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "% проголосовавших:", False);
+			OutString(350, 0, Round(RepSpec.vals3 / RepSpec.vals2 * 100, DefaultCurRoundOff) & "%", True);
+			EndFormat;
+			Gray_Divider(0, 1);
+			//Конец Итоговые показатели
+			end else
+			begin
+			if (IAmSuperior(RepSpec.f1) or (RepSpec.f1 == CurrentUser) or (CurrentUser == "ZINOVIY") or (CurrentUser == "DELPHI")) then
+				begin
+				GetEmpRatingBal(RepSpec);
+				StartFormat(15);
+				OutString(40, 0, RepSpec.f1, False);
+				OutString(200, 0, RepSpec.f2, False);
+				OutString(300, 0, RepSpec.vals0, True);
+				OutString(350, 0, RepSpec.vals1, True);
+				OutString(400, 0, RepSpec.vals2, True);
+				EndFormat;
+				StartFormat(15);
+				Black_Divider(100, 400);
+				OutString(200, 0, "Результат", False);
+				OutString(300, 0, RepSpec.vals0 + RepSpec.vals3, True);
+				OutString(350, 0, RepSpec.vals1 + RepSpec.vals4, True);
+				OutString(400, 0, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 100, DefaultCurRoundOff) & "%", True);
+				EndFormat;
+				EndFormat;
+				Gray_Divider(0, 1);
+				end;
+			end;
+		end else
+		begin
+		//Подробный
+		if blank(RepSpec.f1) then
+			begin
+			ResetLoop(ECr);
+			while LoopMain(ECr, 1, True)
+				begin
+				if (IAmSuperior(ECr.Code) or (ECr.Code == CurrentUser) or (CurrentUser == "ZINOVIY") or (CurrentUser == "DELPHI")) then
+					begin
+					RepSpec.f1 = ECr.Code;
+					GetEmpRatingBalDet(Tmp, RepSpec);
+					StartFormat(15);
+					OutString(40, 0, ECr.Code, False);
+					OutString(100, 0, ECr.Name, False);
+					for(RwCnt = 0; RwCnt < MatRowCnt(Tmp); RwCnt = RwCnt + 1)
+						begin
+						MatRowGet(Tmp, RwCnt, Tmpr);
+						if (Tmpr.f5 <> "1") then
+							begin
+							StartFormat(15);
+							OutString(40, 0, Tmpr.f2, False);
+							OutString(100, 0, Tmpr.f3, False);
+							OutString(200, 0, Tmpr.f4, True);
+							OutString(300, 0, "Ср. балл: " & StringToVal(Tmpr.f4, M4Val) / StringToVal(Tmpr.f6, M4Val), True);
+							EndFormat;
+							end;
+						end;
+					Black_Divider(0, 200);
+					StartFormat(15);
+					OutString(300, 0, RepSpec.vals0, True);
+					OutString(350, 0, RepSpec.vals1, True);
+					OutString(400, 0, RepSpec.vals2, True);
+					EndFormat;
+					//Black_Divider(100, 400);		
+					for(RwCnt = 0; RwCnt < MatRowCnt(Tmp); RwCnt = RwCnt + 1)
+						begin
+						MatRowGet(Tmp, RwCnt, Tmpr);
+						if (Tmpr.f5 == "1") then
+							begin
+							StartFormat(15);
+							OutString(40, 0, Tmpr.f2, False);
+							OutString(100, 0, Tmpr.f3, False);
+							OutString(200, 0, Tmpr.f4, True);
+							EndFormat;
+							end;
+						end;
+					Black_Divider(0, 200);
+					StartFormat(15);
+					OutString(200, 0, "Результат", False);
+					OutString(300, 0, RepSpec.vals0 + RepSpec.vals3, True);
+					OutString(350, 0, RepSpec.vals1 + RepSpec.vals4, True);
+					OutString(400, 0, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 100, DefaultCurRoundOff) & "%", True);
+					EndFormat;
+					EndFormat;
+					EndFormat;
+					Gray_Divider(0, 1);
+					end;
+				end;
+			//Итоговые показатели явки
+			Gray_Divider(0, 1);
+			GetUserVoteCnt(RepSpec);
+			StartFormat(15);
+			OutString(20, 0, "Всего оцениваемых:", False);
+			OutString(350, 0, RepSpec.vals0, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "Всего оценок:", False);
+			OutString(350, 0, RepSpec.vals1, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "Всего сотрудников:", False);
+			OutString(350, 0, RepSpec.vals2, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "Всего проголосовавших:", False);
+			OutString(350, 0, RepSpec.vals3, True);
+			EndFormat;
+			StartFormat(15);
+			OutString(20, 0, "% проголосовавших:", False);
+			OutString(350, 0, Round(RepSpec.vals3 / RepSpec.vals2 * 100, DefaultCurRoundOff) & "%", True);
+			EndFormat;
+			Gray_Divider(0, 1);
+			//Конец Итоговые показатели
+			end else
+			begin
+			if (IAmSuperior(RepSpec.f1) or (RepSpec.f1 == CurrentUser) or (CurrentUser == "ZINOVIY") or (CurrentUser == "DELPHI")) then
+				begin
+				GetEmpRatingBalDet(Tmp, RepSpec);
+				StartFormat(15);
+				OutString(40, 0, RepSpec.f1, False);
+				OutString(100, 0, RepSpec.f2, False);
+				for(RwCnt = 0; RwCnt < MatRowCnt(Tmp); RwCnt = RwCnt + 1)
+					begin
+					MatRowGet(Tmp, RwCnt, Tmpr);
+					if (Tmpr.f5 == "0") then
+						begin
+						StartFormat(15);
+						OutString(40, 0, Tmpr.f2, False);
+						OutString(100, 0, Tmpr.f3, False);
+						OutString(200, 0, Tmpr.f4, True);
+						OutString(300, 0, "Ср. балл: " & StringToVal(Tmpr.f4, M4Val) / StringToVal(Tmpr.f6, M4Val), True);
+						EndFormat;
+						end;
+					end;
+				Black_Divider(0, 200);
+				StartFormat(15);
+				OutString(300, 0, RepSpec.vals0, True);
+				OutString(350, 0, RepSpec.vals1, True);
+				OutString(400, 0, RepSpec.vals2, True);
+				EndFormat;
+				//Black_Divider(100, 400);
+				for(RwCnt = 0; RwCnt < MatRowCnt(Tmp); RwCnt = RwCnt + 1)
+					begin
+					MatRowGet(Tmp, RwCnt, Tmpr);
+					if (Tmpr.f5 == "1") then
+						begin
+						StartFormat(15);
+						OutString(40, 0, Tmpr.f2, False);
+						OutString(100, 0, Tmpr.f3, False);
+						OutString(200, 0, Tmpr.f4, True);
+						EndFormat;
+						
+						end;
+					end;
+				Black_Divider(0, 200);
+				StartFormat(15);
+				OutString(200, 0, "Результат", False);
+				OutString(300, 0, RepSpec.vals0 + RepSpec.vals3, True);
+				OutString(350, 0, RepSpec.vals1 + RepSpec.vals4, True);
+				OutString(400, 0, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 100, DefaultCurRoundOff) & "%", True);
+				EndFormat;
+				EndFormat;
+				end;
+			end;
+		end;
+	EndJob;
+	end;
+RETURN;
+end;
+
+
+global updating
+procedure EmpRatingGrRn(record RcVc RepSpec)
+begin
+record EmpCriteriaVc ECr;
+record TempVc Tmp;
+record UserVc USr;
+row TempVc Tmpr;
+Integer RwCnt;
+
+SetLangMode(LangRussian, "RUS", 2);
+StartReportJob("Рейтинг сотрудников");
+
+Header(1, "За период  " & RepSpec.sStartDate & " : " & RepSpec.sEndDate, 1); 
+Header(2, CurrentUser, 0);
+if nonblank(RepSpec.f1) then 
+	begin 
+	Header(2, "Сотрудник: " & RepSpec.f1, 1);
+	end;
+if (RepSpec.flags[0] == 0) then
+	begin
+	Header(3, "Сводный", 1);
+	end else
+	begin
+	Header(3, "Подробный", 1);
+	end;
+EndHeader;
+StartFormat(15);
+OutString(100, 0, "0    |", True);
+OutString(250, 0, "50   |", True);
+OutString(400, 0, "100  |", True);
+EndFormat;
+Black_Divider(100, 400);
+if (RepSpec.flags[0] == 0) then
+	begin
+	if blank(RepSpec.f1) then
+		begin
+		ResetLoop(ECr);
+		ECr.Code = blankval;
+		while LoopMain(ECr, 1, True)
+			begin
+			if (IAmSuperior(ECr.Code) or (ECr.Code == CurrentUser) or (CurrentUser == "ZINOVIY") or (CurrentUser == "DELPHI")) then
+				begin
+				RepSpec.f1 = ECr.Code;
+				GetEmpRatingBal(RepSpec);
+				StartFormat(15);
+				//OutString(40, 0, ECr.Code, False);
+				OutString(100, 0, ECr.Name, False);
+				OutString(400, 0, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 100, DefaultCurRoundOff) & "%", True);
+				EndFormat;
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				Gray_Divider(100, Round((RepSpec.vals1 + RepSpec.vals4) / (RepSpec.vals0 + RepSpec.vals3) * 400, DefaultCurRoundOff));
+				end;
+			end;
+		StartFormat(15);
+		EndFormat;
+		Black_Divider(100, 400);
+		StartFormat(15);
+		OutString(100, 0, "0    |", True);
+		OutString(250, 0, "50   |", True);
+		OutString(400, 0, "100  |", True);
+		EndFormat;
+		//Итоговые показатели явки
+		GetUserVoteCnt(RepSpec);
+		StartFormat(15);
+		EndFormat;
+		StartFormat(15);
+		EndFormat;
+		StartFormat(15);
+		OutString(20, 0, "Всего оцениваемых:", False);
+		OutString(350, 0, RepSpec.vals0, True);
+		EndFormat;
+		StartFormat(15);
+		OutString(20, 0, "Всего оценок:", False);
+		OutString(350, 0, RepSpec.vals1, True);
+		EndFormat;
+		StartFormat(15);
+		OutString(20, 0, "Всего сотрудников:", False);
+		OutString(350, 0, RepSpec.vals2, True);
+		EndFormat;
+		StartFormat(15);
+		OutString(20, 0, "Всего проголосовавших:", False);
+		OutString(350, 0, RepSpec.vals3, True);
+		EndFormat;
+		StartFormat(15);
+		OutString(20, 0, "% проголосовавших:", False);
+		OutString(350, 0, Round(RepSpec.vals3 / RepSpec.vals2 * 100, DefaultCurRoundOff) & "%", True);
+		EndFormat;
+		Gray_Divider(0, 1);
+		//Конец Итоговые показатели
+		end;
+	end;
+EndJob;
+RETURN;
+end;
+
+global
+function Longint EmpCriteriaVcRecordRemoveTest(var record EmpCriteriaVc ERr, record EmpCriteriaVc ER2r, LongInt long3, LongInt long4)
+begin
+record EmpRatingVc Er;
+
+Er.Code = ERr.Code;
+if ReadFirstKey("Code", ERr, 1, True) then
+	begin
+	EmpCriteriaVcRecordRemoveTest = 0;
+	end else
+	begin
+	EmpCriteriaVcRecordRemoveTest = 1;
+	end;
+RETURN;
+end;

@@ -1,0 +1,121 @@
+external function val MulRateToBase1(var string,val,val,val,val,val,val,roundmode);
+external function boolean ISetInSet(string, string);
+external procedure CalcSum(val,val,val,val,var val,Integer);
+external procedure IVSumup(var record IVVc,Boolean);
+external procedure FindSalesExVat(record TaxMatrixVc,string,val,Integer,Integer,var val);
+external function Boolean GetItemPriceDiscount3(string,val,var record INVc,string,val,val,val,val,val,string,string,string,string,
+                                                      var val,var string,var val,var string,var val,var string,Integer,var Boolean,Date,Time,
+                                                      string,Boolean,var Boolean,string,var string,var val,string,string,var string);
+
+//===============================================
+//Скидки на товары по суммам (СЧ-Ф)
+function val GetRebate(record IVVc IVr, row IVVc IVrw) //Возвращаем стандартную скидку
+begin
+  Boolean chsum,res;
+  Boolean chrsum;
+  record INVc INr;
+  val price,vreb,baseprice,tax2prc;
+  string 255 curitemname,salesacc,vatcode,tax2code,taxtemplatecode;
+  Boolean calcprice;
+  val Quant;
+  Integer exportflag;
+  Boolean dummyf;
+
+  INr.Code = IVrw.ArtCode;
+  ReadFirstMain(INr, 1, true);
+
+  GetItemPriceDiscount3(IVrw.ArtCode,IVrw.Quant,INr,IVr.CurncyCode,
+                        IVr.FrRate,IVr.ToRateB1,IVr.ToRateB2,IVr.BaseRate1,IVr.BaseRate2,
+                        IVr.LangCode,IVr.CustCat,IVr.PriceList,IVr.RebCode,
+                        price,curitemname,vreb,vatcode,baseprice,salesacc,
+                        exportflag,calcprice,IVr.TransDate,"",IVr.CustCode,true,dummyf,IVr.PayDeal,
+                        tax2code,tax2prc,IVr.Region,IVr.Location,taxtemplatecode);
+
+  GetRebate = vreb;
+  Return;
+end;
+
+procedure DiscountByItems(var record IVVc IVr, record IVVc origIVr, row IDiscountBySumBlock IDBSbr) //Скидка по диапазону товаров
+begin
+  row IVVc IVrw;
+  record VSetSetBlock VSet;
+  record GeneralOptionBlock GenOptr;
+  integer i, rwcnt;
+  val Sum, t, s, rowsum;
+  record TaxMatrixVc TMr;
+
+  if DateInRange(origIVr.InvDate, IDBSbr.StartDate, IDBSbr.EndDate) and
+      (Blank(IDBSbr.Objects) or SetInSet(IDBSbr.Objects, origIVr.Objects)) then
+    begin
+      BlockLoad(VSet);
+      BlockLoad(GenOptr);
+      rwcnt = MatRowCnt(origIVr);
+      if (VSet.DiscountBySumUseIVSum == 1) then //Используем сумму СЧ-Ф
+        begin
+          Sum = MulRateToBase1(origIVr.CurncyCode, origIVr.Sum4, origIVr.FrRate, origIVr.ToRateB1, origIVr.ToRateB2, origIVr.BaseRate1, origIVr.BaseRate2, DefaultCurRoundOff);
+        end
+      else //Используем сумму по заданным товарам
+        begin
+          Sum = 0;
+          for (i=0; i<rwcnt; i=i+1)
+            begin
+              MatRowGet(origIVr, i, IVrw);
+              if ISetInSet(IVrw.ArtCode, IDBSbr.ArtCode) then
+                begin
+                  Sum = Sum + MulRateToBase1(origIVr.CurncyCode, IVrw.Sum, origIVr.FrRate, origIVr.ToRateB1, origIVr.ToRateB2, origIVr.BaseRate1, origIVr.BaseRate2, DefaultCurRoundOff);
+                end;
+            end;
+        end;
+
+      if (Sum >= IDBSbr.Sum) then //Порог срабатывания скидки
+        begin
+          for (i=0; i<rwcnt; i=i+1)
+            begin
+              MatRowGet(origIVr, i, IVrw);
+              if ISetInSet(IVrw.ArtCode, IDBSbr.ArtCode) then
+                begin
+                  IVrw.vRebate = GetRebate(origIVr, IVrw) + IDBSbr.Discount;
+                  CalcSum(IVrw.Quant,IVrw.Price,IVrw.PriceFactor,IVrw.vRebate,t,GenOptr.UseDiscount);
+                  IVrw.Sum = t;
+//GP
+                  t = IVrw.Quant*IVrw.BasePrice;   // cost  
+                  if (IVrw.PriceFactor <> 0) then
+                    begin
+                      t = t / IVrw.PriceFactor;
+                    end;
+                  s = MulRateToBase1(origIVr.CurncyCode,IVrw.Sum,origIVr.FrRate,origIVr.ToRateB1,origIVr.ToRateB2,origIVr.BaseRate1,origIVr.BaseRate2,DefaultCurRoundOff);// sales
+                  FindSalesExVat(TMr,IVrw.VATCode,s,origIVr.InclVAT,origIVr.NoTAXonVAT,rowsum);
+                  IVrw.rowGP = rowsum - t;          // GP    
+//
+                  MatRowPut(IVr, i, IVrw);
+                end;
+            end;
+        end;
+    end;
+  Return;
+end;
+
+global
+procedure IIVDiscountBySum(var record IVVc IVr) //Расчет скидок по суммам
+begin
+  record IVVc origIVr;
+  record IDiscountBySumBlock IDBSb;
+  row IDiscountBySumBlock IDBSbr;
+  integer i, rwcnt;
+  boolean Changed;
+
+  if (IVr.Invalid == 0) and (IVr.InvType <> 3) then
+    begin
+      BlockLoad(IDBSb);
+      RecordCopy(origIVr, IVr);
+      rwcnt = MatRowCnt(IDBSb);
+      for (i=0; i<rwcnt; i=i+1)
+        begin
+          MatRowGet(IDBSb, i, IDBSbr);
+          DiscountByItems(IVr, origIVr, IDBSbr);
+        end;
+      IVSumUp(IVr, true);
+    end;
+
+  Return;
+end;

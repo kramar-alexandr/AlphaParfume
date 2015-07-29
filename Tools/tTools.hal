@@ -1,0 +1,1393 @@
+external inner function LongInt DateDiff(Date,Date);
+//external inner function Boolean IsHolliday(Date,record BHollVc,Boolean);
+external inner function Boolean GetBankHoliday(string ,var record BHollVc);
+external inner procedure ExtractObj(string, var Integer, var string);
+remote inner function Boolean StockMovVc_PasteArtCode(var record StockMovVc,Integer,Integer,Boolean);
+external inner function string 255 FindINObjects(string,string);
+//external inner function Integer DaysInMonth(Integer,Integer);
+external function boolean ICheckIntersect(string, string);
+
+
+global
+function Boolean tIsHolliday(Date tdp,record BHollVc BHp,Boolean ignoreweekdays)
+begin
+  row BHollVc BHrw;
+  Integer i,rwcnt;
+  Boolean res;
+  
+  res = false;
+  i = GetDateId(tdp);
+  res = false;
+  if (ignoreweekdays==false) then begin
+    switch(i) begin
+      case 1:
+        if (BHp.Monday<>0) then begin res = true; end;
+      case 2:
+        if (BHp.Tuesday<>0) then begin res = true; end;
+      case 3:
+        if (BHp.Wednesday<>0) then begin res = true; end;
+      case 4:
+        if (BHp.Thursday<>0) then begin res = true; end;
+      case 5:
+        if (BHp.Friday<>0) then begin res = true; end;
+      case 6:
+        if (BHp.Saturday<>0) then begin res = true; end;
+      case 7:
+        if (BHp.Sunday<>0) then begin res = true; end;
+    end;
+  end;
+  if (res==false) then begin
+    rwcnt = MatRowCnt(BHp);
+    for (i=0;i<rwcnt;i=i+1) begin
+      MatRowGet(BHp,i,BHrw);
+      if (tdp==BHrw.FreeDay) then begin
+        res = true;
+        goto LIsHolliday;
+      end;
+    end;
+  end;
+LIsHolliday:;
+  tIsHolliday = res;
+  return;
+end;
+
+
+global
+function LongInt tCountWorkingDays(Date frdat,Date todat,string custcode,string countrycode)
+begin
+record BHollVc BHr;
+LongInt days;
+Date thedat;
+  
+// day 1/11 to 2/11 is two days, not 1. Each day can be decreased because it is holliday,
+// if this should be one, a saturday will be -1 day...
+days = DateDiff(todat,frdat);
+thedat = frdat;
+if (blankdate(thedat)) then 
+	begin
+	thedat = todat;//otherwise it takes a lot of time
+	end;
+	
+BHr.CountryCode = countrycode;
+ReadFirstMain(BHr,1,true);
+while(thedat<=todat) 
+	begin
+	if (tIsHolliday(thedat,BHr,false)) then 
+		begin
+		days = days - 1;
+		end;
+	thedat = AddDay(thedat,1);
+	end;
+tCountWorkingDays = days;
+return;
+end;
+
+global
+updating function Boolean MakeQAFromAC(record ApproveCostsVc Ar, var record tVTicketsVc VTr)
+BEGIN
+record ApproveCostsVc A2r;
+record UserVc USr;
+record VUserBudVc VB;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+SetLangMode(LangRussian,"RUS",2);
+   
+
+RecordNew(VTr);
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("APPROVECOSTSVC",Blrw.RegName)then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;		
+VTr.Comment = "Согласование затрат №" & Ar.SerNr;
+VTr.ParentNr = StringToLongInt(10 & Ar.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(Ar, CurrentCompany, VTr, CurrentCompany);
+	// CreateRecordLink(VTr, CurrentCompany, Ar, CurrentCompany);
+	// end;
+MakeQAFromAC = Res;
+
+RETURN;
+END;
+
+global
+updating procedure CreateQAFromOR(record ORVc ORp)
+BEGIN
+record OrderClassVc OrderClasr;
+record tVTicketsVc VTr;
+record UserVc USr;
+Integer curcomp, i1; 
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+SetLangMode(LangRussian, "RUS", 2);
+curcomp = CurrentCompany;
+VTr.DateSend = ORp.OrdDate;
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+OrderClasr.Code = ORp.OrderClass;
+if (ReadFirstMain(OrderClasr,1,true)) then 
+begin
+switch (OrderClasr.OrderAct) 
+	begin
+	  case 0: VTr.ServCode = ORp.SalesMan;
+	  case 1: VTr.ServCode = ORp.SalesMan;
+	  case 2:       
+		VTr.ServCode = OrderClasr.OrderActUser;
+		if (blank(VTr.ServCode)) then 
+		begin
+		  VTr.ServCode = ORp.SalesMan;
+		end;
+	end;
+VTr.Copy = ORp.CustCode;
+VTr.UsrCode = CurrentUser;
+VTr.Comment = "Счёт клиенту № "  & ORp.SerNr;
+if ORp.CustContact <> ""  then
+	begin
+	AddToText("Контакты клиента: " & ORp.CustContact, VTr);
+	end;
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr,1,true) ;
+VTr.UsrName = Usr.Name;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("ORVC",Blrw.RegName)then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+if (RecordInsert(VTr,false)) then 
+	begin
+	CreateRecordLink(VTr,curcomp,ORp,curcomp);  
+	CreateRecordLink(ORp,curcomp,VTr,curcomp);  
+	end;
+end; 
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromOR(var record ORVc ORr, var record tVTicketsVc VTr)
+BEGIN
+record ASTBlock ASTRec;
+Integer curcomp, RwCnt, i1;
+Boolean res;
+record UserVc USr;
+record tORVcSetBlock tORVb;
+row tORVcSetBlock tORVbw;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+SetLangMode(LangRussian, "RUS", 2);
+
+ReadFirstMain(ORr,0,true);  
+curcomp = CurrentCompany;
+VTr.DateSend = ORr.OrdDate;
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+//VTr.Copy = ORr.CustCode;
+VTr.UsrCode = CurrentUser;
+VTr.Comment = "Счёт клиенту № "  & ORr.SerNr;
+VTr.ParentNr = StringToLongInt(11 & ORr.SerNr);
+if ORr.CustContact <> ""  then
+	begin
+	AddToText("Контакты клиента: " & ORr.CustContact, VTr);
+	end;
+Usr.Code = CurrentUser;
+ReadFirstMain(Usr,1,true) ;
+VTr.UsrName = Usr.Name;
+VTr.UsrDepart = USr.Department;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("ORVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+
+BlockLoad(tORVb);
+for(RwCnt = 0; (RwCnt < MatRowCnt(tORVb)); RwCnt = RwCnt + 1)
+		begin
+		MatRowGet(tORVb, RwCnt, tORVbw);
+		if (tORVbw.EMPCode == VTr.UsrCode) then
+			begin
+			VTr.ServCode = tORVbw.SevrCode;
+			VTr.Copy = tORVbw.CopyCode;
+			RwCnt = MatRowCnt(tORVb);
+			end
+		else
+			begin
+			VTr.ServCode = ORr.SalesMan;
+			end;
+		end;
+USr.Code = VTr.ServCode;
+ReadFirstMain(USr, 1, True);
+VTr.ServName = USr.Name;
+VTr.ServAppoint = USr.StateJob;
+VTr.ServDepart = USr.Department;
+ 
+// if (ORr.SalesMan!=CurrentUser) then 
+	// begin
+	// VTr.Copy = CurrentUser;
+	// end;
+
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr,curcomp,ORr,curcomp);  
+	// CreateRecordLink(ORr,curcomp,VTr,curcomp); 
+	// end;	 
+MakeQAFromOR = res;
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromQA(record tVTicketsVc VTvr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record VUserBudVc VB;
+record ObjVc Obj;
+record tVTicketsVc VTv2r;
+Integer RwCnt, CC, i1;
+Boolean Res;
+Integer pos;
+string 255 tstr;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+// BlockLoad(Bl); 
+// for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	// begin
+	// MatRowGet(Bl,i1,Blrw);
+	// if Blrw.RegName == "tVTicketsVc" then
+		// begin
+		// VTr.TypeOfTicket = Blrw.Code;
+		// end;
+	// end;
+VTr.TypeOfTicket = VTvr.TypeOfTicket;
+VTr.Comment = "Задача №" & VTvr.SerNr;
+VTr.ParentNr = StringToLongInt(12 & VTvr.SerNr);
+pos = 0;  
+while (pos<SizeTextCnt(VTvr)) 
+	begin
+	tstr = StringFromText(VTvr,pos,1);
+	pos = pos + len(tstr);
+	AddToText(tstr,VTr);
+	end;
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTvr, CurrentCompany, VTr, CurrentCompany);
+	// CreateRecordLink(VTr, CurrentCompany, VTvr, CurrentCompany);
+	// end;
+
+MakeQAFromQA = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromCU(record CUVc CUr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("CUVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Контакт №" & CUr.Code;
+//VTr.ParentNr = StringToLongInt(13 & CUr.Code);
+VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = RecordStore(VTr, false);
+	if Res then 
+	begin	
+	CreateRecordLink(VTr, CurrentCompany, CUr, CurrentCompany);
+	CreateRecordLink(CUr, CurrentCompany, VTr, CurrentCompany);
+	end;
+MakeQAFromCU = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromDoc(record DocsVc Docr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("DOCSVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Документ " & Docr.Code;
+//VTr.ParentNr = StringToLongInt(14 & Docr.Code);
+VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = RecordStore(VTr, false);
+	if Res then 
+	begin	
+	CreateRecordLink(VTr, CurrentCompany, Docr, CurrentCompany);
+	end;
+MakeQAFromDoc = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromIV(record IVVc IVr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("IVVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Счёт фактура № " & IVr.SerNr;
+VTr.ParentNr = StringToLongInt(15 & IVr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, IVr, CurrentCompany);
+	// CreateRecordLink(IVr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromIV = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromSM(record StockMovVc SMr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("STOCKMOVVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Перемещение № " & SMr.SerNr;
+VTr.ParentNr = StringToLongInt(16 & SMr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, SMr, CurrentCompany);
+	// CreateRecordLink(SMr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromSM = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromIRO(record IRetOrdVc IROr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("IRETORDVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Заявка на возврат № " & IROr.SerNr;
+VTr.ParentNr = StringToLongInt(17 & IROr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, IROr, CurrentCompany);
+	// CreateRecordLink(IROr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromIRO = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromTT(record TTVc TTr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("TTVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Доставка № " & TTr.SerNr;
+VTr.ParentNr = StringToLongInt(18 & TTr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, TTr, CurrentCompany);
+	// CreateRecordLink(TTr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromTT = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromIBD(record IBudgetDiffVc IBDr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, i1;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(i1 =0 ; i1 < MatRowCnt(Bl); i1 = i1 + 1)
+	begin
+	MatRowGet(Bl,i1,Blrw);
+	if SetInSet("IBUDGETDIFFVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Выполнение бюджета № " & IBDr.SerNr;
+VTr.ParentNr = StringToLongInt(19 & IBDr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, TTr, CurrentCompany);
+	// CreateRecordLink(TTr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromIBD = Res;
+
+RETURN;
+END;
+
+global
+function string 200 tExclude(string str1, string str2) // из строки str1 удаляются элементы совпадающие со строкой str2
+begin
+string 20 substr;
+Integer pos;
+string 250 res;
+
+pos = 0;
+ExtractObj(str1, pos, substr);
+while nonblank(substr) 
+	begin
+	if not(SetInSet(substr, str2)) then
+		begin
+		if nonblank(res) then
+			begin
+			res = res & "," & substr;
+			end
+		else
+			begin
+			res = substr;
+			end;
+		end;
+	
+	ExtractObj(str1, pos, substr);
+	end;
+	
+tExclude = res;	
+return;
+end;
+
+global
+function boolean tIsWorkDay(Date frdat)
+begin
+record BHollVc BHr;
+
+tIsWorkDay = false;	
+BHr.CountryCode = "";
+ReadFirstMain(BHr,1,true);
+if not(tIsHolliday(frdat,BHr,false)) then 
+	begin
+	tIsWorkDay = true;
+	end;
+return;
+end;
+
+global
+updating function Boolean MakeMovMM(var record tMovPlanVc MPr, var record StockMovVc SMr ) 
+BEGIN
+Integer curcomp, RwCnt, ii, i;
+Boolean res;
+row StockMovVc SMrw;
+row tMovPlanVc MPrw;
+record INVc INr;
+
+
+SetLangMode(LangRussian, "RUS", 2);
+
+ 
+curcomp = CurrentCompany;
+ReadFirstMain(MPr,0,true); 
+if MPr.OKFlag == 1 then
+	begin
+	RecordNew(SMr);
+	SMr.OrdTransDate = CurrentDate;
+	SMr.FrLocation = "A001";
+	SMr.ThrouLocation = "G002";
+	SMr.ToLocation = MPr.LocCode;
+	// SMr.PlanSendDate = CurrentDate;
+	// SMr.PlanSendTime = "13:00:00";
+	SMr.PlanArrDate = MPr.DateSup;
+	SMr.PlanArrTime = "18:00:00";
+
+	for(i = 0 ; i < MatRowCnt(MPr); i = i + 1)
+		begin
+		MatRowGet(MPr, i, MPrw);
+		if (MPrw.QtyMov > 0) and (left(MPrw.ArtCode, 2) == "MM") then
+			begin
+			SMrw.ArtCode = MPrw.ArtCode;
+			INr.Code = SMrw.ArtCode;
+			ReadFirstMain(INr,0,true);
+			SMrw.Coefficient = INr.UnitCoefficient;
+			SMrw.ArtCode = INr.Code;
+			SMrw.Spec = INr.Name;
+			SMrw.BasePrice = INr.UPrice1;
+			SMrw.Objects = FindINObjects(INr.Objects,INr.Group);
+			SMrw.UnitXval = INr.Width;
+			SMrw.UnitYval = INr.Height;
+			SMrw.UnitZval = INr.Depth;
+			
+			//SMrw.Spec = MPrw.ArtName;
+			SMrw.OrdQuant = MPrw.QtyMov;
+			MatRowInsert(SMr, 0, SMrw);
+			StockMovVc_PasteArtCode(SMr, 0, 1, true);
+			end;
+		end;
+
+	end;	
+if MatRowCnt(SMr) > 0 then
+	begin
+	Res = true;
+	end
+else
+	begin
+	Res = false;
+	end;
+
+//RecordStore(SMr, false); 
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr,curcomp,ORr,curcomp);  
+	// CreateRecordLink(ORr,curcomp,VTr,curcomp); 
+	// end;	 
+MakeMovMM = res;
+RETURN;
+END;
+
+global
+updating function Boolean MakeMovMMOnC(var record tMovPlanVc MPr, var record StockMovVc SMr ) 
+BEGIN
+Integer curcomp, RwCnt, ii, i;
+Boolean res;
+row StockMovVc SMrw;
+row tMovPlanVc MPrw;
+record INVc INr;
+
+
+SetLangMode(LangRussian, "RUS", 2);
+
+ 
+curcomp = CurrentCompany;
+ReadFirstMain(MPr,0,true); 
+if MPr.OKFlag == 1 then
+	begin
+	RecordNew(SMr);
+	SMr.OrdTransDate = CurrentDate;
+	SMr.FrLocation = "C002";
+	SMr.ThrouLocation = "G002";
+	SMr.ToLocation = MPr.LocCode;
+	// SMr.PlanSendDate = CurrentDate;
+	// SMr.PlanSendTime = "13:00:00";
+	SMr.PlanArrDate = MPr.DateSup;
+	SMr.PlanArrTime = "18:00:00";
+
+	for(i = 0 ; i < MatRowCnt(MPr); i = i + 1)
+		begin
+		MatRowGet(MPr, i, MPrw);
+		if (MPrw.QtyMovC > 0) and (left(MPrw.ArtCode, 2) == "MM") then
+			begin
+			SMrw.ArtCode = MPrw.ArtCode;
+			INr.Code = SMrw.ArtCode;
+			ReadFirstMain(INr,0,true);
+			SMrw.Coefficient = INr.UnitCoefficient;
+			SMrw.ArtCode = INr.Code;
+			SMrw.Spec = INr.Name;
+			SMrw.BasePrice = INr.UPrice1;
+			SMrw.Objects = FindINObjects(INr.Objects,INr.Group);
+			SMrw.UnitXval = INr.Width;
+			SMrw.UnitYval = INr.Height;
+			SMrw.UnitZval = INr.Depth;
+			
+			//SMrw.Spec = MPrw.ArtName;
+			SMrw.OrdQuant = MPrw.QtyMovC;
+			MatRowInsert(SMr, 0, SMrw);
+			StockMovVc_PasteArtCode(SMr, 0, 1, true);
+			end;
+		end;
+	end;	
+if MatRowCnt(SMr) > 0 then
+	begin
+	Res = true;
+	end
+else
+	begin
+	Res = false;
+	end;
+
+//RecordStore(SMr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr,curcomp,ORr,curcomp);  
+	// CreateRecordLink(ORr,curcomp,VTr,curcomp); 
+	// end;	 
+MakeMovMMOnC = res;
+RETURN;
+END;
+
+
+global
+updating function Boolean MakeMovKS(var record tMovPlanVc MPr, var record StockMovVc SMr ) 
+BEGIN
+Integer curcomp, RwCnt, ii, i;
+Boolean res;
+row StockMovVc SMrw;
+row tMovPlanVc MPrw;
+record INVc INr;
+
+
+SetLangMode(LangRussian, "RUS", 2);
+
+ 
+curcomp = CurrentCompany;
+ReadFirstMain(MPr,0,true); 
+if MPr.OKFlag == 1 then
+	begin
+	RecordNew(SMr);
+	SMr.OrdTransDate = CurrentDate;
+	SMr.FrLocation = "A001";
+	SMr.ThrouLocation = "G002";
+	SMr.ToLocation = MPr.LocCode;
+	// SMr.PlanSendDate = CurrentDate;
+	// SMr.PlanSendTime = "13:00:00";
+	SMr.PlanArrDate = MPr.DateSup;
+	SMr.PlanArrTime = "18:00:00";
+
+	for(i = 0 ; i < MatRowCnt(MPr); i = i + 1)
+		begin
+		MatRowGet(MPr, i, MPrw);
+		if (MPrw.QtyMov > 0) and ((left(MPrw.ArtCode, 2) == "KS") or (left(MPrw.ArtCode, 2) == "EL") or (left(MPrw.ArtCode, 2) == "PR")  
+		  or (left(MPrw.ArtCode, 2) == "AK")) then
+			begin
+			SMrw.ArtCode = MPrw.ArtCode;
+			INr.Code = SMrw.ArtCode;
+			ReadFirstMain(INr,0,true);
+			SMrw.Coefficient = INr.UnitCoefficient;
+			SMrw.ArtCode = INr.Code;
+			SMrw.Spec = INr.Name;
+			SMrw.BasePrice = INr.UPrice1;
+			SMrw.Objects = FindINObjects(INr.Objects,INr.Group);
+			SMrw.UnitXval = INr.Width;
+			SMrw.UnitYval = INr.Height;
+			SMrw.UnitZval = INr.Depth;
+			
+			//SMrw.Spec = MPrw.ArtName;
+			SMrw.OrdQuant = MPrw.QtyMov;
+			MatRowInsert(SMr, 0, SMrw);
+			StockMovVc_PasteArtCode(SMr, 0, 1, true);
+			end;
+		end;
+	end;	
+if MatRowCnt(SMr) > 0 then
+	begin
+	Res = true;
+	end
+else
+	begin
+	Res = false;
+	end;
+
+//RecordStore(SMr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr,curcomp,ORr,curcomp);  
+	// CreateRecordLink(ORr,curcomp,VTr,curcomp); 
+	// end;	 
+MakeMovKS = res;
+RETURN;
+END;
+
+global
+updating function Boolean MakeMovKSOnC(var record tMovPlanVc MPr, var record StockMovVc SMr ) 
+BEGIN
+Integer curcomp, RwCnt, ii, i;
+Boolean res;
+row StockMovVc SMrw;
+row tMovPlanVc MPrw;
+record INVc INr;
+
+
+SetLangMode(LangRussian, "RUS", 2);
+
+ 
+curcomp = CurrentCompany;
+ReadFirstMain(MPr,0,true); 
+if MPr.OKFlag == 1 then
+	begin
+	RecordNew(SMr);
+	SMr.OrdTransDate = CurrentDate;
+	SMr.FrLocation = "C002";
+	SMr.ThrouLocation = "G002";
+	SMr.ToLocation = MPr.LocCode;
+	// SMr.PlanSendDate = CurrentDate;
+	// SMr.PlanSendTime = "13:00:00";
+	SMr.PlanArrDate = MPr.DateSup;
+	SMr.PlanArrTime = "18:00:00";
+
+	for(i = 0 ; i < MatRowCnt(MPr); i = i + 1)
+		begin
+		MatRowGet(MPr, i, MPrw);
+		if (MPrw.QtyMovC > 0) and (left(MPrw.ArtCode, 2) == "KS") then
+			begin
+			SMrw.ArtCode = MPrw.ArtCode;
+			INr.Code = SMrw.ArtCode;
+			ReadFirstMain(INr,0,true);
+			SMrw.Coefficient = INr.UnitCoefficient;
+			SMrw.ArtCode = INr.Code;
+			SMrw.Spec = INr.Name;
+			SMrw.BasePrice = INr.UPrice1;
+			SMrw.Objects = FindINObjects(INr.Objects,INr.Group);
+			SMrw.UnitXval = INr.Width;
+			SMrw.UnitYval = INr.Height;
+			SMrw.UnitZval = INr.Depth;
+			
+			//SMrw.Spec = MPrw.ArtName;
+			SMrw.OrdQuant = MPrw.QtyMovC;
+			MatRowInsert(SMr, 0, SMrw);
+			StockMovVc_PasteArtCode(SMr, 0, 1, true);
+			end;
+		end;
+	end;	
+if MatRowCnt(SMr) > 0 then
+	begin
+	Res = true;
+	end
+else
+	begin
+	Res = false;
+	end;
+
+//RecordStore(SMr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr,curcomp,ORr,curcomp);  
+	// CreateRecordLink(ORr,curcomp,VTr,curcomp); 
+	// end;	 
+MakeMovKSOnC = res;
+RETURN;
+END;
+
+
+
+global
+updating function Boolean MakeQAFromAI(record AutoInvVc AIr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, ii;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(ii =0 ; ii < MatRowCnt(Bl); ii = ii + 1)
+	begin
+	MatRowGet(Bl,ii,Blrw);
+	if SetInSet("AUTOINVVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Реализация по остаткам № " & AIr.SerNr;
+VTr.ParentNr = StringToLongInt(20 & AIr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, TTr, CurrentCompany);
+	// CreateRecordLink(TTr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromAI = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromPU(record PUVc PUr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, ii;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(ii =0 ; ii < MatRowCnt(Bl); ii = ii + 1)
+	begin
+	MatRowGet(Bl,ii,Blrw);
+	if SetInSet("PUVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Поступление № " & PUr.SerNr;
+VTr.ParentNr = StringToLongInt(21 & PUr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, TTr, CurrentCompany);
+	// CreateRecordLink(TTr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromPU = Res;
+
+RETURN;
+END;
+
+global
+updating function Boolean MakeQAFromSD(record SDVc SDr, var record tVTicketsVc VTr)
+BEGIN
+record UserVc USr;
+record ObjVc Obj;
+Integer RwCnt, CC, ii;
+Boolean Res;
+record VTicketTypeBlock Bl;
+row VTicketTypeBlock Blrw;
+
+   SetLangMode(LangRussian, "RUS", 2);
+RecordNew(VTr);
+
+USr.Code = CurrentUser;
+ReadFirstMain(USr, 1, True);
+VTr.UsrCode = USr.Code;
+VTr.UsrName = USr.Name;
+VTr.UsrAppoint = USr.StateJob;
+VTr.UsrDepart = USr.Department;
+VTr.DateSend = CurrentDate;
+VTr.TimeSend = CurrentTime;
+BlockLoad(Bl); 
+for(ii =0 ; ii < MatRowCnt(Bl); ii = ii + 1)
+	begin
+	MatRowGet(Bl,ii,Blrw);
+	if SetInSet("SDVC",Blrw.RegName) then
+		begin
+		VTr.TypeOfTicket = Blrw.Code;
+		end;
+	end;
+VTr.Comment = "Списание № " & SDr.SerNr;
+VTr.ParentNr = StringToLongInt(22 & SDr.SerNr);
+//VTr.SerNr = NextSerNr("tVTicketsVc", VTr.DateSend, -1, false, "");
+Res = true;//RecordStore(VTr, false);
+	// if Res then 
+	// begin	
+	// CreateRecordLink(VTr, CurrentCompany, TTr, CurrentCompany);
+	// CreateRecordLink(TTr, CurrentCompany, VTr, CurrentCompany);
+	// end;
+MakeQAFromSD = Res;
+
+RETURN;
+END;
+
+global
+function date tLastInMonth(date d)
+begin
+Integer i,j;
+
+i = GetYear(d);
+j = GetMonth(d);
+i = DaysInMonth(i,j);
+j = GetDay(d);
+i = i-j;
+tLastInMonth = AddDay(d,i);
+
+RETURN;
+END;
+
+global
+function integer tGetQuarter(date d1, var date bd, var date ed )
+begin
+integer GetQuarter;
+
+ switch(GetMonth(d1)) 
+	begin
+    case 1: GetQuarter = 1;
+	case 2: GetQuarter = 1;
+	case 3: GetQuarter = 1;
+	
+	case 4: GetQuarter = 2;
+	case 5: GetQuarter = 2;
+	case 6: GetQuarter = 2;
+	
+	case 7: GetQuarter = 3;
+	case 8: GetQuarter = 3;
+	case 9: GetQuarter = 3;
+	
+	case 10: GetQuarter = 4;
+	case 11: GetQuarter = 4;
+	case 12: GetQuarter = 4;
+	end;
+
+	
+ switch(GetQuarter) 
+	begin
+    case 1: 
+		begin 
+		bd = stringToDate("1/01/" & GetYear(d1));
+		ed = tLastInMonth(addmonth(bd, 2));
+		end;
+	case 2: 
+		begin 
+		bd = stringToDate("1/04/" & GetYear(d1));
+		ed = tLastInMonth(addmonth(bd, 2));
+		end;
+	case 3: 
+		begin 
+		bd = stringToDate("1/07/" & GetYear(d1));
+		ed = tLastInMonth(addmonth(bd, 2));
+		end;
+	case 4: 
+		begin 
+		bd = stringToDate("1/10/" & GetYear(d1));
+		ed = tLastInMonth(addmonth(bd, 2));
+		end;
+	end;	
+tGetQuarter = GetQuarter;
+RETURN;
+END;
+
+
+global
+function boolean tAccessUsr(string UsrCode)
+begin
+record UserVc USr;
+boolean res;
+record tTestAcVc TAr;
+
+Usr.Code = UsrCode;
+ReadFirstMain(Usr, 1, True);
+TAr.Code = CurrentUser;
+res = (USr.Supervisor == CurrentUser) or ReadFirstMain(TAr, 1, true);
+
+tAccessUsr = res;
+return;
+end;
+
+
+global
+function boolean tGetNrMonthFrQu(integer qu, var integer m1, var integer m2,var integer m3)
+begin
+
+ switch(qu) 
+	begin
+    case 1: begin
+			m1 = 1;
+			m2 = 2;
+			m3 = 3;
+			end;
+	case 2: begin
+			m1 = 4;
+			m2 = 5;
+			m3 = 6;
+			end;
+	case 3: begin
+			m1 = 7;
+			m2 = 8;
+			m3 = 9;
+			end;
+	case 4: begin
+			m1 = 10;
+			m2 = 11;
+			m3 = 12;
+			end;
+	end;	
+tGetNrMonthFrQu = true;
+RETURN;
+END;
+
+
+global 
+function string 20 DiapFromGroup(string RepSpecStr)
+begin
+string 20 res;
+record INVc INr;
+
+ INr.Group  = RepSpecStr;
+ if (ReadFirstKey("Group",INr,1,true)) then 
+	begin
+    res =INr.Code;
+	end;
+If (ReadLastKey("Group",INr,1,true)) then 
+	begin
+    res =res &":"&INr.Code;	
+	end;
+	DiapFromGroup=res;
+	return;
+end;
+
+
+
+global
+function String 30 TPICodeOrName(string CodeP, string FieldName)  
+begin
+String 30 res;
+record PIVc PIr;
+record INVc INr;
+boolean TrHs;
+
+TrHs = true;
+PIr.ItemCode = CodeP;
+res = blankval;
+while LoopMain(PIr, 1, TrHs) 
+	begin
+    if PIr.ItemCode != CodeP then 
+		begin 
+		TrHs = false; 	
+		end
+		else
+		begin
+		if FieldName == "VEItemCode" then
+			begin
+			res=PIr.VEItemCode;
+			end;
+		if FieldName == "Comment" then
+			begin
+			res=PIr.Comment;
+			end; 
+		end;
+	end;	
+	if blank(res) and (FieldName == "Comment") then 
+		begin
+		INr.Code = CodeP;
+		ReadFirstMain(INr, 1, True);
+		res = "#" & INr.Name;
+		end;
+	if blank(res) and (FieldName == "VEItemCode") then 
+		begin
+		res = " ";
+		end;
+TPICodeOrName=res;
+RETURN;
+end;
+
+
+external function boolean ICheckIntersect(string, string);
+
+global
+function boolean tCheckObjFN1(string Obj, longInt SerNr, string FN2)
+begin
+record  ExpVc Expr;
+row ExpVc Exprw;
+boolean res,TrHs;
+Integer rwcnt,i;
+record ObjVc Objr;
+
+res = false;
+//Objr.AutoObjects = Obj;
+Expr.SerNr = SerNr;
+ReadFirstMain(Expr, 1, true);
+rwcnt = MatRowCnt(Expr);
+	for (i=0; i<rwcnt; i=i+1)
+	begin
+	MatRowGet(Expr, i, Exprw);
+	if (Exprw.stp==1) and (SetInSet(Obj,Exprw.Objects) or
+	  ((blank(Exprw.Objects) and Obj == "FIN" and (rwcnt == 1))) or ICheckIntersect(FN2,Exprw.Objects)) then //
+		begin
+		res = true;
+		i = rwcnt;
+		end;
+	end;
+tCheckObjFN1 = res;
+Return;
+end;
+
+global
+function string 250 FindFN2(string Obj)
+begin
+record  ExpVc Expr;
+row ExpVc Exprw;
+boolean res,TrHs;
+Integer rwcnt,i;
+record ObjVc Objr;
+string 250 tObj;
+
+ResetLoop(Objr);
+TrHs = true;
+while (LoopMAin(Objr, 1, TrHs))
+	begin
+	if Objr.AutoObjects == Obj then
+		begin
+		if nonblank(tObj) then
+			begin
+			tObj = tObj & ",";
+			end;
+		tObj = tObj & Objr.Code;
+		end;
+	end;
+FindFN2 = tObj;
+Return;
+end;
+
+
+global
+function boolean tCheckObjPODR(string Obj, longInt SerNr)
+begin
+record  ExpVc Expr;
+row ExpVc Exprw;
+boolean res,TrHs;
+Integer rwcnt,i;
+record ObjVc Objr;
+
+res = false;
+//Objr.AutoObjects = Obj;
+
+
+Expr.SerNr = SerNr;
+ReadFirstMain(Expr, 1, true);
+rwcnt = MatRowCnt(Expr);
+	for (i=0; i<rwcnt; i=i+1)
+	begin
+	MatRowGet(Expr, i, Exprw);
+	if (Exprw.stp==1) and SetInSet(Obj,Exprw.Objects)
+	 // or ((blank(Exprw.Objects) and CurrentUser == "OLYA" and (rwcnt == 1)))
+	  then
+		begin
+		res = true;
+		i = rwcnt;
+		end;
+	end;
+tCheckObjPODR = res;
+Return;
+end;
+
+ global
+ procedure tGetUserBalUkr(var date bdate,var date edate,var string acctstr,var string  Objstr, var val dvu,var val cvu)
+ begin
+
+ string 255 tstr;
+ record TrVc Trr;
+ row TRVc TRrw;
+ integer i;
+ boolean trhs;
+ boolean testf;
+ val s1,s2;
+ trhs=true;
+ s1=0;
+ s2=0;
+ while (loopkey("AccNumberReconsf:" & acctstr,Trr,1,trhs)) begin
+       testf= true;
+       if (Trr.TransDate>edate) then begin testf=false; trhs=false; end;
+	   if (Trr.TransDate<bdate) then begin testf=false; end;
+	   if (testf) then begin
+ 	    for  (i=0;i<matrowcnt(TRr);i=i+1) begin
+	     matrowget(trr,i,trrw);
+	     if  (trrw.AccNumber==acctstr) and (setinset(Objstr,Trrw.Objects)) and (trrw.ovst==0) and (trrw.stp==1) then begin
+	      s1=s1+Trrw.DebVal;
+	      s2=s2+Trrw.CredVal;
+		//startformat(15);
+        //outstring(0,0,trr.Number & "  " & trr.TransDate & "  " & trrw.Objects & "  " & Trrw.DebVal2 & "  " & trrw.AccNumber & "  " & s1 & "  " & s2,false);
+        //endformat;
+	     end;// accnumber if
+        end;// for
+	   end;//testf
+      end;// while по операциям
+	  dvu = s1;cvu = s2;
+ return;
+ end;

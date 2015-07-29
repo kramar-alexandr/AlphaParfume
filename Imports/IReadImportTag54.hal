@@ -1,0 +1,2461 @@
+//=============================================
+// Импорт базы 5.4 -> 7.2
+// После успешного импорта закомментировать!!!
+//=============================================
+
+global
+updating procedure ReadImportTaguser1()
+begin
+  record UserVc Usr;
+  row UserVc Usrw;
+  integer i;
+
+  stopalert("UserVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(Usr);
+      Usr.Code = ImportField;
+      Usr.Name = ImportField;
+      Usr.OldPassWord = ImportField;
+      Usr.AccessGroup = ImportField;
+      Usr.CurOurContact = ImportField;
+      Usr.LastOrdNr = ImportField;
+      Usr.LastShipNr = ImportField;
+      Usr.LastInvNr = ImportField;
+      Usr.LastPurNr = ImportField;
+      Usr.LastPayNr = ImportField;
+      Usr.LastTRNr = ImportField;
+      Usr.LastVINr = ImportField;
+      Usr.LastOPNr = ImportField;
+      Usr.TerminatedFlag = StringToInt(ImportField);
+      Usr.Job = ImportField;
+      Usr.JobGroup = ImportField;
+      Usr.DisAllowOther = StringToInt(ImportField);
+      Usr.Location = ImportField;
+      Usr.Machines = ImportField;
+      Usr.Tiller = ImportField;
+      Usr.Bonus = StringToVal(ImportField, M4Val);
+      Usr.CUCode = ImportField;
+      Usr.CUName = ImportField;
+      Usr.Phone1 = ImportField;
+      Usr.Phone2 = ImportField;
+      Usr.Fax1 = ImportField;
+      Usr.Fax2 = ImportField;
+      Usr.Comment = ImportField;
+      Usr.PersAcc = ImportField;
+      Usr.PersObjx = ImportField;
+      Usr.BankAcc = ImportField;
+      Usr.BankName = ImportField;
+      Usr.CostPrHour = StringToVal(ImportField, M4Val);
+      Usr.PricePrHour = StringToVal(ImportField, M4Val);
+      Usr.emailAddr = ImportField;
+      Usr.IDCode = ImportField;
+      Usr.Spec = ImportField;
+      Usr.limitedAccess = StringToInt(ImportField);
+      Usr.NewPassWord = ImportField;
+      Usr.LangCode = ImportField;
+      Usr.SalesGroup = ImportField;
+      Usr.Department = ImportField;
+      Usr.LastCLInNr = ImportField;
+      Usr.LastCLOutNr = ImportField;
+      Usr.FTPLogin = StringToInt(ImportField);
+      Usr.WebConf = ImportField;
+      Usr.WebStartPage = ImportField;
+      Usr.CostAcc = ImportField;
+      Usr.LastIVCashNr = ImportField;
+      Usr.Closed = StringToInt(ImportField);
+      Usr.OnlyVoiceLogin = StringToInt(ImportField);
+      Usr.UserEditCtlf = StringToInt(ImportField);
+      Usr.DateOrder = StringToInt(ImportField);
+      Usr.LeadingZDay = StringToInt(ImportField);
+      Usr.LeadingZMonth = StringToInt(ImportField);
+      Usr.LeadingCentury = StringToInt(ImportField);
+      Usr.DateSep = ImportField;
+      Usr.DecimalPt = ImportField;
+      Usr.ThousandSep = ImportField;
+      Usr.ForceTimeEntry = StringToInt(ImportField);
+      Usr.DateCreated = ImportField;
+      Usr.Supervisor = ImportField;
+      Usr.OneFunction = ImportField;
+      Usr.TypeOfUser = StringToInt(ImportField);
+      Usr.thousSepf = StringToInt(ImportField);
+      Usr.CanUseOS = StringToInt(ImportField);
+      Usr.Magic = ImportField;
+      Usr.Newf = StringToInt(ImportField);
+      Usr.LastTTRNr = ImportField;
+      Usr.CustCode = ImportField;
+      Usr.WindowType = StringToInt(ImportField);
+      Usr.RegistrationNumber = ImportField;
+      Usr.StartLevel = StringToInt(ImportField);
+      Usr.ServLocation = ImportField;
+      Usr.ReservLocAccess = ImportField;
+      Usr.ReservLocation = ImportField;
+      //
+      Usr.BonusFound = StringToVal(ImportField, M4Val);
+      Usr.MotiveCoeff = StringToVal(ImportField, M4Val);
+      Usr.StateJob = ImportField;
+      Usr.MotiveDebAcc = ImportField;
+      Usr.MotiveCredAcc = ImportField;
+      Usr.ValidAccList = ImportField;
+      Usr.ValidPriceList = ImportField;
+      Usr.ValidLocList = ImportField;
+      Usr.MotivRespCode = ImportField;
+      Usr.VPositionCode = ImportField;
+      Usr.StPodrCode = ImportField;
+      Usr.ValidPMList = ImportField;
+      Usr.PPLimit = StringToVal(ImportField, M4Val);
+      Usr.EMail = ImportField;
+      Usr.Cb1 = StringToInt(ImportField);
+      Usr.Cb2 = StringToInt(ImportField);
+      Usr.Cb3 = StringToInt(ImportField);
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(Usr, USrw, 1);
+          Usrw.Code = ImportField;
+          Usrw.PRCode = ImportField;
+          Usrw.Comment = ImportField;
+          MatRowPut(Usr, i, Usrw);
+          i = i + 1;
+        end;
+      RecordImportStore(Usr, false);
+    end;
+  stopalert("UserVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagcu4()
+begin
+  record CUVc CUr;
+  row CUVc CUrw;
+  integer i;
+
+  stopalert("CUVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(CUr);
+      ImportField;
+      ImportField;
+      ImportField;
+      CUr.Code = ImportField;
+      CUr.Name = ImportField;
+      CUr.Person = ImportField;
+      CUr.WarnText1 = ImportField;
+      CUr.InvAddr0 = ImportField;
+      CUr.InvAddr1 = ImportField;
+      CUr.InvAddr2 = ImportField;
+      CUr.InvoiceToCode = ImportField;
+      CUr.DelAddr0 = ImportField;
+      CUr.DelAddr1 = ImportField;
+      CUr.DelAddr2 = ImportField;
+      CUr.Phone = ImportField;
+      CUr.Fax = ImportField;
+      CUr.CustCat = ImportField;
+      CUr.Comment = ImportField;
+      CUr.PayDeal = ImportField;
+      CUr.ExportFlag = StringToInt(ImportField);
+      CUr.AccFlag = StringToInt(ImportField);
+      CUr.Objects = ImportField;
+      CUr.InterestFlag = StringToInt(ImportField);
+      CUr.VATNr = ImportField;
+      CUr.CountryCode = ImportField;
+      CUr.SearchKey = ImportField;
+      CUr.RemndrFlag = StringToInt(ImportField);
+      CUr.LangCode = ImportField;
+      CUr.CurncyCode = ImportField;
+      CUr.OnAccount = StringToInt(ImportField);
+      CUr.SalesMan = ImportField;
+      CUr.CreditLimit = StringToVal(ImportField, M4Val);
+      CUr.ShipDeal = ImportField;
+      CUr.ShipMode = ImportField;
+      CUr.VATCode = ImportField;
+      CUr.Department = ImportField;
+      CUr.OrderComment = ImportField;
+      CUr.FreightNr = ImportField;
+      CUr.PLCode = ImportField;
+      CUr.RebCode = ImportField;
+      CUr.Classification = ImportField;
+      CUr.blockedFlag = StringToInt(ImportField);
+      CUr.DateChanged = ImportField;
+      CUr.AccOperator = ImportField;
+      CUr.SecAccount = ImportField;
+      CUr.BankAccount = ImportField;
+      CUr.JobDesc = ImportField;
+      CUr.CustType = StringToInt(ImportField);
+      CUr.ComCode = ImportField;
+      CUr.Sorting = ImportField;
+      CUr.RegNr1 = ImportField;
+      CUr.RegNr2 = ImportField;
+      CUr.CPRNr = ImportField;
+      CUr.wwwAddr = ImportField;
+      CUr.CompItemCode = ImportField;
+      CUr.ANACode = ImportField;
+      CUr.EDIFlag = StringToInt(ImportField);
+      CUr.eMail = ImportField;
+      CUr.IntRate = StringToInt(ImportField);
+      CUr.TheirCode = ImportField;
+      CUr.PriceBasedOn = StringToInt(ImportField);
+      CUr.DeliveryBasedOn = StringToInt(ImportField);
+      CUr.SalesGroup = ImportField;
+      CUr.SortCode = ImportField;
+      CUr.AllowLogin = StringToInt(ImportField);
+      CUr.Password = ImportField;
+      CUr.FTPLogin = StringToInt(ImportField);
+      CUr.DateCreated = ImportField;
+      CUr.EGOFlag = StringToInt(ImportField);
+      CUr.InvAddr3 = ImportField;
+      CUr.DelAddr3 = ImportField;
+      CUr.xArea = ImportField;
+      CUr.xAreaName = ImportField;
+      CUr.InvAddr4 = ImportField;
+      CUr.DelAddr4 = ImportField;
+      CUr.WebConf = ImportField;
+      CUr.WebStartPage = ImportField;
+      CUr.FreightCode = ImportField;
+      CUr.MainDispGroup = ImportField;
+      CUr.AutoGiro = StringToInt(ImportField);
+      CUr.OnHoldFlag = StringToInt(ImportField);
+      CUr.ColectionFlag = StringToInt(ImportField);
+      CUr.LocationCode = ImportField;
+      CUr.WebDisplays = ImportField;
+      CUr.Mobile = ImportField;
+      CUr.NoLetterPosting = StringToInt(ImportField);
+      CUr.FiscalFlag = StringToInt(ImportField);
+      CUr.UserStr1 = ImportField;
+      CUr.UserStr2 = ImportField;
+      CUr.UserStr3 = ImportField;
+      CUr.UserStr4 = ImportField;
+      CUr.UserStr5 = ImportField;
+      CUr.UserVal1 = StringToVal(ImportField, M4Val);
+      CUr.UserVal2 = StringToVal(ImportField, M4Val);
+      CUr.UserVal3 = StringToVal(ImportField, M4Val);
+      CUr.UserDate1 = ImportField;
+      CUr.UserDate2 = ImportField;
+      CUr.UserDate3 = ImportField;
+      CUr.AccAP = ImportField;
+      CUr.AccCost = ImportField;
+      CUr.Bank = ImportField;
+      CUr.OnAccAccAP = ImportField;
+      CUr.MinOrdSum = StringToVal(ImportField, M4Val);
+      CUr.PurchAcc = ImportField;
+      CUr.RefStr = ImportField;
+      CUr.WithPayMode = ImportField;
+      CUr.RetainPrc = ImportField;
+      CUr.NoMailPosting = StringToInt(ImportField);
+      CUr.VEType = StringToInt(ImportField);
+      CUr.CUType = StringToInt(ImportField);
+      CUr.VEPayDeal = ImportField;
+      CUr.VEShipDeal = ImportField;
+      CUr.VEShipMode = ImportField;
+      CUr.VECreditLimit = StringToVal(ImportField, M4Val);
+      CUr.VEObjects = ImportField;
+      CUr.VEWarnText1 = ImportField;
+//      CUr.VEInvoiceToCode = ImportField; //Переименовано в 7.2
+      CUr.VEFactoring = ImportField;
+      CUr.VECurncyCode = ImportField;
+      CUr.VECustID = ImportField;
+      CUr.VEVATCode = ImportField;
+      CUr.NoFactoringFlag = StringToInt(ImportField);
+      CUr.NoRepa = StringToInt(ImportField);
+      CUr.VECat = ImportField;
+      CUr.IBANCode = ImportField;
+      CUr.EInvAddr = ImportField;
+      CUr.EInvFunc = StringToInt(ImportField);
+      CUr.xAcceptanceGroup = ImportField;
+      CUr.WebServiceChannel = StringToInt(ImportField);
+      CUr.SkypeName = ImportField;
+      CUr.Region = ImportField;
+      CUr.NoTax1 = StringToInt(ImportField);
+      CUr.NoTax2 = StringToInt(ImportField);
+      CUr.GuestType = StringToInt(ImportField);
+      CUr.PassportNr = ImportField;
+      CUr.Profesion = ImportField;
+      CUr.Nationality = ImportField;
+      CUr.BirthDate = ImportField;
+      CUr.Gender = StringToInt(ImportField);
+      CUr.Newspaper = ImportField;
+      CUr.Smoking = StringToInt(ImportField);
+      CUr.DocType = ImportField;
+      CUr.Blacklist = StringToInt(ImportField);
+      CUr.MarStatus = StringToInt(ImportField);
+      CUr.Passphrase = ImportField;
+      CUr.SIPCode = ImportField;
+      CUr.AltPhone = ImportField;
+      CUr.Comment0 = ImportField;
+      CUr.Comment1 = ImportField;
+      CUr.Comment2 = ImportField;
+      CUr.Title = ImportField;
+      CUr.Salutation1 = ImportField;
+      CUr.Salutation2 = ImportField;
+      CUr.Salutation3 = ImportField;
+
+//      CUr.xUserCode = ImportField;
+      ImportField;
+
+      CUr.DealerType = StringToInt(ImportField);
+      CUr.GroupInv = StringToInt(ImportField);
+      CUr.AddressBooks = ImportField;
+      CUr.Extension = ImportField;
+      //
+      CUr.ContractDate = ImportField;
+      CUr.AlphaBet = ImportField;
+      CUr.OffiSeller = ImportField;
+      CUr.Passp = ImportField;
+      CUr.RefINN = ImportField;
+      CUr.EGRPOU = ImportField;
+      CUr.RefSingle = ImportField;
+      CUr.RefOPP = ImportField;
+      CUr.AssigDir = ImportField;
+      CUr.Excerpt = ImportField;
+      CUr.RefNDS = ImportField;
+      CUr.Status = StringToInt(ImportField);
+      CUr.ValStatus = StringToInt(ImportField);
+      CUr.ValTerm = StringToInt(ImportField);
+      CUr.ValPas = StringToInt(ImportField);
+      CUr.ValRefINN = StringToInt(ImportField);
+      CUr.ValEGRPOU = StringToInt(ImportField);
+      CUr.ValRefNDS = StringToInt(ImportField);
+      CUr.ValRefOPP = StringToInt(ImportField);
+      CUr.ValTrust = StringToInt(ImportField);
+      CUr.ValRefSingle = StringToInt(ImportField);
+      CUr.ValAssigDir = StringToInt(ImportField);
+      CUr.ValExcerpt = StringToInt(ImportField);
+      CUr.LangSup = ImportField;
+      CUr.CCDFlag = StringToInt(ImportField);
+      CUr.ArriveDays = StringToInt(ImportField);
+      CUr.DeliverDays = StringToInt(ImportField);
+      CUr.DateDebet = ImportField;
+      CUr.SupClassification = ImportField;
+      CUr.LogNewUser = ImportField;
+      CUr.LogNewDate = ImportField;
+      CUr.LogNewTime = ImportField;
+      CUr.LogSaveUser = ImportField;
+      CUr.LogSaveDate = ImportField;
+      CUr.LogSaveTime = ImportField;
+      CUr.LowPrew = ImportField;
+      CUr.DocChDate = ImportField;
+      CUr.DocChTime = ImportField;
+      CUr.tLegRisk = ImportField;
+      CUr.tCreditLimit = StringToVal(ImportField, M4Val);
+      CUr.tLimKrFlag = StringToInt(ImportField);
+      CUr.PlanDeliveryTime = ImportField;
+      CUr.AlienCurncy = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(CUr, CUrw, 1);
+          CUrw.CommDate = ImportField;
+          CUrw.CommTime = ImportField;
+          CUrw.Field = ImportField;
+          CUrw.Comment = ImportField;
+          MatRowPut(CUr, i, CUrw);
+          i = i + 1;
+        end;
+      RecordImportStore(CUr, false);
+    end;
+  stopalert("CUVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagctype()
+begin
+  record CTypeVc CTr;
+
+  stopalert("CTypeVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(CTr);
+      CTr.Code = ImportField;
+      CTr.Comment = ImportField;
+      //
+      CTr.AutoObjects = ImportField;
+      RecordImportStore(CTr, false);
+    end;
+  stopalert("CTypeVc end");
+  Return;
+end;
+
+//===============================================
+global
+updating procedure ReadImportTagSalesGroupVc()
+begin
+  record SalesGroupVc SGr;
+
+  stopalert("SalesGroupVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(SGr);
+      SGr.SGroupCode = ImportField;
+      SGr.SGroupName = ImportField;
+      //
+      SGr.Closed = StringToInt(ImportField);
+      RecordImportStore(SGr, false);
+    end;
+  stopalert("SalesGroupVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagpp1()
+begin
+  record PPVc PPr;
+  row PPVc PPrw;
+  integer i;
+
+  stopalert("PPVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(PPr);
+      PPr.SerNr = ImportField;
+      PPr.BankAcc = ImportField;
+      PPr.Sign = ImportField;
+      PPr.PayVal = StringToVal(ImportField, M4Val);
+      PPr.RegDate = ImportField;
+      PPr.TransDate = ImportField;
+      PPr.PayMode = ImportField;
+      PPr.OrderedFlag = StringToInt(ImportField);
+      PPr.SentFlag = StringToInt(ImportField);
+      PPr.DoneFlag = StringToInt(ImportField);
+      PPr.BankName = ImportField;
+      PPr.CurncyCode = ImportField;
+      PPr.ToRateB1 = StringToVal(ImportField, M4Val);
+      PPr.BasePayVal = StringToVal(ImportField, M4Val);
+      PPr.ExtraCost = StringToVal(ImportField, M4Val);
+      PPr.PayDate = ImportField;
+      PPr.xStatFlag = StringToInt(ImportField);
+      PPr.ExportedFlag = StringToInt(ImportField);
+      PPr.FrRate = StringToVal(ImportField, M4Val);
+      PPr.ToRateB2 = StringToVal(ImportField, M4Val);
+      PPr.BaseRate1 = StringToVal(ImportField, M4Val);
+      PPr.BaseRate2 = StringToVal(ImportField, M4Val);
+      PPr.PPOKNr = ImportField;
+      PPr.Invalid = StringToInt(ImportField);
+      //
+      PPr.RefStr = ImportField;
+      PPr.LogNewUser = ImportField;
+      PPr.LogNewDate = ImportField;
+      PPr.LogNewTime = ImportField;
+      PPr.LogSaveUser = ImportField;
+      PPr.LogSaveDate = ImportField;
+      PPr.LogSaveTime = ImportField;
+      PPr.LogSentUser = ImportField;
+      PPr.LogSentDate = ImportField;
+      PPr.LogSentTime = ImportField;
+      PPr.LogOrderedUser = ImportField;
+      PPr.LogOrderedDate = ImportField;
+      PPr.LogOrderedTime = ImportField;
+      PPr.LogDoneUser = ImportField;
+      PPr.LogDoneDate = ImportField;
+      PPr.LogDoneTime = ImportField;
+      PPr.LogAnnulUser = ImportField;
+      PPr.LogAnnulDate = ImportField;
+      PPr.LogAnnulTime = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(PPr, PPrw, 1);
+          PPrw.stp = StringToInt(ImportField);
+          PPrw.ovst = StringToInt(ImportField);
+          PPrw.Person = ImportField;
+          PPrw.BankAcc = ImportField;
+          PPrw.Comment = ImportField;
+          PPrw.PayVal = StringToVal(ImportField, M4Val);
+          PPrw.Objects = ImportField;
+          PPrw.PayMode = ImportField;
+          PPrw.ChequeNr = ImportField;
+          PPrw.rkPayNumber = ImportField;
+          MatRowPut(PPr, i, PPrw);
+          i = i + 1;
+        end;
+      RecordImportStore(PPr, false);
+    end;
+  stopalert("PPVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagpurchase2()
+begin
+  record PUVc PUr;
+  row PUVc PUrw;
+  integer i;
+
+  stopalert("PUVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(PUr);
+      PUr.SerNr = ImportField;
+      PUr.RegDate = ImportField;
+      PUr.TransDate = ImportField;
+      PUr.Comment = ImportField;
+      PUr.VECode = ImportField;
+      PUr.VEName = ImportField;
+      PUr.PONr = ImportField;
+      PUr.Location = ImportField;
+      PUr.OKFlag = StringToInt(ImportField);
+      PUr.CurncyCode = ImportField;
+      PUr.ToRateB1 = StringToVal(ImportField, M4Val);
+      PUr.InclVAT = StringToInt(ImportField);
+      PUr.SumCostPrice = StringToVal(ImportField, M4Val);
+      PUr.SumQuant = StringToVal(ImportField, M4Val);
+      PUr.ShipCost = StringToVal(ImportField, M4Val);
+      PUr.CustomsCost = StringToVal(ImportField, M4Val);
+      PUr.ExtraCost = StringToVal(ImportField, M4Val);
+      PUr.ExportedFlag = StringToInt(ImportField);
+      PUr.FrRate = StringToVal(ImportField, M4Val);
+      PUr.ToRateB2 = StringToVal(ImportField, M4Val);
+      PUr.BaseRate1 = StringToVal(ImportField, M4Val);
+      PUr.BaseRate2 = StringToVal(ImportField, M4Val);
+      PUr.LocOKNr = StringToVal(ImportField, M4Val);
+      PUr.Objects = ImportField;
+      PUr.PUClass = ImportField;
+      PUr.POCOSerNr = ImportField;
+      PUr.Cost1 = StringToVal(ImportField, M4Val);
+      PUr.Cost2 = StringToVal(ImportField, M4Val);
+      PUr.Cost3 = StringToVal(ImportField, M4Val);
+      PUr.Cost4 = StringToVal(ImportField, M4Val);
+      PUr.Cost5 = StringToVal(ImportField, M4Val);
+      PUr.VATVal = StringToVal(ImportField, M4Val);
+      PUr.SubTotal = StringToVal(ImportField, M4Val);
+      PUr.PayVal = StringToVal(ImportField, M4Val);
+      PUr.VEVATCode = ImportField;
+      PUr.Invalid = StringToInt(ImportField);
+      PUr.ExportFlag = StringToInt(ImportField);
+      PUr.PrelPUNr = ImportField;
+      PUr.FreightCode = ImportField;
+      PUr.FreightCompanyRegNr = ImportField;
+      PUr.FreightCompany = ImportField;
+      PUr.TruckInfo = ImportField;
+      PUr.Driver = ImportField;
+      PUr.CMRText = ImportField;
+      PUr.xBookVariance = StringToInt(ImportField);
+      PUr.xVarTransDate = ImportField;
+      PUr.LangCode = ImportField;
+      PUr.TAX1Sum = StringToVal(ImportField, M4Val);
+      PUr.TAX2Sum = StringToVal(ImportField, M4Val);
+      PUr.ShipCostRound = StringToVal(ImportField, M4Val);
+      PUr.CustomsCostRound = StringToVal(ImportField, M4Val);
+      PUr.Cost1Round = StringToVal(ImportField, M4Val);
+      PUr.Cost2Round = StringToVal(ImportField, M4Val);
+      PUr.Cost3Round = StringToVal(ImportField, M4Val);
+      PUr.Cost4Round = StringToVal(ImportField, M4Val);
+      PUr.Cost5Round = StringToVal(ImportField, M4Val);
+      PUr.Sorting = ImportField;
+      PUr.InvalidDate = ImportField;
+      PUr.NoTAXonVAT = ImportField;
+      //
+      PUr.CustomsObj = ImportField;
+      PUr.CommentObj = ImportField;
+      PUr.Barcode = ImportField;
+      PUr.BQuant = StringToVal(ImportField, M4Val);
+      PUr.AddIt = StringToInt(ImportField);
+      PUr.LogNewDate = ImportField;
+      PUr.LogNewUser = ImportField;
+      PUr.LogNewTime = ImportField;
+      PUr.LogSaveDate = ImportField;
+      PUr.LogSaveUser = ImportField;
+      PUr.LogSaveTime = ImportField;
+      PUr.LogOKDate = ImportField;
+      PUr.LogOKUser = ImportField;
+      PUr.LogOKTime = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(PUr, PUrw, 1);
+          PUrw.ArtCode = ImportField;
+          PUrw.Quant = StringToVal(ImportField, M4Val);
+          PUrw.Spec = ImportField;
+          PUrw.UPrice = StringToVal(ImportField, M4Val);
+          PUrw.SerialNr = ImportField;
+          PUrw.OrdRow = ImportField;
+          PUrw.Extra = ImportField;
+          PUrw.CostPrice = StringToVal(ImportField, M4Val);
+          PUrw.VEItemCode = ImportField;
+          PUrw.VARList = ImportField;
+          PUrw.ShipCost = StringToVal(ImportField, M4Val);
+          PUrw.CustomsCost = ImportField;
+          PUrw.BestBefore = ImportField;
+          PUrw.Coefficient = StringToVal(ImportField, M4Val);
+          PUrw.BasePrice = StringToVal(ImportField, M4Val);
+          PUrw.Sum = StringToVal(ImportField, M4Val);
+          PUrw.Comment = ImportField;
+          PUrw.Objects = ImportField;
+          PUrw.CostAcc = ImportField;
+          PUrw.CredAcc = ImportField;
+          PUrw.CustomsNr = ImportField;
+          PUrw.CountryOfOrg = ImportField;
+          PUrw.PosCode = ImportField;
+          PUrw.BatchStatus = ImportField;
+          PUrw.UnitXval = StringToVal(ImportField, M4Val);
+          PUrw.UnitYval = StringToVal(ImportField, M4Val);
+          PUrw.UnitZval = StringToVal(ImportField, M4Val);
+          PUrw.RowCost1 = StringToVal(ImportField, M4Val);
+          PUrw.RowCost2 = StringToVal(ImportField, M4Val);
+          PUrw.RowCost3 = StringToVal(ImportField, M4Val);
+          PUrw.RowCost4 = StringToVal(ImportField, M4Val);
+          PUrw.RowCost5 = StringToVal(ImportField, M4Val);
+          PUrw.VATCode = ImportField;
+          PUrw.stp = StringToInt(ImportField);
+          PUrw.ovst = StringToInt(ImportField);
+          PUrw.Sign = ImportField;
+          PUrw.UpdDate = ImportField;
+          PUrw.PORecon = StringToVal(ImportField, M4Val);
+          PUrw.POReconComment = ImportField;
+          PUrw.VIRecon = StringToVal(ImportField, M4Val);
+          PUrw.VIReconComment = ImportField;
+          PUrw.PONr = ImportField;
+          PUrw.BarCode = ImportField;
+          PUrw.PrelPUNr = ImportField;
+          PUrw.PrelPURow = ImportField;
+          PUrw.ToPosCode = ImportField;
+          PUrw.UnitCode = ImportField;
+          PUrw.VarianceAmount = StringToVal(ImportField, M4Val);
+          PUrw.TAX2Code = ImportField;
+          PUrw.TAX2Prc = StringToVal(ImportField, M4Val);
+          PUrw.TAX2Reb = StringToVal(ImportField, M4Val);
+          PUrw.TAX1Reb = StringToVal(ImportField, M4Val);
+          PUrw.TAX2Acc = ImportField;
+          PUrw.Location = ImportField;
+          PUrw.ChargeNumber = ImportField;
+          PUrw.VEQuant = StringToVal(ImportField, M4Val);
+          PUrw.PIFactor = StringToVal(ImportField, M4Val);
+          PUrw.VEUnit = ImportField;
+          PUrw.StockType = StringToInt(ImportField);
+          PUrw.InPrice = StringToVal(ImportField, M4Val);
+          MatRowPut(PUr, i, PUrw);
+          i = i + 1;
+        end;
+      RecordImportStore(PUr, false);
+    end;
+  stopalert("PUVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagRetVc()
+begin
+  record RetVc Retr;
+  row RetVc Retrw;
+  integer i;
+
+  stopalert("RetVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(Retr);
+      Retr.SerNr = ImportField;
+      Retr.RegDate = ImportField;
+      Retr.TransDate = ImportField;
+      Retr.Comment = ImportField;
+      Retr.CustCode = ImportField;
+      Retr.CustName = ImportField;
+      Retr.OrdNr = ImportField;
+      Retr.Location = ImportField;
+      Retr.OKFlag = StringToInt(ImportField);
+      Retr.CurncyCode = ImportField;
+      Retr.ToRateB1 = StringToVal(ImportField, M4Val);
+      Retr.InclVAT = StringToInt(ImportField);
+      Retr.SumQuant = StringToVal(ImportField, M4Val);
+      Retr.ExtraCost = StringToVal(ImportField, M4Val);
+      Retr.FrRate = StringToVal(ImportField, M4Val);
+      Retr.ToRateB2 = StringToVal(ImportField, M4Val);
+      Retr.BaseRate1 = StringToVal(ImportField, M4Val);
+      Retr.BaseRate2 = StringToVal(ImportField, M4Val);
+      Retr.UpdStockFlag = StringToInt(ImportField);
+      Retr.Type = StringToInt(ImportField);
+      Retr.LocOKNr = StringToVal(ImportField, M4Val);
+      Retr.Objects = ImportField;
+      Retr.Sum4 = StringToVal(ImportField, M4Val);
+      Retr.SHNr = ImportField;
+      Retr.Reason = ImportField;
+      Retr.Invalid = StringToInt(ImportField);
+      Retr.InvalidDate = ImportField;
+      Retr.InvoiceNr = ImportField;
+      //
+      Retr.Barcode = ImportField;
+      Retr.BQuant = StringToVal(ImportField, M4Val);
+      Retr.AddIt = StringToInt(ImportField);
+      Retr.LogNewDate = ImportField;
+      Retr.LogNewUser = ImportField;
+      Retr.LogNewTime = ImportField;
+      Retr.LogSaveDate = ImportField;
+      Retr.LogSaveUser = ImportField;
+      Retr.LogSaveTime = ImportField;
+      Retr.LogOKDate = ImportField;
+      Retr.LogOKUser = ImportField;
+      Retr.LogOKTime = ImportField;
+      Retr.IName = ImportField;
+      Retr.Gather = ImportField;
+      Retr.IRetOrdNr = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(Retr, Retrw, 1);
+          Retrw.ArtCode = ImportField;
+          Retrw.Quant = StringToVal(ImportField, M4Val);
+          Retrw.Spec = ImportField;
+          Retrw.UPrice = StringToVal(ImportField, M4Val);
+          Retrw.SerialNr = ImportField;
+          Retrw.OrdRow = ImportField;
+          Retrw.Extra = ImportField;
+          Retrw.CostPrice = StringToVal(ImportField, M4Val);
+          Retrw.VARList = ImportField;
+          Retrw.BestBefore = ImportField;
+          Retrw.Recepy = ImportField;
+          Retrw.Objects = ImportField;
+          Retrw.BatchStatus = ImportField;
+          Retrw.UnitXval = StringToVal(ImportField, M4Val);
+          Retrw.UnitYval = StringToVal(ImportField, M4Val);
+          Retrw.UnitZval = StringToVal(ImportField, M4Val);
+          Retrw.BasePrice = StringToVal(ImportField, M4Val);
+          Retrw.PosCode = ImportField;
+          Retrw.Coefficient = StringToVal(ImportField, M4Val);
+          Retrw.SHRow = ImportField;
+          Retrw.Location = ImportField;
+          Retrw.BBCostPrice = StringToVal(ImportField, M4Val);
+          MatRowPut(Retr, i, Retrw);
+          i = i + 1;
+        end;
+      RecordImportStore(Retr, false);
+    end;
+  stopalert("RetVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagORVc()
+begin
+  record ORVc ORr;
+  row ORVc ORrw;
+  integer i;
+
+  stopalert("ORVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(ORr);
+      ORr.SerNr = ImportField;
+      ORr.OrdDate = ImportField;
+      ORr.CustCode = ImportField;
+      ORr.Addr0 = ImportField;
+      ORr.Addr1 = ImportField;
+      ORr.Addr2 = ImportField;
+      ORr.Addr3 = ImportField;
+      ORr.OurContact = ImportField;
+      ORr.CustContact = ImportField;
+      ORr.ExportFlag = StringToInt(ImportField);
+      ORr.InvFlag = StringToInt(ImportField);
+      ORr.ShipFlag = StringToInt(ImportField);
+      ORr.Prntdf = StringToInt(ImportField);
+      ORr.PayDeal = ImportField;
+      ORr.CustCat = ImportField;
+      ORr.InvMark = StringToInt(ImportField);
+      ORr.ShipMark = StringToInt(ImportField);
+      ORr.Objects = ImportField;
+      ORr.ShipMode = ImportField;
+      ORr.OrderStatus = StringToInt(ImportField);
+      ORr.PlanShip = ImportField;
+      ORr.SalesMan = ImportField;
+      ORr.Sign = ImportField;
+      ORr.ShipDeal = ImportField;
+      ORr.ShipAddr0 = ImportField;
+      ORr.ShipAddr1 = ImportField;
+      ORr.ShipAddr2 = ImportField;
+      ORr.ShipAddr3 = ImportField;
+      ORr.CurncyCode = ImportField;
+      ORr.LangCode = ImportField;
+      ORr.InvoiceToCode = ImportField;
+      ORr.Closed = StringToInt(ImportField);
+      ORr.ToRateB1 = StringToVal(ImportField, M4Val);
+      ORr.BuildOn = StringToInt(ImportField);
+      ORr.PRCode = ImportField;
+      ORr.Comment = ImportField;
+      ORr.InvOnlyOnFull = StringToInt(ImportField);
+      ORr.DownPaySent = StringToVal(ImportField, M4Val);
+      ORr.DownPayRedcd = StringToVal(ImportField, M4Val);
+      ORr.OrderClass = ImportField;
+      ORr.CustOrdNr = ImportField;
+      ORr.PriceList = ImportField;
+      ORr.InclVAT = StringToInt(ImportField);
+      ORr.Sum0 = StringToVal(ImportField, M4Val);
+      ORr.Sum1 = StringToVal(ImportField, M4Val);
+      ORr.Sum2 = StringToVal(ImportField, M4Val);
+      ORr.Sum3 = StringToVal(ImportField, M4Val);
+      ORr.Sum4 = StringToVal(ImportField, M4Val);
+      ORr.Reserved = StringToInt(ImportField);
+      ORr.OSFlag = StringToInt(ImportField);
+      ORr.Location = ImportField;
+      ORr.CustVATCode = ImportField;
+      ORr.RebCode = ImportField;
+      ORr.VATNr = ImportField;
+      ORr.Phone = ImportField;
+      ORr.Fax = ImportField;
+      ORr.ExportedFlag = StringToInt(ImportField);
+      ORr.BaseSum4 = StringToVal(ImportField, M4Val);
+      ORr.FrRate = StringToVal(ImportField, M4Val);
+      ORr.ToRateB2 = StringToVal(ImportField, M4Val);
+      ORr.BaseRate1 = StringToVal(ImportField, M4Val);
+      ORr.BaseRate2 = StringToVal(ImportField, M4Val);
+      ORr.DiscPerc = StringToVal(ImportField, M4Val);
+      ORr.DiscSum = StringToVal(ImportField, M4Val);
+      ORr.TotGP = StringToVal(ImportField, M4Val);
+      ORr.Probability = StringToVal(ImportField, M4Val);
+      ORr.CreditCard = ImportField;
+      ORr.AuthorizationCode = ImportField;
+      ORr.GPProc = StringToVal(ImportField, M4Val);
+      ORr.DespatchDate = ImportField;
+      ORr.DespatchTime = ImportField;
+      ORr.SalesGroup = ImportField;
+      ORr.Sorting = ImportField;
+      ORr.TotQty = StringToVal(ImportField, M4Val);
+      ORr.TotWeight = StringToVal(ImportField, M4Val);
+      ORr.TotVolume = StringToVal(ImportField, M4Val);
+      ORr.Commision = StringToVal(ImportField, M4Val);
+      ORr.SumIncCom = StringToVal(ImportField, M4Val);
+      ORr.FrPrice = StringToVal(ImportField, M4Val);
+      ORr.FrBase = StringToVal(ImportField, M4Val);
+      ORr.FrItem = ImportField;
+      ORr.FrVATCode = ImportField;
+      ORr.FrObjects = ImportField;
+      ORr.InvAddr3 = ImportField;
+      ORr.InvAddr4 = ImportField;
+      ORr.DelAddr3 = ImportField;
+      ORr.DelAddr4 = ImportField;
+      ORr.DelAddrCode = ImportField;
+      ORr.TAX1Sum = StringToVal(ImportField, M4Val);
+      ORr.QuoteNr = ImportField;
+      ORr.InvBeforeShip = StringToInt(ImportField);
+      ORr.colnr = StringToInt(ImportField);
+      ORr.OKFlag = StringToInt(ImportField);
+      ORr.PlanShipDate = ImportField;
+      ORr.PrepaidAmount = StringToVal(ImportField, M4Val);
+      ORr.Region = ImportField;
+      ORr.RefStr = ImportField;
+      ORr.GroupOrdNr = ImportField;
+      ORr.NoDelivery = StringToInt(ImportField);
+      ORr.NoInvoice = StringToInt(ImportField);
+      ORr.TAX2Sum = StringToVal(ImportField, M4Val);
+      ORr.NoTax1 = StringToInt(ImportField);
+      ORr.NoTax2 = StringToInt(ImportField);
+      ORr.BranchID = ImportField;
+      ORr.NoTAXonVAT = ImportField;
+      ORr.TotalwoTAX = StringToInt(ImportField);
+      //
+      ORr.LogNewDate = ImportField;
+      ORr.LogNewUser = ImportField;
+      ORr.LogNewTime = ImportField;
+      ORr.LogSaveDate = ImportField;
+      ORr.LogSaveUser = ImportField;
+      ORr.LogSaveTime = ImportField;
+      ORr.LogOKDate = ImportField;
+      ORr.LogOKUser = ImportField;
+      ORr.LogOKTime = ImportField;
+      ORr.Dummy = StringToInt(ImportField);
+      ORr.PlanShipTime = ImportField;
+      ORr.Invalid = StringToInt(ImportField);
+      ORr.SenceInvalid = ImportField;
+      ORr.CCDFlag = StringToInt(ImportField);
+      ORr.Notes = ImportField;
+      ORr.OrigLocation = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(ORr, ORrw, 1);
+          ORrw.stp = StringToInt(ImportField);
+          ORrw.ArtCode = ImportField;
+          ORrw.Quant = StringToVal(ImportField, M4Val);
+          ORrw.Price = StringToVal(ImportField, M4Val);
+          ORrw.Sum = StringToVal(ImportField, M4Val);
+          ORrw.vRebate = StringToVal(ImportField, M4Val);
+          ORrw.SalesAcc = ImportField;
+          ORrw.Shipd1 = StringToVal(ImportField, M4Val);
+          ORrw.Shipd2 = StringToVal(ImportField, M4Val);
+          ORrw.Invd = StringToVal(ImportField, M4Val);
+          ORrw.Objects = ImportField;
+          ORrw.BasePrice = StringToVal(ImportField, M4Val);
+          ORrw.rowGP = StringToVal(ImportField, M4Val);
+          ORrw.Spec = ImportField;
+          ORrw.VATCode = ImportField;
+          ORrw.Recepy = ImportField;
+          ORrw.SerialNr = ImportField;
+          ORrw.PriceFactor = StringToVal(ImportField, M4Val);
+          ORrw.VARList = ImportField;
+          ORrw.Location = ImportField;
+          ORrw.Source = ImportField;
+          ORrw.PickingDate = ImportField;
+          ORrw.PickingTime = ImportField;
+          ORrw.InloadingDate = ImportField;
+          ORrw.InloadingTime = ImportField;
+          ORrw.DespatchRowDate = ImportField;
+          ORrw.DespatchRowTime = ImportField;
+          ORrw.PlanShipRow = ImportField;
+          ORrw.ShipNote = ImportField;
+          ORrw.UnitCode = ImportField;
+          ORrw.UnitFactQuant = StringToVal(ImportField, M4Val);
+          ORrw.UnitFactPrice = StringToVal(ImportField, M4Val);
+          ORrw.UnitXval = StringToVal(ImportField, M4Val);
+          ORrw.UnitYval = StringToVal(ImportField, M4Val);
+          ORrw.UnitZval = StringToVal(ImportField, M4Val);
+          ORrw.Coefficient = StringToVal(ImportField, M4Val);
+          ORrw.VECode = ImportField;
+          ORrw.Production = ImportField;
+          ORrw.GroupOrdRow = ImportField;
+          ORrw.TAX2Code = ImportField;
+          ORrw.TAX2Prc = StringToVal(ImportField, M4Val);
+          ORrw.TAX2Reb = StringToVal(ImportField, M4Val);
+          ORrw.TAX1Reb = StringToVal(ImportField, M4Val);
+          ORrw.TAX2Acc = ImportField;
+          ORrw.PlanShipRowDate = ImportField;
+          ORrw.CUServiceHistNr = ImportField;
+          ORrw.CUServiceUntilDate = ImportField;
+          //
+          ORrw.QuantAvail = StringToVal(ImportField, M4Val);
+          ORrw.INRek = StringToLongint(ImportField);
+          MatRowPut(ORr, i, ORrw);
+          i = i + 1;
+        end;
+      RecordImportStore(ORr, false);
+    end;
+  stopalert("ORVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagIVVc()
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+  integer i;
+
+  stopalert("IVVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(IVr);
+      IVr.SerNr = ImportField;
+      IVr.InvDate = ImportField;
+      IVr.CustCode = ImportField;
+      IVr.PayDate = ImportField;
+      IVr.Addr0 = ImportField;
+      IVr.Addr1 = ImportField;
+      IVr.Addr2 = ImportField;
+      IVr.Addr3 = ImportField;
+      IVr.OurContact = ImportField;
+      IVr.ClientContact = ImportField;
+      IVr.ExportFlag = StringToInt(ImportField);
+      IVr.PayDeal = ImportField;
+      IVr.OrderNr = ImportField;
+      IVr.Prntdf = StringToInt(ImportField);
+      IVr.OKFlag = StringToInt(ImportField);
+      IVr.pdays = ImportField;
+      IVr.pdvrebt = StringToVal(ImportField, M4Val);
+      IVr.pdrdays = ImportField;
+      IVr.CustCat = ImportField;
+      IVr.pdComment = ImportField;
+
+//      IVr.x1 = ImportField;
+      ImportField;
+
+      IVr.InvType = StringToInt(ImportField);
+      IVr.xStatFlag = StringToInt(ImportField);
+      IVr.PriceList = ImportField;
+      IVr.Objects = ImportField;
+      IVr.InclVAT = StringToInt(ImportField);
+      IVr.ARAcc = ImportField;
+      IVr.InvComment = ImportField;
+      IVr.CredInv = ImportField;
+      IVr.CredMark = ImportField;
+      IVr.SalesMan = ImportField;
+      IVr.ToRateB1 = StringToVal(ImportField, M4Val);
+      IVr.TransDate = ImportField;
+      IVr.CurncyCode = ImportField;
+      IVr.LangCode = ImportField;
+      IVr.UpdStockFlag = StringToInt(ImportField);
+      IVr.LastRemndr = ImportField;
+      IVr.LastRemDate = ImportField;
+      IVr.Sign = ImportField;
+      IVr.FrPrice = StringToVal(ImportField, M4Val);
+      IVr.FrBase = StringToVal(ImportField, M4Val);
+      IVr.FrItem = ImportField;
+      IVr.FrVATCode = ImportField;
+      IVr.FrObjects = ImportField;
+      IVr.OrgCust = ImportField;
+      IVr.FrGP = StringToVal(ImportField, M4Val);
+      IVr.FrGPPercent = StringToVal(ImportField, M4Val);
+      IVr.Sum0 = StringToVal(ImportField, M4Val);
+      IVr.Sum1 = StringToVal(ImportField, M4Val);
+      IVr.Sum2 = StringToVal(ImportField, M4Val);
+      IVr.Sum3 = StringToVal(ImportField, M4Val);
+      IVr.Sum4 = StringToVal(ImportField, M4Val);
+      IVr.VATNr = ImportField;
+      IVr.ShipDeal = ImportField;
+      IVr.ShipAddr0 = ImportField;
+      IVr.ShipAddr1 = ImportField;
+      IVr.ShipAddr2 = ImportField;
+      IVr.ShipAddr3 = ImportField;
+      IVr.ShipMode = ImportField;
+      IVr.Location = ImportField;
+      IVr.PRCode = ImportField;
+      IVr.FrSalesAcc = ImportField;
+      IVr.TAX1Sum = StringToVal(ImportField, M4Val);
+      IVr.CustVATCode = ImportField;
+      IVr.RebCode = ImportField;
+      IVr.CalcFinRef = ImportField;
+      IVr.Phone = ImportField;
+      IVr.Fax = ImportField;
+      IVr.IntCode = ImportField;
+      IVr.ARonTR = StringToInt(ImportField);
+      IVr.CustOrdNr = ImportField;
+      IVr.ExportedFlag = StringToInt(ImportField);
+      IVr.BaseSum4 = StringToVal(ImportField, M4Val);
+      IVr.FrRate = StringToVal(ImportField, M4Val);
+      IVr.ToRateB2 = StringToVal(ImportField, M4Val);
+      IVr.BaseRate1 = StringToVal(ImportField, M4Val);
+      IVr.BaseRate2 = StringToVal(ImportField, M4Val);
+      IVr.InvoiceNr = ImportField;
+      IVr.DiscPerc = StringToVal(ImportField, M4Val);
+      IVr.DiscSum = StringToVal(ImportField, M4Val);
+      IVr.TotGP = StringToVal(ImportField, M4Val);
+      IVr.LocOKNr = StringToVal(ImportField, M4Val);
+      IVr.Invalid = StringToInt(ImportField);
+      IVr.CreditCard = ImportField;
+      IVr.AuthorizationCode = ImportField;
+      IVr.RecValue = StringToVal(ImportField, M4Val);
+      IVr.RetValue = StringToVal(ImportField, M4Val);
+      IVr.FromBUQT = StringToInt(ImportField);
+      IVr.Sorting = ImportField;
+      IVr.NoInterestFlag = StringToInt(ImportField);
+      IVr.NoRemndrFlag = StringToInt(ImportField);
+      IVr.SVONr = ImportField;
+      IVr.InstallmentInv = StringToInt(ImportField);
+      IVr.OfficialSerNr = ImportField;
+      IVr.OfficialSerNr2 = ImportField;
+      IVr.TotQty = StringToVal(ImportField, M4Val);
+      IVr.TotWeight = StringToVal(ImportField, M4Val);
+      IVr.TotVolume = StringToVal(ImportField, M4Val);
+      IVr.Commision = StringToVal(ImportField, M4Val);
+      IVr.SumIncCom = StringToVal(ImportField, M4Val);
+      IVr.InvAddr3 = ImportField;
+      IVr.InvAddr4 = ImportField;
+      IVr.DelAddr3 = ImportField;
+      IVr.DelAddr4 = ImportField;
+      IVr.DelAddrCode = ImportField;
+      IVr.AutoGiro = StringToInt(ImportField);
+      IVr.SalesGroup = ImportField;
+      IVr.DisputedFlag = StringToInt(ImportField);
+      IVr.NoColectionFlag = StringToInt(ImportField);
+      IVr.QTNr = ImportField;
+      IVr.FiscalFlag = StringToInt(ImportField);
+      IVr.JobNr = ImportField;
+      IVr.RetnValue = StringToVal(ImportField, M4Val);
+      IVr.MachineName = ImportField;
+      IVr.TransTime = ImportField;
+      IVr.DrawerCode = ImportField;
+      IVr.SiteX = ImportField;
+      IVr.colnr = StringToInt(ImportField);
+      IVr.StatVal = StringToVal(ImportField, M4Val);
+      IVr.EInvFunc = StringToInt(ImportField);
+      IVr.EInvExpFlag = StringToInt(ImportField);
+      IVr.EInvExpDate = ImportField;
+      IVr.EInvExpQty = ImportField;
+      IVr.ServiceDelDate = ImportField;
+      IVr.Region = ImportField;
+      IVr.RefStr = ImportField;
+      IVr.TAX2Sum = StringToVal(ImportField, M4Val);
+      IVr.pdvrebt2 = StringToVal(ImportField, M4Val);
+      IVr.pdrdays2 = ImportField;
+      IVr.NoTax1 = StringToInt(ImportField);
+      IVr.NoTax2 = StringToInt(ImportField);
+      IVr.FreightCode = ImportField;
+      IVr.BankCode = ImportField;
+      IVr.InvalidDate = ImportField;
+      IVr.InvalidLocOKNr = StringToVal(ImportField, M4Val);
+      IVr.NoEInvoice = StringToInt(ImportField);
+      IVr.TaxAuthID = ImportField;
+      IVr.TaxAuthIDCC = ImportField;
+      IVr.BranchID = ImportField;
+      IVr.Status = StringToInt(ImportField);
+      IVr.NoTAXonVAT = ImportField;
+      IVr.TotalwoTAX = StringToInt(ImportField);
+      IVr.CredManNr = ImportField;
+      IVr.RegDate = ImportField;
+      IVr.RegTime = ImportField;
+      IVr.COCUSerNr = ImportField;
+      //
+      IVr.LogNewDate = ImportField;
+      IVr.LogNewUser = ImportField;
+      IVr.LogNewTime = ImportField;
+      IVr.LogSaveDate = ImportField;
+      IVr.LogSaveUser = ImportField;
+      IVr.LogSaveTime = ImportField;
+      IVr.LogOKDate = ImportField;
+      IVr.LogOKUser = ImportField;
+      IVr.LogOKTime = ImportField;
+      IVr.LogAnnulDate = ImportField;
+      IVr.LogAnnulUser = ImportField;
+      IVr.LogAnnulTime = ImportField;
+      IVr.PrintMan = ImportField;
+      IVr.PrintDay = ImportField;
+      IVr.PostMan = ImportField;
+      IVr.PostDay = ImportField;
+      IVr.RetMan = ImportField;
+      IVr.RetDay = ImportField;
+      IVr.ArchMan = ImportField;
+      IVr.ArchDay = ImportField;
+      IVr.Ball = StringToInt(ImportField);
+      IVr.DateFromStock = ImportField;
+      IVr.Num1C = ImportField;
+      IVr.ExportDone = StringToInt(ImportField);
+      IVr.PlanDeliveryDate = ImportField;
+      IVr.PlanDeliveryTime = ImportField;
+      IVr.Pickup = StringToInt(ImportField);
+      IVr.TTNr = ImportField;
+      IVr.PlanPayDate = ImportField;
+      IVr.PlanPayUser = ImportField;
+      IVr.AlienCurncy = ImportField;
+      IVr.AlienToRateB1 = StringToVal(ImportField, M4Val);
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(IVr, IVrw, 1);
+          IVrw.stp = StringToInt(ImportField);
+          IVrw.ArtCode = ImportField;
+          IVrw.Quant = StringToVal(ImportField, M4Val);
+          IVrw.Price = StringToVal(ImportField, M4Val);
+          IVrw.Sum = StringToVal(ImportField, M4Val);
+          IVrw.vRebate = StringToVal(ImportField, M4Val);
+          IVrw.SalesAcc = ImportField;
+          IVrw.Objects = ImportField;
+          IVrw.OrdRow = ImportField;
+          IVrw.BasePrice = StringToVal(ImportField, M4Val);
+          IVrw.rowGP = StringToVal(ImportField, M4Val);
+          IVrw.FIFO = StringToVal(ImportField, M4Val);
+          IVrw.Spec = ImportField;
+          IVrw.VATCode = ImportField;
+          IVrw.Recepy = ImportField;
+          IVrw.SerialNr = ImportField;
+          IVrw.PriceFactor = StringToVal(ImportField, M4Val);
+          IVrw.VARList = ImportField;
+          IVrw.CUPNr = ImportField;
+          IVrw.FIFORowVal = StringToVal(ImportField, M4Val);
+          IVrw.Coefficient = StringToVal(ImportField, M4Val);
+          IVrw.CuAccCode = ImportField;
+          IVrw.ExciseNr = ImportField;
+          IVrw.PeriodCode = ImportField;
+          IVrw.UnitCode = ImportField;
+          IVrw.UnitFactQuant = StringToVal(ImportField, M4Val);
+          IVrw.UnitFactPrice = StringToVal(ImportField, M4Val);
+          IVrw.UnitXval = StringToVal(ImportField, M4Val);
+          IVrw.UnitYval = StringToVal(ImportField, M4Val);
+          IVrw.UnitZval = StringToVal(ImportField, M4Val);
+          IVrw.VECode = ImportField;
+          IVrw.CreditCard = ImportField;
+          IVrw.AuthorizationCode = ImportField;
+          IVrw.PosCode = ImportField;
+          IVrw.CurncyCode = ImportField;
+          IVrw.FrRate = StringToVal(ImportField, M4Val);
+          IVrw.ToRateB1 = StringToVal(ImportField, M4Val);
+          IVrw.ToRateB2 = StringToVal(ImportField, M4Val);
+          IVrw.BaseRate1 = StringToVal(ImportField, M4Val);
+          IVrw.BaseRate2 = StringToVal(ImportField, M4Val);
+          IVrw.PayMode = ImportField;
+          IVrw.GCNr = ImportField;
+          IVrw.CustOrdNr = ImportField;
+          IVrw.RepaExVAT = StringToVal(ImportField, M4Val);
+          IVrw.BasePriceB2 = StringToVal(ImportField, M4Val);
+          IVrw.TAX2Code = ImportField;
+          IVrw.TAX2Prc = StringToVal(ImportField, M4Val);
+          IVrw.TAX2Reb = StringToVal(ImportField, M4Val);
+          IVrw.TAX1Reb = StringToVal(ImportField, M4Val);
+          IVrw.TAX2Acc = ImportField;
+          IVrw.CreditedRow = ImportField;
+          IVrw.NotUpdStockFlag = StringToInt(ImportField);
+          IVrw.CUServiceHistNr = ImportField;
+          IVrw.CUServiceUntilDate = ImportField;
+          IVrw.ServiceDelDate = ImportField;
+          IVrw.Location = ImportField;
+          IVrw.Comment = ImportField;
+          //
+          IVrw.BallRow = StringToInt(ImportField);
+          IVrw.BallSum = StringToInt(ImportField);
+          IVrw.Barcoderw = ImportField;
+          MatRowPut(IVr, i, IVrw);
+          i = i + 1;
+        end;
+      RecordImportStore(IVr, false);
+    end;
+  stopalert("IVVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagIPVc()
+begin
+  record IPVc IPr;
+  row IPVc IPrw;
+  integer i;
+
+  stopalert("IPVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(IPr);
+      IPr.SerNr = ImportField;
+      IPr.Comment = ImportField;
+      IPr.PayMode = ImportField;
+      IPr.OKFlag = StringToInt(ImportField);
+      IPr.CurPayVal = StringToVal(ImportField, M4Val);
+      IPr.RegDate = ImportField;
+      IPr.OKMark = StringToInt(ImportField);
+      IPr.TransDate = ImportField;
+      IPr.Sign = ImportField;
+      IPr.ARonTR = StringToInt(ImportField);
+      IPr.ExportedFlag = StringToInt(ImportField);
+      IPr.ReceivedFlag = StringToInt(ImportField);
+      IPr.RejectedFlag = StringToInt(ImportField);
+      IPr.RecNumber = ImportField;
+      IPr.Invalid = StringToInt(ImportField);
+      IPr.PayCurCode = ImportField;
+      IPr.Objects = ImportField;
+      IPr.Prntdf = StringToInt(ImportField);
+      IPr.AuthorizationCode = ImportField;
+      IPr.MachineName = ImportField;
+      IPr.DrawerCode = ImportField;
+      IPr.RegTime = ImportField;
+      //
+      IPr.LogNewDate = ImportField;
+      IPr.LogNewUser = ImportField;
+      IPr.LogNewTime = ImportField;
+      IPr.LogSaveDate = ImportField;
+      IPr.LogSaveUser = ImportField;
+      IPr.LogSaveTime = ImportField;
+      IPr.LogOKDate = ImportField;
+      IPr.LogOKUser = ImportField;
+      IPr.LogOKTime = ImportField;
+      IPr.LogPrintDate = ImportField;
+      IPr.LogPrintUser = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(IPr, IPrw, 1);
+          IPrw.stp = StringToInt(ImportField);
+          IPrw.ovst = StringToInt(ImportField);
+          IPrw.InvoiceNr = ImportField;
+          IPrw.PayDate = ImportField;
+          IPrw.CustCode = ImportField;
+          IPrw.latedays = ImportField;
+          IPrw.CustName = ImportField;
+          IPrw.CUPNr = ImportField;
+          IPrw.ChequeNr = ImportField;
+          IPrw.VATVal = StringToVal(ImportField, M4Val);
+          IPrw.VATCode = ImportField;
+          IPrw.InvOutstand = StringToVal(ImportField, M4Val);
+          IPrw.InvCurncy = ImportField;
+          IPrw.InvVal = StringToVal(ImportField, M4Val);
+          IPrw.PayMode = ImportField;
+          IPrw.BankCurncy = ImportField;
+          IPrw.BankVal = StringToVal(ImportField, M4Val);
+          IPrw.RecCurncy = ImportField;
+          IPrw.RecVal = StringToVal(ImportField, M4Val);
+          IPrw.BankFeeVal = StringToVal(ImportField, M4Val);
+          IPrw.RoundOff = StringToVal(ImportField, M4Val);
+          IPrw.RoundOffAcc = ImportField;
+          IPrw.Objects = ImportField;
+          IPrw.Coef = StringToVal(ImportField, M4Val);
+          IPrw.BankFeePrc = ImportField;
+          IPrw.TAX1Sum = StringToVal(ImportField, M4Val);
+          IPrw.OrderNr = ImportField;
+          IPrw.Comment = ImportField;
+          IPrw.B1BankVal = StringToVal(ImportField, M4Val);
+          IPrw.B2BankVal = StringToVal(ImportField, M4Val);
+          IPrw.ToRateB1BankVal = StringToVal(ImportField, M4Val);
+          IPrw.ToRateB2BankVal = StringToVal(ImportField, M4Val);
+          IPrw.rkRecNumber = ImportField;
+          IPrw.ARAcc = ImportField;
+          IPrw.TAX2Prc = StringToVal(ImportField, M4Val);
+          IPrw.CredManNr = ImportField;
+          //
+          IPrw.AuthorizationCode = ImportField;
+          MatRowPut(IPr, i, IPrw);
+          i = i + 1;
+        end;
+      RecordImportStore(IPr, false);
+    end;
+  stopalert("IPVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagship1()
+begin
+  record SHVc SHr;
+  row SHVc SHrw;
+  integer i;
+
+  stopalert("SHVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(SHr);
+      SHr.SerNr = ImportField;
+      SHr.OrderNr = ImportField;
+      SHr.ShipDate = ImportField;
+      SHr.CustCode = ImportField;
+      SHr.Addr0 = ImportField;
+      SHr.Addr1 = ImportField;
+      SHr.Addr2 = ImportField;
+      SHr.Addr3 = ImportField;
+      SHr.Prntdf = StringToInt(ImportField);
+
+//      SHr.x1 = ImportField;
+      ImportField;
+
+      SHr.ShipMode = ImportField;
+      SHr.OKFlag = StringToInt(ImportField);
+      SHr.Location = ImportField;
+      SHr.LangCode = ImportField;
+      SHr.PRCode = ImportField;
+      SHr.Packages = StringToVal(ImportField, M4Val);
+      SHr.Weight = StringToVal(ImportField, M4Val);
+      SHr.Volyme = StringToVal(ImportField, M4Val);
+      SHr.FromCity = ImportField;
+      SHr.ToCity = ImportField;
+      SHr.FromDock = ImportField;
+      SHr.ToDock = ImportField;
+      SHr.TransportDirect = ImportField;
+      SHr.Comment = ImportField;
+      SHr.Check1 = StringToInt(ImportField);
+      SHr.Check2 = StringToInt(ImportField);
+      SHr.TransportNumber = ImportField;
+      SHr.ExportedFlag = StringToInt(ImportField);
+      SHr.TotQty = StringToVal(ImportField, M4Val);
+      SHr.LocOKNr = StringToVal(ImportField, M4Val);
+      SHr.Objects = ImportField;
+      SHr.FreightCode = ImportField;
+      SHr.FreightCompany = ImportField;
+      SHr.FreightCompanyRegNr = ImportField;
+      SHr.TruckInfo = ImportField;
+      SHr.Driver = ImportField;
+      SHr.CMRText = ImportField;
+      SHr.TotWeight = StringToVal(ImportField, M4Val);
+      SHr.TotVolume = StringToVal(ImportField, M4Val);
+      SHr.SHClass = ImportField;
+      SHr.DelAddr3 = ImportField;
+      SHr.DelAddr4 = ImportField;
+      SHr.DelAddrCode = ImportField;
+      SHr.Sorting = ImportField;
+      SHr.TAX1Sum = StringToVal(ImportField, M4Val);
+      SHr.DeliveryMan = ImportField;
+      SHr.Sign = ImportField;
+      SHr.xForkLifyQueUse = StringToInt(ImportField);
+      SHr.TotPalletNr = StringToVal(ImportField, M4Val);
+      SHr.Region = ImportField;
+      SHr.TAX2Sum = StringToVal(ImportField, M4Val);
+      SHr.Invalid = StringToInt(ImportField);
+      SHr.InvalidDate = ImportField;
+      SHr.InvoiceNr = ImportField;
+      //
+      SHr.LogNewDate = ImportField;
+      SHr.LogNewUser = ImportField;
+      SHr.LogNewTime = ImportField;
+      SHr.LogSaveDate = ImportField;
+      SHr.LogSaveUser = ImportField;
+      SHr.LogSaveTime = ImportField;
+      SHr.LogOKDate = ImportField;
+      SHr.LogOKUser = ImportField;
+      SHr.LogOKTime = ImportField;
+      SHr.IName = ImportField;
+      SHr.Gather = ImportField;
+      SHr.LogPrintDate = ImportField;
+      SHr.LogPrintUser = ImportField;
+      SHr.LogPrintTime = ImportField;
+      SHr.Prim = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(SHr, SHrw, 1);
+          SHrw.OrdRow = ImportField;
+          SHrw.ArtCode = ImportField;
+          SHrw.Ordered = StringToVal(ImportField, M4Val);
+          SHrw.InStock = StringToVal(ImportField, M4Val);
+          SHrw.Ship = StringToVal(ImportField, M4Val);
+          SHrw.Spec = ImportField;
+          SHrw.SerialNr = ImportField;
+          SHrw.FIFO = StringToVal(ImportField, M4Val);
+          SHrw.Location = ImportField;
+          SHrw.Recepy = ImportField;
+          SHrw.VARList = ImportField;
+          SHrw.BestBefore = ImportField;
+          SHrw.FIFORowVal = StringToVal(ImportField, M4Val);
+          SHrw.Coefficient = StringToVal(ImportField, M4Val);
+          SHrw.BasePrice = StringToVal(ImportField, M4Val);
+          SHrw.Source = ImportField;
+          SHrw.DespatchRowDate = ImportField;
+          SHrw.DespatchRowTime = ImportField;
+          SHrw.Objects = ImportField;
+          SHrw.RowPackages = StringToVal(ImportField, M4Val);
+          SHrw.PackageType = ImportField;
+          SHrw.PackageDesc = ImportField;
+          SHrw.ExciseNr = ImportField;
+          SHrw.UnitXval = StringToVal(ImportField, M4Val);
+          SHrw.UnitYval = StringToVal(ImportField, M4Val);
+          SHrw.UnitZval = StringToVal(ImportField, M4Val);
+          SHrw.MeasWeight = StringToVal(ImportField, M4Val);
+          SHrw.PosCode = ImportField;
+//          SHrw.xCoefficient = ImportField;
+          SHrw.CostAcc = ImportField;
+          SHrw.WAB2 = StringToVal(ImportField, M4Val);
+          SHrw.TAX2Code = ImportField;
+          SHrw.TAX2Prc = StringToVal(ImportField, M4Val);
+          SHrw.TAX2Reb = StringToVal(ImportField, M4Val);
+          SHrw.TAX1Reb = StringToVal(ImportField, M4Val);
+          SHrw.TAX2Acc = ImportField;
+          SHrw.BBCostPrice = StringToVal(ImportField, M4Val);
+          //
+          SHrw.Barcoderw = ImportField;
+          MatRowPut(SHr, i, SHrw);
+          i = i + 1;
+        end;
+      RecordImportStore(SHr, false);
+    end;
+  stopalert("SHVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagstockmov1()
+begin
+  record StockMovVc SMr;
+  row StockMovVc SMrw;
+  integer i;
+
+  stopalert("StockMovVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(SMr);
+      SMr.SerNr = ImportField;
+      SMr.RegDate = ImportField;
+      SMr.Comment = ImportField;
+      SMr.FrLocation = ImportField;
+      SMr.ToLocation = ImportField;
+      SMr.OKFlag = StringToInt(ImportField);
+      SMr.Sign = ImportField;
+      SMr.CurncyCode = ImportField;
+      SMr.ToRateB1 = StringToVal(ImportField, M4Val);
+      SMr.TransDate = ImportField;
+      SMr.ExportedFlag = StringToInt(ImportField);
+      SMr.FrRate = StringToVal(ImportField, M4Val);
+      SMr.ToRateB2 = StringToVal(ImportField, M4Val);
+      SMr.BaseRate1 = StringToVal(ImportField, M4Val);
+      SMr.BaseRate2 = StringToVal(ImportField, M4Val);
+      SMr.TotQty = StringToVal(ImportField, M4Val);
+      SMr.FrLocOKNr = StringToVal(ImportField, M4Val);
+      SMr.ToLocOKNr = StringToVal(ImportField, M4Val);
+      SMr.IntORNo = ImportField;
+      SMr.TotWeight = StringToVal(ImportField, M4Val);
+      SMr.TotVolume = StringToVal(ImportField, M4Val);
+      SMr.Objects = ImportField;
+      SMr.FrPos = ImportField;
+      SMr.ToPos = ImportField;
+      SMr.OtherExtraCosts = StringToVal(ImportField, M4Val);
+      SMr.ProdSerNr = ImportField;
+      SMr.RefStr = ImportField;
+      SMr.DeliveryMan = ImportField;
+      SMr.Prntdf = StringToInt(ImportField);
+      SMr.ShipMode = ImportField;
+      SMr.ShipDeal = ImportField;
+      SMr.Sorting = ImportField;
+      SMr.SHNr = ImportField;
+      SMr.ManualPick = StringToInt(ImportField);
+      SMr.ToForkLiftQue = StringToInt(ImportField);
+      SMr.FileName = ImportField;
+      SMr.TransNr = ImportField;
+      SMr.ThrouLocation = ImportField;
+      SMr.SentOKFlag = StringToInt(ImportField);
+      SMr.Reserved = StringToInt(ImportField);
+      SMr.SentTransDate = ImportField;
+      SMr.FrThrouLocOKNr = StringToVal(ImportField, M4Val);
+      SMr.ToThrouLocOKNr = StringToVal(ImportField, M4Val);
+      SMr.FreightCode = ImportField;
+      SMr.FreightCompanyRegNr = ImportField;
+      SMr.FreightCompany = ImportField;
+      SMr.TruckInfo = ImportField;
+      SMr.Driver = ImportField;
+      SMr.CMRText = ImportField;
+      SMr.TotSentQty = StringToVal(ImportField, M4Val);
+      SMr.OrdFlag = StringToInt(ImportField);
+      SMr.PlanSendDate = ImportField;
+      SMr.PlanSendTime = ImportField;
+      SMr.PlanDurationDays = StringToInt(ImportField);
+      SMr.PlanDurationTime = ImportField;
+      SMr.PlanArrDate = ImportField;
+      SMr.PlanArrTime = ImportField;
+      SMr.ActSendDate = ImportField;
+      SMr.ActSendTime = ImportField;
+      SMr.ActDurationDays = StringToInt(ImportField);
+      SMr.ActDurationTime = ImportField;
+      SMr.ActArrDate = ImportField;
+      SMr.ActArrTime = ImportField;
+      SMr.OrdTransDate = ImportField;
+      SMr.TreatedFlag = StringToInt(ImportField);
+      SMr.Invalid = StringToInt(ImportField);
+      SMr.InvalidDate = ImportField;
+      SMr.Reason = ImportField;
+      //
+      SMr.LogNewDate = ImportField;
+      SMr.LogNewUser = ImportField;
+      SMr.LogNewTime = ImportField;
+      SMr.LogSaveDate = ImportField;
+      SMr.LogSaveUser = ImportField;
+      SMr.LogSaveTime = ImportField;
+      SMr.LogConfirmDate = ImportField;
+      SMr.LogConfirmUser = ImportField;
+      SMr.LogConfirmTime = ImportField;
+      SMr.LogSendDate = ImportField;
+      SMr.LogSendUser = ImportField;
+      SMr.LogSendTime = ImportField;
+      SMr.LogReciveDate = ImportField;
+      SMr.LogReciveUser = ImportField;
+      SMr.LogReciveTime = ImportField;
+      SMr.Barcode = ImportField;
+      SMr.IName = ImportField;
+      SMr.BQuant = StringToVal(ImportField, M4Val);
+      SMr.AddIt = StringToInt(ImportField);
+      SMr.Gather = ImportField;
+      SMr.LogPrintDate = ImportField;
+      SMr.LogPrintUser = ImportField;
+      SMr.LogPrintTime = ImportField;
+      SMr.IRetOrdNr = ImportField;
+      SMr.TTCode = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(SMr, SMrw, 1);
+          SMrw.ArtCode = ImportField;
+          SMrw.Quant = StringToVal(ImportField, M4Val);
+          SMrw.Spec = ImportField;
+          SMrw.SerialNr = ImportField;
+          SMrw.NewPrice = StringToVal(ImportField, M4Val);
+          SMrw.ExtraSCost = ImportField;
+          SMrw.OldPrice = StringToVal(ImportField, M4Val);
+          SMrw.FIFORowVal = StringToVal(ImportField, M4Val);
+          SMrw.BasePrice = StringToVal(ImportField, M4Val);
+          SMrw.Coefficient = StringToVal(ImportField, M4Val);
+          SMrw.IntORRow = ImportField;
+          SMrw.Objects = ImportField;
+          SMrw.UnitXval = StringToVal(ImportField, M4Val);
+          SMrw.UnitYval = StringToVal(ImportField, M4Val);
+          SMrw.UnitZval = StringToVal(ImportField, M4Val);
+          SMrw.FrPosCode = ImportField;
+          SMrw.ToPosCode = ImportField;
+          SMrw.SHRow = ImportField;
+          SMrw.SentQuant = StringToVal(ImportField, M4Val);
+          SMrw.OrdQuant = StringToVal(ImportField, M4Val);
+          SMrw.SentNewPrice = StringToVal(ImportField, M4Val);
+          SMrw.SentExtraSCost = ImportField;
+          SMrw.SentOldPrice = StringToVal(ImportField, M4Val);
+          SMrw.SentFIFORowVal = StringToVal(ImportField, M4Val);
+          MatRowPut(SMr, i, SMrw);
+          i = i + 1;
+        end;
+      RecordImportStore(SMr, false);
+    end;
+  stopalert("StockMovVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagartikel3()
+begin
+  record INVc INr;
+  row INVc INrw;
+  integer i;
+
+  stopalert("INVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(INr);
+      INr.Code = ImportField;
+      INr.Name = ImportField;
+      INr.Unittext = ImportField;
+      INr.MinLevel = StringToVal(ImportField, M4Val);
+      INr.Objects = ImportField;
+      INr.SalesAcc = ImportField;
+      INr.UPrice1 = StringToVal(ImportField, M4Val);
+      INr.ItemType = StringToInt(ImportField);
+      INr.Group = ImportField;
+
+//      INr.x1 = ImportField;
+//      INr.x2 = ImportField;
+      ImportField;
+      ImportField;
+
+      INr.InPrice = StringToVal(ImportField, M4Val);
+      INr.InvCode = ImportField;
+      INr.ExtraCost = StringToVal(ImportField, M4Val);
+      INr.SerNrf = StringToInt(ImportField);
+      INr.Department = ImportField;
+      INr.Weight = StringToVal(ImportField, M4Val);
+      INr.Volume = StringToVal(ImportField, M4Val);
+      INr.EUCodex = ImportField;
+      INr.InCurncyCode = ImportField;
+      INr.Bonus = StringToVal(ImportField, M4Val);
+      INr.Recepy = ImportField;
+      INr.Markup = StringToVal(ImportField, M4Val);
+
+//      INr.x3 = ImportField;
+      ImportField;
+
+      INr.BarCode = ImportField;
+      INr.UpdateCost = StringToInt(ImportField);
+      INr.LastPriceChange = ImportField;
+      INr.CalcPrice = ImportField;
+      INr.VATCode = ImportField;
+      INr.PriceFactor = StringToVal(ImportField, M4Val);
+      INr.Terminated = StringToInt(ImportField);
+      INr.AvgMarkup = StringToVal(ImportField, M4Val);
+      INr.LastPurchPrice = StringToVal(ImportField, M4Val);
+      INr.LastPurchCurncyCode = ImportField;
+      INr.WeighedAvPrice = StringToVal(ImportField, M4Val);
+      INr.Conversion1 = StringToVal(ImportField, M4Val);
+      INr.Conversion2 = StringToVal(ImportField, M4Val);
+      INr.WarrantyLength = StringToVal(ImportField, M4Val);
+      INr.InvRecepy = ImportField;
+      INr.EUSalesAcc = ImportField;
+      INr.ExpSalesAcc = ImportField;
+      INr.VATCodeEU = ImportField;
+      INr.VATCodeExp = ImportField;
+      INr.ChangePrice = StringToInt(ImportField);
+      INr.RebCode = ImportField;
+      INr.ExplodeRec = StringToInt(ImportField);
+      INr.Unittext2 = ImportField;
+      INr.UnitCoefficient = StringToVal(ImportField, M4Val);
+      INr.WarnText1 = ImportField;
+      INr.VARList = ImportField;
+      INr.ItemMaterial = StringToInt(ImportField);
+      INr.AlcPrc = StringToVal(ImportField, M4Val);
+      INr.DefaultSource = ImportField;
+      INr.AlternativeCode = ImportField;
+      INr.CostAcc = ImportField;
+      INr.DefLocation = ImportField;
+      INr.LastBasePriceChange = ImportField;
+      INr.MaxLevel = StringToVal(ImportField, M4Val);
+      INr.LastPurchPrice2 = StringToVal(ImportField, M4Val);
+      INr.Width = StringToVal(ImportField, M4Val);
+      INr.Height = StringToVal(ImportField, M4Val);
+      INr.Depth = StringToVal(ImportField, M4Val);
+      INr.ContractItem = ImportField;
+      INr.Internal = StringToInt(ImportField);
+      INr.InclItemFreight = StringToInt(ImportField);
+      INr.FixedFreight = StringToVal(ImportField, M4Val);
+      INr.DispGroups = ImportField;
+      INr.HazLevCode = ImportField;
+      INr.Density = StringToVal(ImportField, M4Val);
+      INr.xClassification = ImportField;
+      INr.CredSalesAcc = ImportField;
+      INr.CredEUSalesAcc = ImportField;
+      INr.CredExpSalesAcc = ImportField;
+      INr.CredVATCode = ImportField;
+      INr.CredVATCodeEU = ImportField;
+      INr.CredVATCodeExp = ImportField;
+      INr.RentalItem = ImportField;
+      INr.CompUsage = ImportField;
+      INr.colnr = StringToInt(ImportField);
+      INr.VARMask = ImportField;
+      INr.VARRepOrder = ImportField;
+      INr.VARSubsets = ImportField;
+      INr.LocArea = ImportField;
+      INr.EKNCode = ImportField;
+      INr.DefPalletItem = ImportField;
+      INr.QtyonPallet = StringToVal(ImportField, M4Val);
+      INr.PalletWidth = StringToVal(ImportField, M4Val);
+      INr.PalletHeight = StringToVal(ImportField, M4Val);
+      INr.PalletDepth = StringToVal(ImportField, M4Val);
+      INr.Brand = ImportField;
+      INr.BrandType = ImportField;
+      INr.PickArea = ImportField;
+      INr.SWWCode = ImportField;
+      INr.RepaPricePerWeight = StringToVal(ImportField, M4Val);
+      INr.PalletsInPickArea = StringToVal(ImportField, M4Val);
+      INr.DefPosWidth = StringToVal(ImportField, M4Val);
+      INr.DefPosHeight = StringToVal(ImportField, M4Val);
+      INr.DefPosDepth = StringToVal(ImportField, M4Val);
+      INr.InPriceB2 = StringToVal(ImportField, M4Val);
+      INr.WeighedAvPriceB2 = StringToVal(ImportField, M4Val);
+      INr.EUCostAcc = ImportField;
+      INr.ExpCostAcc = ImportField;
+      INr.PalletLayers = StringToVal(ImportField, M4Val);
+      INr.QtyonPalletLayer = StringToVal(ImportField, M4Val);
+      INr.UserStr1 = ImportField;
+      INr.UserStr2 = ImportField;
+      INr.UserStr3 = ImportField;
+      INr.UserStr4 = ImportField;
+      INr.UserStr5 = ImportField;
+      INr.UserVal1 = StringToVal(ImportField, M4Val);
+      INr.UserVal2 = StringToVal(ImportField, M4Val);
+      INr.UserVal3 = StringToVal(ImportField, M4Val);
+      INr.UserDate1 = ImportField;
+      INr.UserDate2 = ImportField;
+      INr.UserDate3 = ImportField;
+      INr.RentGroup = ImportField;
+      INr.FAGroup = ImportField;
+      INr.NetWeight = StringToVal(ImportField, M4Val);
+      INr.PrimaryCostModel = StringToInt(ImportField);
+      INr.QueuedCostModel = StringToInt(ImportField);
+      INr.CostPerc = StringToVal(ImportField, M4Val);
+      INr.FIFOPerSerialNr = StringToInt(ImportField);
+      INr.FIFOPerLocation = StringToInt(ImportField);
+      INr.WAPerLocation = StringToInt(ImportField);
+      INr.CostPricePerLocation = StringToInt(ImportField);
+      INr.NotForSales = StringToInt(ImportField);
+      INr.SRUpdateCost = StringToInt(ImportField);
+      //
+      INr.BarCode2 = ImportField;
+      INr.AlphaBet = ImportField;
+      INr.VItemGroupCode = ImportField;
+      INr.VItemGroupName = ImportField;
+      INr.StartDate = ImportField;
+      INr.OrigItem = ImportField;
+      INr.SubstItems = ImportField;
+      INr.BaseName = ImportField;
+      INr.DispGroupsNew = ImportField;
+      INr.Name2 = ImportField;
+      INr.MultiShip = StringToInt(ImportField);
+      INr.BoxVol = StringToVal(ImportField, M4Val);
+      INr.tTesterCode = ImportField;
+      INr.tKolSKU = StringToInt(ImportField);
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(INr, INrw, 1);
+          INrw.LangCode = ImportField;
+          INrw.Text = ImportField;
+          MatRowPut(INr, i, INrw);
+          i = i + 1;
+        end;
+      RecordImportStore(INr, false);
+    end;
+  stopalert("INVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagBarcodeVc()
+begin
+  record BarcodeVc Br;
+
+  stopalert("BarcodeVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(Br);
+      Br.Barcode = ImportField;
+      Br.Itemcode = ImportField;
+      Br.Comment = ImportField;
+      Br.BarCodeSerialNo = ImportField;
+
+      Br.ActualFlag = StringToInt(ImportField);
+      Br.1CFlag = StringToInt(ImportField);
+      RecordImportStore(Br, false);
+    end;
+  stopalert("BarcodeVc end");
+  Return;
+end;
+
+//===============================================
+/*
+global
+updating procedure ReadImportTagStickerVc()
+begin
+  record IStickerVc IStkr;
+
+  stopalert("IStickerVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(IStkr);
+      IStkr.ArtCode = ImportField;
+      IStkr.ArtName = ImportField;
+      IStkr.Group = ImportField;
+      IStkr.DispGroups = ImportField;
+
+      while (NextImportLine(false))
+        begin
+          AddToText(ImportField, IStkr);
+        end;
+      RecordImportStore(IStkr, false);
+    end;
+  stopalert("IStickerVc end");
+  Return;
+end;
+*/
+
+
+//===============================================
+global
+updating procedure ReadImportTagActVc()
+begin
+  record ActVc Ar;
+  row ActVc Arw;
+  integer i;
+
+//Временно игнорируем ActVc
+  stopalert("Ignoring ActVc");
+  Return;
+//===
+
+  stopalert("ActVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(Ar);
+      Ar.SerNr = ImportField;
+      Ar.MainPersons = ImportField;
+      Ar.CCPersons = ImportField;
+      Ar.TransDate = ImportField;
+      Ar.EndDate = ImportField;
+      Ar.StartTime = ImportField;
+      Ar.EndTime = ImportField;
+      Ar.CostTime = ImportField;
+      Ar.CUCode = ImportField;
+      Ar.CUName = ImportField;
+      Ar.Contact = ImportField;
+      Ar.Phone = ImportField;
+      Ar.ActType = ImportField;
+      Ar.ActResult = ImportField;
+      Ar.OKFlag = StringToInt(ImportField);
+      Ar.PrioLevel = ImportField;
+      Ar.PrivateFlag = StringToInt(ImportField);
+      Ar.TodoFlag = StringToInt(ImportField);
+      Ar.CalTimeFlag = StringToInt(ImportField);
+      Ar.PRCode = ImportField;
+      Ar.ItemCode = ImportField;
+      Ar.Comment = ImportField;
+      Ar.LengthClass = StringToInt(ImportField);
+      Ar.Resources = ImportField;
+      Ar.Invalid = StringToInt(ImportField);
+      Ar.TimeClass = ImportField;
+      Ar.SymbNr = StringToInt(ImportField);
+      Ar.Supervisor = ImportField;
+      Ar.CreationDate = ImportField;
+      Ar.LastChangedDate = ImportField;
+      Ar.LangCode = ImportField;
+      Ar.UserStr1 = ImportField;
+      Ar.UserStr2 = ImportField;
+      Ar.UserStr3 = ImportField;
+      Ar.UserStr4 = ImportField;
+      Ar.UserStr5 = ImportField;
+      Ar.UserVal1 = StringToVal(ImportField, M4Val);
+      Ar.UserVal2 = StringToVal(ImportField, M4Val);
+      Ar.UserVal3 = StringToVal(ImportField, M4Val);
+      Ar.UserDate1 = ImportField;
+      Ar.UserDate2 = ImportField;
+      Ar.UserDate3 = ImportField;
+      Ar.ArtCode = ImportField;
+      Ar.SerialNr = ImportField;
+      Ar.SVOSerNr = ImportField;
+      Ar.ProdSerNr = ImportField;
+      Ar.AlarmType = StringToInt(ImportField);
+      Ar.AlarmWhen = StringToInt(ImportField);
+      Ar.AlarmUnits = StringToInt(ImportField);
+      Ar.ExternalType = StringToInt(ImportField);
+      Ar.ExternalID = ImportField;
+      Ar.InventoryNr = ImportField;
+      Ar.ProdOpSerNr = ImportField;
+      Ar.Mother = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(Ar, Arw, 1);
+          Arw.TextCode = ImportField;
+          Arw.Text = ImportField;
+          //
+          Arw.Signature = ImportField;
+          MatRowPut(Ar, i, Arw);
+          i = i + 1;
+        end;
+      RecordImportStore(Ar, false);
+    end;
+  stopalert("ActVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagexp1()
+begin
+  record ExpVc Expr;
+  row ExpVc Exprw;
+  integer i;
+
+  stopalert("ExpVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(Expr);
+      Expr.SerNr = ImportField;
+      Expr.PayVal = StringToVal(ImportField, M4Val);
+      Expr.OKFlag = StringToInt(ImportField);
+      Expr.Person = ImportField;
+      Expr.Name = ImportField;
+      Expr.Sign = ImportField;
+      Expr.TransDate = ImportField;
+      Expr.OKSign = ImportField;
+      Expr.CurncyCode = ImportField;
+      Expr.ToRateB1 = StringToVal(ImportField, M4Val);
+      Expr.Comment = ImportField;
+      Expr.CalcVATVal = StringToVal(ImportField, M4Val);
+      Expr.StatFlag = StringToInt(ImportField);
+      Expr.ExportedFlag = StringToInt(ImportField);
+      Expr.FrRate = StringToVal(ImportField, M4Val);
+      Expr.ToRateB2 = StringToVal(ImportField, M4Val);
+      Expr.BaseRate1 = StringToVal(ImportField, M4Val);
+      Expr.BaseRate2 = StringToVal(ImportField, M4Val);
+      Expr.PPOKNr = ImportField;
+      Expr.Objects = ImportField;
+      Expr.SalesGroup = ImportField;
+      Expr.NrofRecs = StringToVal(ImportField, M4Val);
+      Expr.Invalid = StringToInt(ImportField);
+      Expr.DocDate = ImportField;
+      Expr.TaxAuthID = ImportField;
+      Expr.TaxAuthIDCC = ImportField;
+      //
+      Expr.FormalizedFlag = StringToInt(ImportField);
+      Expr.LogNewUser = ImportField;
+      Expr.LogNewDate = ImportField;
+      Expr.LogNewTime = ImportField;
+      Expr.LogSaveUser = ImportField;
+      Expr.LogSaveDate = ImportField;
+      Expr.LogSaveTime = ImportField;
+      Expr.LogFormalizedUser = ImportField;
+      Expr.LogFormalizedDate = ImportField;
+      Expr.LogFormalizedTime = ImportField;
+      Expr.LogOKUser = ImportField;
+      Expr.LogOKDate = ImportField;
+      Expr.LogOKTime = ImportField;
+      Expr.LogAnnulUser = ImportField;
+      Expr.LogAnnulDate = ImportField;
+      Expr.LogAnnulTime = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(Expr, Exprw, 1);
+          Exprw.stp = StringToInt(ImportField);
+          Exprw.ovst = StringToInt(ImportField);
+          Exprw.AccNumber = ImportField;
+          Exprw.Objects = ImportField;
+          Exprw.Comment = ImportField;
+          Exprw.Sum = StringToVal(ImportField, M4Val);
+          Exprw.Item = ImportField;
+          Exprw.qty = StringToVal(ImportField, M4Val);
+          Exprw.PRCode = ImportField;
+          Exprw.VATCode = ImportField;
+          Exprw.VATSum = StringToVal(ImportField, M4Val);
+          Exprw.ExpDate = ImportField;
+          Exprw.DocNr = ImportField;
+          Exprw.VECode = ImportField;
+          Exprw.WayList = ImportField;
+          Exprw.Identifier = ImportField;
+          Exprw.ACShort = ImportField;
+          Exprw.VEName = ImportField;
+          Exprw.LegalInvNr = ImportField;
+          Exprw.TaxAuthID = ImportField;
+          Exprw.TaxAuthIDCC = ImportField;
+          MatRowPut(Expr, i, Exprw);
+          i = i + 1;
+        end;
+      RecordImportStore(Expr, false);
+    end;
+  stopalert("ExpVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagCLInVc()
+begin
+  record CLInVc CLInr;
+  row CLInVc CLInrw;
+  integer i;
+
+  stopalert("CLInVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(CLInr);
+      CLInr.SerNr = ImportField;
+      CLInr.NetVal = StringToVal(ImportField, M4Val);
+      CLInr.VATVal = StringToVal(ImportField, M4Val);
+      CLInr.Total = StringToVal(ImportField, M4Val);
+      CLInr.TransDate = ImportField;
+      CLInr.PayMode = ImportField;
+      CLInr.Person = ImportField;
+      CLInr.CorspCode = ImportField;
+      CLInr.CorspComment = ImportField;
+      CLInr.CUCode = ImportField;
+      CLInr.CUName = ImportField;
+      CLInr.Addr0 = ImportField;
+      CLInr.Addr1 = ImportField;
+      CLInr.Addr2 = ImportField;
+      CLInr.Comment = ImportField;
+      CLInr.VATCode = ImportField;
+      CLInr.OKFlag = StringToInt(ImportField);
+      CLInr.ExportedFlag = StringToInt(ImportField);
+      CLInr.RefStr = ImportField;
+      CLInr.Objects = ImportField;
+      CLInr.CurncyCode = ImportField;
+      CLInr.FrRate = StringToVal(ImportField, M4Val);
+      CLInr.ToRateB1 = StringToVal(ImportField, M4Val);
+      CLInr.ToRateB2 = StringToVal(ImportField, M4Val);
+      CLInr.BaseRate1 = StringToVal(ImportField, M4Val);
+      CLInr.BaseRate2 = StringToVal(ImportField, M4Val);
+      CLInr.FileName = ImportField;
+      CLInr.FSerNr = ImportField;
+      CLInr.TAX1Sum = StringToVal(ImportField, M4Val);
+      CLInr.PMObjects = ImportField;
+      CLInr.Addr3 = ImportField;
+      CLInr.Addr4 = ImportField;
+      CLInr.LangCode = ImportField;
+      CLInr.ColFlag = StringToInt(ImportField);
+      CLInr.Invalid = StringToInt(ImportField);
+      CLInr.ARonTR = StringToInt(ImportField);
+      CLInr.PPOKNr = ImportField;
+      CLInr.OfficialSerNr = ImportField;
+      CLInr.TAX2Sum = StringToVal(ImportField, M4Val);
+      //
+      CLInr.LogNewUser = ImportField;
+      CLInr.LogNewDate = ImportField;
+      CLInr.LogNewTime = ImportField;
+      CLInr.LogSaveUser = ImportField;
+      CLInr.LogSaveDate = ImportField;
+      CLInr.LogSaveTime = ImportField;
+      CLInr.LogOKUser = ImportField;
+      CLInr.LogOKDate = ImportField;
+      CLInr.LogOKTime = ImportField;
+      CLInr.LogAnnulUser = ImportField;
+      CLInr.LogAnnulDate = ImportField;
+      CLInr.LogAnnulTime = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(CLInr, CLInrw, 1);
+          CLInrw.Type = StringToInt(ImportField);
+          CLInrw.Company = ImportField;
+          CLInrw.TransNr = ImportField;
+          CLInrw.Sum = StringToVal(ImportField, M4Val);
+          CLInrw.Objects = ImportField;
+          CLInrw.OrderNr = ImportField;
+          CLInrw.CorspCode = ImportField;
+          CLInrw.Comment = ImportField;
+          CLInrw.stp = StringToInt(ImportField);
+          CLInrw.TAX1Sum = StringToVal(ImportField, M4Val);
+          CLInrw.TAX2Sum = StringToVal(ImportField, M4Val);
+          MatRowPut(CLInr, i, CLInrw);
+          i = i + 1;
+        end;
+      RecordImportStore(CLInr, false);
+    end;
+  stopalert("CLInVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagCLOutVc()
+begin
+  record CLOutVc CLOutr;
+  row CLOutVc CLOutrw;
+  integer i;
+
+  stopalert("CLOutVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(CLOutr);
+      CLOutr.SerNr = ImportField;
+      CLOutr.Total = StringToVal(ImportField, M4Val);
+      CLOutr.TransDate = ImportField;
+      CLOutr.PayMode = ImportField;
+      CLOutr.Person = ImportField;
+      CLOutr.CorspCode = ImportField;
+      CLOutr.CorspComment = ImportField;
+      CLOutr.CUCode = ImportField;
+      CLOutr.CUName = ImportField;
+      CLOutr.Comment = ImportField;
+      CLOutr.OKFlag = StringToInt(ImportField);
+      CLOutr.ExportedFlag = StringToInt(ImportField);
+      CLOutr.Objects = ImportField;
+      CLOutr.Addr0 = ImportField;
+      CLOutr.Addr1 = ImportField;
+      CLOutr.Addr2 = ImportField;
+      CLOutr.CurncyCode = ImportField;
+      CLOutr.FrRate = StringToVal(ImportField, M4Val);
+      CLOutr.ToRateB1 = StringToVal(ImportField, M4Val);
+      CLOutr.ToRateB2 = StringToVal(ImportField, M4Val);
+      CLOutr.BaseRate1 = StringToVal(ImportField, M4Val);
+      CLOutr.BaseRate2 = StringToVal(ImportField, M4Val);
+      CLOutr.NetVal = StringToVal(ImportField, M4Val);
+      CLOutr.VATVal = StringToVal(ImportField, M4Val);
+      CLOutr.VATCode = ImportField;
+      CLOutr.RefStr = ImportField;
+      CLOutr.PMObjects = ImportField;
+      CLOutr.Addr3 = ImportField;
+      CLOutr.Addr4 = ImportField;
+      CLOutr.FileName = ImportField;
+      CLOutr.FSerNr = ImportField;
+      CLOutr.LangCode = ImportField;
+      CLOutr.ColFlag = StringToInt(ImportField);
+      CLOutr.LocalMachineCode = ImportField;
+      CLOutr.Invalid = StringToInt(ImportField);
+      CLOutr.ARonTR = StringToInt(ImportField);
+      CLOutr.PPOKNr = ImportField;
+      CLOutr.TAX1Sum = StringToVal(ImportField, M4Val);
+      CLOutr.TAX2Sum = StringToVal(ImportField, M4Val);
+      //
+      CLOutr.LogNewUser = ImportField;
+      CLOutr.LogNewDate = ImportField;
+      CLOutr.LogNewTime = ImportField;
+      CLOutr.LogSaveUser = ImportField;
+      CLOutr.LogSaveDate = ImportField;
+      CLOutr.LogSaveTime = ImportField;
+      CLOutr.LogOKUser = ImportField;
+      CLOutr.LogOKDate = ImportField;
+      CLOutr.LogOKTime = ImportField;
+      CLOutr.LogAnnulUser = ImportField;
+      CLOutr.LogAnnulDate = ImportField;
+      CLOutr.LogAnnulTime = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(CLOutr, CLOutrw, 1);
+          CLOutrw.Type = StringToInt(ImportField);
+          CLOutrw.Company = ImportField;
+          CLOutrw.TransNr = ImportField;
+          CLOutrw.Sum = StringToVal(ImportField, M4Val);
+          CLOutrw.Objects = ImportField;
+          CLOutrw.OrderNr = ImportField;
+          CLOutrw.CorspCode = ImportField;
+          CLOutrw.Comment = ImportField;
+          CLOutrw.stp = StringToInt(ImportField);
+          CLOutrw.TAX1Sum = StringToVal(ImportField, M4Val);
+          CLOutrw.TAX2Sum = StringToVal(ImportField, M4Val);
+          MatRowPut(CLOutr, i, CLOutrw);
+          i = i + 1;
+        end;
+      RecordImportStore(CLOutr, false);
+    end;
+  stopalert("CLOutVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagpi1()
+begin
+  record PIVc PIr;
+  row PIVc PIrw;
+  integer i;
+
+  stopalert("PIVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(PIr);
+      PIr.ItemCode = ImportField;
+      PIr.VECode = ImportField;
+      PIr.VEItemCode = ImportField;
+      PIr.Comment = ImportField;
+      PIr.PurPrice = StringToVal(ImportField, M4Val);
+      PIr.DefaultChoice = StringToInt(ImportField);
+      PIr.VEName = ImportField;
+      PIr.NormPOQty = StringToVal(ImportField, M4Val);
+      PIr.MinPOQty = StringToVal(ImportField, M4Val);
+      PIr.Manufacturer = ImportField;
+      PIr.OrgCountry = ImportField;
+      PIr.VendDefChoice = StringToInt(ImportField);
+      PIr.PIFactor = StringToVal(ImportField, M4Val);
+      PIr.PurchaseCost = ImportField;
+      PIr.CurncyCode = ImportField;
+      PIr.ExtraCaost = StringToVal(ImportField, M4Val);
+      PIr.Unit = ImportField;
+      PIr.VEUnit = ImportField;
+      PIr.PlannedDelDays = StringToVal(ImportField, M4Val);
+      PIr.SalesGroup = ImportField;
+      PIr.SalesMan = ImportField;
+      //
+      PIr.Packing = StringToInt(ImportField);
+      PIr.Quantity = StringToInt(ImportField);
+      PIr.Sticker = StringToInt(ImportField);
+      PIr.Mass = StringToVal(ImportField, M4Val);
+      PIr.Length = StringToVal(ImportField, M4Val);
+      PIr.Width = StringToVal(ImportField, M4Val);
+      PIr.Height = StringToVal(ImportField, M4Val);
+      PIr.ProdClass = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(PIr, PIrw, 1);
+          PIrw.Text = ImportField;
+          MatRowPut(PIr, i, PIrw);
+          i = i + 1;
+        end;
+      RecordImportStore(PIr, false);
+    end;
+  stopalert("PIVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagARVc()
+begin
+  record ARVc ARr;
+
+  stopalert("ARVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(ARr);
+      ARr.InvoiceNr = ImportField;
+      ARr.RVal = StringToVal(ImportField, M4Val);
+      ARr.DueDate = ImportField;
+      ARr.CustCode = ImportField;
+      ARr.ARRebDate = ImportField;
+      ARr.ARCurncyCode = ImportField;
+      ARr.CustName = ImportField;
+      ARr.BookRVal = StringToVal(ImportField, M4Val);
+      ARr.OfficialSerNr = ImportField;
+      ARr.ARRebDate2 = ImportField;
+      RecordImportStore(ARr, false);
+    end;
+  stopalert("ARVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagsd()
+begin
+  record SDVc SDr;
+  row SDVc SDrw;
+  integer i;
+
+  stopalert("SDVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(SDr);
+      SDr.SerNr = ImportField;
+      SDr.TransDate = ImportField;
+      SDr.CostAcc = ImportField;
+      SDr.OKFlag = StringToInt(ImportField);
+      SDr.Location = ImportField;
+      SDr.PRCode = ImportField;
+      SDr.Comment = ImportField;
+      SDr.Objects = ImportField;
+      SDr.ExportedFlag = StringToInt(ImportField);
+      SDr.TotQty = StringToVal(ImportField, M4Val);
+      SDr.LocOKNr = StringToVal(ImportField, M4Val);
+      SDr.IntORNo = ImportField;
+      SDr.SDClass = ImportField;
+      SDr.ACShort = ImportField;
+      SDr.RefStr = ImportField;
+      SDr.Invalid = StringToInt(ImportField);
+      SDr.InvalidDate = ImportField;
+      SDr.Reason = ImportField;
+      //
+      SDr.LogNewDate = ImportField;
+      SDr.LogNewUser = ImportField;
+      SDr.LogNewTime = ImportField;
+      SDr.LogSaveDate = ImportField;
+      SDr.LogSaveUser = ImportField;
+      SDr.LogSaveTime = ImportField;
+      SDr.LogOKDate = ImportField;
+      SDr.LogOKUser = ImportField;
+      SDr.LogOKTime = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(SDr, SDrw, 1);
+          SDrw.ArtCode = ImportField;
+          SDrw.Spec = ImportField;
+          SDrw.SerialNr = ImportField;
+          SDrw.Qty = StringToVal(ImportField, M4Val);
+          SDrw.FIFO = StringToVal(ImportField, M4Val);
+          SDrw.Location = ImportField;
+          SDrw.Recepy = ImportField;
+          SDrw.VARList = ImportField;
+          SDrw.Objects = ImportField;
+          SDrw.CostAcc = ImportField;
+          SDrw.FIFORowVal = StringToVal(ImportField, M4Val);
+          SDrw.Coefficient = StringToVal(ImportField, M4Val);
+          SDrw.BasePrice = StringToVal(ImportField, M4Val);
+          SDrw.IntORRow = ImportField;
+          SDrw.UnitXval = StringToVal(ImportField, M4Val);
+          SDrw.UnitYval = StringToVal(ImportField, M4Val);
+          SDrw.UnitZval = StringToVal(ImportField, M4Val);
+          SDrw.PRCodeRow = ImportField;
+          SDrw.PosCode = ImportField;
+          SDrw.ACShort = ImportField;
+          MatRowPut(SDr, i, SDrw);
+          i = i + 1;
+        end;
+      RecordImportStore(SDr, false);
+    end;
+  stopalert("SDVc end");
+  Return;
+end;
+
+//===============================================
+global
+updating procedure ReadImportTagIRetOrdVc()
+begin
+  record IRetOrdVc ROr;
+  row IRetOrdVc ROrw;
+  integer i;
+
+  stopalert("IRetOrdVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(ROr);
+      ROr.SerNr = ImportField;
+      ROr.RegDate = ImportField;
+      ROr.CustCode = ImportField;
+      ROr.CustName = ImportField;
+      ROr.FileNr = ImportField;
+      ROr.FileType = StringToInt(ImportField);
+      ROr.OrderedFlag = StringToInt(ImportField);
+      ROr.ReceivedFlag = StringToInt(ImportField);
+      ROr.OKFlag = StringToInt(ImportField);
+      ROr.Objects = ImportField;
+      ROr.SumOrdered = StringToVal(ImportField, M4Val);
+      ROr.SumReceived = StringToVal(ImportField, M4Val);
+      ROr.LogOrderedDate = ImportField;
+      ROr.LogOrderedTime = ImportField;
+      ROr.OrderedBy = ImportField;
+      ROr.LogReceivedDate = ImportField;
+      ROr.LogReceivedTime = ImportField;
+      ROr.ReceivedBy = ImportField;
+      ROr.LogNewDate = ImportField;
+      ROr.LogNewTime = ImportField;
+      ROr.LogNewUser = ImportField;
+      ROr.LogSaveDate = ImportField;
+      ROr.LogSaveTime = ImportField;
+      ROr.LogSaveUser = ImportField;
+      ROr.LogOKDate = ImportField;
+      ROr.LogOKTime = ImportField;
+      ROr.LogOKUser = ImportField;
+      ROr.InitLocation = ImportField;
+      ROr.Comment = ImportField;
+
+      i = 0;
+      while (NextImportLine(false))
+        begin
+          ClearRow(ROr, ROrw, 1);
+          ROrw.ArtCode = ImportField;
+          ROrw.ArtName = ImportField;
+          ROrw.FileNr = ImportField;
+          ROrw.QntOrdered = StringToVal(ImportField, M4Val);
+          ROrw.QntReceived = StringToVal(ImportField, M4Val);
+          ROrw.RetCode = ImportField;
+          ROrw.RetName = ImportField;
+          ROrw.Objects = ImportField;
+          ROrw.Comment = ImportField;
+          ROrw.CreatedFileNr = ImportField;
+          MatRowPut(ROr, i, ROrw);
+          i = i + 1;
+        end;
+      RecordImportStore(ROr, false);
+    end;
+  stopalert("IRetOrdVc end");
+  Return;
+end;
+
+
+//===============================================
+global
+updating procedure ReadImportTagIUSVc()
+begin
+  record IUSVc IUSr;
+
+  stopalert("IUSVc begin");
+  while (NextImportLine(false))
+    begin
+      RecordNew(IUSr);
+      IUSr.UserCode = ImportField;
+      IUSr.ArtCode = ImportField;
+      RecordImportStore(IUSr, false);
+    end;
+  stopalert("IUSVc end");
+  Return;
+end;
+
+
+//===============================================
+//Игнорируем импорт HAL-правил, т.к. имеем новый набор и структуру HAL
+global
+updating procedure ReadImportTagHALRulesVc()
+begin
+  StopAlert("HALRulesVc ignoring...");
+  Return;
+end;
+
+
+//===============================================
+//Игнорируем импорт информации о компании и ключах, чтобы не уронить рабочую базу
+//Убрать после перехода на HW 7.2
+global
+updating procedure ReadImportTagInternetEnablerBlock()
+begin
+  StopAlert("InternetEnablerBlock ignoring...");
+  Return;
+end;
+
+global
+updating procedure ReadImportTagcyblock2()
+begin
+  StopAlert("CYBlock ignoring...");
+  Return;
+end;
+
+//global
+//updating procedure ReadImportTagCompaniesBlock()
+//begin
+//  StopAlert("CompaniesBlock ignoring...");
+//  Return;
+//end;

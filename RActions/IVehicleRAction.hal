@@ -1,0 +1,72 @@
+//===============================================
+function boolean CheckFuelCode(string Code)
+begin
+  record WLPetroilBlock Petrolr;
+  row WLPetroilBlock Petrolrw;
+  integer i, rwcnt;
+  boolean res;
+  
+  res = false;
+  BlockLoad(Petrolr);
+  rwcnt = MatRowCnt(Petrolr);
+  for (i=0; (i<rwcnt) and not res; i=i+1)
+    begin
+      MatRowGet(Petrolr,i,Petrolrw);
+      res = Petrolrw.PCode == Code;
+    end;
+  
+  CheckFuelCode = res;
+  Return;
+end;
+
+//===============================================
+global
+updating function Boolean IVehicleVcRecordCheck(var record IVehicleVc IVehicler,record IVehicleVc IVehicler2, LongInt stat, LongInt check)
+begin
+  longint res;
+  record UserVc Usr;
+  
+  SetLangMode(LangRussian, "RUS", 2);
+  res = 0;
+  
+  if blank(IVehicler.Code) then
+    begin
+      RecordCheckError(1120,"",-1,"Code");
+      res = -1;
+    end;
+
+  if (res<>-1) and (blank(IVehicler.Name)) then
+    begin
+      RecordCheckError(20549,"",-1,"Name");
+      res = -1;
+    end;
+
+//  if (res<>-1) and (IVehicler.Cost1km <= 0) then
+//    begin
+//      RecordCheckError(20549,"",-1,"Cost1km");
+//      res = -1;
+//    end;
+
+  if (res<>-1) and nonblank(IVehicler.FuelCode) then
+    begin 
+      if not CheckFuelCode(IVehicler.FuelCode) then
+        begin
+          RecordCheckError(1120,IVehicler.FuelCode,-1,"FuelCode");
+          res = -1;
+        end;
+    end;
+    
+  if (res<>-1) and nonblank(IVehicler.Driver) then
+    begin
+      Usr.Code = IVehicler.Driver;
+      if not ReadFirstMain(Usr,1,true) then
+        begin
+          RecordCheckError(1120,IVehicler.Driver,-1,"FuelCode");
+          res = -1;
+        end;
+    end;
+    
+  IVehicleVcRecordCheck = res;
+  Return;
+end;
+

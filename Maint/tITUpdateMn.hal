@@ -1,0 +1,41 @@
+global
+updating procedure tITUpdateMn (record RcVc RepSpec)
+begin
+record InVc INr;
+record InVc INrold;
+record DIVc Dir;
+Integer i;
+Boolean TrHs;
+
+
+SetLangMode(LangRussian,"RUS",2);
+
+ResetLoop(INr);
+INr.Group = "EL";
+TrHs = True;
+while (LoopKey("Group", INr, 1, TrHs))
+	begin
+	TrHs = (INr.Group == "EL");
+	if  (TrHs) then
+		begin
+		if (blank(INr.DispGroups)) then
+			begin
+			INr.DispGroups = "EL";
+			end 
+		else
+			begin
+			if not(SetInSet("EL",INr.DispGroups) ) then
+				begin
+				INr.DispGroups = INr.DispGroups & "," & "EL";
+				end;
+			end;
+		INrold.Code = INr.Code;
+		ReadFirstMain(INrold, 1, True);	
+		RecordUpdate(INrold, INr, True);
+		end;
+	end;
+	
+MessageBox(0, "Классификаторы EL внесены в Товары!");
+	
+RETURN;
+end;

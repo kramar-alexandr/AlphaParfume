@@ -1,0 +1,1172 @@
+external function boolean ISetInSet(string, string);
+//remote procedure MakeCLOutFromPZP(var record PZPVc);
+external procedure AddHelpButton(LongInt, LongInt);
+external inner procedure TSERW_RUS();
+external inner function Boolean GetPMRow(string, var row PMBlock);
+external inner function Boolean CheckCurncy(string, string);
+external inner function Boolean GetAccCur(string, var string);
+
+//===============================================
+//Суммируем документ
+procedure PZPSumUp(var record PZPVc PZPr)
+begin
+  row PZPVc PZPrw;
+  integer i;
+
+  PZPr.DocSum = 0;
+  for (i=0; i<MatRowCnt(PZPr); i=i+1)
+    begin
+      MatRowGet(PZPr, i, PZPrw);
+      PZPr.DocSum = PZPr.DocSum + PZPrw.Sum;
+    end;
+  Return;
+end;
+
+//===============================================
+//Возвращаем сохраненную запись (или пустую, если не сохранялась)
+procedure GetSavedPZP(integer wn, var record PZPVc PZPr)
+begin
+  switch WindowState(wn)
+    begin
+      case 0: GetWindowRecord(wn, PZPr);
+      case 2: GetPrevWindowRecord(wn, PZPr);
+    end;
+  Return;
+end;
+
+//===============================================
+//Председатель РС
+global
+function boolean UserIsAdvCouncil(string UserCode)
+begin
+  record IPosSignBlock PSb;
+
+  BlockLoad(PSb);
+  UserIsAdvCouncil = ISetInSet(CurrentUser, PSb.AdvCouncilSign);
+  Return;
+end;
+
+//===============================================
+//Администратор секции счетов
+global
+function boolean UserIsAccAdmin(string UserCode)
+begin
+  record IPosSignBlock PSb;
+
+  BlockLoad(PSb);
+  UserIsAccAdmin = ISetInSet(CurrentUser, PSb.AccAdminSign);
+  Return;
+end;
+
+//===============================================
+//Главный бухгалтер
+global
+function boolean UserIsChiefAcc(string UserCode)
+begin
+  record IPosSignBlock PSb;
+
+  BlockLoad(PSb);
+  UserIsChiefAcc = ISetInSet(CurrentUser, PSb.ChiefAccSign);
+  Return;
+end;
+
+//===============================================
+//Проверяем фонд (объект) на верность
+function boolean CheckFund(var string ObjCode)
+begin
+  record ObjVc Objr;
+  boolean res;
+
+  Objr.Code = ObjCode;
+  res = ReadFirstMain(Objr, 1, true) and (Objr.TerminateFlag == 0);
+  if not res then
+    begin
+      ObjCode = blankval;
+    end;
+  CheckFund = res;
+  Return;
+end;
+
+//===============================================
+//Наибольшая из дат
+function date GetMaxDate(date dt1, date dt2)
+begin
+  date res;
+
+  if (dt1 > dt2) then
+    begin
+      res = dt1;
+    end
+  else
+    begin
+      res = dt2;
+    end;
+  GetMaxDate = res;
+  Return;
+end;
+
+//===============================================
+//Способ оплаты
+function boolean PZPDClassPayModeEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  row PMBlock PMrw;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      if GetPMRow(PZPr.PayMode, PMrw) then
+        begin
+          GetAccCur(PMrw.AccNr, PZPr.Curncy);
+        end
+      else
+        begin
+          PZPr.PayMode = blankval;
+          PZPr.Curncy = blankval;
+        end;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassPayModeEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Авансируемое лицо
+function boolean PZPDClassExpEmplEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  record UserVc Usr;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      Usr.Code = PZPr.ExpEmpl;
+      if ReadFirstMain(Usr, 1, true) then
+        begin
+          PZPr.ExpType = 1; //Ав.Пл.
+        end
+      else
+        begin
+          PZPr.ExpEmpl = blankval;
+        end;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassExpEmplEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Подпись председалетя РС
+function boolean PZPDClassCouncilSignEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      if UserIsAdvCouncil(CurrentUser) then
+        begin
+          PZPr.CouncilSign = CurrentUser;
+        end
+      else
+        begin
+          PZPr.CouncilSign = blankval;
+        end;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassCouncilSignEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Подпись администратора секции счетов
+function boolean PZPDClassAccAdminSignEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      if UserIsAccAdmin(CurrentUser) then
+        begin
+          PZPr.AccAdminSign = CurrentUser;
+        end
+      else
+        begin
+          PZPr.AccAdminSign = blankval;
+        end;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassAccAdminSignEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Подпись главного бухгалтера
+function boolean PZPDClassChiefAccSignEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      if UserIsChiefAcc(CurrentUser) then
+        begin
+          PZPr.ChiefAccSign = CurrentUser;
+        end
+      else
+        begin
+          PZPr.ChiefAccSign = blankval;
+        end;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassChiefAccSignEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//ЗРС "Это верно" (оформившее документ или авансируемое лицо)
+function boolean PZPDClassZRSTrueSignEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      if ((PZPr.Initiator == CurrentUser) or (PZPr.ExpEmpl == CurrentUser)) then
+        begin
+          PZPr.ZRSTrueSign = CurrentUser;
+        end
+      else
+        begin
+          PZPr.ZRSTrueSign = blankval;
+        end;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassZRSTrueSignEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//ЗРС - Подпись руководителя или лица, оформившего документ
+function boolean PZPDClassZRSSignEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  record UserVc Usr;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      Usr.Code = PZPr.Initiator;      
+      ReadFirstMain(Usr, 1, true);
+      if /*(PZPr.Initiator == CurrentUser) or*/ nonblank(PZPr.ZRSSign) and (Usr.Supervisor == CurrentUser) then
+        begin
+          PZPr.ZRSSign = CurrentUser;
+        end
+      else
+        begin
+          PZPr.ZRSSign = blankval;
+        end;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassZRSSignEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Накопленные суммы
+function boolean PZPDClassFundSumsEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      PZPr.Rest1 = PZPr.Sum1;
+      PZPr.Rest2 = PZPr.Sum2;
+      PZPr.Rest3 = PZPr.Sum3;
+      PZPr.Rest4 = PZPr.Sum4;
+      PZPr.Rest5 = PZPr.Sum5;
+      PZPr.AccumSum = PZPr.Sum1 + PZPr.Sum2 + PZPr.Sum3 + PZPr.Sum4 + PZPr.Sum5;;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassFundSumsEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Фонды
+function boolean PZPDClassFundsEFAfter(integer wn, string fieldname, integer changed)
+begin
+  record PZPVc PZPr;
+  boolean res;
+  
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      switch (fieldname)
+        begin
+          case "Fund1": res = CheckFund(PZPr.Fund1);
+          case "Fund2": res = CheckFund(PZPr.Fund2);
+          case "Fund3": res = CheckFund(PZPr.Fund3);
+          case "Fund4": res = CheckFund(PZPr.Fund4);
+          case "Fund5": res = CheckFund(PZPr.Fund5);
+        end;
+
+      if not res then
+        begin
+          PutWindowRecord(wn, PZPr);
+        end;
+    end;
+  PZPDClassFundsEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Даты РС
+function boolean PZPDClassCouncilDatesEFAfter(integer wn, integer changed)
+begin
+  record PZPVc PZPr, PZP2r;
+  date MaxDate;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      MaxDate = GetMaxDate(MaxDate, PZPr.Date1);
+      MaxDate = GetMaxDate(MaxDate, PZPr.Date2);
+      MaxDate = GetMaxDate(MaxDate, PZPr.Date3);
+      MaxDate = GetMaxDate(MaxDate, PZPr.Date4);
+      MaxDate = GetMaxDate(MaxDate, PZPr.Date5);
+      PZPr.LastCouncilDate = MaxDate;
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassCouncilDatesEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//FN2
+function boolean PZPDClassFN2EFAfter(integer wn, integer rownr, integer changed)
+begin
+  record PZPVc PZPr;
+  row PZPVc PZPrw;
+  record ObjVc Objr;
+  date MaxDate;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      MatRowGet(PZPr, rownr, PZPrw);
+      Objr.Code = PZPrw.FN2;
+      if ReadFirstMain(Objr, 1, true) and (Objr.TerminateFlag == 0) and (Objr.OTCode == "FN2") then
+        begin
+          PZPrw.FN1 = Objr.AutoObjects;
+        end
+      else
+        begin
+          PZPrw.FN1 = blankval;
+          PZPrw.FN2 = blankval;
+        end;
+      MatRowPut(PZPr, rownr, PZPrw);
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassFN2EFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Подпись руководителя функции
+function boolean PZPDClassFuncSignEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record PZPVc PZPr;
+  row PZPVc PZPrw;
+  record UserVc Usr;
+  record VUserBudVc VBr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      MatRowGet(PZPr, rownr, PZPrw);
+      VBr.Code = CurrentUser;
+      if ReadFirstMain(VBr, 1, true) and nonblank(PZPrw.FuncSign) and SetInSet(PZPrw.FN1, VBr.Function1) then
+        begin
+          PZPrw.FuncSign = CurrentUser;
+        end
+      else
+        begin
+          PZPrw.FuncSign = blankval;
+        end;
+      MatRowPut(PZPr, rownr, PZPrw);
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassFuncSignEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Проверяем счет
+function boolean PZPDClassAccNumberEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record PZPVc PZPr;
+  row PZPVc PZPrw;
+  record AccVc Accr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      MatRowGet(PZPr, rownr, PZPrw);
+      Accr.AccNumber = PZPrw.AccNumber;
+      if not (ReadFirstMain(Accr, 1, true) and (Accr.blockedFlag == 0)) then
+        begin
+          PZPrw.AccNumber = blankval;
+          MatRowPut(PZPr, rownr, PZPrw);
+          PutWindowRecord(wn, PZPr);
+        end;
+    end;
+  PZPDClassAccNumberEFAfter = true;
+  Return;
+end;
+
+//===============================================
+//Планируемая сумма
+function boolean PZPDClassSumEFAfter(integer wn, integer rownr, integer changed)
+begin
+  record PZPVc PZPr;
+
+  if changed then
+    begin
+      GetWindowRecord(wn, PZPr);
+      PZPSumUp(PZPr);
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassSumEFAfter = true;
+  Return;
+end;
+
+//===============================================
+global
+function boolean PZPDClassAfterEditField(Integer wn, string fieldname, Integer fn, Integer rownr, Integer changed)
+begin
+  Boolean res;
+
+  if ISetInSet(fieldname, "Sum1:Sum5") then
+    begin
+      res = PZPDClassFundSumsEFAfter(wn, changed);
+    end;
+
+  if ISetInSet(fieldname, "Fund1:Fund5") then
+    begin
+      res = PZPDClassFundsEFAfter(wn, fieldname, changed);
+    end;
+
+  if ISetInSet(fieldname, "Date1:Date5") then
+    begin
+      res = PZPDClassCouncilDatesEFAfter(wn, changed);
+    end;
+
+  switch (fieldname)
+    begin
+      case "PayMode": res = PZPDClassPayModeEFAfter(wn, changed);
+      case "ExpEmpl": res = PZPDClassExpEmplEFAfter(wn, changed);
+      case "CouncilSign": res = PZPDClassCouncilSignEFAfter(wn, changed);
+      case "AccAdminSign": res = PZPDClassAccAdminSignEFAfter(wn, changed);
+      case "ChiefAccSign": res = PZPDClassChiefAccSignEFAfter(wn, changed);
+      case "ZRSTrueSign": res = PZPDClassZRSTrueSignEFAfter(wn, changed);
+      case "ZRSSign": res = PZPDClassZRSSignEFAfter(wn, changed);
+      case "FN2": res = PZPDClassFN2EFAfter(wn, rownr, changed);
+      case "FuncSign": res = PZPDClassFuncSignEFAfter(wn, rownr, changed);
+      case "AccNumber": res = PZPDClassAccNumberEFAfter(wn, rownr, changed);
+      case "Sum": res = PZPDClassSumEFAfter(wn, rownr, changed);
+    end;
+
+  PZPDClassAfterEditField = res;
+  Return;
+end;
+
+//===============================================
+global
+function Boolean PZPDClassActiveEditField(Integer wn, string fieldname, Integer fn, Integer wnst, Integer rownr, Integer changed)
+begin
+  boolean res;
+  record PZPVc PZPr, PZP2r;
+  row PZPVc PZPrw, PZP2rw;
+
+  GetWindowRecord(wn, PZPr);
+  GetSavedPZP(wn, PZP2r);
+  if (rownr > -1) then
+    begin
+      MatRowGet(PZPr, rownr, PZPrw);
+      MatRowGet(PZP2r, rownr, PZP2rw);
+    end;
+
+  res = (PZPr.Closed <> 1);
+  
+  if ISetInSet(fieldname, "Sum1,Fund1,Date1") then
+    begin
+      res = res and UserIsAccAdmin(CurrentUser) and blank(PZPr.AccAdminSign); //ЗП и ПЗП
+    end;
+
+  if ISetInSet(fieldname, "Sum2:Sum5,Fund2:Fund5,Date2:Date5") then
+    begin
+      res = res and UserIsAccAdmin(CurrentUser) and blank(PZPr.AccAdminSign) and (PZPr.DocType == 1); //ПЗП
+    end;
+
+  switch (fieldname)
+    begin
+      case "PayMode": res = res and blank(PZP2r.PayMode);
+      case "Text": res = res and blank(PZPr.ZRSTrueSign);
+      //Подписи в порядке следования
+      case "ZRSTrueSign": res = res and blank(PZP2r.ZRSSign);
+      case "ZRSSign": res = res and blank(PZP2r.ZRSSign) and nonblank(PZPr.ZRSTrueSign) and (PZPr.ZRSStatus <> 0);
+      case "FuncSign": res = res and blank(PZP2rw.FuncSign) and nonblank(PZPr.ZRSSign);
+      case "CouncilSign": res = res and blank(PZP2r.CouncilSign) and (PZPr.DocStatus <> 0) and ((PZPr.DocStatus == 2) or nonblank(PZPr.ZRSSign));
+      case "AccAdminSign": res = res and blank(PZP2r.AccAdminSign) and nonblank(PZP2r.CouncilSign);
+      case "ChiefAccSign": res = res and blank(PZP2r.ChiefAccSign) and nonblank(PZP2r.AccAdminSign);
+      //
+      case "Sum": res = res and (blank(PZP2r.ZRSTrueSign) or ((PZPr.DocType == 0) and blank(PZP2r.AccAdminSign) and UserIsAccAdmin(CurrentUser)));
+      case "AccNumber": res = res and (blank(PZP2r.ZRSTrueSign) or (CurrentUser == "INAU"));
+      case "Objects": res = res and (blank(PZP2r.ZRSTrueSign) or UserIsAccAdmin(CurrentUser));
+      case "FN2": res = res and blank(PZP2r.ZRSTrueSign);
+      case "Destination": res = res and blank(PZP2r.ZRSTrueSign);
+    end;
+
+  PZPDClassActiveEditField = res or (CurrentUser == "INAU");
+  Return;
+end;
+
+//===============================================
+global 
+function Boolean PZPDClassInsertRowTest(Integer wn, Integer rownr)
+begin
+  record PZPVc PZPr;
+
+  GetSavedPZP(wn, PZPr);
+  PZPDClassInsertRowTest = (PZPr.Closed == 0) and (blank(PZPr.ZRSSign) or UserIsAccAdmin(CurrentUser));
+  Return;
+end;
+
+//===============================================
+global 
+function Boolean PZPDClassDeleteRowTest(Integer wn, Integer rownr)
+begin
+  record PZPVc PZPr;
+
+  GetSavedPZP(wn, PZPr);
+  PZPDClassDeleteRowTest = (PZPr.Closed == 0) and (blank(PZPr.ZRSSign) or UserIsAccAdmin(CurrentUser));
+  Return;
+end;
+
+//===============================================
+global 
+function Boolean PZPDClassOnOverStrike(Integer wn, Integer rownr)
+begin
+  record PZPVc PZPr;
+  
+  if (rownr > -1) then
+    begin
+      GetWindowRecord(wn, PZPr);
+      PZPSumUp(PZPr);
+      PutWindowRecord(wn, PZPr);
+    end;
+  PZPDClassOnOverStrike = true;
+  Return;
+end;
+
+//===============================================
+global
+procedure PZPHistDsm()
+begin
+  record PZPVc PZPr;
+  record RcVc RepSpec;
+
+  GetWindowRecord(CurWindow, PZPr);
+  ReportDefaults(RepSpec, "PZPHistRClass");    
+  RepSpec.repname = "PZPHistRn";
+  RepSpec.Media = mtScreen;
+  RepSpec.long1 = PZPr.SerNr;
+  RunReport(RepSpec, 0);   
+  Return;
+end;
+
+//===============================================
+//Открыть созданную запись ЗП в окне
+global
+procedure PZPDClassOpenZP(record PZPVc PZPr)
+begin
+  integer wn;
+
+  wn = OpenWindow("PZPDClass", 1, 0, "", "", PZPr);
+  Return;
+end;
+
+//===============================================
+//Открыть созданную запись платежа поставщику в окне
+global
+procedure PZPDClassOpenOP(record OPVc OPr)
+begin
+  integer wn;
+
+  wn = OpenWindow("OPDClass", 1, 0, "", "", OPr);
+  Return;
+end;
+
+// //===============================================
+// //Выплата из кассы (РКО)
+// global
+// procedure MakeCLOutFromPZPDsm()
+// begin
+  // record PZPVc PZPr;
+  // integer wn;
+  
+  // wn = CurWindow;
+  // if (WindowState(wn) == 0) then
+    // begin
+      // GetWindowRecord(wn, PZPr);
+      // MakeCLOutFromPZP(PZPr);
+      // SelectWindow(wn);
+    // end;
+  // Return;
+// end;
+
+// //===============================================
+// //Авансовая выплата (Выплата ПЛ)
+// global
+// procedure MakePPFromPZPDsm()
+// begin
+  // record PZPVc PZPr;
+  // integer wn;
+  
+  // wn = CurWindow;
+  // if (WindowState(wn) == 0) then
+    // begin
+      // GetWindowRecord(wn, PZPr);
+      // MakeCLOutFromPZP(PZPr);
+      // SelectWindow(wn);
+    // end;
+  // Return;
+// end;
+
+//===============================================
+//Запрет устанавливать флаг "Закрыт" вручную
+global
+function Boolean PZPDClassClosedButtonAction(integer wn, integer value)
+begin
+  PZPDClassClosedButtonAction = false;
+  Return;
+end;
+
+//===============================================
+//Запрет изменять тип документа после сохранения
+global
+function Boolean PZPDClassDocTypeButtonAction(integer wn, integer value)
+begin
+  PZPDClassDocTypeButtonAction = (WindowState(wn) == 1);
+  Return;
+end;
+
+//===============================================
+//Запрет изменять статус ЗРС после подписания
+global
+function Boolean PZPDClassZRSStatusButtonAction(integer wn, integer value)
+begin
+  record PZPVc PZPr, PZP2r;
+
+  GetWindowRecord(wn, PZPr);
+  PZPDClassZRSStatusButtonAction = (PZPr.Closed <> 1) and blank(PZPr.ZRSSign) and blank(PZPr.CouncilSign);
+  Return;
+end;
+
+//===============================================
+//Запрет изменять статус документа после подписания
+global
+function Boolean PZPDClassDocStatusButtonAction(integer wn, integer value)
+begin
+  record PZPVc PZPr;
+
+  GetWindowRecord(wn, PZPr);
+  PZPDClassDocStatusButtonAction = (PZPr.Closed <> 1) and blank(PZPr.CouncilSign);
+  Return;
+end;
+
+//===============================================
+//Запрет изменять статус готовности к выдаче после сохранения
+global
+function Boolean PZPDClassPayReadyButtonAction(integer wn, integer value)
+begin
+  record PZPVc PZPr;
+
+  GetSavedPZP(wn, PZPr);
+  PZPDClassPayReadyButtonAction = (PZPr.Closed <> 1) and (PZPr.DocStatus == 1) and (PZPr.PayReady <> 1);
+  Return;
+end;
+
+//===============================================
+//Запрет изменять статус OK после сохранения
+global
+function Boolean PZPDClassOKFlagButtonAction(integer wn, integer value)
+begin
+  record PZPVc PZPr;
+
+  GetSavedPZP(wn, PZPr);
+  PZPDClassOKFlagButtonAction = (PZPr.Closed <> 1) and (PZPr.DocStatus == 1) and (PZPr.OKFlag <> 1);
+  Return;
+end;
+
+//===============================================
+//Запрет изменять тип расходного документа после подписания администратором проверки счетов
+global
+function Boolean PZPDClassExpTypeButtonAction(integer wn, integer value)
+begin
+  record PZPVc oldPZPr, PZPr;
+
+  GetWindowRecord(wn, PZPr);
+  GetSavedPZP(wn, oldPZPr);
+  PZPDClassExpTypeButtonAction = (oldPZPr.Closed <> 1) and blank(oldPZPr.AccAdminSign) and blank(PZPr.ExpEmpl);
+  Return;
+end;
+
+//===============================================
+global
+procedure PZPDClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+  duplOK = false;
+  Return;
+end;
+
+//===============================================
+global
+procedure PZPLClassButtonFlags(Integer wn, var Boolean duplOK, var Boolean newOK, var Boolean saveOK, var Boolean restOK)
+begin
+  duplOK = false;
+  Return;
+end;
+
+//===============================================
+global
+function string 255 PZPLClassExpName(record PZPVc PZPr)
+begin
+  string 255 res;
+
+  SetLangMode(LangRussian, "RUS", 2);
+  switch (PZPr.ExpType)
+    begin
+      case 0: res = "РКО";
+      case 1: res = "Ав.пл.";
+      case 2: res = "Пл.пост.";
+      case 3: res = "Гл.кн.";
+    end;
+  PZPLClassExpName = res;
+  Return;
+end;
+
+//===============================================
+global
+function boolean PZPLClassOnOpenWindow(integer wn)
+begin
+  record UserVc Usr;
+
+  Usr.Code = CurrentUser;
+  ReadFirstMain(Usr, 1, true);
+  if (Usr.limitedAccess <> 0) then
+    begin
+      if SetInSet("CAS", Usr.Comment) then //Кассир
+        begin
+          SetWindowSubset(wn, Usr.SalesGroup);
+        end
+      else
+        begin
+          SetWindowSubset(wn, CurrentUser);
+        end;
+    end;
+  PZPLClassOnOpenWindow = false;
+  Return;
+end;
+
+//===============================================
+global 
+updating function boolean PZPDClassPrint(integer wn, boolean previewf)
+begin
+  boolean res;
+  record PZPVc PZPr, PZP2r;
+  integer normalmode;
+  record RcVc RepSpec;
+  boolean CanPrint;
+
+  res = true;
+  SetLangMode(LangRussian, "RUS", 2);
+  normalmode = 0;//Rs_normal
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, PZPr);
+
+  if (WindowState(wn) == normalmode) and (PZPr.PayReady == 1) then
+    begin 
+      CanPrint = true;
+
+      if (CurrentUser <> "DELPHI") then
+        begin
+          if previewf or (PZPr.DocType == 1) then
+            begin
+              RepSpec.Media = mtScreen;
+              RepSpec.f2 = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+              RepSpec.f3 = "П Р О С М О Т Р  *  П Р О С М О Т Р  *  П Р О С М О Т Р  *  П Р О С М О Т Р";
+              CanPrint = false;
+            end;
+
+          if CanPrint and (PZPr.Printed == 1) then
+            begin
+              RepSpec.Media = mtScreen;
+              RepSpec.f2 = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+              RepSpec.f3 = "К О П И Я  *  К О П И Я  *  К О П И Я  *  К О П И Я  *  К О П И Я";
+              CanPrint = false;
+            end;
+        end;
+
+      if CanPrint then
+        begin
+          RepSpec.Media = mtPrinter;
+          RepSpec.f2 = "______________________________";
+          RepSpec.f3 = blankval;
+          if not previewf then
+            begin
+              PZP2r.SerNr = PZPr.SerNr;
+              ReadFirstMain(PZP2r, 1, true);
+              PZP2r.Printed = 1;
+              RecordUpdate(PZPr, PZP2r, false);
+            end;
+        end;
+
+      RepSpec.f1 = PZPr.SerNr;
+      RepSpec.repname = "PZPPrintRn";
+      RunReport(RepSpec, 0);
+    end; 
+  PZPDClassPrint = res;
+  Return;
+end;
+
+//===============================================
+global
+procedure DblPZPVc(string dblstr, string l, integer currepwn)
+begin
+  record PZPVc PZPr;
+  integer wn;
+  
+  if (nonblank(dblstr)) then
+    begin
+      PZPr.SerNr = FirstInRange(dblstr, 20);
+      if ReadFirstMain(PZPr, 1, true) then
+        begin  
+          wn = OpenWindow("PZPDClass", 1, 0, "", "", PZPr);
+        end; 
+    end;
+  Return;  
+end;
+
+// //===============================================
+// global
+// procedure IDblPZPExp(string dblstr, string l, integer currepwn)
+// begin
+  // record CLOutVc CLr;
+  // record PPVc PPr;
+  // record OPVc OPr;
+  // record TRVc TRr;
+  // integer ExpType;
+  // integer wn;
+
+  // ExpType = StringToInt(FirstInRange(dblstr, 20));
+
+  // switch (ExpType)
+    // begin
+      // case 0: //РКО
+        // CLr.SerNr = StringToLongint(LastInRange(dblstr, 20));
+        // if ReadFirstMain(CLr, 1, true) then
+          // begin  
+            // wn = OpenWindow("CLOutDClass", 1, 0, "", "", CLr);
+          // end; 
+
+      // case 1: //Ав.Пл.
+        // PPr.SerNr = StringToLongint(LastInRange(dblstr, 20));
+        // if ReadFirstMain(PPr, 1, true) then
+          // begin  
+            // wn = OpenWindow("PPDClass", 1, 0, "", "", PPr);
+          // end; 
+
+      // case 2: //Пл.Пост.
+        // OPr.SerNr = StringToLongint(LastInRange(dblstr, 20));
+        // if ReadFirstMain(OPr, 1, true) then
+          // begin  
+            // wn = OpenWindow("OPDClass", 1, 0, "", "", OPr);
+          // end; 
+
+      // case 3: //Гл.Кн.
+        // TRr.IntYc = FirstTransTypeInRange(LastInRange(dblstr, 20));
+        // TRr.Number = FirstTransInRange(LastInRange(dblstr, 20));
+        // if ReadFirstMain(TRr, 2, true) then
+          // begin  
+            // wn = OpenWindow("TRDClass", 1, 0, "", "", TRr);
+          // end; 
+    // end;
+  // Return;
+// end;
+
+//===============================================
+global
+procedure PZPJrnRClassReportDefaults(Integer wn)
+begin
+  record RcVc RepSpec;
+
+  DeselectWindow(wn, false);
+  GetWindowRecord(wn, RepSpec);
+  ReportDefaults(RepSpec, "PZPJrnRClass");  
+  RepSpec.flags[0] = 1; //ЗП
+  RepSpec.flags[1] = 1; //ПЗП
+  RepSpec.flags[3] = 1; //НАЛ
+  RepSpec.flags[4] = 1; //БЕЗНАЛ
+  PutWindowRecord(wn, RepSpec);
+  SelectWindow(wn);
+  Return;
+end;
+
+//===============================================
+event startup 
+begin
+  SetLangMode(LangRussian, "RUS", 2);
+  Setting("Подписи должностей", IPosSignTClass, modBORG);
+  Setting("Серии номеров - ПЗП", PZPSerTClass, modBORG);
+  Register("ПЗП", "ПЗП", PZPLClass, modBORG);
+  Register("История ПЗП", "История ПЗП", PZPHistLClass, modSRV);
+  Report("Журнал ЗП/ПЗП", PZPJrnRClass, PZPJrnRn, 0, modBORG);
+  Report("Заявки на финпланирование", PZPRClass, PZPRn, 0, modBORG);
+  Return;
+end;
+
+//===============================================
+event DefineWindows
+begin
+  real v, v2, h, h2, vs;
+
+  vs = 20;
+
+  SetLangMode(LangRussian, "RUS", 2);
+
+  WindowBegin("Подписи должностей", IPosSignTClass, CGSbl, -);
+  SetBlid(IPosSignBlock);
+  SetWRect(64, 80, 550, 500);
+  EditField(h=150, v=10, 250, "Председатель РС", Normal, AdvCouncilSign, false, UserSClass);
+  EditField(h, v+=vs, 250, "Администратор счетов", Normal, AccAdminSign, false, UserSClass);
+  EditField(h, v+=vs, 250, "Главный бухгалтер", Normal, ChiefAccSign, false, UserSClass);
+  EndWindow;
+
+  
+  WindowBegin("Серии номеров - ПЗП", PZPSerTClass, CGHbl, HBlRecType);
+  SetBlid(PZPSerBlock);
+  TSERW_RUS;
+  EndWindow;
+
+
+  WindowBegin("ПЗП", PZPLClass, CGmlist, -);
+  SetWRect (20, 80, 850, 410);
+  SpawnClass(PZPDClass);
+  UseView(PZPVc);
+  Sizeable(-1, -1, 0, 0);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Номер", SerNr, false, SerNr);
+  RlColKey(81, 81, "Дата рег", RegDate, false, RegDate);
+  RlColKey(160, 160, "Тип", DocType, false, DocType);
+  RlColKey(200, 200, "Дата РС", CouncilDate, false, CouncilDate);
+  RlColKey(270, 270, "Дата план", PlanDate, false, PlanDate);
+  RlColKey(340, 340, "Дата факт", PayDate, false, PayDate);
+  CalculatedColumn(410, 410, "Расх.док.", "PZPLClassExpName", false);
+  //RlColKey(460, 460, "Подпись", CouncilSign, false, 0);
+  RlCol(460, 460, "Подпись", CouncilSign, false);
+  //RlColKey(540, 540, "Сумма", DocSum, true, 0);
+  //RlColKey(620, 620, "Накоплено", AccumSum, false, 0);
+  RlCol(540, 540, "Сумма", DocSum, true);
+  RlCol(620, 620, "Накоплено", AccumSum, false);
+  RlColKey(700, 700, "Статус", DocStatus, false, DocStatus);
+  RlColKey(740, 740, "Закрыт", Closed, false, Closed);
+  RlCol(-1, -1, "", Invalid, true);
+  SearchField("Найти");
+  EndWindow;
+
+
+  WindowBegin("ПЗП", PZPDClass, CGview, -);
+  SetWRect(20, 80, 820, 560);
+  UseView(PZPVc);
+  FormName(PZPDClassPrint);
+
+  Tile(0, 170, false, "", SerNr);
+  EditField(h=100, v=6, 80, "Номер", ViewOnly, SerNr, False, 0);
+  StaticText(h+200, v+10, "Тип документа:", true);
+  RadioButton(h+230, v, 0, 0, "ЗП", DocType);
+  RadioButton(h+300, v, 1, 0, "ПЗП", DocType);
+  CheckBox(-140, v, 0, "Закрыт", Closed);
+
+  EditField(h, v+=vs, 80, "Дата сост.", ViewOnly, RegDate, False, PasteCurDate);
+  EditField(h+170, v, 80, "Оформил", ViewOnly, Initiator, False, UserSClass);
+  EditField(h+340, v, 80, "Пост", Normal, Position, False, VPositionSClass);
+
+  v = v + 30;
+  StaticText(h-4, v+10, "Тип расхода:", true);
+  RadioButton(h+30, v, 0, 0, "РКО", ExpType);
+  RadioButton(h+100, v, 1, 0, "Ав.пл.", ExpType);
+  RadioButton(h+170, v, 2, 0, "Пл.пост.", ExpType);
+  RadioButton(h+240, v, 3, 0, "Гл.кн. (Тип.Номер) :", ExpType);
+  EditField(h+430, v, 150, "", Normal, TransStr, False, 0); //Запись операции
+  
+  EditField(h, v+=30, 80, "Способ оплаты", Normal, PayMode, false, PMSClass);
+  EditField(h+170, v, 40, "Валюта", ViewOnly, Curncy, False, CurncyCodeSClass);
+  EditField(h+340, v, 80, "Авансируемое лицо", Normal, ExpEmpl, False, UserSClass);
+  AddHelpButton(-110, v);
+
+  EditField(h, v+=vs, 80, "Выдача план", Normal, PlanDate, False, PasteCurDate);
+  EditField(h+170, v, 80, "Выдача факт", Normal, PayDate, False, PasteCurDate);
+  EditField(h, v+=vs, -40, "Комментарий", Normal, Comment, False, 0);
+
+  TileButton(1,"Документ");
+  TileButton(2,"ЗРС");
+  TileButton(3,"Секция проверки счетов");
+
+  Tile(1, 110, true, "1", Math);
+  MatrixBegin(4, v=8, -53, -90, PZPRowType, 199);
+  MatCol(1, h=24, "Сумма", 0, Sum, true, 0);
+  MatCol(1, h+=100, "Счет", 0, AccNumber, false, AccSClass);
+  MatCol(1, h+=70, "Объекты", 0, Objects, false, ObjSClass);
+  MatCol(1, h+=100, "FN2", 0, FN2, false, ObjSClass);
+  MatCol(1, h+=70, "Назначение", 0, Destination, false, 0);
+  MatCol(1, -70, "Рук. службы", 0, FuncSign, false, UserSClass);
+  InsertRowTest;
+  DeleteRowTest;
+  EndMatrix;
+
+  v = -80; h = 100;
+  StaticText(h-4, v+10, "Статус док-та:", true);
+  RadioButton(h+30, v, 0, 0, "Нет", DocStatus);
+  RadioButton(h+100, v, 1, 0, "Одобрен", DocStatus);
+  RadioButton(h+170, v, 2, 0, "Не одобрен", DocStatus);
+
+  EditField(h, v+=vs, 80, "Председатель РС", Normal, CouncilSign, False, UserSClass);
+  EditField(h+200, v, 80, "Дата совета", Normal, CouncilDate, False, PasteCurDate);
+  EditField(-240, v, 80, "Сумма документа", ViewOnly, DocSum, False, 0);
+  CheckBox(-140, v, 0, "Готова к выпл.", PayReady);
+  
+  EditField(h+200, v+=vs, 80, "Дата посл. сов.", ViewOnly, LastCouncilDate, False, 0);
+  EditField(-240, v, 80, "Накопленная сумма", ViewOnly, AccumSum, False, 0);
+  CheckBox(-140, v, 0, "OK", OKFlag);
+
+  Tile(2, 110, true, "2", Text);
+  TextField(4, v=8, -21, -90, Text, 0);
+  
+  v = -80;
+  EditField(-150, v, 80, "Это верно", Normal, ZRSTrueSign, False, UserSClass);
+  EditField(-150, v+=vs, 80, "Подпись руководителя", Normal, ZRSSign, False, UserSClass);
+  StaticText(h-4, v+10, "Статус ЗРС:", true);
+  RadioButton(h+30, v, 0, 0, "Нет", ZRSStatus);
+  RadioButton(h+100, v, 1, 0, "Одобрен", ZRSStatus);
+  RadioButton(h+170, v, 2, 0, "Не одобрен", ZRSStatus);
+
+  Tile(3, 110, true, "3", AccAdminSign);
+  v = 8;
+  EditField(h=150, v, 80, "Сумма", Normal, Sum1, true, 0);
+  EditField(h+150, v, 80, "Фонд", Normal, Fund1, False, ObjSClass);
+  EditField(h+350, v, 80, "Дата совета", Normal, Date1, False, PasteCurDate);
+  EditField(h, v+=vs, 80, "Сумма", Normal, Sum2, true, 0);
+  EditField(h+150, v, 80, "Фонд", Normal, Fund2, False, ObjSClass);
+  EditField(h+350, v, 80, "Дата совета", Normal, Date2, False, PasteCurDate);
+  EditField(h, v+=vs, 80, "Сумма", Normal, Sum3, true, 0);
+  EditField(h+150, v, 80, "Фонд", Normal, Fund3, False, ObjSClass);
+  EditField(h+350, v, 80, "Дата совета", Normal, Date3, False, PasteCurDate);
+  EditField(h, v+=vs, 80, "Сумма", Normal, Sum4, true, 0);
+  EditField(h+150, v, 80, "Фонд", Normal, Fund4, False, ObjSClass);
+  EditField(h+350, v, 80, "Дата совета", Normal, Date4, False, PasteCurDate);
+  EditField(h, v+=vs, 80, "Сумма", Normal, Sum5, true, 0);
+  EditField(h+150, v, 80, "Фонд", Normal, Fund5, False, ObjSClass);
+  EditField(h+350, v, 80, "Дата совета", Normal, Date5, False, PasteCurDate);
+  
+  EditField(h, v+=vs+vs, 80, "Накопленная сумма", ViewOnly, AccumSum, true, 0);
+  EditField(h+150, v, 80, "из", ViewOnly, DocSum, true, 0);
+  EditField(h+350, v, 80, "Дата посл. сов.", ViewOnly, LastCouncilDate, False, 0);
+  CheckBox(-140, v, 0, "Готова к выдаче", PayReady);
+
+  v = v + vs * 2;
+  StaticText(h-4, v+10, "Вид расчетов:", true);
+  RadioButton(h, v, 0, 0, "Наличный", CashMode);
+  RadioButton(h+100, v, 1, 0, "Безналичный", CashMode);
+
+  EditField(h+350, v, 80, "АС проверки счетов", Normal, AccAdminSign, False, UserSClass);
+  EditField(h+350, v+=vs, 80, "Счет по безналу проверен", Normal, ChiefAccSign, False, UserSClass);
+  EditField(h+500, v, 80, "Дата", Normal, NoncashDate, False, PasteCurDate);
+  
+  SpecialMenu("История ПЗП", 'h', 0, "PZPHistDsm");
+  EndWindow;
+
+  
+  WindowBegin("Определите журнал ПЗП", PZPJrnRClass, CGRcW, RcType);
+  SetWRect(20,80,450,350);
+  PeriodField(h=120,v=6,"Период (выдача план)");
+  EditFieldTL(h, v+=vs, 100, "Дата РС", M4Date, Normal, 20, d1, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 100, "Инициатор", M4Code, Normal, 60, f1, false, UserSClass);
+  EditFieldTL(h, v+=vs, 100, "Служба (FN1)", M4Code, Normal, 10, ObjStr, false, ObjSClass);
+  EditFieldTL(h, v+=vs, 100, "Объект(ы)", M4Code, Normal, 60, f2, false, ObjSClass);
+  CheckBox(h, v2=(v+=vs), 0, "ЗП", flags[0]);
+  CheckBox(h, v+=vs, 0, "ПЗП", flags[1]);
+  CheckBox(h+=150, v=v2, 0, "НАЛ", flags[3]);
+  CheckBox(h, v+=vs, 0, "БЕЗНАЛ", flags[4]);
+  ButtonFrame(h=120, v2=(v+=50), 123, 5, "Статус");
+  RadioButton(h, v, 0, 0, "Не подписаны", flags[5]);
+  RadioButton(h, v+=16, 1, 0, "Это верно", flags[5]);
+  RadioButton(h, v+=16, 2, 0, "Подписаны ЗРС", flags[5]);
+  RadioButton(h, v+=16, 3, 0, "Подписаны FN1", flags[5]);
+  RadioButton(h, v+=16, 4, 0, "Подписаны РС", flags[5]);
+  RadioButton(h, v+=16, 5, 0, "Подписаны ACC", flags[5]);
+  RadioButton(h, v+=16, 6, 0, "Закрыты", flags[5]);
+  CheckBox(h, v+=16, 0, "Контроль", flags[6]);
+  ButtonFrame(h+=150, v=v2, 123, 2, "Функция");
+  RadioButton(h, v, 0, 0, "Сводный", ArtMode);
+  RadioButton(h, v+=16, 1, 0, "Подробный", ArtMode);
+  EndWindow;
+
+
+  WindowBegin("Определите заявки на финпланирование", PZPRClass, CGRcW, RcType);
+  SetWRect(20,80,450,280);
+  PeriodField(h=130,v=6,"Период (выдача план)");
+  EditFieldTL(h, v+=vs, 100, "Дата РС", M4Date, Normal, 20, d1, false, PasteCurDate);
+  EditFieldTL(h, v+=vs, 100, "Инициатор", M4Code, Normal, 60, f1, false, UserSClass);
+  EditFieldTL(h, v+=vs, 100, "Служба (FN1)", M4Code, Normal, 10, ObjStr, false, ObjSClass);
+  EditFieldTL(h, v+=vs, 100, "Объект(ы)", M4Code, Normal, 60, f2, false, ObjSClass);
+  CheckBox(h, v+=vs, 0, "Подписанные", flags[3]);
+  CheckBox(h, v+=vs, 0, "С расходными документами", flags[4]);
+  ButtonFrame(h=50, v2=(v+=50), 100, 2, "Тип");
+  RadioButton(h, v, 0, 0, "ЗП", flags[0]);
+  RadioButton(h, v+=16, 1, 0, "ПЗП", flags[0]);
+  ButtonFrame(h+=120, v=v2, 100, 2, "Расчет");
+  RadioButton(h, v, 0, 0, "Все", flags[1]);
+  RadioButton(h, v+=16, 1, 0, "НАЛ", flags[1]);
+  RadioButton(h, v+=16, 2, 0, "БЕЗНАЛ", flags[1]);
+  ButtonFrame(h+=120, v=v2, 100, 3, "Статус");
+  RadioButton(h, v, 0, 0, "Утвержденные", flags[2]);
+  RadioButton(h, v+=16, 1, 0, "Неутвержденные", flags[2]);
+  RadioButton(h, v+=16, 2, 0, "Закрытые", flags[2]);
+  EndWindow;
+
+
+  WindowBegin("История ПЗП", PZPHistLClass, CGmlist, -);
+  SetWRect (20, 80, 850, 410);
+//  SpawnClass(PZPHistDClass);
+  UseView(PZPHistVc);
+  Sizeable(-1, -1, 0, 0);
+  RecordList(4, 17, -21, -39);
+  RlColKey(4, 4, "Номер", SerNr, false, SerNr);
+  RlColKey(81, 81, "№ ПЗП", PZPNr, false, PZPNr);
+  RlCol(160, 160, "Дата", ActDate, false);
+  RlCol(240, 240, "Время", ActTime, false);
+  RlCol(320, 320, "Сотр.", ActUser, false);
+  RlCol(400, 400, "Действие", Action, false);
+  SearchField("Найти");
+  EndWindow;
+
+  WindowBegin("История ПЗП", PZPHistRClass, CGRcW, RcType);
+  EditFieldTL(h, v+=vs, 100, "№ ПЗП", M4Long, Normal, 20, long1, false, PZPSClass);
+  EndWindow;
+
+  Return;
+end;

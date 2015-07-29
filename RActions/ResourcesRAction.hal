@@ -1,0 +1,173 @@
+external function boolean IWorkEquipListCheck(string, var string);
+
+global
+function Longint IncidentsVcRecordDefaults(var record IncidentsVc Ir, record IncidentsVc I2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+
+if (SingleUserMode) then
+  begin
+  Ir.SerNr = NextSerNr("IncidentsVc", CurrentDate, -1, false, "");
+  end;
+Ir.DateRec = CurrentDate;
+Ir.TimeRec = CurrentTime;
+Ir.SolFlag = 0;
+Ir.NewFlag = 0;
+Ir.OKFlag = 0;
+IncidentsVcRecordDefaults = res;
+RETURN;
+end;
+
+global updating
+function LongInt IncidentsVcRecordRemoveTest(var record IncidentsVc Ir, record IncidentsVc I2r, LongInt long3, LongInt long4)
+begin
+LongInt res;
+
+SetLangMode(LangRussian, "RUS", 2);
+if (Ir.NewFlag == 1) and (not UserCanAction("UnOKAll", True)) then
+  begin
+  IncidentsVcRecordRemoveTest = 0;
+  MessageBox(0, "Удалить нельзя!");
+  end else
+  begin
+  IncidentsVcRecordRemoveTest = 1;
+  end;
+RETURN;
+END;
+
+
+global updating
+function LongInt IncidentsVcRecordCheck(var record IncidentsVc Ir, record IncidentsVc I2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+record UserVc USr;
+Integer RwCnt, RowCnt, Cnt;
+Integer insertmode, updatemode;
+Boolean TrHs;
+
+res = 0;
+insertmode = 1;
+updatemode = 2;
+if (stat <> updatemode) and (Ir.SerNr < 1) then
+  begin
+  Ir.SerNr = NextSerNr("IncidentsVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (Ir.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+
+if (res <> -1) and (SizeTextCnt(Ir) <> SizeTextCnt(I2r)) then
+  begin
+  AddToText("(" & CurrentUser & "  " & CurrentDate & "  " & CurrentTime & ")", Ir);
+  end;
+IncidentsVcRecordCheck = res;
+RETURN;
+end;
+
+
+// global
+// updating function LongInt IncidentsVcRecordUpdateAfter(var record IncidentsVc Ir, record IncidentsVc I2r, LongInt stat, LongInt long4)
+// begin
+// row IncidentsVc Irw, I2rw;
+// record TrVc Trr;
+// row TrVc Trrw;
+// Integer res, RwCnt, RowCnt;
+
+//Здесь создание проводок!!!
+//M класс
+// IncidentsVcRecordUpdateAfter = res;
+// RETURN;
+// end;
+
+global updating
+function LongInt UserPlanTaskVcRecordRemoveTest(var record UserPlanTaskVc UPTr, record UserPlanTaskVc UPT2r, LongInt long3, LongInt long4)
+begin
+LongInt res;
+
+SetLangMode(LangRussian, "RUS", 2);
+// if (MatRowCnt(UPTr) > 0) then
+  // begin
+  // UserPlanTaskVcRecordRemoveTest = 0;
+  // MessageBox(0, "Удалить нельзя!");
+  // end else
+  begin
+  UserPlanTaskVcRecordRemoveTest = 1;
+  end;
+RETURN;
+END;
+
+// Должности
+
+global
+function Longint VPositionVcRecordDefaults(var record VPositionVc Pr, record VPositionVc P2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+
+Pr.Invalid = 0;
+VPositionVcRecordDefaults = res;
+RETURN;
+end;
+
+global
+function Longint VPositionVcRecordRecordDuplicate(var record VPositionVc Pr, record VPositionVc P2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+
+Pr.Code = "";
+Pr.Invalid = 0;
+VPositionVcRecordRecordDuplicate = res;
+RETURN;
+end;
+
+global
+function longint VPositionVcRecordCheck(var record VPositionVc Pr, record VPositionVc P2r, longint stat, longint long4) //21.06.13 INAU
+begin
+  longint res;
+  string 60 ErrCode;
+
+  res = 0;
+  if not IWorkEquipListCheck(Pr.WorkEquipList, ErrCode) then
+    begin
+      RecordCheckError(1120, ErrCode, -1, "WorkEquipList");
+      res = -1;
+    end; 
+  VPositionVcRecordCheck = res;
+  Return;
+end;
+
+global
+function Longint ProfClassVcRecordDefaults(var record ProfClassVc Pr, record ProfClassVc P2r, LongInt stat, LongInt long4)
+begin
+Longint Res;
+
+if (SingleUserMode) then
+  begin
+  Pr.SerNr = NextSerNr("ProfClassVc", CurrentDate, -1, false, "");
+  end;
+ProfClassVcRecordDefaults = res;
+RETURN;
+end;
+
+global updating
+function LongInt ProfClassVcRecordCheck(var record ProfClassVc Pr, record ProfClassVc P2r, LongInt stat, LongInt long4)
+BEGIN
+LongInt res;
+Integer insertmode, updatemode;
+Boolean TrHs;
+
+res = 0;
+insertmode = 1;
+updatemode = 2;
+if (stat <> updatemode) and (Pr.SerNr < 1) then
+  begin
+  Pr.SerNr = NextSerNr("ProfClassVc", CurrentDate, -1, false, "");
+  end;
+if (stat == updatemode) and (Pr.SerNr < 1) then
+  begin
+  res = -1;
+  end;
+ProfClassVcRecordCheck = res;
+RETURN;
+end;
+
