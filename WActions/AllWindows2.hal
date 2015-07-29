@@ -582,6 +582,10 @@ begin
     SetWRect(20, 80, 400, 250);
     vs = 20; h = 120; v = 6;
     EndWindow;
+    
+    WindowBegin("Maintenance",MyVClass,CGMnt,RcType);
+		SetWRect(20,120,360,220);
+		EndWindow;
 
   Return;
 end;

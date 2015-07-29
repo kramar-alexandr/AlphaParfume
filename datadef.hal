@@ -25,6 +25,77 @@ EndBlock;
 RETURN;
 end;
 
+procedure ITVcDefinition()
+begin
+  RecordField(Code,M4Code,5,0);
+  RecordField(Comment,M4Str,60,0);
+  RecordField(CostAcc,M4Code,10,AccVc);
+  RecordField(InvAcc,M4Code,10,AccVc);
+  RecordField(CostPerc,M4Val,0,0);
+  RecordField(PrimaryCostModel,M4Int,0,0);
+  RecordField(Sign,M4Code,10,UserVc);
+  RecordField(SalesAcc,M4Code,10,AccVc);
+  RecordField(VATCodeDom,M4Code,10,VATCodeBlock);
+  RecordField(VATCodeEU,M4Code,10,VATCodeBlock);
+  RecordField(VATCodeExp,M4Code,10,VATCodeBlock);
+  RecordField(EUSalesAcc,M4Code,10,AccVc);
+  RecordField(ExpSalesAcc,M4Code,10,AccVc);
+  RecordField(ExclFrLabPr,M4Int,0,0);
+  RecordField(Internal,M4Int,0,0);
+  RecordField(InclItemFreight,M4Int,0,0);
+  RecordField(FixedFreight,M4Val,0,0);
+  RecordField(SwapAccounts,M4Int,0,0);
+  RecordField(PeriodCode,M4Code,10,0);
+  RecordField(PurchAcc,M4Code,10,AccVc);
+  RecordField(CredSalesAcc,M4Code,10,AccVc);
+  RecordField(CredEUSalesAcc,M4Code,10,AccVc);
+  RecordField(CredExpSalesAcc,M4Code,10,AccVc);
+  RecordField(CredVATCodeDom,M4Code,10,VATCodeBlock);
+  RecordField(CredVATCodeEU,M4Code,10,VATCodeBlock);
+  RecordField(CredVATCodeExp,M4Code,10,VATCodeBlock);
+  RecordField(EUCodex,M4Code,20,0);
+  RecordField(WIPAcc,M4Code,10,AccVc);
+  RecordField(Type,M4Int,0,0);
+  RecordField(CompUsage,M4Code,10,AccVc);  
+  RecordField(Math,M4Matrix,0,0);
+  RecordField(PriceVarianceAcc,M4Code,10,AccVc);
+  RecordField(UsageVarianceAcc,M4Code,10,AccVc);
+  RecordField(ClassType,M4Str,60,0);
+  RecordField(EUCostAcc,M4Code,10,AccVc); 
+  RecordField(ExpCostAcc,M4Code,10,AccVc); 
+  RecordField(EUPurchAcc,M4Code,10,AccVc); 
+  RecordField(ExpPurchAcc,M4Code,10,AccVc); 
+  RecordField(Objects,M4UStr,60,ObjVc);
+  RecordField(ProdControl,M4Code,10,AccVc);
+  RecordField(ProdWCostAcc,M4Code,10,AccVc);  
+  RecordField(QueuedCostModel,M4Int,0,0);
+  RecordField(FIFOPerSerialNr,M4Int,0,0);
+  RecordField(FIFOPerLocation,M4Int,0,0);
+  RecordField(WAPerLocation,M4Int,0,0);
+  RecordField(CostPricePerLocation,M4Int,0,0);
+  RecordField(TaxTemplateCode,M4Code,10,TaxTemplateVc);
+  RecordField(TaxTemplateCodeEU,M4Code,10,TaxTemplateVc);
+  RecordField(TaxTemplateCodeExp,M4Code,10,TaxTemplateVc);
+  RecordField(DiscountAcc,M4Code,10,AccVc);
+  RecordField(HotelWIPAcc,M4Code,10,AccVc);
+  RecordField(SVOInvbleSalesAcc,M4Code,10,AccVc);
+  RecordField(SVOWarrantySalesAcc,M4Code,10,AccVc);
+  RecordField(SVOContractSalesAcc,M4Code,10,AccVc);
+  RecordField(SVOGoodwillSalesAcc,M4Code,10,AccVc);
+  RecordField(SVOInvbleCostAcc,M4Code,10,AccVc);
+  RecordField(SVOWarrantyCostAcc,M4Code,10,AccVc);
+  RecordField(SVOContractCostAcc,M4Code,10,AccVc);
+  RecordField(SVOGoodwillCostAcc,M4Code,10,AccVc);
+  RecordField(CPSCode,M4Str,60,0);
+  RecordField(ProjMaterialsUsageAcc,M4Code,10,AccVc);
+  RecordField(Weight,M4Int,0,0);			//Add 18.16.15
+  ArrayBegin(Math,-,1);
+  ArrayField(LangCode,M4Code,5,0);
+  ArrayField(Text,M4Str,100,0);
+  EndArray;
+  return;  
+end;
+
 begin
 
 //=============================================== UserVC
@@ -2583,6 +2654,7 @@ RecordField(MultiShip,M4Int,0,0); //кратность отгрузки
 RecordField(BoxVol,M4Val,0,0); // объём ящика
 RecordField(tTesterCode, M4Code, 10, 0); // код тестера
 RecordField(tKolSKU,M4Int,0,0); //кол-во товара для получения тестера
+RecordField(Priority,M4Int,0,0);			//Add 18.16.15
 //
 ArrayBegin(Math,-,1);
 ArrayField(LangCode,M4Code,5,0);
@@ -12653,6 +12725,19 @@ KeyBegin(DateCust);
   KeySegment(CustCode);
   KeySegment(SerNr);
 EndRecord;
+
+//Группа товаров
+RecordBegin(ITVc,-,"ITVc2");
+  NewAutosyncRegister(kSyncDirectionToClient,true);
+  ITVcDefinition;
+  MainKeyBegin(Code,0);
+  KeySegment(Code);
+  KeyBegin(Comment);
+  KeySegment(Comment);
+  KeySegment(Code);
+  KeyBegin(ExtCode);
+  KeySegment(Code);
+  EndRecord;
 
 Return;
 end;

@@ -1,0 +1,318 @@
+external procedure IVVc_PasteQuant(var record IVVc,Integer,Boolean,var Boolean,string);
+external function val AbsoluteVal(val);
+external procedure IVSumup(var record IVVc,Boolean);
+external procedure ImportResultMessage(integer, integer,integer);
+
+SetLangMode(LangRussian,"RUS",0);
+
+
+
+global
+updating procedure ImpAccss()
+BEGIN
+
+
+    RegisterImport("AccessVc2");
+
+  RETURN;
+END;
+
+global
+updating procedure ImpUser()
+BEGIN
+
+
+    RegisterImport("user2");
+
+  RETURN;
+END;
+
+
+global procedure RunImportResult(integer read, integer wrote,integer errcode)	//Edit-----------------Dima 26.01.2015
+begin
+	clientremoteasync.ImportResultMessage(read,wrote,errcode);
+end;
+
+
+global 
+updating procedure PLImportIn()//   Edit-----------------------Dima    20.11.2014  
+begin
+  record PLVc PLr;
+  record PLVc oldPLr;
+  record PLDefVc PLDefr;
+  record INVc	INr;
+  string 50 plCode, artCode, price;
+  val pr;
+
+while (TestEOF()==false) begin
+	plCode = ImportField;
+	artCode = ImportField;
+	price = ImportField;
+	pr=StringToVal(price,M45Val);
+	if (nonblank(plCode) and nonblank(artCode) and (pr > 0) ) then begin
+		PLr.PLCode = plCode;
+		PLr.ArtCode = artCode;	
+		if (ReadFirstMain(PLr,2,true)) then begin		
+			PLr.ExVatPrice = pr;
+			if (blank(PLr.Comment)) then begin
+					INr.Code = artCode;
+					if (ReadFirstMain(INr,1,true))	then begin
+					PLr.Comment = INr.Name;
+					end;
+			end;
+			recordstore(PLr,true);
+		end else begin
+			PLDefr.Code = plCode;
+			INr.Code = artCode;
+			if (ReadFirstMain(PLDefr,1,true)) then begin
+			 	if (ReadFirstMain(INr,1,true))	then begin
+					RecordNew(PLr);
+					PLr.PLCode = plCode;
+					PLr.ArtCode = artCode;
+					PLr.ExVatPrice = pr;
+					if (blank(PLr.Comment)) then begin
+						PLr.Comment = INr.Name;
+					end;
+					recordstore(PLr,true);
+				end;
+			end;
+		end;	
+	end;	
+		if (NextImportLine(true)) then begin end;
+	
+end;
+
+return;
+end;
+
+
+
+global
+updating procedure INReplaceGroupIn()//   Edit-----------------------Dima    21.11.2014  
+begin
+  record INVc INr;
+  record INVc oldINr;
+  string 30 code, group;
+
+
+  while (TestEOF()==false) begin
+  	code = ImportField;
+  	group = ImportField;
+  	
+  	if (nonblank(code) ) then begin
+  		INr.Code = code;	
+  		if (ReadFirstMain(INr,1,true)) then begin
+			RecordCopy(oldINr,INr);
+	  		INr.Group = group;  	//если blank(group) - группа стирается		
+  			RecordUpdate(oldINr,INr,true);  
+  		end;  	
+  	end;
+	if (NextImportLine(true)) then begin end;
+  end;
+
+
+return;
+end;
+
+
+global
+updating procedure InitialClientsDebtIn()//   Edit-----------------------Dima    26.01.2015 
+begin
+  record IVVc IVr;
+  row IVVc IVrw;
+	record CUVc	CUr;
+	record BaseCurBlock BCb;
+	record LocalMachineBlock LMb;
+	string 50 client, debt;
+	val sum;
+	boolean chsum;
+	integer read,wrote,errcode;
+
+	BlockLoad(BCb);
+	BlockLoad(LMb);
+
+ if (SetImportCodepage("WINDOWS-1251")==false) then begin
+			errcode = 31015;
+  End;
+
+
+	while (TestEOF()==false) begin
+	client = ImportField;
+	debt = ImportField;
+	
+		if (nonblank(client) and nonblank(debt)) then begin
+				CUr.Code = client;
+				sum = StringToVal(debt,M4Val);
+		
+		if (ReadFirstMain(CUr,1,true)) then begin				
+      	RecordNew(IVr);
+				IVr.SerNr = NextSerNr("IVVc",IVr.TransDate,-1,false,"");
+				IVr.CustCode = CUr.Code;
+				IVr.Addr0 = CUr.Name;
+				IVr.PayDate = IVr.TransDate;
+				IVr.CurncyCode = BCb.BaseCur1;
+				if (sum>0) then begin				
+						IVr.PayDeal = "0";	
+				end else begin
+						IVr.PayDeal = "CR";
+				end;
+				IVrw.Quant = 1;
+				IVrw.Price = AbsoluteVal(sum);	
+				MatRowPut(IVr,0,IVrw);				
+				IVVc_PasteQuant(IVr,0,true,chsum,LMb.DefReturnLocation);
+				IVSumup(IVr,true);
+
+				IVr.InvComment = USetStr(31011);	//начальная задолженность
+
+				RecordInsert(IVr,true);
+				wrote=wrote+1;
+			end;
+		end;
+		
+	if (NextImportLine(true)) then begin end;
+	read=read+1;
+	end;
+	
+	if (read>wrote) then begin
+		read = wrote;		//если в тексте были пустые строки
+	end;
+	RunImportResult(read,wrote,errcode);
+
+return;
+end;
+
+
+procedure ReadImportTaguser2Record(record UserVc Userr)
+begin
+  string 255 tstr;
+  row UserVc Userrw;
+  integer rwcnt;
+  
+  RecordNew(Userr);
+  ImportField; // NewAutosyncRegister
+  ImportField; // NewAutosyncRegister
+  ImportField; // NewAutosyncRegister
+  Userr.Code = ImportField;
+  Userr.Name = ImportField;
+  Userr.OldPassWord = ImportField;
+  Userr.AccessGroup = ImportField;
+  Userr.CurOurContact = ImportField;
+  Userr.LastOrdNr = StringToLongint(ImportField);
+  Userr.LastShipNr = StringToLongint(ImportField);
+  Userr.LastInvNr = StringToLongint(ImportField);
+  Userr.LastPurNr = StringToLongint(ImportField);
+  Userr.LastPayNr = StringToLongint(ImportField);
+  Userr.LastTRNr = StringToLongint(ImportField);
+  Userr.LastVINr = StringToLongint(ImportField);
+  Userr.LastOPNr = StringToLongint(ImportField);
+  Userr.TerminatedFlag = StringToInt(ImportField);
+  Userr.Job = ImportField;
+  Userr.JobGroup = ImportField;
+  Userr.DisAllowOther = StringToInt(ImportField);
+  Userr.Location = ImportField;
+  Userr.Machines = ImportField;
+  Userr.Tiller = ImportField;
+  Userr.Bonus = StringToVal(ImportField,M4Val);
+  Userr.CUCode = ImportField;
+  Userr.CUName = ImportField;
+  Userr.Phone1 = ImportField;
+  Userr.Phone2 = ImportField;
+  Userr.Fax1 = ImportField;
+  Userr.Fax2 = ImportField;
+  Userr.Comment = ImportField;
+  Userr.PersAcc = ImportField;
+  Userr.PersObjx = ImportField;
+  Userr.BankAcc = ImportField;
+  Userr.BankName = ImportField;
+  Userr.CostPrHour = StringToVal(ImportField,M4Val);
+  Userr.PricePrHour = StringToVal(ImportField,M4Val);
+  Userr.emailAddr = ImportField;
+  Userr.IDCode = ImportField;
+  Userr.Spec = ImportField;
+  Userr.limitedAccess = StringToInt(ImportField);
+  Userr.NewPassWord = ImportField;
+  Userr.LangCode = ImportField;
+  Userr.SalesGroup = ImportField;
+  Userr.Department = ImportField;
+  Userr.LastCLInNr = StringToLongint(ImportField);
+  Userr.LastCLOutNr = StringToLongint(ImportField);
+  Userr.FTPLogin = StringToInt(ImportField);
+  Userr.WebConf = ImportField;
+  Userr.WebStartPage = ImportField;
+  Userr.CostAcc = ImportField;
+  Userr.LastIVCashNr = StringToLongint(ImportField);
+  Userr.Closed = StringToInt(ImportField);
+  Userr.OnlyVoiceLogin = StringToInt(ImportField);
+  Userr.UserEditCtlf = StringToInt(ImportField);
+  Userr.DateOrder = StringToInt(ImportField);
+  Userr.LeadingZDay = StringToInt(ImportField);
+  Userr.LeadingZMonth = StringToInt(ImportField);
+  Userr.LeadingCentury = StringToInt(ImportField);
+  Userr.DateSep = ImportField;
+  Userr.DecimalPt = ImportField;
+  Userr.ThousandSep = ImportField;
+  Userr.ForceTimeEntry = StringToInt(ImportField);
+  Userr.DateCreated = StringToDate(ImportField);
+  Userr.Supervisor = ImportField;
+  Userr.OneFunction = ImportField;
+  Userr.TypeOfUser = StringToInt(ImportField);
+  Userr.thousSepf = StringToInt(ImportField);
+  Userr.CanUseOS = StringToInt(ImportField);
+  Userr.Magic = StringToLongint(ImportField);
+  Userr.Newf = StringToInt(ImportField);
+  Userr.LastTTRNr = StringToLongint(ImportField);
+  Userr.CustCode = ImportField;
+  Userr.WindowType = StringToInt(ImportField);
+  Userr.RegistrationNumber = StringToLongint(ImportField);
+  Userr.StartLevel = StringToInt(ImportField);
+  Userr.ServLocation = ImportField;
+  Userr.ReservLocAccess = ImportField;
+  Userr.ReservLocation = ImportField;
+  Userr.MinPLCode = ImportField;
+  Userr.Magic2 = StringToLongint(ImportField);
+  Userr.DiscPassword = ImportField;
+  Userr.LastOfficialSerNr = ImportField;
+  Userr.LastDropSHNr = StringToLongint(ImportField);
+  Userr.PasswordNeverExpires = StringToInt(ImportField);
+  Userr.LastRestAccNr = StringToLongint(ImportField);
+  Userr.LastPONr = StringToLongint(ImportField);
+  Userr.ExpiryDate = StringToDate(ImportField);
+  Userr.SortCode = ImportField;
+  
+  rwcnt = 0;
+  
+  while (NextImportLine(false)) begin
+    ClearRow(Userr,Userrw,1);
+    Userrw.Code = ImportField;
+    Userrw.PRCode = ImportField;
+    Userrw.Comment = ImportField;
+    MatRowPut(Userr,rwcnt,Userrw);
+    rwcnt = rwcnt + 1;
+  end;
+  
+  return;
+end;
+
+global
+updating procedure ReadImportTaguser2(string thetag)
+begin
+  record UserVc Userr;
+  
+  while (NextImportLine(false)) begin
+    ReadImportTaguser2Record(Userr);
+    RecordImportStore(Userr,false);
+  end;
+  
+  return;
+end;
+
+global
+function string 120 ReadRecordIdStruser2(Integer compnr,string thetag)
+begin
+  record UserVc Userr;
+  
+  Userr.Code = ImportField;
+  ReadRecordIdStruser2 = BuildRecordIdStr(Userr,compnr);
+  return;
+end;
+

@@ -2936,6 +2936,7 @@ end;
   EditField(h2,v,80,"Группа",Normal,Group,false,ITSClass);
 
   EditFieldTL(h2 + 200,v,20,"Aлфавитка",M4UStr, Normal, 1, AlphaBet,false,0);
+  EditField(h2+300,v,20,"Приоритет",Normal,Priority,false,0);							//Edit 18.06.15
 
   EditField(h,v+=vs,335,"Наименование",Normal,Name,false,0);
 
@@ -7108,6 +7109,174 @@ not possible to store in DB , but anyway, i am sure Karl would have never approv
   ButtonFrame(h3,v+=45,130,2,"Расчет накл. затрат");
   RadioButton(h3,v,0,0,"Стоимость",ExtraCostsCalculation);
   RadioButton(h3,v+=16,1,0,"Вес",ExtraCostsCalculation);
+  EndWindow;
+
+//===============================================
+WindowBegin("Группа товаров",ITDClass,CGview,-);
+  if (IsEnterprise) then begin
+    SetWRect(64,80,630,470);
+  //  Sizeable(-1,-1,0,0);
+    UseView(ITVc);
+    Tile(0,90,false,"",Code);
+    v = 6; vs = 20; h = 120;
+    EditField(h=120,v, 70,"Код",St_i,Code,false,0);
+    EditField(h,v+=20 ,200,"Наименование",Normal,Comment,false,0);
+    EditField(h,v+=vs ,200,"Тип классификации",Normal,ClassType,false,CTypeSClass);
+    EditField(h+350,v,20,"Приоритет",Normal,Weight,false,0);		//Edit 18.06.15
+    tilenr = 1;
+    TileButton(tilenr,"Счета");  tilenr = tilenr + 1;
+    TileButton(tilenr,"Кредитные счета");  tilenr = tilenr + 1;
+    if (StandardHansa==false) then begin
+      TileButton(tilenr,"Серв. счет");  tilenr = tilenr + 1;
+    end;
+    TileButton(tilenr,"Модель стоимости");  tilenr = tilenr + 1;
+    TileButton(tilenr,"Фрахт");  tilenr = tilenr + 1;
+    TileButton(tilenr,"Текст");  tilenr = tilenr + 1;
+    if (HasCharts) then begin
+      TileButton(tilenr,"BI");  tilenr = tilenr + 1;
+    end;
+    tilenr = 1;
+    Tile(tilenr,260,false,tilenr,SalesAcc);  tilenr = tilenr + 1;
+    EditField(h=120,vm=(v=6),55,"Счет реализации",Normal,SalesAcc,false,AccSClass);
+    EditField(h,v+=vs,55,VATZoneNameRUS & "Счет реализации, ",Normal,EUSalesAcc,false,AccSClass);
+    EditField(h,v+=vs,55,"Счет реал-и,экспорт",Normal,ExpSalesAcc,false,AccSClass);
+    EditField(h,v+=vs ,55,"Счет затрат",Normal,CostAcc,false,AccSClass);
+    EditField(h,v+=vs ,55,VATZoneNameRUS & "Счет затрат, ",Normal,EUCostAcc,false,AccSClass);
+    EditField(h,v+=vs ,55,"Счет затрат, экспорт",Normal,ExpCostAcc,false,AccSClass);
+    if (StandardHansa==false) then begin
+      EditField(h,v+=vs ,55,"Счет WIP",Normal,WIPAcc,false,AccSClass);
+    end;
+    EditField(h,v+=vs,55,"Использ-е комп-тов",Normal,CompUsage,false,AccSClass);
+    if (StandardHansa==false) then begin
+      EditField(h,v+=vs,55,"Контроль произв-ва",Normal,ProdControl,false,AccSClass);
+      EditField(h,v+=vs,55,"Затраты на труд",Normal,ProdWCostAcc,false,AccSClass);
+      EditField(h,v+=vs,55,"Отель - WIP",Normal,HotelWIPAcc,false,AccSClass);
+    end;
+    EditField(h=350,v=vm,20,"Код НДС",Normal,VATCodeDom,false,VATCodeSClass);
+    EditField(h,v+=vs,20,VATZoneNameRUS  & "Код НДС, ",Normal,VATCodeEU,false,VATCodeSClass);
+    EditField(h,v+=vs,20,"Код НДС, экспорт",Normal,VATCodeExp,false,VATCodeSClass);
+    EditField(h,v+=vs ,55,"Контр. счёт покупок",Normal,PurchAcc,false,AccSClass);
+    EditField(h,v+=vs ,55,VATZoneNameRUS & "Контрольный счёт ",Normal,EUPurchAcc,false,AccSClass);
+    EditField(h,v+=vs ,55,"Контр. счёт импорта",Normal,ExpPurchAcc,false,AccSClass);
+    EditField(h,v+=vs ,55,"Счет склада",Normal,InvAcc,false,AccSClass);
+    if (StandardHansa==false) then begin
+      EditField(h,v+=vs ,55,"Счет разниц цен пок.",Normal,PriceVarianceAcc,false,AccSClass);
+      EditField(h,v+=vs ,55,"Счет исп. разниц",Normal,UsageVarianceAcc,false,AccSClass);
+    end;
+    EditField(h,v+=vs ,55,"Счет для учет. скидки",Normal,DiscountAcc,false,AccSClass);
+    EditField(h,v+=vs,55,"Счет исполь. проектн. мат.",Normal,ProjMaterialsUsageAcc,false,AccSClass);
+    if (StandardHansa==false) then begin
+      EditField(h=120,v+=vs,405-120,"Объекты",Normal,Objects,false,ObjSClass);
+      EditField(h2=480,v=vm,50,"шабл-н нал.",Normal,TaxTemplateCode,false,TaxTemplateSClass);
+      EditField(h2,v+=vs,50,VATZoneNameRUS & "шабл-н нал.",Normal,TaxTemplateCodeEU,false,TaxTemplateSClass);
+      EditField(h2,v+=vs,50,"Эксп. шабл-н нал.",Normal,TaxTemplateCodeExp,false,TaxTemplateSClass);
+    end;
+    Tile(tilenr,100,false,tilenr,CredSalesAcc); tilenr = tilenr + 1;
+    StaticText(h=120,v=12,"Кредит-ноты",false);
+    EditField(h,vm=(v+=10),55,"Счет реализации",Normal,CredSalesAcc,false,AccSClass);
+    EditField(h,v+=vs,55,VATZoneNameRUS & "Счет реализации, ЕС",Normal,CredEUSalesAcc,false,AccSClass);
+    EditField(h,v+=vs,55,"Счет реализ., эксп.",Normal,CredExpSalesAcc,false,AccSClass);
+    EditField(h=350,v=vm,20,"Код НДС",Normal,CredVATCodeDom,false,VATCodeSClass);
+    EditField(h,v+=vs,20,VATZoneNameRUS & "Код НДС, ЕС",Normal,CredVATCodeEU,false,VATCodeSClass);
+    EditField(h,v+=vs,20,"Код НДС, экспорт",Normal,CredVATCodeExp,false,VATCodeSClass);
+    if (StandardHansa==false) then begin
+      Tile(tilenr,100,false,tilenr,SVOInvbleSalesAcc); tilenr = tilenr + 1;
+      EditField(h=170,v=6,55,"Серв.фактур.счёт реализ",Normal,SVOInvbleSalesAcc,false,AccSClass);
+      EditField(h,v+=vs,55,"Серв.гар.счёт реализ",Normal,SVOWarrantySalesAcc,false,AccSClass);
+      EditField(h,v+=vs,55,"Серв.контракт счёт реал",Normal,SVOContractSalesAcc,false,AccSClass);
+      EditField(h,v+=vs,55,"Серв.гудвил счёт реал",Normal,SVOGoodwillSalesAcc,false,AccSClass);
+      EditField(h=400,v=6,55,"Серв.фактур.счёт затрат",Normal,SVOInvbleCostAcc,false,AccSClass);
+      EditField(h,v+=vs,55,"Серв.гарантия счёт затрат",Normal,SVOWarrantyCostAcc,false,AccSClass);
+      EditField(h,v+=vs,55,"Серв.контракт счёт затрат",Normal,SVOContractCostAcc,false,AccSClass);
+      EditField(h,v+=vs,55,"Серв.гудвил счёт затрат",Normal,SVOGoodwillCostAcc,false,AccSClass);
+    end;
+    Tile(tilenr,250,false,tilenr,CostPerc); tilenr = tilenr + 1;
+    ButtonFrame(h=30,vm=(v=20),230,6,"Первичная модель стоимости");
+    RadioButton(h,v,0,0,"По умолчанию",PrimaryCostModel);
+    RadioButton(h,v+=16,1,0,"Стоимость покупки",PrimaryCostModel);
+    RadioButton(h,v+=16,2,0,"% _от базовой цены",PrimaryCostModel);
+    EditField(h+150,v,55,"%",Normal,CostPerc,true,0);
+    RadioButton(h,v+=16,3,0,"Средневзвешенная",PrimaryCostModel);
+    RadioButton(h,v+=16,4,0,"По очереди",PrimaryCostModel);
+    RadioButton(h,v+=16,9,0,"Нет",PrimaryCostModel);
+    ButtonFrame(h,v+=40,230,3,"Модель стоимости по очереди");
+    RadioButton(h,v,0,0,"По умолчанию",QueuedCostModel);
+    RadioButton(h,v+=16,1,0,"FIFO цена",QueuedCostModel);
+    RadioButton(h,v+=16,2,0,"LIFO цена",QueuedCostModel);
+
+    ButtonFrame(h2=280,v=vm,200,3,"Стоимость на сер.номер");
+    RadioButton(h2,v,0,0,"По умолчанию",FIFOPerSerialNr);
+    RadioButton(h2,v+=16,1,0,"Стоимость не на серийный номер",FIFOPerSerialNr);
+    RadioButton(h2,v+=16,2,0,"Стоимость на серийный номер",FIFOPerSerialNr);
+    ButtonFrame(h2,v+=40,200,3,"Стоимость по складам");
+    RadioButton(h2,v,0,0,"По умолчанию",FIFOPerLocation);
+    RadioButton(h2,v+=16,1,0,"Ст-сть по очереди не по скл.",FIFOPerLocation);
+    RadioButton(h2,v+=16,2,0,"Ст-сть по очереди по кажд. скл.",FIFOPerLocation);
+    ButtonFrame(h2,v+=40,200,3,"Средневзвешенная по складам");
+    RadioButton(h2,v,0,0,"По умолчанию",WAPerLocation);
+    RadioButton(h2,v+=16,1,0,"Средневзвешенная не по скл.",WAPerLocation);
+    RadioButton(h2,v+=16,2,0,"Средневзвешенная по кажд. с-у",WAPerLocation);
+  
+    Tile(tilenr,80,false,tilenr,EUCodex); tilenr = tilenr + 1;
+  //  CheckBox(h=90,v+=30,0,"Internal (Not Showing in WebShop)",Internal);
+    if (StandardHansa==false) then begin
+      CheckBox(h=90,vm=(v=16),0,"Не печатать этикетки фрахта для этой гр.",ExclFrLabPr);
+      CheckBox(h,v+=16,0,"Включать фикс. сбор за товар",InclItemFreight);
+      EditField(h+195,v+2,55,"",Normal,FixedFreight,true,0);
+      EditField(h=140,v+=22,200,"Код производит.",Normal,EUCodex,false,CommoditySClass);
+    end else begin
+      EditField(h=120,vm=(v=16),200,"Код производит.",Normal,EUCodex,false,CommoditySClass);   // From dict
+    end;
+    EditField(h=220,v+=vs,120,"Классификация",Normal,CPSCode,false,0);
+    ButtonFrame(h=360,v=vm,80,3,"Тип");
+    RadioButton(h,v,0,0,"Обычный",Type);
+    RadioButton(h,v+=16,1,0,"Транспорт",Type);
+    RadioButton(h,v+=16,2,0,"Тара",Type);
+    Tile(tilenr,120,true,tilenr,Math); tilenr = tilenr + 1;
+    v = 24;
+    MatrixBegin(4,v,-32,-20,INTextRowType,99);
+    MatCol(1,24,"Язык",0,LangCode,false,LangSClass);
+    MatCol(1,84,"Текст",0,Text,false,0);
+    EndMatrix;
+    if (HasCharts) then begin
+      Tile(tilenr,400,false,tilenr,-);  tilenr = tilenr + 1;
+      ChartArea(10,6,-10,390,"$ITDCLass_BIChart");
+    end;
+  end else begin
+    SetWRect(64,80,470,230);
+    UseView(ITVc);
+    v = 6; vs = 20; h = 120;
+    EditField(h,v,70,"Код",Normal,Code,false,0);
+    EditField(h,v+=20,200,"Наим.",Normal,Comment,false,0);
+    EditField(h,v+=20,50,"Код НДС",Normal,VATCodeDom,false,VATCodeSClass);
+    if (HasModNL) then begin
+      EditField(h,v+=20,70,"Счет реал.",Normal,SalesAcc,false,AccSClass);
+      if (HasModIN) then begin
+      EditField(h,v+=vs,70,"Счет склада",Normal,InvAcc,false,AccSClass);
+      EditField(h,v+=vs,70,"Контр. счёт покупок",Normal,PurchAcc,false,AccSClass); //!!PRODTRANSLATE
+      end;
+      if (HasLocalization("PRT")) then begin
+        StaticText(h,v+=40,"Кредит-ноты",false);
+        EditField(h,v+=vs,70,"Счет продаж",Normal,CredSalesAcc,false,AccSClass);
+        EditField(h,v+=vs,20,"Внутренний код НДС",Normal,CredVATCodeDom,false,VATCodeSClass);
+      end;
+      if (HasLocalization("BRA,HRV")) then begin
+        EditField(h,v+=vs,50,"шабл-н нал.",Normal,TaxTemplateCode,false,TaxTemplateSClass);
+        EditField(h,v+=vs,50,VATZoneNameRUS & "шабл-н нал.",Normal,TaxTemplateCodeEU,false,TaxTemplateSClass);
+        EditField(h,v+=vs,50,"Эксп.,шабл-н нал.",Normal,TaxTemplateCodeExp,false,TaxTemplateSClass);
+      end;
+    end;
+    if (HasLocalization("BRA,POL")) then begin 
+      EditField(h+100,v+=vs,120,"Классификация",Normal,CPSCode,false,0);
+    end;
+    if (HasLanguages) then begin
+      v = v+54;
+      MatrixBegin(4,v,-32,-20,INTextRowType,99);
+      MatCol(1,24,"Язык",0,LangCode,false,LangSClass);
+      MatCol(1,84,"Текст",0,Text,false,0);
+      EndMatrix;
+    end;
+  end;
   EndWindow;
 
   Return;

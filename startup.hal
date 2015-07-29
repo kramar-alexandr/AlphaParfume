@@ -177,6 +177,11 @@ Maintenance("Перестр. регистра распознав. номеров
 Maintenance("Замена руководителя",tChangeSupVClass,tChangeSupMn,modSRV); //VAddClassItVClass,VITUpdateMn
 Export("Экспорт сч.кл.", tExpORRClass, tExpORRn,modSRV);
 
+Maintenance("Экспорт товаров в eAgent (XML)",MyVClass,ExportProductsMn,modSL);
+Maintenance("Экспорт групп в eAgent (XML)",MyVClass,ExportGroupsMn,modSL);
+Maintenance("Экспорт клиентов в eAgent (XML)",MyVClass,ExportCustomersMn,modSL);
+Maintenance("Экспорт агентов в eAgent (XML)",MyVClass,ExportAgentsMn,modSL);
+//Maintenance("Экспорт групп в eAgent (XML)",MyVClass,ExportGroupsMn,modTC);
 
 Register("Бюджет (F)","Бюджет (F)",VBudgetVc,modBUF);
 
@@ -240,6 +245,7 @@ Report("Док-ты Расходы ГК(Excel)",tButExe2RClass, tBudExe2Rn, 0, m
 Report("Отчет по отклонениям от бюджета",tButExe4RClass, tBudExe4Rn, 0, modBUF);
 Register("Заказы на перемещения", "Заказы на перемещения", RegMovVc, modSO);
 
+Maintenance("Импортировать счета с системы eAgent", ICommonVClass, ImportEAgentMn, modSO);
 
 Register("Настройка запрета зап.операции", "Настройка запрета зап.операции", tBanOperLClass, modSY);
 Setting("Особые настройки", VSetTClass, modSY);
