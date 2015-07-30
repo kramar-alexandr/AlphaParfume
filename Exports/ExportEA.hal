@@ -26,7 +26,7 @@ begin
   integer diff;
   
     res = false;
-    filepath = "eAgent/HoldOnTime";
+    filepath = "eAgent/HoldOnTime" & minrange;
     if (FileExists(filepath)) then begin
       AddFileToArea(filepath,timeinfo,false);
       lastcheckd = StringToTime(GetStringFromArea(timeinfo,0,GetAreaLength(timeinfo)));
