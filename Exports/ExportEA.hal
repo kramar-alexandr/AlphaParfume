@@ -2,6 +2,58 @@ external inner function string 255 ConvertXml(string);
 
 SetLangMode(LangRussian,"RUS",0);
 
+global
+function val AbsoluteVal(val t)
+begin
+  val res;
+  
+  if (t < 0) then begin
+    res = -t;
+  end else begin
+    res = t;
+  end;
+
+  AbsoluteVal = res;
+  return;
+end;
+
+function Boolean TimeHoldOn(integer minrange)
+begin
+  boolean res;
+  string 225 filepath;
+  area timeinfo;
+  time lastcheckd;
+  integer diff;
+  
+    res = false;
+    filepath = "eAgent/HoldOnTime";
+    if (FileExists(filepath)) then begin
+      AddFileToArea(filepath,timeinfo,false);
+      lastcheckd = StringToTime(GetStringFromArea(timeinfo,0,GetAreaLength(timeinfo)));
+      diff = AbsoluteVal((GetHour(CurrentTime)*60 + GetMinute(CurrentTime)) - (GetHour(lastcheckd)*60 + GetMinute(lastcheckd)));
+      if (diff>minrange) then begin
+        if (FileExists("eAgent/lock")) then begin
+          res = true;
+        end else begin
+          SetAreaZeroSize(timeinfo);
+          AddStringToArea("" & CurrentTime,timeinfo);
+          WriteAreaToFile(timeinfo,filepath,0);
+        end;
+      end else begin
+        res = true;
+      end;
+    end else begin
+      CreateFile(filepath);
+      CloseFile;
+      AddStringToArea("" & CurrentTime,timeinfo); 
+      WriteAreaToFile(timeinfo,filepath,0);
+    end;
+    
+    TimeHoldOn = res;
+  return;
+end;
+
+
 //	Groups.xml 
 global procedure ExportGroupsMn()
 begin
@@ -601,7 +653,8 @@ begin
 
     //t1 = StringToTime("8:00");
   if (FileExists("eAgent/lock")==false) then begin  
-  	CreateFile("eAgent/lock"); 
+  	CreateFile("eAgent/lock");
+  	CloseFile; 
   	LogText(0,"lock file created");
     
     curt = CurrentTime; 
