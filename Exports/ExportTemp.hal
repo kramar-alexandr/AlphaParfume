@@ -1,0 +1,59 @@
+external inner function string 255 ConvertXml(string);
+external procedure GetXMLArea(var area);
+
+SetLangMode(LangRussian,"RUS",0);
+
+procedure  UpdateIndexFile(vector integer files)
+begin
+	area oldIndex,newIndex;
+	string 255 FileName,ErrMsg;
+	string 20 ExpDate,ImportDate,Status,ErrCode;
+	boolean TrHs, testf;
+	xml xdata;
+	integer i;	
+	
+		AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),newIndex);
+		AddTextToArea("	<items>" & chr(13) & chr(10),newIndex);	
+		
+	
+		AddFileToArea("eAgent/index.xml",oldIndex,false);
+    GetXMLArea(oldIndex);    
+		xdata = ParseXMLArea(oldIndex);
+		i = 0;
+
+		while(XmlNodeExists(xdata,"items/item[" & i & "]/FileName"))begin
+
+			FileName = XmlGet(xdata,"items/item[" & i & "]/FileName");
+			Status = XmlGet(xdata,"items/item[" & i & "]/Status");
+			ExpDate = XmlGet(xdata,"items/item[" & i & "]/ExportedTime");
+			ImportDate = CurrentDate;
+			ErrCode = XmlGet(xdata,"items/item[" & i & "]/ErrorCode");
+			ErrMsg = XmlGet(xdata,"items/item[" & i & "]/ErrorMsg");
+			
+			
+			if (files[FileName]) then begin
+				Status = files[FileName];
+			end;
+			
+			AddTextToArea("		<item>" & chr(13) & chr(10),newIndex);
+			AddTextToArea("			<FileName>" & FileName & "</FileName>" & chr(13),newIndex);
+			AddTextToArea("			<Status>" & Status & "</Status>" & chr(13),newIndex);
+			AddTextToArea("			<ExportedTime>" & ExpDate & "</ExportedTime>" & chr(13),newIndex);
+			AddTextToArea("			<ImportDate>" & ImportDate & "</ImportDate>" & chr(13),newIndex);
+			AddTextToArea("			<ErrorCode>" & ErrCode & "</ErrorCode>" & chr(13),newIndex);
+			AddTextToArea("			<ErrorMsg>" & ErrMsg & "</ErrorMsg>" & chr(13),newIndex);
+			AddTextToArea("		</item>" & chr(13) & chr(10),newIndex);
+																		
+			i = i + 1;
+		end;
+		
+		AddTextToArea("	</items>" ,newIndex); 
+  	AddTextToArea("" & chr(13) & chr(10),newIndex);
+		AddTextToArea("" & chr(13) & chr(10),newIndex);	
+  	
+		writeareatofile(newIndex,"eAgent/index.xml",1);		
+			
+   
+    LogText(0,"Index updating");
+  
+end;
