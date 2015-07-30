@@ -554,7 +554,7 @@ begin
 	String 100 FactDateTime; //FactDateTime field Date and Time
 	integer MessagePlaceFlag, i, j, files;
 	string 255 fn, importpath;
-	vector integer index;
+	//vector integer index;
 	
 	if (FileExists("eAgentImport/lock")==false) then begin  
   	CreateFile("eAgentImport/lock"); 
@@ -565,14 +565,15 @@ begin
 		files = CountFilesInDir(importpath);
 		logtext(0, "files count : " & files);
   	for (j=files-1;j>=0;j=j-1) begin
-  		SetAreaZeroSize	(XMLArea);
+  		//SetAreaZeroSize	(XMLArea);
     
     	fn = GetFileNameInDir(importpath,j);
     
     	logtext(0, "file: " & importpath & "/" & fn);
 		
-			AddFileToArea(importpath & "/" & fn,XMLArea,false);
-			//AddFileToArea("eAgentImport/1.xml",XMLArea,false);
+			//AddFileToArea(importpath & "/" & fn,XMLArea,false);
+			AddFileToArea("eAgentImport/3.xml",XMLArea,false);
+    	
     	logtext(0,"lines in file: " & CountLinesInArea(XMLArea)); 
     	
 			GetXMLArea(XMLArea);
@@ -583,7 +584,7 @@ begin
 		
 			if(XmlNodeExists(xdata,"Document-Order/Order-Header")) then begin
 				if(StringToVal(XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val) == 0) then begin
-					index[fn] = XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val);
+					//index[fn] = XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val);
 					RecordNew(ORr);
 					
 					ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
