@@ -84,7 +84,7 @@ AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
 end; 
 
 
-//Products. Π¤Π°ΠΉΠ»: products.xml
+//Products. ”ΰιλ: products.xml
 global procedure ExportProductsMn()
 begin
 	boolean status;
@@ -181,7 +181,7 @@ end;
 
 /*
 
-//Inventories. Π¤Π°ΠΉΠ»: inventories.xml
+//Inventories. ”ΰιλ: inventories.xml
 procedure ExportInventoriesMn()
 begin
 	area aRequest;
@@ -234,7 +234,7 @@ begin
 end;
 
 /*
-//Assortments. Π¤Π°ΠΉΠ»: assortments.xml
+//Assortments. ”ΰιλ: assortments.xml
 procedure ExportAssortments(var area aRequest)
 begin
 	
@@ -257,7 +257,7 @@ begin
 end;
 
 
-//PricesLists. Π¤Π°ΠΉΠ»: prices.xml
+//PricesLists. ”ΰιλ: prices.xml
 procedure ExportPrices(var area aRequest)
 begin
 	
@@ -281,7 +281,7 @@ begin
 end;
 */
 
-//Clients. Π¤Π°ΠΉΠ»: customers.xml	
+//Clients. ”ΰιλ: customers.xml	
 global procedure ExportCustomersMn(var )
 begin
 	area aRequest;
@@ -352,7 +352,7 @@ begin
 end;
 
 /*
-//ClientsProductsDiscounts. Π¤Π°ΠΉΠ»: clients_products_discounts.xml
+//ClientsProductsDiscounts. ”ΰιλ: clients_products_discounts.xml
 procedure ExportClientsProductsDiscounts(var area aRequest)
 begin
 	
@@ -382,7 +382,7 @@ begin
 end;
 
 
-//ClientsGroupsDiscounts. Π¤Π°ΠΉΠ»: clients_groups_discounts.xml
+//ClientsGroupsDiscounts. ”ΰιλ: clients_groups_discounts.xml
 procedure ExportClientsGroupsDiscounts(var area aRequest)
 begin
 	
@@ -411,7 +411,7 @@ begin
 end;
 
 */
-//Agents. Π¤Π°ΠΉΠ»: agents.xml
+//Agents. ”ΰιλ: agents.xml
 global procedure ExportAgentsMn()
 begin
 	area aRequest;
@@ -552,90 +552,87 @@ begin
 	val odometerValue;
 	boolean isQueryForDiscount;
 	String 100 FactDateTime; //FactDateTime field Date and Time
-	integer MessagePlaceFlag, i;
+	integer MessagePlaceFlag, i, j, files;
+	string 255 fn, importpath;
+	vector integer index;
 	
-	if (FileExists("eAgent/lock")==false) then begin  
-  	CreateFile("eAgent/lock"); 
+	if (FileExists("eAgentImport/lock")==false) then begin  
+  	CreateFile("eAgentImport/lock"); 
   	LogText(0,"import lock file created");
 	
-		AddFileToArea("eAgent/2.xml",XMLArea,false);
-	
-		GetXMLArea(XMLArea);
-	
-		xdata = ParseXMLArea(XMLArea);
-	
-		i = 0;  
+		importpath = "eAgentImport";
+				
+		files = CountFilesInDir(importpath);
+		logtext(0, "files count : " & files);
+  	for (j=files-1;j>=0;j=j-1) begin
+  		SetAreaZeroSize	(XMLArea);
+    
+    	fn = GetFileNameInDir(importpath,j);
+    
+    	logtext(0, "file: " & importpath & "/" & fn);
 		
+			AddFileToArea(importpath & "/" & fn,XMLArea,false);
+			//AddFileToArea("eAgentImport/1.xml",XMLArea,false);
+    	logtext(0,"lines in file: " & CountLinesInArea(XMLArea)); 
+    	
+			GetXMLArea(XMLArea);
+	
+			xdata = ParseXMLArea(XMLArea);
+	
+			i = 0;  	
 		
+			if(XmlNodeExists(xdata,"Document-Order/Order-Header")) then begin
+				if(StringToVal(XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val) == 0) then begin
+					index[fn] = XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val);
+					RecordNew(ORr);
+					
+					ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
+					//logtext(0, ORr.OrdDate);
+					ORr.CustOrdNr = XmlGet(xdata,"Document-Order/Order-Header/OrderNumber");
+					ORr.SerNr = NextSerNr("ORVc",ORr.OrdDate,-1,false,"");	
+					ORr.CurncyCode = XmlGet(xdata,"Document-Order/Order-Header/OrderCurrency");
+					ORr.DespatchDate = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryDate");
+					ORr.DespatchTime = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryTime");
+					ORr.Region = XmlGet(xdata,"Document-Order/Order-Header/WebOrderRegion");
+					
+				end;
+			end;	
+			
+			
+			if(XmlNodeExists(xdata,"Document-Order/Order-Parties")) then begin	
+				//logtext(0, "Order-Parties");
+				ORr.CustCode = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/CodeByBuyer");
+				if(ReadFirstMain(ORr, 1, true) == false)then begin 
+					goto LImportEAgentMn;
+				end;
+				ORr.Addr0 = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/Name");
+				ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Parties/Seller/ILN");
+				ORr.DelAddrCode = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/ILN");
+				ORr.ShipAddr0 = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/Name");
+			end;
+			
+			while(XmlNodeExists(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item"))begin		
+				MatRowGet(ORr,i,ORrw);
+				//logtext(0, "Order-Lines");
+				ORrw.ArtCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/BuyerItemCode");
+				ORrw.Spec = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/ItemDescription");
+				ORrw.Quant = StringToVal( XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedQuantity"), M4Qty);
+				ORrw.UnitFactQuant = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedUnitPacksize"), M4UVal);
+				ORrw.UnitCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/UnitOfMeasure");
+				ORrw.vRebate = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/Discount"), M41Val);
+			
+				MatRowPut(ORr,i,ORrw);
+				i = i + 1;
+							
+			end;
 		
-		if(XmlNodeExists(xdata,"Document-Order/Order-Header")) then begin
-			if(StringToVal(XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val) == 0) then begin
-				RecordNew(ORr);
-				ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
-								logtext(0, ORr.OrdDate);
-				ORr.OfficialSerNr = XmlGet(xdata,"Document-Order/Order-Header/OrderNumber");
-				ORr.SerNr = NextSerNr("ORVc",ORr.OrdDate,-1,false,"");	
-				ORr.CurncyCode = XmlGet(xdata,"Document-Order/Order-Header/OrderCurrency");
-				ORr.DespatchDate = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryDate");
-				ORr.DespatchTime = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryTime");
-				ORr.Region = XmlGet(xdata,"Document-Order/Order-Header/WebOrderRegion");
-			end;
-		end;	
-			
-			
-		if(XmlNodeExists(xdata,"Document-Order/Order-Parties")) then begin	
-			logtext(0, "Order-Parties");
-			ORr.CustCode = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/CodeByBuyer");
-			if(ReadFirstMain(ORr, 1, true) == false)then begin 
-				goto LImportEAgentMn;
-			end;
-			ORr.Addr0 = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/Name");
-			ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Parties/Seller/ILN");
-			ORr.DelAddrCode = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/ILN");
-			ORr.ShipAddr0 = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/Name");
-		end;
-			
-		while(XmlNodeExists(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item"))begin		
-			MatRowGet(ORr,i,ORrw);
-			logtext(0, "Order-Lines");
-			ORrw.ArtCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/BuyerItemCode");
-			ORrw.Spec = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/ItemDescription");
-			ORrw.Quant = StringToVal( XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedQuantity"), M4Qty);
-			ORrw.UnitFactQuant = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedUnitPacksize"), M4UVal);
-			ORrw.UnitCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/UnitOfMeasure");
-			ORrw.vRebate = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/Discount"), M41Val);
-			
-			MatRowPut(ORr,i,ORrw);
-			i = i + 1;
-			
-			/*ClientBackofficeId = XmlGet(xdata,"items/item[" & i & "]/ClientBackofficeId");
-			CreationDate = StringToDate(XmlGet(xdata,"items/item[" & i & "]/CreationDate"));
-			Delivery = XmlGet(xdata,"items/item[" & i & "]/Delivery");
-			DeliveryDate = StringToDate(XmlGet(xdata,"items/item[" & i & "]/DeliveryDate"));
-			agentBackOfficeId = XmlGet(xdata,"items/item[" & i & "]/agentBackOfficeId");
-			ClientOrderNo = XmlGet(xdata,"items/item[" & i & "]/ClientOrderNo");
-			splitOrder = XmlGet(xdata,"items/item[" & i & "]/splitOrder");
-			odometerValue = StringToVal( XmlGet(xdata,"items/item[" & i & "]/odometerValue"), M4Val);
-			if(XmlGet(xdata,"items/item[" & i & "]/isQueryForDiscount") == "true")then begin
-				isQueryForDiscount = true;
-			end else begin
-				isQueryForDiscount = false;
-			end;
-			//isQueryForDiscount = XmlGet(xdata,"items/item[" & i & "]/isQueryForDiscount");
-			FactDateTime = XmlGet(xdata,"items/item[" & i & "]/FactDateTime");	//parce
-			Message = XmlGet(xdata,"items/item[" & i & "]/Message");
-			MessagePlaceFlag = StringToVal( XmlGet(xdata,"items/item[" & i & "]/MessagePlaceFlag"), M4Val);
-			Ordered = StringToVal(XmlGet(xdata,"items/item[" & i & "]/Ordered"), M4Val);
-		*/
-			
+			if (RecordStore(ORr,true)) then begin end;	
+			LImportEAgentMn:;
 		end;
 		
-		if (RecordStore(ORr,true)) then begin end;	
-
-		LImportEAgentMn:;
 		
-		Delete_File("eAgent/lock");	
-		if (FileExists("eAgent/lock")==false) then begin
+		Delete_File("eAgentImport/lock");	
+		if (FileExists("eAgentImport/lock")==false) then begin
 			LogText(0,"import lock file deleted");
 		end;
 	
