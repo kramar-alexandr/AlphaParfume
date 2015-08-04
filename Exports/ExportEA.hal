@@ -533,6 +533,62 @@ end;
 
 //////// *** Import ***
 
+procedure  UpdateIndexFile(vector integer files)
+begin
+	area oldIndex,newIndex;
+	string 255 FileName,ErrMsg;
+	string 20 ExpDate,ImportDate,Status,ErrCode;
+	boolean TrHs, testf;
+	xml xdata;
+	integer i;	
+	
+		AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),newIndex);
+		AddTextToArea("	<items>" & chr(13) & chr(10),newIndex);	
+		
+	
+		AddFileToArea("eAgentImport/index.xml",oldIndex,false);
+    GetXMLArea(oldIndex);    
+		xdata = ParseXMLArea(oldIndex);
+		i = 0;
+
+		while(XmlNodeExists(xdata,"items/item[" & i & "]/FileName"))begin
+
+			FileName = XmlGet(xdata,"items/item[" & i & "]/FileName");
+			Status = XmlGet(xdata,"items/item[" & i & "]/Status");
+			ExpDate = XmlGet(xdata,"items/item[" & i & "]/ExportedTime");
+			ImportDate = CurrentDate;
+			ErrCode = XmlGet(xdata,"items/item[" & i & "]/ErrorCode");
+			ErrMsg = XmlGet(xdata,"items/item[" & i & "]/ErrorMsg");
+			
+			
+			if (files[FileName]) then begin
+				Status = files[FileName];
+			end;
+			
+			AddTextToArea("		<item>" & chr(13) & chr(10),newIndex);
+			AddTextToArea("			<FileName>" & FileName & "</FileName>" & chr(13),newIndex);
+			AddTextToArea("			<Status>" & Status & "</Status>" & chr(13),newIndex);
+			AddTextToArea("			<ExportedTime>" & ExpDate & "</ExportedTime>" & chr(13),newIndex);
+			AddTextToArea("			<ImportDate>" & ImportDate & "</ImportDate>" & chr(13),newIndex);
+			AddTextToArea("			<ErrorCode>" & ErrCode & "</ErrorCode>" & chr(13),newIndex);
+			AddTextToArea("			<ErrorMsg>" & ErrMsg & "</ErrorMsg>" & chr(13),newIndex);
+			AddTextToArea("		</item>" & chr(13) & chr(10),newIndex);
+																		
+			i = i + 1;
+		end;
+		
+		AddTextToArea("	</items>" ,newIndex); 
+  	AddTextToArea("" & chr(13) & chr(10),newIndex);
+		AddTextToArea("" & chr(13) & chr(10),newIndex);	
+  	
+		writeareatofile(newIndex,"eAgentImport/index.xml",1);		
+			
+   
+    LogText(0,"Index updating");
+  
+end;
+
+
 //H_<orderId>.xml
 global updating 
 procedure ImportEAgentMn()
@@ -551,10 +607,9 @@ begin
 	date CreationDate, DeliveryDate;
 	val odometerValue;
 	boolean isQueryForDiscount;
-	String 100 FactDateTime; //FactDateTime field Date and Time
-	integer MessagePlaceFlag, i, j, files;
+	integer MessagePlaceFlag, i, j, files, status;
 	string 255 fn, importpath;
-	//vector integer index;
+	vector integer index;
 	
 	if (FileExists("eAgentImport/lock")==false) then begin  
   	CreateFile("eAgentImport/lock"); 
@@ -563,28 +618,22 @@ begin
 		importpath = "eAgentImport";
 				
 		files = CountFilesInDir(importpath);
-		logtext(0, "files count : " & files);
+		//logtext(0, "files count : " & files);
   	for (j=files-1;j>=0;j=j-1) begin
-  		//SetAreaZeroSize	(XMLArea);
+  		SetAreaZeroSize	(XMLArea);
     
     	fn = GetFileNameInDir(importpath,j);
-    
-    	logtext(0, "file: " & importpath & "/" & fn);
-		
-			//AddFileToArea(importpath & "/" & fn,XMLArea,false);
-			AddFileToArea("eAgentImport/3.xml",XMLArea,false);
-    	
-    	logtext(0,"lines in file: " & CountLinesInArea(XMLArea)); 
-    	
-			GetXMLArea(XMLArea);
-	
-			xdata = ParseXMLArea(XMLArea);
-	
+     	//logtext(0, "file: " & importpath & "/" & fn);
+						
+			xdata = ParseXMLFile(importpath & "/" & fn);
+				
 			i = 0;  	
 		
 			if(XmlNodeExists(xdata,"Document-Order/Order-Header")) then begin
-				if(StringToVal(XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val) == 0) then begin
-					//index[fn] = XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val);
+				status = StringToVal(XmlGet(xdata,"Document-Order/Order-Header/DocumentFunctionCode"), M4Val);
+				index[fn] = status;
+				
+				if( status == 0) then begin
 					RecordNew(ORr);
 					
 					ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
@@ -603,7 +652,8 @@ begin
 			if(XmlNodeExists(xdata,"Document-Order/Order-Parties")) then begin	
 				//logtext(0, "Order-Parties");
 				ORr.CustCode = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/CodeByBuyer");
-				if(ReadFirstMain(ORr, 1, true) == false)then begin 
+				CUr.Code = ORr.CustCode;
+				if(ReadFirstMain(CUr, 1, true) == false)then begin 
 					goto LImportEAgentMn;
 				end;
 				ORr.Addr0 = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/Name");
@@ -627,10 +677,15 @@ begin
 							
 			end;
 		
-			if (RecordStore(ORr,true)) then begin end;	
+			if (RecordStore(ORr,true)) then begin 
+				index[fn] = 1;
+			end else begin
+				index[fn] = 2;
+			end;
 			LImportEAgentMn:;
 		end;
 		
+		UpdateIndexFile(index);
 		
 		Delete_File("eAgentImport/lock");	
 		if (FileExists("eAgentImport/lock")==false) then begin
