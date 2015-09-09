@@ -560,7 +560,7 @@ begin
 	row ORVc ORrw;
 	boolean TrHs, testf;
 	xml xdata;
-	string 255 str, Message;
+	string 255 str, Message, tofolder;
 	string 100 Ordered, ClientBackofficeId, agentBackOfficeId, ClientOrderNo; 
 	string 10 Delivery, splitOrder, OrderCurrency;
 	string 100 OrderNumber, OrderDate, ExpectedDeliveryDate, ExpectedDeliveryTime, DocumentFunctionCode; 
@@ -571,6 +571,10 @@ begin
 	string 255 fn, importpath;
 	string 10 result;
 	string 255 warning,errstr;
+	record BaseCurBlock BaseCurb;
+	integer res;
+		
+	BlockLoad(BaseCurb);
 
 	result = "";
 	importpath = "eAgentImport";
@@ -585,10 +589,12 @@ begin
 			ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
 			ORr.CustOrdNr = XmlGet(xdata,"Document-Order/Order-Header/OrderNumber");
 			ORr.SerNr = NextSerNr("ORVc",ORr.OrdDate,-1,false,"");	
-			ORr.CurncyCode = XmlGet(xdata,"Document-Order/Order-Header/OrderCurrency");
+			//ORr.CurncyCode = XmlGet(xdata,"Document-Order/Order-Header/OrderCurrency");
 			ORr.DespatchDate = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryDate");
 			ORr.DespatchTime = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryTime");
 			ORr.Region = XmlGet(xdata,"Document-Order/Order-Header/WebOrderRegion");
+			ORr.PriceList = XmlGet(xdata,"Document-Order/Order-Header/priceListBackOfficeId");
+			ORr.RebCode = XmlGet(xdata,"Document-Order/Order-Header/DiscountTableId");
 		end;	
 		
 		
@@ -598,7 +604,12 @@ begin
 			if(ReadFirstMain(CUr, 1, true) == false)then begin 
 				goto LImportOrder;
 			end;
-			PasteCustInOrder(ORr,ORr.CustCode,"",warning,errstr);							
+			PasteCustInOrder(ORr,ORr.CustCode,"",warning,errstr);		
+			if(nonblank(CUr.CurncyCode)) then begin
+				ORr.CurncyCode = 	CUr.CurncyCode;
+			end else begin
+				ORr.CurncyCode = BaseCurb.BaseCur1;
+			end;
 			ORr.Addr0 = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/Name");
 			ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Parties/Seller/ILN");
 			ORr.DelAddrCode = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/ILN");
@@ -619,13 +630,14 @@ begin
 	
 		if (RecordStore(ORr,true)) then begin 
 			result = 1;
+			tofolder = "IMPORTED";  //Destination folder
+  		res = MoveFile(filename,importpath,importpath & "/" & tofolder);
 		end else begin
 			result = 2;
 		end;
 		LImportOrder:;
 	end;
 		
-
 	ImportOrder = result;
 	return;
 end;
