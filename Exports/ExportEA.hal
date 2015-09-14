@@ -63,7 +63,7 @@ begin
 	record ITVc ITr;
 
 	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
-  AddTextToArea("<file>"& chr(13),aRequest);
+  //AddTextToArea("<file>"& chr(13),aRequest);???????????
   
   ITr.Code = "";
 	while(loopmain(ITr, 1, true))begin
@@ -75,7 +75,7 @@ begin
 		AddTextToArea("			</item>" & chr(13) & chr(10),aRequest);
   end;  
   
-  AddTextToArea("</file>" & chr(13),aRequest);
+  //AddTextToArea("</file>" & chr(13),aRequest);???????????
   AddTextToArea("" & chr(13) & chr(10),aRequest);
 	AddTextToArea("" & chr(13) & chr(10),aRequest);	
 	
@@ -186,6 +186,8 @@ begin
 	
 	BlockLoad(BaseCurb);
 	
+	logtext(0,"ExportPricesMn");
+	
 	PLDefr.Code = "";
 	while(loopmain(PLDefr,1,true)) begin
 		if(nonblank(PLDefr.CurncyCode))then begin
@@ -197,7 +199,7 @@ begin
 	resetloop(PLDefr);
 		
 	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
-	AddTextToArea("<file>"& chr(13),aRequest);
+	//AddTextToArea("<file>"& chr(13),aRequest);????????????
 	AddTextToArea("			<items>"& chr(13) ,aRequest);
 	
 	PLr.PLCode = "";
@@ -210,6 +212,9 @@ begin
 			AddTextToArea("			<Price>" & ConvertXml(PLr.ExVatPrice) & "</Price>" & chr(13),aRequest);
 			
 			currency = PLDefCurrency[PLr.PLCode];			
+			if(currency=="êìÅ")then begin
+				currency="RUB";// Edit ************************** Monday, 14 September 2015 16:31:01			
+			end;
 			
 			AddTextToArea("			<percent>" & ConvertXml("0") & "</percent>" & chr(13),aRequest);
 			AddTextToArea("			<PriceListCurrencyId>" & ConvertXml(currency) & "</PriceListCurrencyId>" & chr(13),aRequest);
@@ -218,10 +223,13 @@ begin
 	end;
 	
 	AddTextToArea("			</items>" & chr(13) ,aRequest);
-  AddTextToArea("</file>" & chr(13),aRequest);
+  //AddTextToArea("</file>" & chr(13),aRequest);???????????
   AddTextToArea("" & chr(13) & chr(10),aRequest);
 	AddTextToArea("" & chr(13) & chr(10),aRequest);	
-
+	
+	
+	logtext(0,"ExportPricesMn " & getarealength(aRequest));
+	
 	writeareatofile(aRequest,"eAgent/prices.xml",0);
 	
 	return;
@@ -249,9 +257,9 @@ begin
 	CUr.Code = "";
 	while(loopmain(CUr, 1, true))begin 
 		testf = true;
-		if(CUr.blockedFlag==1)then begin testf=false; end;
+		//if(CUr.blockedFlag==1)then begin testf=false; end;
 		if(CUr.CUType==0)then begin testf=false; end;
-		
+		if(blank(CUr.PLCode))then begin testf=false; end;
 		
 		if(testf)then begin
 			AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
@@ -292,6 +300,11 @@ begin
 				currency = CUr.CurncyCode;
 			end else begin
 				currency = BaseCurb.BaseCur1;
+			end;
+			
+			
+			if(currency=="êìÅ")then begin
+				currency="RUB";// Edit ************************** Monday, 14 September 2015 16:31:01			
 			end;
 			AddTextToArea("			<ClientCurrencyId>" & ConvertXml(currency) & "</ClientCurrencyId>" & chr(13),aRequest);
 			AddTextToArea("			<Info>" & ConvertXml(CUr.Comment0 & " " & CUr.Comment1 & " " & CUr.Comment2) & "</Info>" & chr(13),aRequest);
