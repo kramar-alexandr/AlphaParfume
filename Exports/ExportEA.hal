@@ -239,6 +239,7 @@ begin
 	val reb, MinOrdSum;
 	record BaseCurBlock BaseCurb;
 	string 20 currency;
+	boolean testf;
 	
 	BlockLoad(BaseCurb);
 	
@@ -247,59 +248,65 @@ begin
 	
 	CUr.Code = "";
 	while(loopmain(CUr, 1, true))begin 
-	
-		AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
-	
-		AddTextToArea("			<backofficeId>" & ConvertXml(CUr.Code) & "</backofficeId>" & chr(13),aRequest);
-		AddTextToArea("			<Name>" & ConvertXml(CUr.Name) & "</Name>" & chr(13),aRequest);
-		AddTextToArea("			<searchString>" & ConvertXml(CUr.SearchKey) & "</searchString>" & chr(13),aRequest);
-	
-		address = CUr.DelAddr0 & " " & CUr.DelAddr1 & " " & CUr.DelAddr2 & " " & CUr.DelAddr3 & " " & CUr.DelAddr4;
-	
-		AddTextToArea("			<Address>" & ConvertXml(address) & "</Address>" & chr(13),aRequest);
-		AddTextToArea("			<Phone>" & ConvertXml(CUr.Phone) & "</Phone>" & chr(13),aRequest);
-		AddTextToArea("			<clientTypeBackOfficeId>" & ConvertXml("") & "</clientTypeBackOfficeId>" & chr(13),aRequest);
-		AddTextToArea("			<consignationPeriod>" & ConvertXml(0) & "</consignationPeriod>" & chr(13),aRequest);
-		AddTextToArea("			<creditLimit>" & ConvertXml(CUr.CreditLimit) & "</creditLimit>" & chr(13),aRequest);
-		AddTextToArea("			<Balance>" & ConvertXml(0.0) & "</Balance>" & chr(13),aRequest);
+		testf = true;
+		if(CUr.blockedFlag==1)then begin testf=false; end;
+		if(CUr.CUType==0)then begin testf=false; end;
 		
-		status = "A";
-		if(CUr.blockedFlag > 0) then begin
-			status = "B";
-		end;
 		
-		AddTextToArea("			<Status>" & ConvertXml(status) & "</Status>" & chr(13),aRequest);
-		AddTextToArea("			<PaymentType>" & ConvertXml(CUr.PayDeal) & "</PaymentType>" & chr(13),aRequest);
+		if(testf)then begin
+			AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
 	
-		Rebr.Code = CUr.RebCode;
-		if(ReadFirstMain(Rebr, 1, true))then begin
-			reb = Rebr.vra0;
-		end else begin
-			reb = 0.0;
-		end;
-		AddTextToArea("			<DiscountTableId>" & ConvertXml(CUr.RebCode) & "</DiscountTableId>" & chr(13),aRequest);
-		AddTextToArea("			<discount>" & ConvertXml(reb) & "</discount>" & chr(13),aRequest);
-		AddTextToArea("			<contractDate>" & ConvertXml(CUr.ContractDate) & "</contractDate>" & chr(13),aRequest);
-		AddTextToArea("			<assortBackOfficeId>" & ConvertXml("") & "</assortBackOfficeId>" & chr(13),aRequest);
-		AddTextToArea("			<PriceBackOfficeId>" & ConvertXml(CUr.PLCode) & "</PriceBackOfficeId>" & chr(13),aRequest);
-		if(nonblank(CUr.CurncyCode)) then begin
-			currency = CUr.CurncyCode;
-		end else begin
-			currency = BaseCurb.BaseCur1;
-		end;
-		AddTextToArea("			<ClientCurrencyId>" & ConvertXml(currency) & "</ClientCurrencyId>" & chr(13),aRequest);
-		AddTextToArea("			<Info>" & ConvertXml(CUr.Comment0 & " " & CUr.Comment1 & " " & CUr.Comment2) & "</Info>" & chr(13),aRequest);
-		AddTextToArea("			<RegionBackOfficeId>" & ConvertXml(CUr.CustCat) & "</RegionBackOfficeId>" & chr(13),aRequest);
+			AddTextToArea("			<backofficeId>" & ConvertXml(CUr.Code) & "</backofficeId>" & chr(13),aRequest);
+			AddTextToArea("			<Name>" & ConvertXml(CUr.Name) & "</Name>" & chr(13),aRequest);
+			AddTextToArea("			<searchString>" & ConvertXml(CUr.SearchKey) & "</searchString>" & chr(13),aRequest);
+	
+			address = CUr.DelAddr0 & " " & CUr.DelAddr1 & " " & CUr.DelAddr2 & " " & CUr.DelAddr3 & " " & CUr.DelAddr4;
+	
+			AddTextToArea("			<Address>" & ConvertXml(address) & "</Address>" & chr(13),aRequest);
+			AddTextToArea("			<Phone>" & ConvertXml(CUr.Phone) & "</Phone>" & chr(13),aRequest);
+			AddTextToArea("			<clientTypeBackOfficeId>" & ConvertXml("") & "</clientTypeBackOfficeId>" & chr(13),aRequest);
+			AddTextToArea("			<consignationPeriod>" & ConvertXml(0) & "</consignationPeriod>" & chr(13),aRequest);
+			AddTextToArea("			<creditLimit>" & ConvertXml(CUr.CreditLimit) & "</creditLimit>" & chr(13),aRequest);
+			AddTextToArea("			<Balance>" & ConvertXml(0.0) & "</Balance>" & chr(13),aRequest);
 		
-		if(blank(CUr.MinOrdSum))then begin
-			MinOrdSum = 0.0;
-		end else begin
-			MinOrdSum = CUr.MinOrdSum;
-		end;
+			status = "A";
+			if(CUr.blockedFlag > 0) then begin
+				status = "B";
+			end;
 		
-		AddTextToArea("			<minOrderSum>" & ConvertXml(MinOrdSum) & "</minOrderSum>" & chr(13),aRequest);
-		AddTextToArea("			<externalCode>" & ConvertXml(CUr.SearchKey) & "</externalCode>" & chr(13),aRequest);
-		AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+			AddTextToArea("			<Status>" & ConvertXml(status) & "</Status>" & chr(13),aRequest);
+			AddTextToArea("			<PaymentType>" & ConvertXml(CUr.PayDeal) & "</PaymentType>" & chr(13),aRequest);
+	
+			Rebr.Code = CUr.RebCode;
+			if(ReadFirstMain(Rebr, 1, true))then begin
+				reb = Rebr.vra0;
+			end else begin
+				reb = 0.0;
+			end;
+			AddTextToArea("			<DiscountTableId>" & ConvertXml(CUr.RebCode) & "</DiscountTableId>" & chr(13),aRequest);
+			AddTextToArea("			<discount>" & ConvertXml(reb) & "</discount>" & chr(13),aRequest);
+			AddTextToArea("			<contractDate>" & ConvertXml(CUr.ContractDate) & "</contractDate>" & chr(13),aRequest);
+			AddTextToArea("			<assortBackOfficeId>" & ConvertXml("") & "</assortBackOfficeId>" & chr(13),aRequest);
+			AddTextToArea("			<PriceBackOfficeId>" & ConvertXml(CUr.PLCode) & "</PriceBackOfficeId>" & chr(13),aRequest);
+			if(nonblank(CUr.CurncyCode)) then begin
+				currency = CUr.CurncyCode;
+			end else begin
+				currency = BaseCurb.BaseCur1;
+			end;
+			AddTextToArea("			<ClientCurrencyId>" & ConvertXml(currency) & "</ClientCurrencyId>" & chr(13),aRequest);
+			AddTextToArea("			<Info>" & ConvertXml(CUr.Comment0 & " " & CUr.Comment1 & " " & CUr.Comment2) & "</Info>" & chr(13),aRequest);
+			AddTextToArea("			<RegionBackOfficeId>" & ConvertXml(CUr.CustCat) & "</RegionBackOfficeId>" & chr(13),aRequest);
+		
+			if(blank(CUr.MinOrdSum))then begin
+				MinOrdSum = 0.0;
+			end else begin
+				MinOrdSum = CUr.MinOrdSum;
+			end;
+		
+			AddTextToArea("			<minOrderSum>" & ConvertXml(MinOrdSum) & "</minOrderSum>" & chr(13),aRequest);
+			AddTextToArea("			<externalCode>" & ConvertXml(CUr.SearchKey) & "</externalCode>" & chr(13),aRequest);
+			AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+		end;
 	end;
 	
 	AddTextToArea("	</items>" ,aRequest); 
