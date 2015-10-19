@@ -182,6 +182,14 @@ Maintenance("Экспорт групп в eAgent (XML)",MyVClass,ExportGroupsMn,
 Maintenance("Экспорт клиентов в eAgent (XML)",MyVClass,ExportCustomersMn,modSL);
 Maintenance("Экспорт агентов в eAgent (XML)",MyVClass,ExportAgentsMn,modSL);
 Maintenance("Экспорт цен в eAgent (XML)",MyVClass,ExportPricesMn,modSL);
+
+Maintenance("Экспорт ProductsDiscountsMn в eAgent (XML)",MyVClass,ProductsDiscountsMn,modSL);
+Maintenance("Экспорт GroupsDiscountsMn в eAgent (XML)",MyVClass,GroupsDiscountsMn,modSL);
+
+Maintenance("Экспорт ClientsRoutedByAgentsMn в eAgent (XML)",MyVClass,ClientsRoutedByAgentsMn,modSL);
+Maintenance("Экспорт InventoriesMn в eAgent (XML)",MyVClass,InventoriesMn,modSL);
+Maintenance("Экспорт ExportRegionsMn в eAgent (XML)",MyVClass,ExportRegionsMn,modSL);
+
 //Maintenance("Экспорт групп в eAgent (XML)",MyVClass,ExportGroupsMn,modTC);
 
 Register("Бюджет (F)","Бюджет (F)",VBudgetVc,modBUF);

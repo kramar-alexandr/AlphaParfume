@@ -1,6 +1,12 @@
 external inner function string 255 ConvertXml(string);
 external inner function Boolean PasteCustInOrder(var record ORVc,string,string,var string,var string);
 external inner function Boolean ORVc_PasteArtCode(var record ORVc,Integer,var string,var string,Boolean);
+external inner procedure ORVc_PastePrice(var record ORVc,Integer,var Boolean);
+external inner procedure ORVc_PastevRebate(var record ORVc,Integer,var Boolean);
+external inner procedure ORDchsum(var record ORVc,Integer);
+external inner procedure ORSumup(var record ORVc);
+external inner procedure ORVc_PasteSum(var record ORVc,Integer,var Boolean);
+external inner procedure ORVc_PasteQuant(var record ORVc,Integer,Boolean,var Boolean);
 
 SetLangMode(LangRussian,"RUS",0);
 
@@ -63,7 +69,7 @@ begin
 	record ITVc ITr;
 
 	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
-  //AddTextToArea("<file>"& chr(13),aRequest);???????????
+  AddTextToArea("<items>"& chr(13),aRequest);
   
   ITr.Code = "";
 	while(loopmain(ITr, 1, true))begin
@@ -75,7 +81,7 @@ begin
 		AddTextToArea("			</item>" & chr(13) & chr(10),aRequest);
   end;  
   
-  //AddTextToArea("</file>" & chr(13),aRequest);???????????
+  AddTextToArea("</items>" & chr(13),aRequest);
   AddTextToArea("" & chr(13) & chr(10),aRequest);
 	AddTextToArea("" & chr(13) & chr(10),aRequest);	
 	
@@ -88,48 +94,78 @@ end;
 //Products: products.xml
 global procedure ExportProductsMn()
 begin
-	boolean status;
+	string 5 status;
 	record INVc INr;
 	area aRequest;
+	boolean testf;
+	record ITVc ITr;
+	integer k,i;
+	array string 10 aGroup;
+	boolean ITFoundf;
 	
 	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
   AddTextToArea("	<items>" ,aRequest);
   AddTextToArea("" & chr(13) & chr(10),aRequest);
-		
+	
+	ITr.Code = "";
+	while(loopmain(ITr,1,true))begin
+		if(nonblank(ITr.Code))then begin
+			aGroup[k] = ITr.Code;
+			k=k+1;
+		end;
+	end;
+	
 	INr.Code = "";
 	while(loopmain(INr, 1, true))begin
-
-		AddTextToArea("		<item>" ,aRequest);
-		AddTextToArea("" & chr(13) & chr(10),aRequest);
-		AddTextToArea("			<BackofficeId>" & ConvertXml(INr.Code) & "</BackofficeId>" & chr(13),aRequest);
-		AddTextToArea("			<groupBackofficeId>" & ConvertXml(INr.Group) & "</groupBackofficeId>" & chr(13),aRequest);//??
-		AddTextToArea("			<Name>" & ConvertXml(INr.Name) & "</Name>" & chr(13),aRequest);
-		AddTextToArea("			<posWeight>" & ConvertXml(" ") & "</posWeight>" & chr(13),aRequest);
+		testf = true;
+		ITFoundf = false;
+		if(INr.Terminated == 1)then begin testf=false; end;
+		if(blank(INr.Group))then begin testf=false; end;
 		
-		if(INr.Terminated == 1) then begin
-			status = false;
-		end else begin 
-			status = true;
+		if(testf)then begin
+			For(i=0;i<k;i=i+1) begin
+				if(INr.Group==aGroup[i])then begin
+					ITFoundf = true;
+					i=k;
+				end;
+			end; 
+			testf = ITFoundf;
 		end;
 		
-		AddTextToArea("			<status>" & ConvertXml(status) & "</status>" & chr(13),aRequest);
-		AddTextToArea("			<baseUnitWeight>" & ConvertXml(INr.Weight) & "</baseUnitWeight>" & chr(13),aRequest);
-		AddTextToArea("			<quantityUnit>" & ConvertXml(0) & "</quantityUnit>" & chr(13),aRequest);
-		AddTextToArea("			<quantityBox>" & ConvertXml(0) & "</quantityBox>" & chr(13),aRequest);
-		AddTextToArea("			<quantityPallete>" & ConvertXml(0) & "</quantityPallete>" & chr(13),aRequest);
-		AddTextToArea("			<minimalOrderQuantity>" & ConvertXml(0) & "</minimalOrderQuantity>" & chr(13),aRequest);
-		AddTextToArea("			<increaseStep>" & ConvertXml(1) & "</increaseStep>" & chr(13),aRequest);
-		AddTextToArea("			<invInput>" & ConvertXml(false) & "</invInput>" & chr(13),aRequest);
-		AddTextToArea("			<Discount>" & ConvertXml(0.0) & "</Discount>" & chr(13),aRequest);
-		AddTextToArea("			<Price>" & ConvertXml(INr.InPrice) & "</Price>" & chr(13),aRequest);
-		AddTextToArea("			<TransportGroup>" & ConvertXml(1) & "</TransportGroup>" & chr(13),aRequest);
-		AddTextToArea("			<unitName>" & ConvertXml(INr.Unittext) & "</unitName>" & chr(13),aRequest);
-		AddTextToArea("			<vatpercent>" & ConvertXml(0) & "</vatpercent>" & chr(13),aRequest);
-		AddTextToArea("			<Barcode>" & ConvertXml(INr.BarCode) & "</Barcode>" & chr(13),aRequest);
-		AddTextToArea("			<info>" & ConvertXml("") & "</info>" & chr(13),aRequest);
+		if(testf)then begin
+		
+			AddTextToArea("		<item>" ,aRequest);
+			AddTextToArea("" & chr(13) & chr(10),aRequest);
+			AddTextToArea("			<BackofficeId>" & ConvertXml(INr.Code) & "</BackofficeId>" & chr(13),aRequest);
+			AddTextToArea("			<groupBackofficeId>" & ConvertXml(INr.Group) & "</groupBackofficeId>" & chr(13),aRequest);//??
+			AddTextToArea("			<Name>" & ConvertXml(INr.Name) & "</Name>" & chr(13),aRequest);
+			AddTextToArea("			<posWeight>" & ConvertXml(" ") & "</posWeight>" & chr(13),aRequest);
+		
+			if(INr.Terminated == 1) then begin
+				status = "B";
+			end else begin 
+				status = "A";
+			end;
+		
+			AddTextToArea("			<status>" & ConvertXml(status) & "</status>" & chr(13),aRequest);
+			AddTextToArea("			<baseUnitWeight>" & ConvertXml(INr.Weight) & "</baseUnitWeight>" & chr(13),aRequest);
+			AddTextToArea("			<quantityUnit>" & ConvertXml(0) & "</quantityUnit>" & chr(13),aRequest);
+			AddTextToArea("			<quantityBox>" & ConvertXml(0) & "</quantityBox>" & chr(13),aRequest);
+			AddTextToArea("			<quantityPallete>" & ConvertXml(0) & "</quantityPallete>" & chr(13),aRequest);
+			AddTextToArea("			<minimalOrderQuantity>" & ConvertXml(0) & "</minimalOrderQuantity>" & chr(13),aRequest);
+			AddTextToArea("			<increaseStep>" & ConvertXml(1) & "</increaseStep>" & chr(13),aRequest);
+			AddTextToArea("			<invInput>" & ConvertXml(false) & "</invInput>" & chr(13),aRequest);
+			AddTextToArea("			<Discount>" & ConvertXml(0.0) & "</Discount>" & chr(13),aRequest);
+			AddTextToArea("			<Price>" & ConvertXml(INr.InPrice) & "</Price>" & chr(13),aRequest);
+			AddTextToArea("			<TransportGroup>" & ConvertXml(1) & "</TransportGroup>" & chr(13),aRequest);
+			AddTextToArea("			<unitName>" & ConvertXml(INr.Unittext) & "</unitName>" & chr(13),aRequest);
+			AddTextToArea("			<vatpercent>" & ConvertXml(0) & "</vatpercent>" & chr(13),aRequest);
+			AddTextToArea("			<Barcode>" & ConvertXml(INr.BarCode) & "</Barcode>" & chr(13),aRequest);
+			AddTextToArea("			<info>" & ConvertXml("") & "</info>" & chr(13),aRequest);
 
-		AddTextToArea("		</item>" ,aRequest);
-		AddTextToArea("" & chr(13) & chr(10),aRequest);
+			AddTextToArea("		</item>" ,aRequest);
+			AddTextToArea("" & chr(13) & chr(10),aRequest);
+		end;
 	end;
 	
   AddTextToArea("	</items>" ,aRequest); 
@@ -174,7 +210,7 @@ end;
 
 
 //PricesLists: prices.xml
-procedure ExportPricesMn()
+global procedure ExportPricesMn()
 begin
 	record PLVc PLr;
 	record PLDefVc PLDefr;
@@ -183,6 +219,21 @@ begin
 	record BaseCurBlock BaseCurb;
 //	Array string 20 PLDef;
 	vector string 20 PLDefCurrency;
+	vector string 20 PLDefName;
+	record INVc INr;
+	record ITVc ITr;
+	integer k,i;
+	array string 10 aGroup;
+	boolean ITFoundf,testf;
+	
+	ITr.Code = "";
+	while(loopmain(ITr,1,true))begin
+		if(nonblank(ITr.Code))then begin
+			aGroup[k] = ITr.Code;
+			k=k+1;
+		end;
+	end;
+	
 	
 	BlockLoad(BaseCurb);
 	
@@ -195,6 +246,7 @@ begin
 		end else begin
 			PLDefCurrency[PLDefr.Code] = BaseCurb.BaseCur1;
 		end;
+		PLDefName[PLDefr.Code]=PLDefr.Comment;
 	end;
 	resetloop(PLDefr);
 		
@@ -206,19 +258,39 @@ begin
 
 	while(loopmain(PLr,1,true)) begin
 		if(nonblank(PLr.ArtCode) and nonblank(PLr.PLCode))then begin// Edit ************************** Wednesday, 26 August 2015 13:06:12
-			AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);	
-			AddTextToArea("			<priceListBackOfficeId>" & ConvertXml(PLr.PLCode) & "</priceListBackOfficeId>" & chr(13),aRequest);
-			AddTextToArea("			<productBackofficeId>" & ConvertXml(PLr.ArtCode) & "</productBackofficeId>" & chr(13),aRequest);
-			AddTextToArea("			<Price>" & ConvertXml(PLr.ExVatPrice) & "</Price>" & chr(13),aRequest);
-			
-			currency = PLDefCurrency[PLr.PLCode];			
-			if(currency=="êìÅ")then begin
-				currency="RUB";// Edit ************************** Monday, 14 September 2015 16:31:01			
+			testf = true;
+			INr.Code = PLr.ArtCode;
+			if(!readfirstmain(INr,1,true))then begin testf=false; end;
+			if(INr.Terminated == 1)then begin testf=false; end;
+			if(blank(INr.Group))then begin testf=false; end;
+			ITFoundf = false;
+			if(testf)then begin
+				For(i=0;i<k;i=i+1) begin
+					if(INr.Group==aGroup[i])then begin
+						ITFoundf = true;
+						i=k;
+					end;
+				end; 
+				testf = ITFoundf;
 			end;
 			
-			AddTextToArea("			<percent>" & ConvertXml("0") & "</percent>" & chr(13),aRequest);
-			AddTextToArea("			<PriceListCurrencyId>" & ConvertXml(currency) & "</PriceListCurrencyId>" & chr(13),aRequest);
-			AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+			
+			if(testf)then begin
+				AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);	
+				AddTextToArea("			<priceListBackOfficeId>" & ConvertXml(PLr.PLCode) & "</priceListBackOfficeId>" & chr(13),aRequest);
+				AddTextToArea("			<priceListBackOfficeName>" & ConvertXml(PLDefName[PLr.PLCode]) & "</priceListBackOfficeName>" & chr(13),aRequest);
+				AddTextToArea("			<productBackofficeId>" & ConvertXml(PLr.ArtCode) & "</productBackofficeId>" & chr(13),aRequest);
+				AddTextToArea("			<Price>" & ConvertXml(PLr.ExVatPrice) & "</Price>" & chr(13),aRequest);
+			
+				currency = PLDefCurrency[PLr.PLCode];			
+				if(currency=="êìÅ")then begin
+					currency="RUB";// Edit ************************** Monday, 14 September 2015 16:31:01			
+				end;
+			
+				AddTextToArea("			<percent>" & ConvertXml("0") & "</percent>" & chr(13),aRequest);
+				AddTextToArea("			<PriceListCurrencyId>" & ConvertXml(currency) & "</PriceListCurrencyId>" & chr(13),aRequest);
+				AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+			end;
 		end;
 	end;
 	
@@ -257,7 +329,7 @@ begin
 	CUr.Code = "";
 	while(loopmain(CUr, 1, true))begin 
 		testf = true;
-		//if(CUr.blockedFlag==1)then begin testf=false; end;
+		if(CUr.blockedFlag==1)then begin testf=false; end;
 		if(CUr.CUType==0)then begin testf=false; end;
 		if(blank(CUr.PLCode))then begin testf=false; end;
 		
@@ -338,23 +410,55 @@ begin
 	record RebVc Rebr;
 	row RebVc Rebrw;
 	val reb;
-	integer rowcnt, i;
+	integer rowcnt;
+	record INVc INr;
+	record ITVc ITr;
+	integer k,i,j;
+	array string 10 aGroup;
+	boolean ITFoundf,testf;
+	
+	ITr.Code = "";
+	while(loopmain(ITr,1,true))begin
+		if(nonblank(ITr.Code))then begin
+			aGroup[k] = ITr.Code;
+			k=k+1;
+		end;
+	end;
 	
 	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
 	AddTextToArea("	<items>" & chr(13) & chr(10),aRequest);
 	
 	Rebr.Code = "";
-	while(loopmain(Rebr, 1, true))begin 
+	while(loopmain(Rebr,1,true))begin 
 		rowcnt = MatRowCnt(Rebr);
 	  for (i=0; i<rowcnt; i=i+1) begin
   	  MatRowGet(Rebr,i,Rebrw);
-   	  if(Rebrw.CodeType == 1)then begin
-				AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
-				AddTextToArea("			<DiscountTableId>" & ConvertXml(Rebr.Code) & "</DiscountTableId>" & chr(13),aRequest);
-  	  	AddTextToArea("			<Name>" & ConvertXml(Rebrw.ITCode) & "</Name>" & chr(13),aRequest);  	
-  	  	AddTextToArea("			<discount>" & ConvertXml(Rebrw.vra0) & "</discount>" & chr(13),aRequest);  	
-  	  	AddTextToArea("			<discountExpirationDate>" & ConvertXml(Rebr.ToDate) & "</discountExpirationDate>" & chr(13),aRequest);  	
- 	  	  AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+   	  if(Rebrw.CodeType == 1 and nonblank(Rebrw.ITCode))then begin
+   	  	testf = true;
+   	  	INr.Code = Rebrw.ITCode;
+				if(!readfirstmain(INr,1,true))then begin testf=false; end;
+				if(INr.Terminated==1)then begin testf=false; end;
+				if(blank(INr.Group))then begin testf=false; end;
+				ITFoundf = false;
+				if(testf)then begin
+					For(j=0;j<k;j=j+1) begin
+						if(INr.Group==aGroup[j])then begin
+							ITFoundf = true;
+							j=k;
+						end;
+					end; 
+					testf = ITFoundf;
+				end;
+			
+   	  	
+   	  	if(testf)then begin
+					AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
+					AddTextToArea("			<DiscountTableId>" & ConvertXml(Rebr.Code) & "</DiscountTableId>" & chr(13),aRequest);
+					AddTextToArea("			<Name>" & ConvertXml(Rebrw.ITCode) & "</Name>" & chr(13),aRequest);  	
+					AddTextToArea("			<discount>" & ConvertXml(Rebrw.vra0) & "</discount>" & chr(13),aRequest);  	
+					AddTextToArea("			<discountExpirationDate>" & ConvertXml(Rebr.ToDate) & "</discountExpirationDate>" & chr(13),aRequest);  	
+					AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+ 	  	  end;
   	  end;
   	end;	
 	end;
@@ -375,7 +479,23 @@ begin
 	record RebVc Rebr;
 	row RebVc Rebrw;
 	val reb;
-	integer rowcnt, i;
+	integer rowcnt,i,j;
+	record ITVc ITr;
+	integer k;
+	array string 10 aGroup;
+	boolean ITFoundf,testf;
+	
+	ITr.Code = "";
+	while(loopmain(ITr,1,true))begin
+		if(nonblank(ITr.Code))then begin
+			aGroup[k] = ITr.Code;
+			k=k+1;
+		end;
+	end;
+	
+
+	
+	
 	
 	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
 	AddTextToArea("	<items>" & chr(13) & chr(10),aRequest);
@@ -385,13 +505,28 @@ begin
 		rowcnt = MatRowCnt(Rebr);
 	  for (i=0; i<rowcnt; i=i+1) begin
   	  MatRowGet(Rebr,i,Rebrw);
-   	  if(Rebrw.CodeType == 0)then begin
-				AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
-				AddTextToArea("			<DiscountTableId>" & ConvertXml(Rebr.Code) & "</DiscountTableId>" & chr(13),aRequest);
-  	  	AddTextToArea("			<Name>" & ConvertXml(Rebrw.ITCode) & "</Name>" & chr(13),aRequest);  	
-  	  	AddTextToArea("			<discount>" & ConvertXml(Rebrw.vra0) & "</discount>" & chr(13),aRequest);  	
-  	  	AddTextToArea("			<discountExpirationDate>" & ConvertXml(Rebr.ToDate) & "</discountExpirationDate>" & chr(13),aRequest);  	
- 	  	  AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+   	  if((Rebrw.CodeType==0) and nonblank(Rebrw.ITCode))then begin
+   	  	testf = true;
+   	  	
+   	  	ITFoundf = false;	
+				if(testf)then begin
+					For(j=0;j<k;j=j+1) begin
+						if(Rebrw.ITCode==aGroup[j])then begin
+							ITFoundf = true;
+							j=k;
+						end;
+					end; 
+					testf = ITFoundf;
+				end;
+   	  	
+   	  	if(testf)then begin
+					AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
+					AddTextToArea("			<DiscountTableId>" & ConvertXml(Rebr.Code) & "</DiscountTableId>" & chr(13),aRequest);
+					AddTextToArea("			<Name>" & ConvertXml(Rebrw.ITCode) & "</Name>" & chr(13),aRequest);  	
+					AddTextToArea("			<discount>" & ConvertXml(Rebrw.vra0) & "</discount>" & chr(13),aRequest);  	
+					AddTextToArea("			<discountExpirationDate>" & ConvertXml(Rebr.ToDate) & "</discountExpirationDate>" & chr(13),aRequest);  	
+					AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+ 	  	  end;
   	  end;
   	end;	
 	end;
@@ -492,32 +627,64 @@ end;
 
 
 //inventories.xml
-procedure InventoriesMn()
+global procedure InventoriesMn()
 begin
 	area aRequest;
 	record LocationVc Locr;
 	record INVc INr;
 	record ItemStatusVc ISr; 
-			
+	integer rowcnt,i,j;
+	record ITVc ITr;
+	integer k;
+	array string 10 aGroup;
+	boolean ITFoundf,testf;
+	
+	ITr.Code = "";
+	while(loopmain(ITr,1,true))begin
+		if(nonblank(ITr.Code))then begin
+			aGroup[k] = ITr.Code;
+			k=k+1;
+		end;
+	end;
+	
+	
 	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
   AddTextToArea("	<items>" ,aRequest);
   AddTextToArea("" & chr(13) & chr(10),aRequest);
 	
 	INr.Code = "";
 	while(loopmain(INr, 1, true))begin
-		Locr.Code = "";
-		while(loopmain(Locr, 1, true))begin
-			ISr.Code = INr.Code;
-			ISr.Location = Locr.Code;
-			if(ReadFirstMain(ISr, 2, true))then begin
-				AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
-				AddTextToArea("			<productBackofficeId>" & ConvertXml(ISr.Code) & "</productBackofficeId>" & chr(13),aRequest);
-				AddTextToArea("			<Inventory>" & ConvertXml(ISr.Instock) & "</Inventory>" & chr(13),aRequest);
-				AddTextToArea("			<RegionBackOfficeId>" & ConvertXml(ISr.Location) & "</RegionBackOfficeId>" & chr(13),aRequest);
-				AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
-			end;
+		testf = true;
+		if(INr.Terminated==1)then begin testf=false; end;
+		if(blank(INr.Group))then begin testf=false; end;
+		ITFoundf = false;
+		if(testf)then begin
+			For(i=0;i<k;i=i+1) begin
+				if(INr.Group==aGroup[i])then begin
+					ITFoundf = true;
+					i=k;
+				end;
+			end; 
+			testf = ITFoundf;
 		end;
-		resetloop(Locr);	
+	
+		
+		if(testf)then begin
+		Locr.Code = "";
+			while(loopmain(Locr, 1, true))begin
+				ISr.Code = INr.Code;
+				ISr.Location = Locr.Code;
+				if(ReadFirstMain(ISr, 2, true) and ISr.Location!=";;;")then begin
+					AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
+					AddTextToArea("			<productBackofficeId>" & ConvertXml(ISr.Code) & "</productBackofficeId>" & chr(13),aRequest);
+					AddTextToArea("			<Inventory>" & ConvertXml(ISr.Instock) & "</Inventory>" & chr(13),aRequest);
+					AddTextToArea("			<RegionBackOfficeId>" & ConvertXml(ISr.Location) & "</RegionBackOfficeId>" & chr(13),aRequest);
+					AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+				end;
+			end;
+			resetloop(Locr);	
+		end;
+		
 	end;
 	
 	AddTextToArea("	</items>" ,aRequest); 
@@ -589,76 +756,112 @@ begin
 	boolean isQueryForDiscount;
 	integer MessagePlaceFlag, i, j, files, status;
 	string 255 fn, importpath;
-	string 10 result;
+	string 10 result1;
 	string 255 warning,errstr;
 	record BaseCurBlock BaseCurb;
 	integer res;
+	area atest;
+	boolean chsum;
 		
 	BlockLoad(BaseCurb);
 
-	result = "";
+	result1 = "";
 	importpath = "eAgentImport";
     	
   if (FileExists(importpath & "/" & filename)) then begin
+  	logtext(0,importpath & "/" & filename);
 		xdata = ParseXMLFile(importpath & "/" & filename);
 		i = 0;  	
-	
+				
 		if(XmlNodeExists(xdata,"Document-Order/Order-Header")) then begin
 			RecordNew(ORr);
 			
 			ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
+			logtext(0,"ORr.OrdDate " & ORr.OrdDate);
 			ORr.CustOrdNr = XmlGet(xdata,"Document-Order/Order-Header/OrderNumber");
 			ORr.SerNr = NextSerNr("ORVc",ORr.OrdDate,-1,false,"");	
+			logtext(0,"ORr.SerNr " & ORr.SerNr);
 			//ORr.CurncyCode = XmlGet(xdata,"Document-Order/Order-Header/OrderCurrency");
 			ORr.DespatchDate = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryDate");
 			ORr.DespatchTime = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryTime");
-			ORr.Region = XmlGet(xdata,"Document-Order/Order-Header/WebOrderRegion");
-			ORr.PriceList = XmlGet(xdata,"Document-Order/Order-Header/priceListBackOfficeId");
-			ORr.RebCode = XmlGet(xdata,"Document-Order/Order-Header/DiscountTableId");
-		end;	
+			ORr.Location = XmlGet(xdata,"Document-Order/Order-Header/WebOrderRegion");
+			// Edit ************************** Wednesday, 16 September 2015 09:24:16
 		
+			if(XmlNodeExists(xdata,"Document-Order/Order-Parties")) then begin	
+				ORr.CustCode = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/CodeByBuyer");
+				CUr.Code = ORr.CustCode;
+				if(ReadFirstMain(CUr, 1, true) == false)then begin 
+					result1 = 2;
+					goto LImportOrder;
+				end;
+				PasteCustInOrder(ORr,ORr.CustCode,"",warning,errstr);		
+				if(nonblank(CUr.CurncyCode)) then begin
+					ORr.CurncyCode = 	CUr.CurncyCode;
+				end else begin
+					ORr.CurncyCode = BaseCurb.BaseCur1;
+				end;
+				ORr.PriceList = XmlGet(xdata,"Document-Order/Order-Header/PriceListBackOfficeId");
+				ORr.RebCode = XmlGet(xdata,"Document-Order/Order-Header/DiscountTableId");
+				ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Header/AgentBackOfficeId");
+				ORr.Addr0 = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/Name");
+				//ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Parties/Seller/ILN");?????????
+				if(blank(ORr.SalesMan))then begin
+					ORr.SalesMan = CUr.SalesMan;
+				end;
+				
+				if(blank(ORr.Location))then begin
+					Userr.Code = ORr.SalesMan;
+					if(readfirstmain(Userr,1,true))then begin
+						ORr.Location = Userr.Location;
+					end;
+				end;
+				
+				ORr.DelAddrCode = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/ILN");
+				ORr.ShipAddr0 = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/Name");
+			end;
 		
-		if(XmlNodeExists(xdata,"Document-Order/Order-Parties")) then begin	
-			ORr.CustCode = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/CodeByBuyer");
-			CUr.Code = ORr.CustCode;
-			if(ReadFirstMain(CUr, 1, true) == false)then begin 
+			while(XmlNodeExists(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item")) begin		
+				ORrw.ArtCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/BuyerItemCode");
+				matrowput(ORr,i,ORrw);
+				ORVc_PasteArtCode(ORr,i,warning,errstr,false);
+				matrowget(ORr,i,ORrw);
+				//ORrw.Spec = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/ItemDescription");
+				ORrw.Quant = StringToVal( XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedQuantity"), M4Val);
+				MatRowPut(ORr,i,ORrw);
+				ORVc_PasteQuant(ORr,i,true,chsum);
+				matrowget(ORr,i,ORrw);
+				ORrw.vRebate = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/Discount"), M4Val);
+				ORrw.Price = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/BasePrice"), M4Val);	
+				logtext(0,"ORrw.Price   " & ORrw.Price);
+				ORrw.UnitFactQuant = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedUnitPacksize"), M4Val);
+				ORrw.UnitCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/UnitOfMeasure");
+				
+				
+				MatRowPut(ORr,i,ORrw);
+				ORVc_PastePrice(ORr,i,chsum);
+				if (chsum) then begin
+					ORDchsum(ORr,i);
+					ORSumup(ORr);
+				end;
+				i = i + 1;						
+			end;
+				
+			if (RecordStore(ORr,true)) then begin 
+				result1 = 1;
+				tofolder = "IMPORTED";  //Destination folder
+				res = MoveFile(filename,importpath,importpath & "/" & tofolder);
 				goto LImportOrder;
-			end;
-			PasteCustInOrder(ORr,ORr.CustCode,"",warning,errstr);		
-			if(nonblank(CUr.CurncyCode)) then begin
-				ORr.CurncyCode = 	CUr.CurncyCode;
 			end else begin
-				ORr.CurncyCode = BaseCurb.BaseCur1;
+				result1 = 2;
 			end;
-			ORr.Addr0 = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/Name");
-			ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Parties/Seller/ILN");
-			ORr.DelAddrCode = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/ILN");
-			ORr.ShipAddr0 = XmlGet(xdata,"Document-Order/Order-Parties/DeliveryPoint/Name");
-		end;
-		
-		while(XmlNodeExists(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item")) begin		
-			ORrw.ArtCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/BuyerItemCode");
-			ORVc_PasteArtCode(ORr,i,warning,errstr,false);
-			ORrw.Spec = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/ItemDescription");
-			ORrw.Quant = StringToVal( XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedQuantity"), M4Qty);
-			ORrw.UnitFactQuant = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/OrderedUnitPacksize"), M4UVal);
-			ORrw.UnitCode = XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/UnitOfMeasure");
-			ORrw.vRebate = StringToVal(XmlGet(xdata,"Document-Order/Order-Lines/Line[" & i & "]/Line-Item/Discount"), M41Val);			
-			MatRowPut(ORr,i,ORrw);
-			i = i + 1;						
-		end;
-	
-		if (RecordStore(ORr,true)) then begin 
-			result = 1;
-			tofolder = "IMPORTED";  //Destination folder
-  		res = MoveFile(filename,importpath,importpath & "/" & tofolder);
 		end else begin
-			result = 2;
+			result1 = 2;
 		end;
-		LImportOrder:;
+	end else begin
+		result1 = 2;
 	end;
-		
-	ImportOrder = result;
+		LImportOrder:;
+	ImportOrder = result1;
 	return;
 end;
 
@@ -671,21 +874,125 @@ begin
 	string 20 ExpDate,ImportDate,Status,ErrCode,result;
 	boolean TrHs, testf;
 	xml xdata;
-	integer i;	
+	longint i,ii,j,lenth;	
+	longint arealines;
+	string 255 aline,nline;
+	array string 100 param;
+	boolean eof,changed;
+	string 10 oldstat;
 	
+	changed = false;
 	if (FileExists("eAgentImport/lock")==false) then begin  
   	CreateFile("eAgentImport/lock"); 
-  	LogText(0,"import lock file created");
+  	//LogText(0,"import lock file created");
+		CloseFile;
+		//AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),newIndex);
+		//AddTextToArea("	<items>" & chr(13) & chr(10),newIndex);			
 	
-		AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),newIndex);
-		AddTextToArea("	<items>" & chr(13) & chr(10),newIndex);			
-	
-		AddFileToArea("eAgentImport/index.xml",oldIndex,false);
-    GetXMLArea(oldIndex);    
-		xdata = ParseXMLArea(oldIndex);
+		//AddFileToArea("eAgentImport/index.xml",oldIndex,false);
+		AddFileToArea("eAgentImport/index.csv",oldIndex,false);
+    //GetXMLArea(oldIndex);    
+		//xdata = ParseXMLArea(oldIndex);
 		i = 0;
-
-		while(XmlNodeExists(xdata,"items/item[" & i & "]/FileName")) begin
+		
+		/*openfile("eAgentImport/index.csv");
+		eof = true;
+		i=0;
+		while(eof)begin
+			aline = "";
+			aline = importfield;
+			if(i==0)then begin
+				AddTextToArea(aline & chr(13) & chr(10),newIndex);
+			end else begin
+				param[0] = "";
+				param[1] = "";
+				param[2] = "";
+				param[3] = "";
+				param[4] = "";
+				if(nonblank(aline))then begin
+					logtext(0,aline);
+					lenth = len(aline);
+					j = 0;
+					For(ii=0;ii<lenth;ii=ii+1) begin
+						if(mid(aline,ii,1)==",")then begin
+							param[j] = nline;
+							j = j+1;
+							nline = "";
+						end else begin
+							nline = nline & mid(aline,ii,1);
+						end;
+					end; 
+					param[j] = nline;
+					logtext(0,"import order " & param[0]);
+					param[1] = ImportOrder(param[0]);
+					
+					if(param[1]=="1")then begin
+						param[2] = currentdate;
+					end;
+					AddTextToArea(param[0] & "," & param[1] & "," & param[2] & "," & param[3] & "," & param[4] & chr(13) & chr(10),newIndex);
+				end else begin
+					AddTextToArea(chr(13) & chr(10),newIndex);
+					logtext(0,"blank");
+				end;
+			end;
+			
+			i=i+1;
+			eof = nextimportline(true);
+		end;
+		CloseFile;
+		*/
+		arealines = countlinesinarea(oldIndex);
+		
+		if(arealines>0)then begin
+			AddTextToArea(getlinefromarea(oldIndex,0),newIndex);
+			
+			if(arealines>1)then begin
+				For(i=1;i<arealines;i=i+1) begin
+					aline = "";
+					aline = getlinefromarea(oldIndex,i);
+					param[0] = "";
+					param[1] = "";
+					param[2] = "";
+					param[3] = "";
+					param[4] = "";
+					if(nonblank(aline) and len(aline)>2)then begin
+						lenth = len(aline);
+						j = 0;
+						For(ii=0;ii<lenth;ii=ii+1) begin
+							if(asc(mid(aline,ii,1))>31 and asc(mid(aline,ii,1))<126)then begin
+								if(mid(aline,ii,1)==",")then begin
+									param[j] = nline;
+									j = j+1;
+									nline = "";
+								end else begin
+									nline = nline & mid(aline,ii,1);
+								end;
+							end;
+						end; 
+						param[j] = nline;
+						
+						oldstat = param[1];
+						
+						if(param[1]=="0" or param[1]=="2")then begin
+							param[1] = ImportOrder(param[0]);
+							if(param[1]=="1")then begin
+								param[2] = currentdate;
+							end;
+						end;
+						
+						if(param[1]!=oldstat)then begin
+							changed = true;
+						end;
+						
+						AddTextToArea(param[0] & "," & param[1] & "," & param[2] & "," & param[3] & "," & param[4] & chr(13) & chr(10),newIndex);
+					end;	
+					
+				end;
+			end; 
+		end;
+		
+		
+		/*while(XmlNodeExists(xdata,"items/item[" & i & "]/FileName")) begin
 
 			FileName = XmlGet(xdata,"items/item[" & i & "]/FileName");
 			Status = XmlGet(xdata,"items/item[" & i & "]/Status");
@@ -712,18 +1019,21 @@ begin
 		
 		AddTextToArea("	</items>" ,newIndex); 
   	AddTextToArea("" & chr(13) & chr(10),newIndex);
-		AddTextToArea("" & chr(13) & chr(10),newIndex);	
+		AddTextToArea("" & chr(13) & chr(10),newIndex);	*/
   	
-		writeareatofile(newIndex,"eAgentImport/index.xml",0);		
-   
-    LogText(0,"Index updating");
+  	if(changed)then begin
+			writeareatofile(newIndex,"eAgentImport/index.csv",0);		
+			LogText(0,"Index updating");
+    end;
     
 	end;
 		
 	Delete_File("eAgentImport/lock");	
 	if (FileExists("eAgentImport/lock")==false) then begin
-		LogText(0,"import lock file deleted");
-	end;    
+		
+	end else begin
+		LogText(0,"WARNING: import lock file NOT deleted!!!");
+	end;  
 
 end;
 
@@ -792,10 +1102,73 @@ begin
 		end;  
 	end;
 	
-	if ((GetMinute(curt)== 2) or (GetMinute(curt) == 7) or (GetMinute(curt) == 15) or (GetMinute(curt) == 20) or (GetMinute(curt) == 30) or (GetMinute(curt) == 40) or (GetMinute(curt) == 50) or (GetMinute(curt) == 57)) then begin	
+	//f ((GetMinute(curt)== 2) or (GetMinute(curt) == 7) or (GetMinute(curt) == 15) or (GetMinute(curt) == 20) or (GetMinute(curt) == 30) or (GetMinute(curt) == 40) or (GetMinute(curt) == 50) or (GetMinute(curt) == 57)) then begin	
 		ImportEAgentMn;
-	end;
+	//end;
   
   
 return;
 end;
+
+
+
+
+
+procedure ReadImportTagHALRulesVcRecord(record HALRulesVc HALRulesr)
+begin
+  string 255 tstr;
+  row HALRulesVc HALRulesrw;
+  integer rwcnt;
+  
+  RecordNew(HALRulesr);
+  HALRulesr.Filename = ImportField;
+  HALRulesr.FileOnClient = StringToInt(ImportField);
+  HALRulesr.RequireRestart = StringToInt(ImportField);
+  
+  rwcnt = 0;
+  
+  while (NextImportLine(false)) begin
+    ClearRow(HALRulesr,HALRulesrw,1);
+    HALRulesrw.Type = StringToInt(ImportField);
+    HALRulesrw.Item = ImportField;
+    HALRulesrw.Location = StringToInt(ImportField);
+    MatRowPut(HALRulesr,rwcnt,HALRulesrw);
+    rwcnt = rwcnt + 1;
+  end;
+  
+  return;
+end;
+
+global
+updating procedure ReadImportTagHALRulesVc(string thetag)
+begin
+  record HALRulesVc HALRulesr;
+  
+  while (NextImportLine(false)) begin
+    ReadImportTagHALRulesVcRecord(HALRulesr);
+    RecordImportStore(HALRulesr,false);
+  end;
+  
+  return;
+end;
+
+global
+function string 120 ReadRecordIdStrHALRulesVc(Integer compnr,string thetag)
+begin
+  record HALRulesVc HALRulesr;
+  
+  HALRulesr.Filename = ImportField;
+  ReadRecordIdStrHALRulesVc = BuildRecordIdStr(HALRulesr,compnr);
+  return;
+end;
+
+
+global
+updating procedure ImpRules()
+BEGIN
+
+
+    RegisterImport("HALRulesVc");
+
+  RETURN;
+END;
