@@ -762,6 +762,7 @@ begin
 	integer res;
 	area atest;
 	boolean chsum;
+	string 20 tempdate;
 		
 	BlockLoad(BaseCurb);
 
@@ -776,7 +777,10 @@ begin
 		if(XmlNodeExists(xdata,"Document-Order/Order-Header")) then begin
 			RecordNew(ORr);
 			
-			ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
+			tempdate = XmlGet(xdata,"Document-Order/Order-Header/OrderDate");
+			ORr.OrdDate = StringToDate(mid(tempdate,8,2) & "." & mid(tempdate,5,2) & "." & mid(tempdate,0,4));
+			
+			//ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
 			logtext(0,"ORr.OrdDate " & ORr.OrdDate);
 			ORr.CustOrdNr = XmlGet(xdata,"Document-Order/Order-Header/OrderNumber");
 			ORr.SerNr = NextSerNr("ORVc",ORr.OrdDate,-1,false,"");	
@@ -845,12 +849,16 @@ begin
 				end;
 				i = i + 1;						
 			end;
-				
-			if (RecordStore(ORr,true)) then begin 
-				result1 = 1;
-				tofolder = "IMPORTED";  //Destination folder
-				res = MoveFile(filename,importpath,importpath & "/" & tofolder);
-				goto LImportOrder;
+			
+			if(ORr.SerNr>=-1)then begin
+				if (RecordStore(ORr,true)) then begin 
+					result1 = 1;
+					tofolder = "IMPORTED";  //Destination folder
+					res = MoveFile(filename,importpath,importpath & "/" & tofolder);
+					goto LImportOrder;
+				end else begin
+					result1 = 2;
+				end;
 			end else begin
 				result1 = 2;
 			end;
