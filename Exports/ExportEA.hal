@@ -7,8 +7,116 @@ external inner procedure ORDchsum(var record ORVc,Integer);
 external inner procedure ORSumup(var record ORVc);
 external inner procedure ORVc_PasteSum(var record ORVc,Integer,var Boolean);
 external inner procedure ORVc_PasteQuant(var record ORVc,Integer,Boolean,var Boolean);
+external inner procedure PSPrintCust(record RcVc,record CUVc,var val,var val,Integer,Integer);
+external inner procedure RunARRn(record RcVc,var val);
+external inner procedure GetFindCustBalance(string,LongInt,var val,var val,var val,var val,Integer,Integer,Integer,Integer,Integer,Integer,Boolean,var Boolean);
+external inner procedure GetOnAccBalance(record RcVc,string,string,Boolean,Integer,var val,var val,var val,var val,var val,var val,var val,record SMVc,
+                   Array string,Array val,var Integer);
+external inner function longint DateDiff(date,date);
+
 
 SetLangMode(LangRussian,"RUS",0);
+
+procedure MyGetFindCustBalance(string cust,LongInt limitdays,var val limit,var val balp,var val duep,var val onacc,Integer based,Integer owncheques,Integer thirdcheques,Integer ioucheques,Integer thirdioucheques,Integer orders,Boolean limitf,var Boolean limitdaysf,string curncy,var val curbal)
+BEGIN
+  record ARVc ARr;
+  Boolean found;
+  val rs;
+  LongInt latedays;
+  val sum,sum2,rval,sumbooked,sumnow,sumincur,sumdiff;
+  record SMVc CurTotalsr;
+  record RcVc RepSpec;
+  Array string 10 debaccs;
+  Array val debbal;
+  Integer debcnt;
+  string 10 tmpcur;
+  boolean testf;
+  
+  tmpcur = curncy;
+  if (nonblank(limit)) then begin
+    GetOnAccBalance(RepSpec,tmpcur,curncy,false,1,onacc,sum2,rval,sumbooked,sumnow,sumincur,sumdiff,CurTotalsr,debaccs,debbal,debcnt);
+  end;
+  curbal = curbal + sumbooked;// Edit ************************** Thursday, 24 December 2015 16:25:16
+  balp = blankval; // Ehh.. blankv
+  if (duep!=-1) then begin
+    duep = blankval;
+  end; 
+  ARr.CustCode = cust;
+  found = true;
+  while (LoopKey("CustCode",ARr,1,found)) begin
+    if (found) then begin
+      if (ARr.CustCode!=cust) then begin
+        found = false;
+      end;  
+    end;  
+    if (found) then begin
+    	testf = true;
+    	
+    	if(nonblank(curncy) and curncy!=ARr.ARCurncyCode)then begin
+    		testf = false;
+    	end;
+    	
+    	if(testf)then begin
+				rs = ARr.BookRVal;
+				curbal = curbal + ARr.RVal;// Edit ************************** Thursday, 24 December 2015 16:25:16
+				balp = balp + rs;
+				latedays = DateDiff(ARr.DueDate,CurrentDate);
+				if (latedays<0) then begin
+					if (duep!=-1) then begin  
+						duep = duep + rs;
+					end;
+					if (limitdays>=0) then begin
+						if (limitdays<-latedays) then begin
+							limitdaysf = true;
+							found = false;
+						end;
+					end;
+				end;
+				if (limitf) then begin
+					switch (based) begin
+						case 0: if (balp>limit-onacc) then begin found = false; end;
+						case 1: if (duep>limit-onacc) then begin found = false; end;
+						case 2: if (balp>limit-onacc) then begin found = false; end;
+					end;
+				end;
+      end;
+    end;
+  end;
+  
+  if(blank(curncy))then begin
+  	curbal = balp;
+  end;
+  
+LGetFindCustBalance:;  
+  RETURN;
+END;
+
+
+function val GetCustomerBalance(string custcode)
+begin
+	record CUVc CUr;
+	record BaseCurBlock BaseCurb;
+	val t,t1,t2,t3;
+  val res,tot1Sum;
+	record RcVc ARRepSpec;
+	boolean limitdaysf;
+	
+	blockload(BaseCurb);
+	res = 0;
+	CUr.Code = custcode;
+	if(readfirstmain(CUr,1,true))then begin
+		if(blank(CUr.CurncyCode) or CUr.CurncyCode==BaseCurb.BaseCur1)then begin
+			MyGetFindCustBalance(custcode,-1,t1,t,t2,t3,0,0,0,0,0,0,false,limitdaysf,"",tot1Sum);
+			res = tot1Sum;
+		end else begin
+			MyGetFindCustBalance(custcode,-1,t1,t,t2,t3,0,0,0,0,0,0,false,limitdaysf,CUr.CurncyCode,tot1Sum);
+			res = tot1Sum;
+		end;
+	end;
+	
+	GetCustomerBalance = res;
+return;
+end;
 
 global
 function val AbsoluteVal(val t)
@@ -347,7 +455,7 @@ begin
 			AddTextToArea("			<clientTypeBackOfficeId>" & ConvertXml("") & "</clientTypeBackOfficeId>" & chr(13),aRequest);
 			AddTextToArea("			<consignationPeriod>" & ConvertXml(0) & "</consignationPeriod>" & chr(13),aRequest);
 			AddTextToArea("			<creditLimit>" & ConvertXml(CUr.CreditLimit) & "</creditLimit>" & chr(13),aRequest);
-			AddTextToArea("			<Balance>" & ConvertXml(0.0) & "</Balance>" & chr(13),aRequest);
+			AddTextToArea("			<Balance>" & ConvertXml(GetCustomerBalance(CUr.Code)) & "</Balance>" & chr(13),aRequest);
 		
 			status = "A";
 			if(CUr.blockedFlag > 0) then begin
@@ -780,7 +888,6 @@ begin
 			tempdate = XmlGet(xdata,"Document-Order/Order-Header/OrderDate");
 			ORr.OrdDate = StringToDate(mid(tempdate,8,2) & "." & mid(tempdate,5,2) & "." & mid(tempdate,0,4));
 			
-			//ORr.OrdDate = StringToDate(XmlGet(xdata,"Document-Order/Order-Header/OrderDate"));
 			logtext(0,"ORr.OrdDate " & ORr.OrdDate);
 			ORr.CustOrdNr = XmlGet(xdata,"Document-Order/Order-Header/OrderNumber");
 			ORr.SerNr = NextSerNr("ORVc",ORr.OrdDate,-1,false,"");	
@@ -789,7 +896,6 @@ begin
 			ORr.DespatchDate = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryDate");
 			ORr.DespatchTime = XmlGet(xdata,"Document-Order/Order-Header/ExpectedDeliveryTime");
 			ORr.Location = XmlGet(xdata,"Document-Order/Order-Header/WebOrderRegion");
-			// Edit ************************** Wednesday, 16 September 2015 09:24:16
 		
 			if(XmlNodeExists(xdata,"Document-Order/Order-Parties")) then begin	
 				ORr.CustCode = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/CodeByBuyer");
@@ -808,7 +914,6 @@ begin
 				ORr.RebCode = XmlGet(xdata,"Document-Order/Order-Header/DiscountTableId");
 				ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Header/AgentBackOfficeId");
 				ORr.Addr0 = XmlGet(xdata,"Document-Order/Order-Parties/Buyer/Name");
-				//ORr.SalesMan = XmlGet(xdata,"Document-Order/Order-Parties/Seller/ILN");?????????
 				if(blank(ORr.SalesMan))then begin
 					ORr.SalesMan = CUr.SalesMan;
 				end;
@@ -892,63 +997,10 @@ begin
 	changed = false;
 	if (FileExists("eAgentImport/lock")==false) then begin  
   	CreateFile("eAgentImport/lock"); 
-  	//LogText(0,"import lock file created");
 		CloseFile;
-		//AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),newIndex);
-		//AddTextToArea("	<items>" & chr(13) & chr(10),newIndex);			
-	
-		//AddFileToArea("eAgentImport/index.xml",oldIndex,false);
+
 		AddFileToArea("eAgentImport/index.csv",oldIndex,false);
-    //GetXMLArea(oldIndex);    
-		//xdata = ParseXMLArea(oldIndex);
-		i = 0;
-		
-		/*openfile("eAgentImport/index.csv");
-		eof = true;
-		i=0;
-		while(eof)begin
-			aline = "";
-			aline = importfield;
-			if(i==0)then begin
-				AddTextToArea(aline & chr(13) & chr(10),newIndex);
-			end else begin
-				param[0] = "";
-				param[1] = "";
-				param[2] = "";
-				param[3] = "";
-				param[4] = "";
-				if(nonblank(aline))then begin
-					logtext(0,aline);
-					lenth = len(aline);
-					j = 0;
-					For(ii=0;ii<lenth;ii=ii+1) begin
-						if(mid(aline,ii,1)==",")then begin
-							param[j] = nline;
-							j = j+1;
-							nline = "";
-						end else begin
-							nline = nline & mid(aline,ii,1);
-						end;
-					end; 
-					param[j] = nline;
-					logtext(0,"import order " & param[0]);
-					param[1] = ImportOrder(param[0]);
-					
-					if(param[1]=="1")then begin
-						param[2] = currentdate;
-					end;
-					AddTextToArea(param[0] & "," & param[1] & "," & param[2] & "," & param[3] & "," & param[4] & chr(13) & chr(10),newIndex);
-				end else begin
-					AddTextToArea(chr(13) & chr(10),newIndex);
-					logtext(0,"blank");
-				end;
-			end;
-			
-			i=i+1;
-			eof = nextimportline(true);
-		end;
-		CloseFile;
-		*/
+
 		arealines = countlinesinarea(oldIndex);
 		
 		if(arealines>0)then begin
@@ -998,37 +1050,7 @@ begin
 				end;
 			end; 
 		end;
-		
-		
-		/*while(XmlNodeExists(xdata,"items/item[" & i & "]/FileName")) begin
-
-			FileName = XmlGet(xdata,"items/item[" & i & "]/FileName");
-			Status = XmlGet(xdata,"items/item[" & i & "]/Status");
-			ExpDate = XmlGet(xdata,"items/item[" & i & "]/ExportedTime");
-			ImportDate = CurrentDate;
-			ErrCode = XmlGet(xdata,"items/item[" & i & "]/ErrorCode");
-			ErrMsg = XmlGet(xdata,"items/item[" & i & "]/ErrorMsg");
-					
-			if (Status == "0") then begin
-				Status = ImportOrder(FileName);
-			end;
-			
-			AddTextToArea("		<item>" & chr(13) & chr(10),newIndex);
-			AddTextToArea("			<FileName>" & FileName & "</FileName>" & chr(13),newIndex);
-			AddTextToArea("			<Status>" & Status & "</Status>" & chr(13),newIndex);
-			AddTextToArea("			<ExportedTime>" & ExpDate & "</ExportedTime>" & chr(13),newIndex);
-			AddTextToArea("			<ImportDate>" & ImportDate & "</ImportDate>" & chr(13),newIndex);
-			AddTextToArea("			<ErrorCode>" & ErrCode & "</ErrorCode>" & chr(13),newIndex);
-			AddTextToArea("			<ErrorMsg>" & ErrMsg & "</ErrorMsg>" & chr(13),newIndex);
-			AddTextToArea("		</item>" & chr(13) & chr(10),newIndex);
-																		
-			i = i + 1;
-		end;
-		
-		AddTextToArea("	</items>" ,newIndex); 
-  	AddTextToArea("" & chr(13) & chr(10),newIndex);
-		AddTextToArea("" & chr(13) & chr(10),newIndex);	*/
-  	
+		  	
   	if(changed)then begin
 			writeareatofile(newIndex,"eAgentImport/index.csv",0);		
 			LogText(0,"Index updating");
@@ -1058,7 +1080,7 @@ begin
 	t3 = StringToTime("30");
 	t4 = StringToTime("15:30");
 	
-	curt = CurrentTime; 
+		curt = CurrentTime; 
     hr = GetHour(curt);
     if (len(hr)==1) then begin
     	hr = "0" & hr;
