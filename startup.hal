@@ -190,6 +190,8 @@ Maintenance("Экспорт ClientsRoutedByAgentsMn в eAgent (XML)",MyVClass,Cl
 Maintenance("Экспорт InventoriesMn в eAgent (XML)",MyVClass,InventoriesMn,modSL);
 Maintenance("Экспорт ExportRegionsMn в eAgent (XML)",MyVClass,ExportRegionsMn,modSL);
 
+Maintenance("Экспорт ExportDebtsMn в eAgent (XML)",MyVClass,ExportDebtsMn,modSL);
+
 //Maintenance("Экспорт групп в eAgent (XML)",MyVClass,ExportGroupsMn,modTC);
 
 Register("Бюджет (F)","Бюджет (F)",VBudgetVc,modBUF);

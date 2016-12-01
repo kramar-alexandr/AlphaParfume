@@ -14,10 +14,16 @@ external inner procedure GetOnAccBalance(record RcVc,string,string,Boolean,Integ
                    Array string,Array val,var Integer);
 external inner function longint DateDiff(date,date);
 
+external function boolean PayCheck(record CUVc);
+external function boolean PayCheck2(record CUVc);
+external function boolean PayCheck3(record CUVc);
+external function boolean PayCheck4(record CUVc, record ORVc);
+external function boolean PayCheck5(record CUVc, record ORVc);
+
 
 SetLangMode(LangRussian,"RUS",0);
 
-procedure MyGetFindCustBalance(string cust,LongInt limitdays,var val limit,var val balp,var val duep,var val onacc,Integer based,Integer owncheques,Integer thirdcheques,Integer ioucheques,Integer thirdioucheques,Integer orders,Boolean limitf,var Boolean limitdaysf,string curncy,var val curbal)
+/*procedure MyGetFindCustBalance(string cust,LongInt limitdays,var val limit,var val balp,var val duep,var val onacc,Integer based,Integer owncheques,Integer thirdcheques,Integer ioucheques,Integer thirdioucheques,Integer orders,Boolean limitf,var Boolean limitdaysf,string curncy,var val curbal)
 BEGIN
   record ARVc ARr;
   Boolean found;
@@ -116,7 +122,18 @@ begin
 	
 	GetCustomerBalance = res;
 return;
+end;*/
+
+function string 20 FormatDate(date indate)
+begin
+string 20 res;
+	
+	res = getday(indate) & "." & getmonth(indate) & "." & getyear(indate);
+	
+	FormatDate = res;
+return;
 end;
+
 
 global
 function val AbsoluteVal(val t)
@@ -455,10 +472,10 @@ begin
 			AddTextToArea("			<clientTypeBackOfficeId>" & ConvertXml("") & "</clientTypeBackOfficeId>" & chr(13),aRequest);
 			AddTextToArea("			<consignationPeriod>" & ConvertXml(0) & "</consignationPeriod>" & chr(13),aRequest);
 			AddTextToArea("			<creditLimit>" & ConvertXml(CUr.CreditLimit) & "</creditLimit>" & chr(13),aRequest);
-			AddTextToArea("			<Balance>" & ConvertXml(GetCustomerBalance(CUr.Code)) & "</Balance>" & chr(13),aRequest);
+			AddTextToArea("			<Balance>" & ConvertXml(0) & "</Balance>" & chr(13),aRequest);
 		
 			status = "A";
-			if(CUr.blockedFlag > 0) then begin
+			if(CUr.blockedFlag > 0 or PayCheck3(CUr)) then begin
 				status = "B";
 			end;
 		
@@ -510,6 +527,133 @@ begin
 	
 	return;
 end;
+
+//Clients: debts.xml	
+global procedure ExportDebtsMn()
+begin
+	area aRequest;
+	record CUVc CUr,grCUr;
+	string 255 address;
+	string 1 status;
+	record RebVc Rebr;
+	val reb, MinOrdSum;
+	record BaseCurBlock BaseCurb;
+	string 20 currency;
+	boolean testf;
+	record IVVc IVr;
+	date dt;
+	Record ARVc ARr;
+  Boolean testf1,TrHs,TrHs1;
+  date PayDate;
+  val invsum;
+	record VSetSetBlock VSr;
+	date invdate;
+
+	BlockLoad(BaseCurb);
+	BlockLoad(VSr);
+
+	AddTextToArea("<?xml version=""1.0"" encoding=""UTF-8""?>" & chr(13),aRequest);
+	AddTextToArea("	<items>" & chr(13) & chr(10),aRequest);
+	
+	CUr.Code = "";
+	while(loopmain(CUr, 1, true))begin 
+		testf = true;
+		if(CUr.blockedFlag==1)then begin testf=false; end;
+		if(CUr.CUType==0)then begin testf=false; end;
+		if(blank(CUr.PLCode))then begin testf=false; end;
+		
+		if(testf)then begin
+			resetloop(ARr);
+			ARr.CustCode = CUr.Code;
+			TrHs = true;
+			while (loopkey("CustCode",ARr,1,TrHs)) begin
+				if (ARr.CustCode==CUr.Code) then begin 
+					
+					PayDate = "";
+					invsum = blankval;
+					invdate = "";
+					IVr.SerNr = ARr.InvoiceNr;
+					if(ReadFirstMain(IVr, 1, true))then begin
+						invsum = IVr.Sum4;
+						invdate = IVr.InvDate;
+						PayDate = IVr.PlanPayDate;
+						if blankdate(PayDate) then begin
+							PayDate = IVr.PayDate;
+						end;
+					end;
+					
+					AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
+						AddTextToArea("			<clientBackOfficeId>" & ConvertXml(CUr.Code) & "</clientBackOfficeId>" & chr(13),aRequest);
+						AddTextToArea("			<Date>" & ConvertXml(FormatDate(invdate)) & "</Date>" & chr(13),aRequest);
+						AddTextToArea("			<payDate>" & ConvertXml(FormatDate(PayDate)) & "</payDate>" & chr(13),aRequest);
+						AddTextToArea("			<Amount>" & ConvertXml(invsum) & "</Amount>" & chr(13),aRequest);
+						AddTextToArea("			<PayedAmount>" & ConvertXml(invsum-ARr.RVal) & "</PayedAmount>" & chr(13),aRequest);
+						AddTextToArea("			<documentNo>" & ConvertXml(ARr.InvoiceNr) & "</documentNo>" & chr(13),aRequest);
+					AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+				end else begin
+					TrHs = false; 
+				end;
+			end;
+			
+			if (VSr.EnableBlockBySearchKey <> 0) then begin
+				TrHs1 = True;
+				resetloop(grCUr);
+				grCUr.SearchKey = CUr.SearchKey;
+				while LoopKey("SearchKey", grCUr, 1, TrHs1) begin
+					if(grCUr.SearchKey==CUr.SearchKey)then begin
+						if (grCUr.Code!=CUr.Code) and (grCUr.SalesGroup == CUr.SalesGroup) and ((grCUr.CustCat == CUr.CustCat) or (VSr.ViewSearchKeyWhenBlock <> 1)) then begin
+							resetloop(ARr);
+							ARr.CustCode = grCUr.Code;
+							TrHs = true;
+							while (loopkey("CustCode",ARr,1,TrHs)) begin
+								if (ARr.CustCode==grCUr.Code) then begin 
+					
+									PayDate = "";
+									invsum = blankval;
+									invdate = "";
+									IVr.SerNr = ARr.InvoiceNr;
+									if(ReadFirstMain(IVr, 1, true))then begin
+										invsum = IVr.Sum4;
+										invdate = IVr.InvDate;
+										PayDate = IVr.PlanPayDate;
+										if blankdate(PayDate) then begin
+											PayDate = IVr.PayDate;
+										end;
+									end;
+					
+									AddTextToArea("		<item>" & chr(13) & chr(10),aRequest);
+										AddTextToArea("			<clientBackOfficeId>" & ConvertXml(grCUr.Code) & "</clientBackOfficeId>" & chr(13),aRequest);
+										AddTextToArea("			<Date>" & ConvertXml(FormatDate(invdate)) & "</Date>" & chr(13),aRequest);
+										AddTextToArea("			<payDate>" & ConvertXml(FormatDate(PayDate)) & "</payDate>" & chr(13),aRequest);
+										AddTextToArea("			<Amount>" & ConvertXml(invsum) & "</Amount>" & chr(13),aRequest);
+										AddTextToArea("			<PayedAmount>" & ConvertXml(invsum-ARr.RVal) & "</PayedAmount>" & chr(13),aRequest);
+										AddTextToArea("			<documentNo>" & ConvertXml(ARr.InvoiceNr) & "</documentNo>" & chr(13),aRequest);
+									AddTextToArea("		</item>" & chr(13) & chr(10),aRequest);
+								end else begin
+									TrHs = false; 
+								end;
+							end;
+							
+						end;
+					end else begin
+						TrHs1 = false;
+					end;
+				end;
+			end;
+			
+		end;
+	end;
+	
+	AddTextToArea("	</items>" ,aRequest); 
+  AddTextToArea("" & chr(13) & chr(10),aRequest);
+	AddTextToArea("" & chr(13) & chr(10),aRequest);	
+
+	writeareatofile(aRequest,"eAgent/debts.xml",0);
+	
+	return;
+end;
+
+
 
 //ProductsDiscounts
 global procedure ProductsDiscountsMn()
@@ -1108,6 +1252,7 @@ begin
 				ExportPricesMn;
 				ProductsDiscountsMn;
 				GroupsDiscountsMn;
+				ExportDebtsMn;	
 			
 			Delete_File("eAgent/lock");	
 			if (FileExists("eAgent/lock")==false) then begin
